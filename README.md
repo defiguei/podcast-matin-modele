@@ -88,6 +88,7 @@ Les faits précis (prix, horaires, dates) viennent des sources. Quand une inform
 
 - **Gratuité.** GitHub : environ 4 minutes par épisode, loin des 2 000 minutes offertes par mois. Gemini : quelques requêtes par épisode, avec un modèle de secours quand un quota du jour est épuisé (6 épisodes à la demande par jour au plus, pour garder celui du matin). Tavily : 15 recherches par jour au plus.
 - **Confidentialité.** Tes clés et tes agendas restent chez ton bot (ou dans les secrets GitHub) : jamais dans le dépôt, les journaux ni les messages à Gemini. Pour écrire l'épisode, Google reçoit le titre, l'heure et le lieu de tes rendez-vous ; Tavily reçoit les recherches de tes rubriques. Le bot ignore toute autre personne que toi, et l'application ne s'ouvre qu'avec ton compte Telegram ou un appareil que tu as autorisé.
+- **Licence.** [PolyForm Noncommercial 1.0.0](LICENSE.md) : tu peux utiliser, modifier et partager ce code pour un usage personnel et non commercial. Tout usage commercial demande l'accord de l'auteur.
 - **Conditions d'utilisation.** Google destine officiellement l'API Gemini aux développeurs ; pour un usage personnel comme celui-ci, c'est une zone grise.
 - **Idées de sortie.** Prix et horaires viennent des sites trouvés ; quand ils manquent, c'est écrit « à vérifier ».
 
