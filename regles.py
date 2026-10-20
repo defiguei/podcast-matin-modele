@@ -436,7 +436,7 @@ def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: s
                 lignes.append(f"  [W{i}] {resultat['titre']} — {resultat['contenu'][:400]} ({resultat['url']})")
                 collecte.liens.append((resultat["titre"], resultat["url"]))
         elif not sources.tavily_cle:
-            lignes.append("Recherche web : non configurée (secret TAVILY_API_KEY manquant).")
+            lignes.append("Recherche web : non configurée (clé Tavily manquante, à ajouter dans Réglages › Connexions).")
 
     if "actus" in noms_sources and chercher_actus:
         requetes_plan = plan.get("requetes") or []

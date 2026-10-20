@@ -410,7 +410,7 @@ def etat_train(sources: Sources, de: str, a: str, jour: dt.date, heure: str, pay
     for p in ordre:
         if p == "FR" and not cle_sncf:
             if france_visee:
-                problemes.append("temps réel SNCF non configuré (secret SNCF_API_KEY manquant)")
+                problemes.append("temps réel SNCF non configuré (clé SNCF manquante, à ajouter dans Réglages › Connexions)")
             continue
         for nom, fonction in essais[p]:
             try:

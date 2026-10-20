@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -67,3 +68,41 @@ def config_de_secours(chemin: Path) -> dict | None:
     if isinstance(donnees, dict) and donnees.get("format") == "bot-v2" and isinstance(donnees.get("config"), dict):
         return {"format": "bot-v2", "config": donnees["config"], "secours": True}
     return None
+
+
+# Clés et agendas saisis dans l'application : le bot les garde et les donne à
+# GitHub au début de chaque lancement. Ils l'emportent sur les secrets GitHub,
+# qui restent la solution de secours quand le bot ne répond pas.
+CLES_APPLICATION = {"gemini": "GEMINI_API_KEY", "tavily": "TAVILY_API_KEY", "sncf": "SNCF_API_KEY"}
+SECRETS_SUIVIS = [*CLES_APPLICATION.values(), "CALENDAR_ICS_URL"]
+
+
+def secrets_presents() -> list[str]:
+    """Secrets GitHub renseignés pour ce lancement (leurs noms seulement)."""
+    return [nom for nom in SECRETS_SUIVIS if os.environ.get(nom, "").strip()]
+
+
+def masquer(valeur: str) -> None:
+    """Une valeur secrète venue du bot n'apparaît jamais dans le journal de GitHub."""
+    if valeur and os.environ.get("GITHUB_ACTIONS"):
+        print(f"::add-mask::{valeur}", flush=True)
+
+
+def appliquer_cles(export: dict | None) -> list[str]:
+    """Met les clés et agendas de l'application dans l'environnement ; renvoie ce qui a été appliqué."""
+    cles = (export or {}).get("cles") or {}
+    appliquees = []
+    for nom_app, variable in CLES_APPLICATION.items():
+        valeur = str(cles.get(nom_app) or "").strip()
+        if valeur:
+            masquer(valeur)
+            os.environ[variable] = valeur
+            appliquees.append(variable)
+    urls = [str(u).strip() for u in (export or {}).get("agendas_urls") or [] if str(u).strip()]
+    if urls:
+        for url in urls:
+            masquer(url)
+        existantes = os.environ.get("CALENDAR_ICS_URL", "").split()
+        os.environ["CALENDAR_ICS_URL"] = " ".join(existantes + [u for u in urls if u not in existantes])
+        appliquees.append("CALENDAR_ICS_URL")
+    return appliquees

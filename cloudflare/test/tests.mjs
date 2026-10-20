@@ -1169,6 +1169,52 @@ await scenario("Rubriques : sources choisies par l'application, place, pause", a
   for (const id of [...config.regles].reverse().slice(0, 3).map((x) => x.id)) await app("supprimer", { id });
 });
 
+await scenario("Connexions : clés et agendas saisis dans l'application", async () => {
+  let r = await app("etat");
+  verifier(r.donnees.connexions.cles.gemini.source === "inconnue" && r.donnees.connexions.cles.tavily.lien.includes("tavily"), "état initial des connexions", r.donnees.connexions.cles.gemini);
+  // GitHub signale ses secrets (les noms seulement).
+  await envoyerJson(`${BOT}/api/evenement`, { type: "secrets", presents: ["GEMINI_API_KEY", "CALENDAR_ICS_URL"] }, { "X-Podcast-Secret": SECRET });
+  r = await app("etat");
+  verifier(r.donnees.connexions.cles.gemini.source === "github" && r.donnees.connexions.cles.tavily.source === "absente" && r.donnees.connexions.agendas_github, "secrets GitHub reconnus", r.donnees.connexions);
+  verifier((await app("cle", { nom: "gemini", valeur: "mauvaise" })).ok === false, "clé Gemini refusée : pas enregistrée");
+  r = await app("cle", { nom: "gemini", valeur: "bonne-cle" });
+  verifier(r.ok && r.donnees.connexions.cles.gemini.source === "app" && r.donnees.connexions.cles.gemini.fin === "-cle" && !JSON.stringify(r.donnees).includes("bonne-cle"),
+    "clé Gemini testée, enregistrée, jamais renvoyée en entier", r.donnees.connexions.cles.gemini);
+  r = await app("cle", { nom: "tavily", valeur: "tvly-bonne" });
+  verifier(r.ok && r.message.includes("Tavily"), "clé Tavily", r.message);
+  verifier((await app("cle", { nom: "inconnue", valeur: "x" })).ok === false, "clé inconnue refusée");
+  // Agendas : un lien iCal lu, nommé et identifié comme le fait GitHub.
+  verifier((await app("agenda_ajouter", { url: `${FAUX}/ics/pas-un-agenda` })).ok === false, "une page qui n'est pas un agenda est refusée");
+  await vider();
+  r = await app("agenda_ajouter", { url: `${FAUX}/ics/perso.ics` });
+  const ajoute = r.donnees?.connexions?.agendas?.[0];
+  verifier(r.ok && ajoute?.nom === "Famille" && ajoute?.nb === 2 && /^[0-9a-f]{10}$/.test(ajoute.id), "agenda ajouté et nommé", r);
+  verifier(lancements(await appels()).some((a) => a.workflow === "agendas.yml"), "relecture des agendas lancée");
+  // GitHub reçoit les clés et les liens au début de chaque lancement (et l'app jamais).
+  const exp = await (await fetch(`${BOT}/api/config`, { headers: { "X-Podcast-Secret": SECRET } })).json();
+  verifier(exp.cles.gemini === "bonne-cle" && exp.cles.tavily === "tvly-bonne" && !exp.cles.sncf && exp.agendas_urls[0] === `${FAUX}/ics/perso.ics`, "clés et agendas pour GitHub", { cles: Object.keys(exp.cles), agendas: exp.agendas_urls });
+  // Gemini du bot : la clé de l'application est utilisée.
+  await vider();
+  await gemini({ reponse: "D'accord.", operations: [] });
+  await app("parler", { texte: "bonjour" });
+  const appelGemini = (await appels()).find((a) => a.service === "gemini" && a.corps);
+  verifier(Boolean(appelGemini), "le bot comprend toujours les demandes");
+  // Retirer.
+  r = await app("agenda_retirer", { id: ajoute.id });
+  verifier(r.ok && !r.donnees.connexions.agendas.length, "agenda retiré");
+  r = await app("cle", { nom: "gemini", valeur: "" });
+  verifier(r.ok && r.donnees.connexions.cles.gemini.source === "github", "clé retirée : retour au secret GitHub");
+  await app("cle", { nom: "tavily", valeur: "" });
+  // Premier lancement : proposé tant que rien de personnel n'est réglé.
+  const sauve = (await etat()).config;
+  await envoyerJson(`${BOT}/test/etat`, { config: { pays: "CH" } });
+  r = await app("etat");
+  verifier(r.donnees.bienvenue === true, "premier lancement proposé à une installation neuve");
+  r = await app("bienvenue_fin");
+  verifier(r.ok && r.donnees.bienvenue === false, "premier lancement terminé");
+  await envoyerJson(`${BOT}/test/etat`, { config: sauve });
+});
+
 await scenario("Pays : réglage et reprise des anciennes installations", async () => {
   // Choisir la France : fuseau, devise, médias par défaut et jours fériés suivent.
   const avant = (await etat()).config;

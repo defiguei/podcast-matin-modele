@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 const racine = fileURLToPath(new URL("..", import.meta.url));
 const variables = {
   TELEGRAM_API: "http://127.0.0.1:8790/tg", GEMINI_API: "http://127.0.0.1:8790/gemini",
-  GITHUB_API: "http://127.0.0.1:8790/gh", NOMINATIM_API: "http://127.0.0.1:8790/nominatim", FERIES_API: "http://127.0.0.1:8790/nager",
+  GITHUB_API: "http://127.0.0.1:8790/gh", NOMINATIM_API: "http://127.0.0.1:8790/nominatim", FERIES_API: "http://127.0.0.1:8790/nager", TAVILY_API: "http://127.0.0.1:8790/tavily", SNCF_API: "http://127.0.0.1:8790/sncf",
   MODE_TEST: "1", TELEGRAM_BOT_TOKEN: "123:TEST", TELEGRAM_CHAT_ID: "42", GITHUB_TOKEN: "gh-test",
   GEMINI_API_KEY: "gem-test", ADRESSE: "http://127.0.0.1:8799",
 };

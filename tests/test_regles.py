@@ -467,7 +467,7 @@ verifier(etat_fr and etat_fr.source == "SNCF" and "TER 886512 de 07 h 12" in tex
          and ("auth", ("cle-sncf", "")) in src_fr.appels, f"France (API SNCF) : retard lu dans la perturbation\n{texte_fr}")
 etat_fr, pb_fr = trains.etat_train(SourcesTrains({"opendata": {"connections": []}, "search.ch": {"connections": []}, "irail": {"connection": []}}),
                                    "Lyon Part-Dieu", "Grenoble", jeudi, "07:12", texte="SNCF", cle_sncf="")
-verifier(etat_fr is None and any("SNCF_API_KEY" in p for p in pb_fr), "France sans clé : signalé, rien d'inventé")
+verifier(etat_fr is None and any("clé SNCF manquante" in p for p in pb_fr), "France sans clé : signalé, rien d'inventé")
 
 
 class Refus(Exception):

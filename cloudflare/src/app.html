@@ -100,6 +100,12 @@ h2 { margin: 0; font-family: var(--titre); font-weight: 700; font-size: 18px; }
 .suggestion { display: flex; flex-direction: column; gap: 2px; background: var(--aube-fond); border-radius: 12px; padding: 10px 12px; font-size: 13px; color: var(--aube-clair); }
 .suggestion .lien { align-self: flex-start; min-height: 36px; padding: 0; }
 
+.badge.manque { color: var(--rouge); background: #2E1D1C; }
+.badge.neutre { color: var(--doux-2); background: var(--carte-2); }
+.points { display: flex; gap: 6px; }
+.points i { width: 22px; height: 4px; border-radius: 2px; background: var(--trait-2); }
+.points i.actif { background: var(--aube); }
+
 /* fiche */
 .entete-fiche { display: flex; align-items: center; gap: 4px; margin: -8px -8px 0; }
 .entete-fiche .surtitre { flex: 1; color: var(--bleu); font-weight: 600; }
@@ -375,6 +381,7 @@ const ICONES = {
   stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
   idees: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
   moi: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  cle: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/>',
 };
 ICONES.programme = ICONES.deroule;
 ICONES.integree = ICONES.aube;
@@ -594,10 +601,11 @@ const parent = (ecran) => (ecran === "fiche" && S.fiche && S.fiche.origine) || S
 function dessiner() {
   const vues = { accueil: vueAccueil, programme: vueProgramme, fiche: vueFiche, integree: vueIntegree, catalogue: vueCatalogue, idees: vueIdees,
                  planning: vuePlanning, reglages: vueReglages, reglage: vueReglage, episode: vueEpisode, episodes: vueEpisodes,
-                 resultats: vueResultats, parler: vueParler };
+                 resultats: vueResultats, parler: vueParler, bienvenue: vueBienvenue };
   ecranEl.innerHTML = (vues[S.ecran] || vueAccueil)();
-  ecranEl.classList.toggle("avec-barre", S.ecran === "fiche" || S.ecran === "parler");
-  navEl.classList.toggle("cache", S.ecran === "fiche" || S.ecran === "parler");
+  const pleinEcran = ["fiche", "parler", "bienvenue"].includes(S.ecran);
+  ecranEl.classList.toggle("avec-barre", pleinEcran);
+  navEl.classList.toggle("cache", pleinEcran);
   const onglet = parent(S.ecran) || S.ecran;
   navEl.innerHTML = ONGLETS.map(([cle, nom]) => `<button type="button" data-aller="${cle}" ${onglet === cle ? 'aria-current="page"' : ""}>${icone(cle)}${nom}</button>`).join("");
   if (tg && tg.BackButton) { if (parent(S.ecran)) tg.BackButton.show(); else tg.BackButton.hide(); }
@@ -1599,6 +1607,11 @@ const SECTIONS = [
   ["moi", "Moi", "moi", (r) => [r.voix.prenom || "prénom ?", r.actus.ville || "ville ?", nomPays()].filter(Boolean).join(" · ")],
   ["voix", "Voix", "voix", (r) => `${r.voix.animateurs.map((a) => a.nom).join(" & ")} · vitesse ${r.voix.vitesse}`],
   ["style", "Durée et style", "format", (r) => `${nombre(r.format.duree_minutes)} min · ${(S.d.listes.tons[r.format.ton] || "").toLowerCase()} · ${r.consignes.length ? `${r.consignes.length} consigne${r.consignes.length > 1 ? "s" : ""}` : "aucune consigne"}`],
+  ["connexions", "Connexions", "cle", () => {
+    const c = S.d.connexions, k = c.cles;
+    const etat = (x) => x.source === "app" || x.source === "github" ? "✓" : x.source === "absente" ? "—" : "?";
+    return `Gemini ${etat(k.gemini)} · Tavily ${etat(k.tavily)} · SNCF ${etat(k.sncf)}${c.agendas.length ? ` · ${c.agendas.length} agenda${c.agendas.length > 1 ? "s" : ""}` : ""}`;
+  }],
   ["application", "Application", "telephone", () => `Version ${S.d.version}`],
 ];
 
@@ -1647,6 +1660,7 @@ function vueReglage() {
       </section>
       <p class="aide">Ta ville sert à l'actu locale, à la météo, aux trains et à repérer tes déplacements. Le pays règle le fuseau horaire, la devise, les jours fériés et les médias proposés par défaut.</p>`,
     voix: () => vueVoix(),
+    connexions: () => vueConnexions(),
     style: () => `<section class="bloc">
         <div class="reglage"><span>Durée visée</span>${pas("format.duree_minutes", r.format.duree_minutes, 2, 12, 0.5, " min")}</div>
       </section>
@@ -1718,6 +1732,110 @@ function vueVoix() {
     </section>`;
 }
 
+// ─────────────────────────────── connexions ─────────────────────────────
+// Clés et agendas : saisis ici, testés par le bot, jamais réaffichés en entier.
+function etatCle(k) {
+  if (k.source === "app") return `<span class="badge ok">Dans l'application · …${h(k.fin)}</span>`;
+  if (k.source === "github") return `<span class="badge ok">Secret GitHub</span>`;
+  if (k.source === "absente") return `<span class="badge ${k.obligatoire ? "manque" : "neutre"}">${k.obligatoire ? "Manquante" : "Pas encore"}</span>`;
+  return `<span class="badge neutre">Vérifiée au prochain épisode</span>`;
+}
+
+function carteCle(nom, k, compacte = false) {
+  return `<section class="carte" aria-labelledby="t-cle-${nom}">
+    <div class="entre"><h2 id="t-cle-${nom}">${h(k.nom)}${k.obligatoire ? "" : ' <span class="aide" style="font-weight:400">facultatif</span>'}</h2>${etatCle(k)}</div>
+    ${compacte ? "" : `<p class="aide">${h(k.role)}${k.teste ? ` Testée le ${h(dateLongue(k.teste.slice(0, 10)))}.` : ""}</p>`}
+    <div class="ajout"><input class="saisie" type="password" autocomplete="off" spellcheck="false" maxlength="300" placeholder="${k.source === "app" ? "Nouvelle clé" : "Colle ta clé ici"}" data-nouveau="cle-${nom}" aria-label="Clé ${h(k.nom)}">
+      <button type="button" class="bouton gris" data-tester-cle="${nom}">Tester</button></div>
+    <div class="entre"><button type="button" class="lien" data-lien="${h(k.lien)}">Où la trouver ?</button>
+      ${k.source === "app" ? `<button type="button" class="lien" style="color:var(--rouge)" data-cle-retirer="${nom}">Retirer</button>` : ""}</div>
+  </section>`;
+}
+
+function vueConnexions() {
+  const c = S.d.connexions;
+  return `<p class="aide" style="font-size:14px;color:var(--doux-2)">Tes clés restent chez ton bot : jamais affichées en entier, jamais dans le code. Chacune est testée avant d'être enregistrée, et l'emporte sur le secret GitHub du même nom.</p>
+    ${Object.entries(c.cles).map(([nom, k]) => carteCle(nom, k)).join("")}
+    <section class="carte"><div class="entre"><h2>Agendas</h2><button type="button" class="lien" data-integree="agenda">Gérer</button></div>
+      <p class="aide">${c.agendas.length ? `${c.agendas.length} ajouté${c.agendas.length > 1 ? "s" : ""} dans l'application` : "Aucun ajouté dans l'application"}${c.agendas_github ? " · d'autres viennent du secret GitHub" : ""}.</p></section>
+    ${c.secrets_vus ? `<p class="aide">Secrets GitHub vérifiés le ${h(dateLongue(c.secrets_vus.slice(0, 10)))}.</p>` : ""}`;
+}
+
+// Ajouter un lien d'agenda (fiche Agenda et premier lancement).
+function blocAjoutAgenda() {
+  const c = S.d.connexions;
+  return `<section class="carte"><h2>Ajouter un agenda</h2>
+    <p class="aide">Colle l'adresse secrète de ton agenda.<br><b>Google Agenda</b> (sur ordinateur) : ⚙️ Paramètres › ton agenda › Intégrer l'agenda › « Adresse secrète au format iCal ».<br><b>Outlook</b> : Paramètres › Calendrier › Calendriers partagés › Publier un calendrier › lien ICS.</p>
+    <div class="ajout"><input class="saisie" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://…/basic.ics" data-nouveau="agenda-url" aria-label="Adresse iCal de l'agenda">
+      <button type="button" class="bouton gris" data-action="agenda-ajouter">Ajouter</button></div>
+    ${c.agendas.length ? `<div class="bloc" style="background:var(--carte-2)">${c.agendas.map((a) => `<div class="reglage"><span>${h(a.nom)} <span class="aide">${a.nb} évén.</span></span>
+      <button type="button" class="lien" style="color:var(--rouge)" data-agenda-retirer="${h(a.id)}">Retirer</button></div>`).join("")}</div>` : ""}
+    ${c.agendas_github ? `<p class="aide">Les agendas du secret GitHub CALENDAR_ICS_URL restent lus aussi.</p>` : ""}
+  </section>`;
+}
+
+// ───────────────────────────── premier lancement ────────────────────────
+const ETAPES_BIENVENUE = ["accueil", "toi", "heure", "agenda", "cles", "pret"];
+const B = { etape: 0, semaine: "07:00", weekend: "08:30", weekendActif: true };
+
+function vueBienvenue() {
+  const d = S.d, r = d.reglages, etape = ETAPES_BIENVENUE[B.etape];
+  const suite = (texte = "Suivant") => `<div class="barre"><div style="display:flex;gap:8px;max-width:524px;margin:0 auto">
+    ${B.etape > 0 ? `<button type="button" class="bouton gris" style="width:auto;flex:none;padding:0 22px" data-bienvenue="-1">Retour</button>` : ""}
+    <button type="button" class="bouton plein" style="flex:1" data-bienvenue="1">${texte}</button></div></div>`;
+  const points = `<div class="points" aria-hidden="true">${ETAPES_BIENVENUE.map((_, i) => `<i class="${i === B.etape ? "actif" : ""}"></i>`).join("")}</div>`;
+  const corps = {
+    accueil: () => `<span class="surtitre">Bienvenue</span><h1>Ton podcast du matin</h1>
+      <p style="line-height:1.5;margin:0">Chaque matin, deux animateurs te parlent de ton agenda, des nouvelles qui t'intéressent et de tout ce que tu leur demandes.</p>
+      <p class="aide" style="font-size:14px">Cinq petites étapes pour le régler : qui tu es, l'heure, ton agenda, une clé. Tout se change ensuite dans l'application.</p>
+      ${suite("C'est parti")}`,
+    toi: () => `<span class="surtitre">1 · Toi</span><h1>Qui écoute ?</h1>
+      <section class="bloc">
+        <div class="reglage"><span>Ton prénom</span><input class="compacte" style="width:160px" maxlength="40" value="${h(r.voix.prenom)}" data-regler-texte="voix.prenom" placeholder="—" aria-label="Ton prénom"></div>
+        <div class="reglage"><span>Ta ville</span><input class="compacte" style="width:170px" maxlength="60" value="${h(r.actus.ville)}" data-regler-texte="actus.ville" placeholder="Ex. Lausanne" aria-label="Ta ville"></div>
+        <div class="reglage"><span>Pays</span>${choix("pays", d.pays, d.listes.pays)}</div>
+        ${interrupteur("Les animateurs te tutoient", r.voix.tutoiement, 'data-regler-bool="voix.tutoiement"')}
+      </section>
+      <p class="aide">La ville sert à l'actu locale, à la météo et aux trains ; le pays règle l'heure, les jours fériés et les médias.</p>${suite()}`,
+    heure: () => `<span class="surtitre">2 · L'heure</span><h1>Quand arrive l'épisode ?</h1>
+      <section class="bloc">
+        <div class="reglage"><span>Du lundi au vendredi</span><input type="time" class="compacte" value="${h(B.semaine)}" data-bienvenue-heure="semaine" aria-label="Heure en semaine"></div>
+        ${interrupteur("Aussi le week-end", B.weekendActif, 'data-bienvenue-weekend')}
+        ${B.weekendActif ? `<div class="reglage"><span>Le samedi et le dimanche</span><input type="time" class="compacte" value="${h(B.weekend)}" data-bienvenue-heure="weekend" aria-label="Heure le week-end"></div>` : ""}
+      </section>
+      <p class="aide">Jours fériés, vacances et exceptions se règlent ensuite dans Planning.</p>${suite()}`,
+    agenda: () => `<span class="surtitre">3 · Ton agenda</span><h1>Tes rendez-vous</h1>
+      <p class="aide" style="font-size:14px">Les animateurs annoncent tes rendez-vous et ce qu'il faut préparer. Tu peux passer cette étape.</p>
+      ${blocAjoutAgenda()}${suite(d.connexions.agendas.length ? "Suivant" : "Passer")}`,
+    cles: () => `<span class="surtitre">4 · Les clés</span><h1>Les services gratuits</h1>
+      <p class="aide" style="font-size:14px">Gemini écrit et dit l'épisode : sa clé est indispensable. Tavily, facultatif, cherche sur internet pour les idées de sortie.</p>
+      ${carteCle("gemini", d.connexions.cles.gemini, true)}${carteCle("tavily", d.connexions.cles.tavily, true)}${suite()}`,
+    pret: () => `<span class="surtitre">5 · C'est prêt</span><h1>Premier épisode ?</h1>
+      <p style="line-height:1.5;margin:0">L'onglet <b>Épisode</b> montre ce que tu entendras, dans l'ordre. Ajoute une rubrique (fête du prénom, météo, rappel selon l'agenda, idée de sortie…) depuis son bouton +.</p>
+      <button type="button" class="bouton gris" data-action="bienvenue-generer">Générer mon premier épisode</button>
+      ${suite("Terminer")}`,
+  }[etape];
+  return `${points}${corps()}`;
+}
+
+async function bienvenueSuivante(sens) {
+  const etape = ETAPES_BIENVENUE[B.etape];
+  if (sens > 0 && etape === "heure") {
+    // Les heures choisies, jour par jour (le planning garde ensuite la main).
+    for (const j of ["lun", "mar", "mer", "jeu", "ven"]) await demander("jour", { jour: j, heure: B.semaine }, { discret: true });
+    for (const j of ["sam", "dim"]) await demander("jour", { jour: j, heure: B.weekendActif ? B.weekend : null }, { discret: true });
+  }
+  if (sens > 0 && B.etape === ETAPES_BIENVENUE.length - 1) {
+    await demander("bienvenue_fin", {}, { discret: true });
+    S.ecran = "programme";
+    annoncer("Tout est prêt.");
+    return dessiner();
+  }
+  B.etape = Math.max(0, Math.min(ETAPES_BIENVENUE.length - 1, B.etape + sens));
+  dessiner();
+  window.scrollTo(0, 0);
+}
+
 // ─────────────────────────── rubriques fournies ─────────────────────────
 // Chaque rubrique fournie a sa fiche : ce qu'elle raconte, sa place, ses réglages.
 const CORPS_INTEGREES = {
@@ -1727,6 +1845,7 @@ const CORPS_INTEGREES = {
         ${r.agendas.length ? `<div class="bloc" style="background:var(--carte-2)">${r.agendas.map((a) => interrupteur(`${h(a.nom)} <span class="aide">${a.nb} évén.</span>`, !r.agenda.exclus.includes(a.id), `data-agenda="${h(a.id)}"`)).join("")}</div>` : `<p class="aide">La liste apparaît après une première lecture.</p>`}
         <button type="button" class="bouton gris" data-action="lire-agendas">Relire mes agendas</button>
       </section>
+      ${blocAjoutAgenda()}
       <section class="bloc">
         <div class="reglage"><span>Jours d'agenda couverts</span>${pas("agenda.jours", r.agenda.jours, 1, 31, 1)}</div>
         <div class="reglage"><span>Prochain événement cherché jusqu'à</span>${choix("agenda.horizon", r.agenda.horizon, [[30, "1 mois"], [60, "2 mois"], [90, "3 mois"], [180, "6 mois"], [365, "1 an"]].concat([30, 60, 90, 180, 365].includes(Number(r.agenda.horizon)) ? [] : [[r.agenda.horizon, `${r.agenda.horizon} jours`]]))}</div>
@@ -1832,6 +1951,17 @@ document.addEventListener("click", (ev) => {
     return changer("deroule", { ordre: S.d.deroule.map((x) => x.cle), actifs: { [ds.actifIntegree]: el.getAttribute("aria-checked") !== "true" } });
   }
   if (ds.ouvrir) return ouvrirFiche(ds.ouvrir);
+  if (ds.testerCle) {
+    const champ = document.querySelector(`[data-nouveau="cle-${ds.testerCle}"]`);
+    const valeur = champ ? champ.value.trim() : "";
+    if (!valeur) return annoncer("Colle d'abord la clé.", true);
+    annoncer("Je teste la clé…");
+    return changer("cle", { nom: ds.testerCle, valeur });
+  }
+  if (ds.cleRetirer) return confirmer("Retirer cette clé de l'application ? Le secret GitHub, s'il existe, prendra le relais.", () => changer("cle", { nom: ds.cleRetirer, valeur: "" }));
+  if (ds.agendaRetirer) return confirmer("Retirer cet agenda ?", () => changer("agenda_retirer", { id: ds.agendaRetirer }));
+  if (ds.bienvenue) return bienvenueSuivante(Number(ds.bienvenue));
+  if (ds.bienvenueWeekend !== undefined) { B.weekendActif = !B.weekendActif; vibrer("choix"); return dessiner(); }
   if (ds.episode) { S.episode = ds.episode; return aller("episode"); }
   if (ds.choisir) { S.choisi = ds.choisir; vibrer("choix"); return dessiner(); }
   if (ds.moisEp !== undefined) { if (ds.moisEp) { S.moisEpisodes = ds.moisEp; dessiner(); } return; }
@@ -1939,6 +2069,14 @@ document.addEventListener("click", (ev) => {
       return changer("creuser", { sujet: champ ? champ.value : "" });
     }
     case "lire-agendas": return changer("lire_agendas", {}, () => {});
+    case "agenda-ajouter": {
+      const champ = document.querySelector('[data-nouveau="agenda-url"]');
+      const url = champ ? champ.value.trim() : "";
+      if (!url) return annoncer("Colle d'abord l'adresse de ton agenda.", true);
+      annoncer("Je lis ton agenda…");
+      return changer("agenda_ajouter", { url });
+    }
+    case "bienvenue-generer": return changer("generer", {}, () => {});
     case "extraits": return changer("extraits", { voix: S.aPreparer }, (j) => { if (j.ok) S.aPreparer = []; dessiner(); });
     case "ajouter-animateur": {
       const champ = document.querySelector('[data-nouveau="animateur-nom"]');
@@ -1970,6 +2108,7 @@ document.addEventListener("change", (ev) => {
     return changer("equipe", { equipe });
   }
   if (t.dataset.nouveau === "animateur-voix") { S.nouveau.voix = t.value; return; }
+  if (t.dataset.bienvenueHeure) { if (t.value) B[t.dataset.bienvenueHeure] = t.value; return; }
   if (t.dataset.champ && S.fiche && t.tagName === "SELECT") return saisirChamp(t);
   if (t.dataset.jourMode) {
     const vue = t.dataset.jourMode;
@@ -2011,6 +2150,7 @@ async function demarrer() {
     return;
   }
   // Ouverture depuis le bouton sous un épisode : directement sur cet épisode.
+  if (S.d.bienvenue) S.ecran = "bienvenue";
   const voulu = new URLSearchParams(location.search).get("episode");
   const ep = voulu && S.d.episodes.find((e) => e.date === voulu);
   if (ep) { S.episode = ep.cle; S.ecran = "episode"; }

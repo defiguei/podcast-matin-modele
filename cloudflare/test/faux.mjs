@@ -85,6 +85,22 @@ const serveur = http.createServer(async (req, res) => {
     ]);
   }
 
+  // ── tests des clés (écran Connexions) et agenda iCal ──
+  if (p === "/gemini/v1beta/models") {
+    appels.push({ service: "gemini", methode: "modeles" });
+    return json(res, req.headers["x-goog-api-key"] === "bonne-cle" ? 200 : 400, { models: [] });
+  }
+  if (p === "/tavily/search") {
+    appels.push({ service: "tavily" });
+    return json(res, req.headers.authorization === "Bearer tvly-bonne" ? 200 : 401, { results: [] });
+  }
+  if (p === "/sncf/v1/coverage/sncf") return json(res, req.headers.authorization === "sncf-bonne" ? 200 : 401, {});
+  if (p === "/ics/perso.ics") {
+    res.writeHead(200, { "Content-Type": "text/calendar" });
+    return res.end("BEGIN:VCALENDAR\r\nX-WR-CALNAME:Famille\r\nBEGIN:VEVENT\r\nSUMMARY:Piscine\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nSUMMARY:Match\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n");
+  }
+  if (p === "/ics/pas-un-agenda") { res.writeHead(200, { "Content-Type": "text/html" }); return res.end("<html>connexion</html>"); }
+
   // ── Gemini ──
   if (p === "/gemini/v1beta/interactions") {
     appels.push({ service: "gemini", corps });

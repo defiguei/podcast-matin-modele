@@ -55,7 +55,7 @@ import x_wr_timezone
 
 import pays as pays_auditeur
 import regles as moteur
-from liaison import Bot, config_de_secours
+from liaison import Bot, appliquer_cles, config_de_secours, secrets_presents
 from pochette import creer_pochette
 from sources import Sources
 
@@ -938,7 +938,7 @@ def appeler_gemini(corps: dict, cle: str, delai: int) -> dict:
         message = message_erreur(reponse)
         brut = reponse.text
         if "API_KEY_INVALID" in brut or "API key not valid" in brut:
-            raise ErreurPodcast("La clé Gemini est refusée : vérifie le secret GEMINI_API_KEY.")
+            raise ErreurPodcast("La clé Gemini est refusée : vérifie-la dans l'application (Réglages › Connexions) ou dans le secret GEMINI_API_KEY.")
         if reponse.status_code == 429:
             if "PerDay" in brut or "per day" in brut.lower() or "limit: 0" in brut:
                 raise QuotaEpuise(f"quota gratuit du jour atteint ({message[:150]})")
@@ -1311,7 +1311,7 @@ def traiter_retours(telegram: Telegram, conversation: str, cle: str, reglages: d
                 return False
             memoire["retours_echec_signale"] = nouveau_depart
             if "clé Gemini est refusée" in str(erreur):
-                raison = "la clé Gemini est refusée : vérifie le secret GEMINI_API_KEY"
+                raison = "la clé Gemini est refusée : vérifie-la dans l'application (Réglages › Connexions)"
             elif "quota" in str(erreur).lower():
                 raison = "le quota gratuit de Gemini est atteint pour le moment"
             else:
@@ -2176,7 +2176,7 @@ def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: l
         tous, problemes = lire_agendas(urls, effectifs, maintenant, horizon)
         remarques += problemes
     else:
-        journal("Aucun agenda configuré (secret CALENDAR_ICS_URL vide).")
+        journal("Aucun agenda configuré (ajoute-en un dans l'application, fiche Agenda).")
     fin_fenetre = debut_du_jour(maintenant) + dt.timedelta(days=effectifs["jours_agenda"])
     proches = [e for e in tous if e.debut < fin_fenetre]
     prochain = tous[0] if tous and not proches else None
@@ -2314,6 +2314,14 @@ def main(arguments: list[str] | None = None) -> int:
     export: dict | None = None
     try:
         reglages = charger_reglages(RACINE / "reglages.toml")
+        # Le bot d'abord : il peut fournir les clés et agendas saisis dans l'application.
+        jeton = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+        bot = Bot(os.environ.get("BOT_URL", ""), jeton)
+        export = bot.config() if jeton else None
+        presents = secrets_presents()
+        appliquees = appliquer_cles(export)
+        if appliquees:
+            journal("Depuis l'application : " + ", ".join(appliquees) + ".")
         reglages.update(decouvrir_modeles(reglages, os.environ.get("GEMINI_API_KEY", "").strip()))
         memoire = charger_memoire(chemin_memoire)
         charger_preferences(RACINE / FICHIER_PREFERENCES, memoire)
@@ -2322,8 +2330,8 @@ def main(arguments: list[str] | None = None) -> int:
         aujourd_hui = maintenant.date().isoformat()
         cle = os.environ.get("GEMINI_API_KEY", "").strip()
         if not cle:
-            raise ErreurPodcast("Le secret GEMINI_API_KEY est manquant.")
-        jeton = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+            raise ErreurPodcast("La clé Gemini manque : ajoute-la dans l'application (Réglages › Connexions) "
+                                "ou en secret GEMINI_API_KEY sur GitHub.")
         if options.retours or not options.sans_envoi:
             if not jeton:
                 raise ErreurPodcast("Le secret TELEGRAM_BOT_TOKEN est manquant.")
@@ -2342,10 +2350,9 @@ def main(arguments: list[str] | None = None) -> int:
                     "l'envoi fonctionne tous les jours. Le podcast arrive dans un instant…"))
 
         # Réglages tenus par le bot ; à défaut, sa sauvegarde quotidienne.
-        bot = Bot(os.environ.get("BOT_URL", ""), jeton)
-        export = bot.config() if jeton else None
         if export:
             journal(f"Réglages lus auprès du bot (version {export.get('version', '?')}).")
+            bot.evenement({"type": "secrets", "presents": presents})   # pour l'écran Connexions
         else:
             export = config_de_secours(RACINE / FICHIER_PREFERENCES)
             if export:

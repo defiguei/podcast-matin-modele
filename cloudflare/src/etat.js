@@ -17,6 +17,7 @@ import {
   regleDepuisFiche, schemaQuestions, consigneQuestions, detailFiche, LIBELLES,
 } from "./assistant.js";
 import { Telegram, GitHub, demanderGemini, maintenantLocal, instantLocal, echapper as e, base64, secretPartage, definirFuseau } from "./services.js";
+import { CLES, testerCle, lireAgenda, identifiantAgenda, resumeConnexions } from "./connexions.js";
 import { donneesApp, champsDepuisFormulaire, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, nettoyerEquipe, telechargerFeries } from "./miniapp.js";
 
 export const VERSION = "2026-10-20.2";
@@ -40,6 +41,7 @@ export class Etat extends DurableObject {
     ctx.blockConcurrencyWhile(async () => {
       const config = await ctx.storage.get("config");
       definirFuseau(profilPays(config).fuseau);
+      this.cles = (await ctx.storage.get("cles")) || {};
     });
   }
 
@@ -108,8 +110,17 @@ export class Etat extends DurableObject {
   get tg() { return (this._tg ||= new Telegram(this.env)); }
 
   // Modèles légers : la liste découverte par GitHub (la plus récente), sinon celle par défaut.
+  // La clé saisie dans l'application l'emporte sur le secret Cloudflare.
+  get envGemini() {
+    return this.cles?.gemini ? { ...this.env, GEMINI_API_KEY: this.cles.gemini } : this.env;
+  }
   gemini(systeme, contenus, schema) {
-    return demanderGemini(this.env, systeme, contenus, schema, this.modelesLegers?.length ? this.modelesLegers : undefined);
+    return demanderGemini(this.envGemini, systeme, contenus, schema, this.modelesLegers?.length ? this.modelesLegers : undefined);
+  }
+
+  async ecrireCles(cles) {
+    this.cles = cles;
+    await this.ctx.storage.put("cles", cles);
   }
   get gh() { return (this._gh ||= new GitHub(this.env)); }
 
@@ -1503,7 +1514,9 @@ export class Etat extends DurableObject {
     let etat = await this.lireEtat();
     this.modelesLegers = etat.modeles_legers;
     const ancienne = cloner(config);
-    const donnees = async () => donneesApp(config, etat, ctx, VERSION, await this.liensAudio(etat));
+    const donnees = async () => ({ ...donneesApp(config, etat, ctx, VERSION, await this.liensAudio(etat)), connexions: resumeConnexions(this.cles, etat),
+      // Premier lancement : rien de personnel encore réglé.
+      bienvenue: !etat.bienvenue_faite && !config.voix.prenom && !config.actus.ville && !config.regles.length });
     const reponse = async (extra = {}) => ({ ok: true, ...extra, donnees: await donnees() });
     const refus = async (message) => ({ ok: false, erreur: message, donnees: await donnees() });
     const relire = async () => { config = await this.lireConfig(); etat = await this.lireEtat(); };
@@ -1685,6 +1698,54 @@ export class Etat extends DurableObject {
           libelle = `Agenda « ${etat.agendas.find((x) => x.id === demande.id)?.nom || demande.id} » ${demande.lu ? "lu" : "ignoré"}`;
           break;
         }
+        // ── connexions : clés et agendas ──
+        case "cle": {
+          const nom = String(demande.nom || "");
+          if (!CLES[nom]) return refus("Clé inconnue.");
+          const valeur = String(demande.valeur || "").trim();
+          const cles = { ...this.cles };
+          if (!valeur) {
+            delete cles[nom]; delete cles[`${nom}_teste`];
+            await this.ecrireCles(cles);
+            return reponse({ message: `Clé ${CLES[nom].nom} retirée de l'application.` });
+          }
+          if (/\s/.test(valeur) || valeur.length > 300) return refus("Colle seulement la clé, sans espace ni retour à la ligne.");
+          const test = await testerCle(this.env, nom, valeur);
+          if (!test.ok) return refus(test.message);
+          cles[nom] = valeur;
+          cles[`${nom}_teste`] = ctx.maintenantIso;
+          await this.ecrireCles(cles);
+          return reponse({ message: `${test.message} Clé enregistrée.` });
+        }
+        case "agenda_ajouter": {
+          const url = String(demande.url || "").trim();
+          const lu = await lireAgenda(url);
+          if (!lu.ok) return refus(lu.message);
+          const id = await identifiantAgenda(url);
+          const agendas = (this.cles.agendas || []).filter((a) => a.id !== id);
+          if (agendas.length >= 8) return refus("Huit agendas au plus.");
+          await this.ecrireCles({ ...this.cles, agendas: [...agendas, { id, url, nom: lu.nom, nb: lu.nb, ajoute_le: ctx.maintenantIso }] });
+          if (!(etat.agendas || []).some((a) => a.id === id)) {
+            etat.agendas = [...(etat.agendas || []), { id, nom: lu.nom, nb: lu.nb }];
+            await this.ecrireEtat(etat);
+          }
+          await this.gh.lancer("agendas.yml", {}).catch(() => {});
+          return reponse({ message: `${lu.message} Il servira dès le prochain épisode.` });
+        }
+        case "bienvenue_fin":
+          etat.bienvenue_faite = ctx.maintenantIso;
+          await this.ecrireEtat(etat);
+          return reponse();
+        case "agenda_retirer": {
+          const avant = this.cles.agendas || [];
+          const agendas = avant.filter((a) => a.id !== demande.id);
+          if (agendas.length === avant.length) return refus("Cet agenda n'a pas été ajouté dans l'application.");
+          await this.ecrireCles({ ...this.cles, agendas });
+          etat.agendas = (etat.agendas || []).filter((a) => a.id !== demande.id);
+          etat.agenda_apercu = (etat.agenda_apercu || []).filter((x) => x.agenda !== demande.id);
+          await this.ecrireEtat(etat);
+          return reponse({ message: "Agenda retiré." });
+        }
         case "lire_agendas":
           await this.gh.lancer("agendas.yml", {});
           return reponse({ message: "Je relis tes agendas : la liste se met à jour d'ici une minute." });
@@ -1811,6 +1872,9 @@ export class Etat extends DurableObject {
       episode_envoye_aujourdhui: Boolean(etat.declenchements[ctx.aujourdHui]?.envoye),
       episode_lance_aujourdhui: Boolean(etat.declenchements[ctx.aujourdHui]?.lance),
       agendas: etat.agendas || [],
+      // Clés et agendas saisis dans l'application (GitHub les masque dans son journal).
+      cles: Object.fromEntries(Object.keys(CLES).filter((nom) => this.cles?.[nom]).map((nom) => [nom, this.cles[nom]])),
+      agendas_urls: (this.cles?.agendas || []).map((a) => a.url),
       derniers_resultats: etat.derniers_resultats || null,
       app: this.adresseApp(etat),
     };
@@ -1850,6 +1914,13 @@ export class Etat extends DurableObject {
     if (ev.type === "modeles") {
       const legers = (ev.rapides || []).filter((m) => typeof m === "string" && /^gemini-[\d.]+-flash-lite/.test(m)).slice(0, 3);
       if (legers.length) etat.modeles_legers = legers;
+      await this.ecrireEtat(etat);
+      return { ok: true };
+    }
+    if (ev.type === "secrets") {
+      // Noms des secrets GitHub renseignés (jamais leurs valeurs) : pour l'écran Connexions.
+      etat.secrets_github = (Array.isArray(ev.presents) ? ev.presents : []).filter((n) => /^[A-Z_]{3,40}$/.test(n)).slice(0, 10);
+      etat.secrets_vus = ctx.maintenantIso;
       await this.ecrireEtat(etat);
       return { ok: true };
     }

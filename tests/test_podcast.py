@@ -941,6 +941,26 @@ with tempfile.TemporaryDirectory() as dossier:
             os.environ[cle] = valeur
     verifier("go=false" in sortie.read_text(), "dépôt sans bot : pas d'épisode programmé")
 
+# Clés et agendas saisis dans l'application : appliqués et masqués dans le journal de GitHub.
+import liaison
+anciens = {k: os.environ.get(k) for k in ("GEMINI_API_KEY", "TAVILY_API_KEY", "SNCF_API_KEY", "CALENDAR_ICS_URL", "GITHUB_ACTIONS")}
+os.environ.update({"GEMINI_API_KEY": "secret-github", "CALENDAR_ICS_URL": "https://a.example/1.ics", "GITHUB_ACTIONS": "true"})
+os.environ.pop("TAVILY_API_KEY", None); os.environ.pop("SNCF_API_KEY", None)
+presents = liaison.secrets_presents()
+sortie_masques = io.StringIO()
+with contextlib.redirect_stdout(sortie_masques):
+    appliquees = liaison.appliquer_cles({"cles": {"gemini": "cle-app", "tavily": "tvly-app"}, "agendas_urls": ["https://b.example/2.ics", "https://a.example/1.ics"]})
+verifier(presents == ["GEMINI_API_KEY", "CALENDAR_ICS_URL"], f"secrets GitHub présents : {presents}")
+verifier(os.environ["GEMINI_API_KEY"] == "cle-app" and os.environ["TAVILY_API_KEY"] == "tvly-app"
+         and os.environ["CALENDAR_ICS_URL"].split() == ["https://a.example/1.ics", "https://b.example/2.ics"], "clés et agendas de l'application appliqués (sans doublon)")
+verifier("::add-mask::cle-app" in sortie_masques.getvalue() and "::add-mask::https://b.example/2.ics" in sortie_masques.getvalue(), "valeurs masquées dans le journal")
+verifier(set(appliquees) == {"GEMINI_API_KEY", "TAVILY_API_KEY", "CALENDAR_ICS_URL"}, f"appliquées : {appliquees}")
+for cle, valeur in anciens.items():
+    if valeur is None:
+        os.environ.pop(cle, None)
+    else:
+        os.environ[cle] = valeur
+
 print("\nRÉSULTAT :", "tout est vert ✅" if not echecs else f"{len(echecs)} échec(s) ❌")
 for e in echecs:
     print("  -", e)
