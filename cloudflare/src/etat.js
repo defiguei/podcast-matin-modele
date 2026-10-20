@@ -18,6 +18,7 @@ import {
 } from "./assistant.js";
 import { Telegram, GitHub, demanderGemini, maintenantLocal, instantLocal, echapper as e, base64, secretPartage, definirFuseau } from "./services.js";
 import { CLES, testerCle, lireAgenda, identifiantAgenda, resumeConnexions } from "./connexions.js";
+import { fluxRss, chapitresJson, episodeDeCle, jetonValide, nouveauJeton } from "./flux.js";
 import { donneesApp, champsDepuisFormulaire, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, nettoyerEquipe, telechargerFeries } from "./miniapp.js";
 
 export const VERSION = "2026-10-20.2";
@@ -92,6 +93,7 @@ export class Etat extends DurableObject {
         return Response.json(await this.enFile(() => this.actionApp(demande)));
       }
       if (url.pathname === "/api/config") return Response.json(await this.enFile(() => this.exporterConfig()));
+      if (url.pathname === "/flux") return await this.enFile(() => this.servirFlux(url.searchParams));
       if (url.pathname === "/api/evenement") {
         const evenement = await requete.json();
         return Response.json(await this.enFile(() => this.recevoirEvenement(evenement)));
@@ -1516,7 +1518,8 @@ export class Etat extends DurableObject {
     const ancienne = cloner(config);
     const donnees = async () => ({ ...donneesApp(config, etat, ctx, VERSION, await this.liensAudio(etat)), connexions: resumeConnexions(this.cles, etat),
       // Premier lancement : rien de personnel encore réglé.
-      bienvenue: !etat.bienvenue_faite && !config.voix.prenom && !config.actus.ville && !config.regles.length });
+      bienvenue: !etat.bienvenue_faite && !config.voix.prenom && !config.actus.ville && !config.regles.length,
+      flux: this.adresseFlux(etat) });
     const reponse = async (extra = {}) => ({ ok: true, ...extra, donnees: await donnees() });
     const refus = async (message) => ({ ok: false, erreur: message, donnees: await donnees() });
     const relire = async () => { config = await this.lireConfig(); etat = await this.lireEtat(); };
@@ -1732,6 +1735,11 @@ export class Etat extends DurableObject {
           await this.gh.lancer("agendas.yml", {}).catch(() => {});
           return reponse({ message: `${lu.message} Il servira dès le prochain épisode.` });
         }
+        case "flux": {
+          if (!etat.flux_jeton || demande.renouveler) etat.flux_jeton = nouveauJeton();
+          await this.ecrireEtat(etat);
+          return reponse({ message: demande.renouveler ? "Nouvelle adresse : l'ancienne ne marche plus." : "Ton flux privé est prêt." });
+        }
         case "bienvenue_fin":
           etat.bienvenue_faite = ctx.maintenantIso;
           await this.ecrireEtat(etat);
@@ -1856,6 +1864,35 @@ export class Etat extends DurableObject {
     return reponse({ id, message: libelle });
   }
 
+  // ───────────────────────── flux privé du podcast ────────────────────────────
+
+  adresseFlux(etat) {
+    const adresse = etat.adresse || this.env.ADRESSE;
+    return etat.flux_jeton && adresse ? `${adresse}/flux/${etat.flux_jeton}.xml` : null;
+  }
+
+  async servirFlux(parametres) {
+    const etat = await this.lireEtat();
+    const jeton = parametres.get("jeton") || "";
+    let egal = Boolean(etat.flux_jeton) && jetonValide(jeton) && jeton.length === etat.flux_jeton.length;
+    for (let i = 0; egal && i < jeton.length; i++) if (jeton[i] !== etat.flux_jeton[i]) egal = false;
+    if (!egal) return new Response("introuvable", { status: 404 });
+    const quoi = parametres.get("quoi");
+    if (quoi === "xml") {
+      const config = await this.lireConfig();
+      const base = `${etat.adresse || this.env.ADRESSE}/flux/${jeton}`;
+      const episodes = (etat.episodes || []).map((ep) => ({ ...ep, instant: instantLocal(ep.date, ep.heure || "07:00") }));
+      const titre = config.voix.prenom ? `Le podcast du matin de ${config.voix.prenom}` : "Mon podcast du matin";
+      const auteur = config.voix.animateurs.map((a) => a.nom).join(" & ") || "Podcast Matin";
+      return new Response(fluxRss({ episodes, base, titre, auteur, langue: profilPays(config).actus_langue }),
+        { headers: { "Content-Type": "application/rss+xml; charset=utf-8", "Cache-Control": "private, max-age=300" } });
+    }
+    const episode = episodeDeCle(etat.episodes, parametres.get("cle"));
+    if (!episode) return new Response("introuvable", { status: 404 });
+    if (quoi === "chapitres") return Response.json(chapitresJson(episode), { headers: { "Content-Type": "application/json+chapters" } });
+    return Response.json({ file_id: quoi === "image" ? episode.pochette_id : episode.file_id });
+  }
+
   // ─────────────────────────── API pour GitHub ───────────────────────────────
 
   async exporterConfig() {
@@ -1890,6 +1927,7 @@ export class Etat extends DurableObject {
         nombre_sujets: ev.nombre_sujets ?? (ev.sujets || []).length, coches: [], avis: null, mode: ev.mode || "",
         details: (ev.details || []).slice(0, 2), duree: ev.duree || null,
         file_id: typeof ev.file_id === "string" ? ev.file_id.slice(0, 200) : null,
+        heure: /^\d{2}:\d{2}$/.test(ev.heure || "") ? ev.heure : null, taille: Number(ev.taille) || null,
         sources: nettoyerSources(ev.sources),
         pochette_id: typeof ev.pochette_id === "string" ? ev.pochette_id.slice(0, 200) : null,
       };

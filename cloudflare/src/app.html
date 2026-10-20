@@ -1612,7 +1612,7 @@ const SECTIONS = [
     const etat = (x) => x.source === "app" || x.source === "github" ? "✓" : x.source === "absente" ? "—" : "?";
     return `Gemini ${etat(k.gemini)} · Tavily ${etat(k.tavily)} · SNCF ${etat(k.sncf)}${c.agendas.length ? ` · ${c.agendas.length} agenda${c.agendas.length > 1 ? "s" : ""}` : ""}`;
   }],
-  ["application", "Application", "telephone", () => `Version ${S.d.version}`],
+  ["application", "Application", "telephone", () => `Version ${S.d.version}${S.d.flux ? " · flux privé actif" : ""}`],
 ];
 
 function vueReglages() {
@@ -1674,7 +1674,15 @@ function vueReglage() {
         <button type="button" class="lien" style="align-self:flex-end;color:var(--rouge)" data-retirer-liste="consignes" data-i="${i}">Supprimer</button></div>`).join("")}
       <div class="champ"><label for="n-consigne">Nouvelle consigne</label><textarea id="n-consigne" class="saisie" rows="2" maxlength="300" data-nouveau="consignes" placeholder="Ex. plus d'humour le vendredi"></textarea>
         <button type="button" class="bouton gris" data-ajouter-liste="consignes">Ajouter</button></div>`,
-    application: () => `<section class="carte"><h2>Sur ton écran d'accueil</h2>
+    application: () => `<section class="carte" aria-labelledby="t-flux"><h2 id="t-flux">Dans ton appli de podcasts</h2>
+        <p class="aide">Écoute tes épisodes dans Apple Podcasts, AntennaPod… : téléchargés pendant la nuit, sur l'écran verrouillé et en voiture.</p>
+        ${d.flux ? `<input class="saisie" id="adresse-flux" readonly value="${h(d.flux)}" aria-label="Adresse de ton flux privé" style="font-size:13px">
+          <div class="deux"><button type="button" class="bouton plein" data-action="copier-flux">Copier l'adresse</button>
+            <button type="button" class="bouton gris" data-action="renouveler-flux">Changer l'adresse</button></div>
+          <p class="aide"><b>Apple Podcasts</b> : Bibliothèque › ⋯ › Ajouter une émission par URL. <b>AntennaPod</b> : + › Ajouter un podcast par son adresse RSS. Garde cette adresse pour toi : qui l'a peut écouter tes épisodes.</p>`
+          : `<button type="button" class="bouton plein" data-action="creer-flux">Créer mon flux privé</button>`}
+      </section>
+      <section class="carte"><h2>Sur ton écran d'accueil</h2>
         <p class="aide">Ajoute une icône sur ton téléphone pour ouvrir le podcast directement, sans passer par la conversation.</p>
         ${tg && tg.addToHomeScreen && recent("8.0") ? `<button type="button" class="bouton plein" data-action="ecran-accueil">Ajouter à l'écran d'accueil</button>`
           : `<p class="aide">Ta version de Telegram ne le permet pas encore : mets-la à jour.</p>`}
@@ -2077,6 +2085,16 @@ document.addEventListener("click", (ev) => {
       return changer("agenda_ajouter", { url });
     }
     case "bienvenue-generer": return changer("generer", {}, () => {});
+    case "creer-flux": return changer("flux", {});
+    case "renouveler-flux": return confirmer("Changer l'adresse du flux ? L'ancienne ne marchera plus : il faudra ajouter la nouvelle dans ton appli de podcasts.", () => changer("flux", { renouveler: true }));
+    case "copier-flux": {
+      const champ = document.getElementById("adresse-flux");
+      const copie = navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(S.d.flux) : Promise.reject();
+      return copie.then(() => { vibrer("success"); annoncer("Adresse copiée"); }).catch(() => {
+        if (champ) { champ.focus(); champ.select(); }
+        annoncer("Adresse sélectionnée : copie-la avec le menu du téléphone.");
+      });
+    }
     case "extraits": return changer("extraits", { voix: S.aPreparer }, (j) => { if (j.ok) S.aPreparer = []; dessiner(); });
     case "ajouter-animateur": {
       const champ = document.querySelector('[data-nouveau="animateur-nom"]');

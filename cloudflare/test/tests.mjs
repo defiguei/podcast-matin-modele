@@ -1215,6 +1215,33 @@ await scenario("Connexions : clés et agendas saisis dans l'application", async 
   await envoyerJson(`${BOT}/test/etat`, { config: sauve });
 });
 
+await scenario("Flux privé du podcast", async () => {
+  let r = await app("etat");
+  verifier(r.donnees.flux === null, "pas de flux tant qu'on ne l'a pas créé");
+  r = await app("flux");
+  const adresse = r.donnees.flux || "";
+  const jeton = (/\/flux\/([0-9a-f]{32})\.xml$/.exec(adresse) || [])[1];
+  verifier(r.ok && jeton, "flux créé", adresse);
+  // Un épisode avec son fichier, sa pochette et ses chapitres.
+  await envoyerJson(`${BOT}/api/evenement`, { type: "episode", date: "2026-10-20", titre: "Cap sur Mars", sujets: ["Mars", "Vélo"], message_id: 321,
+    chapitres: [[0, "Ouverture"], [42, "Agenda"]], file_id: "AUDIO-FLUX", pochette_id: "POCHETTE-FLUX", duree: 300, taille: 2400000, heure: "07:10",
+    sources: [{ section: "Actualités", titre: "RTS", url: "https://www.rts.ch/info/1" }] }, { "X-Podcast-Secret": SECRET });
+  const page = await obtenir(`${BOT}/flux/${jeton}.xml`);
+  verifier(page.statut === 200 && page.texte.includes("<title>Cap sur Mars</title>") && page.texte.includes(`/flux/${jeton}/2026-10-20-321.mp3`)
+    && page.texte.includes('length="2400000"') && page.texte.includes("<itunes:duration>0:05:00</itunes:duration>") && page.texte.includes("podcast:chapters")
+    && page.texte.includes("Tue, 20 Oct 2026 05:10:00 GMT"), "flux RSS : épisode, fichier, durée, chapitres, date", page.texte.slice(0, 1500));
+  const chapitres = JSON.parse((await obtenir(`${BOT}/flux/${jeton}/2026-10-20-321.json`)).texte);
+  verifier(chapitres.chapters[1].startTime === 42 && chapitres.chapters[1].title === "Agenda", "chapitres au format Podcasting 2.0", chapitres);
+  await vider();
+  const audio = await fetch(`${BOT}/flux/${jeton}/2026-10-20-321.mp3`, { headers: { Range: "bytes=0-3" } });
+  const appelsFichier = tg(await appels(), "getFile");
+  verifier(audio.status === 206 && appelsFichier.at(-1)?.corps?.file_id === "AUDIO-FLUX", "audio servi par morceaux depuis Telegram", audio.status);
+  verifier((await obtenir(`${BOT}/flux/${"0".repeat(32)}.xml`)).statut === 404, "mauvais jeton : rien");
+  verifier((await obtenir(`${BOT}/flux/${jeton}/2026-10-19-1.mp3`)).statut === 404, "épisode inconnu : rien");
+  r = await app("flux", { renouveler: true });
+  verifier(r.ok && r.donnees.flux !== adresse && (await obtenir(`${BOT}/flux/${jeton}.xml`)).statut === 404, "nouvelle adresse : l'ancienne ne marche plus");
+});
+
 await scenario("Pays : réglage et reprise des anciennes installations", async () => {
   // Choisir la France : fuseau, devise, médias par défaut et jours fériés suivent.
   const avant = (await etat()).config;

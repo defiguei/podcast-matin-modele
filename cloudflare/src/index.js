@@ -70,6 +70,18 @@ export default {
       return cerveau(env).fetch(new Request("https://etat.interne/app", { method: "POST", headers: { "Content-Type": "application/json" }, body: corps }));
     }
 
+    // Flux privé du podcast (Apple Podcasts, AntennaPod…) : l'adresse contient un jeton secret.
+    const flux = /^\/flux\/([0-9a-f]{32})(?:\.xml|\/(\d{4}-\d{2}-\d{2}-\d+)\.(mp3|jpg|json))$/.exec(url.pathname);
+    if (flux) {
+      const [, jeton, cle, extension] = flux;
+      const quoi = !cle ? "xml" : extension === "json" ? "chapitres" : extension === "jpg" ? "image" : "audio";
+      const r = await versCerveau(env, `/flux?jeton=${jeton}&quoi=${quoi}${cle ? `&cle=${cle}` : ""}`);
+      if (quoi === "xml" || quoi === "chapitres" || !r.ok) return r;
+      const { file_id: fichier } = await r.json();
+      if (!fichier) return new Response("introuvable", { status: 404 });
+      return lireAudio(env, fichier, requete.headers.get("Range"), quoi === "image" ? "image/jpeg" : "audio/mpeg");
+    }
+
     // GitHub (fabrication des épisodes) : lecture des réglages, événements.
     if (url.pathname.startsWith("/api/")) {
       if (requete.headers.get("X-Podcast-Secret") !== secret) return new Response("interdit", { status: 403 });

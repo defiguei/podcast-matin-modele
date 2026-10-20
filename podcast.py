@@ -2471,6 +2471,8 @@ def main(arguments: list[str] | None = None) -> int:
             "regles": list(contenu.collectes or {}), "nombre_sujets": nombre_sujets,
             "mode": mode or "planifie", "debut": debut, "details": details, "duree": duree,
             "file_id": ((envoi or {}).get("audio") or {}).get("file_id"),
+            "taille": ((envoi or {}).get("audio") or {}).get("file_size") or len(mp3),
+            "heure": maintenant.strftime("%H:%M"),
             "sources": [{"section": s, "titre": t, "url": u}
                         for s, t, u in sources_episode(script, contenu.articles, contenu.collectes)][:30],
             "pochette_id": (((envoi or {}).get("audio") or {}).get("thumbnail") or {}).get("file_id"),
