@@ -1302,23 +1302,6 @@ await scenario("Mises à jour depuis le modèle", async () => {
   verifier((await obtenir(`${BOT}/api/maj`, { headers: { "X-Podcast-Secret": SECRET } })).statut === 403, "jeton refusé une fois la mise à jour finie");
 });
 
-await scenario("Après le déploiement : nouveautés, ou présentation pour qui vient d'avant", async () => {
-  // Le bot nouvellement déployé s'active (/installer) et écrit selon la version d'où il vient.
-  const installer = async (versionAvant) => {
-    await envoyerJson(`${BOT}/test/etat`, { etat: { ...(await etat()).etat, version_installee: versionAvant } });
-    await vider();
-    await obtenir(`${BOT}/installer`);
-    return tg(await appels(), "sendMessage").map((a) => a.corps.text);
-  };
-  let textes = await installer("2026-10-21.1");
-  verifier(textes.length === 1 && textes[0].includes("à jour") && !textes[0].includes("tout se règle"), "depuis l'application : juste les nouveautés", textes);
-  verifier((await etat()).etat.version_installee !== "2026-10-21.1", "nouvelle version notée");
-  textes = await installer("2026-10-13.2");
-  verifier(textes.some((t) => t.includes("tout se règle dans l'application")), "depuis la version « conversation » : présentation de l'application", textes);
-  textes = await installer((await etat()).etat.version_installee);
-  verifier(textes.length === 0, "même version : aucun message", textes);
-});
-
 await scenario("Pays : réglage et reprise des anciennes installations", async () => {
   // Choisir la France : fuseau, devise, médias par défaut et jours fériés suivent.
   const avant = (await etat()).config;
@@ -1347,6 +1330,30 @@ await scenario("Pays : réglage et reprise des anciennes installations", async (
   await app("etat");
   ({ config } = await etat());
   verifier(config.pays === "CH" && config.planning.feries_region === "CH-VD", "ancienne version suisse : rien ne change", config.pays);
+});
+
+await scenario("Après le déploiement : nouveautés, ou présentation pour qui vient d'avant", async () => {
+  // Le bot nouvellement déployé s'active (/installer) et écrit selon la version d'où il vient.
+  const installer = async (versionAvant) => {
+    await envoyerJson(`${BOT}/test/etat`, { etat: { ...(await etat()).etat, version_installee: versionAvant } });
+    await vider();
+    await obtenir(`${BOT}/installer`);
+    return tg(await appels(), "sendMessage").map((a) => a.corps.text);
+  };
+  let textes = await installer("2026-10-21.1");
+  verifier(textes.length === 1 && textes[0].includes("à jour") && !textes[0].includes("tout se règle"), "depuis l'application : juste les nouveautés", textes);
+  verifier((await etat()).etat.version_installee !== "2026-10-21.1", "nouvelle version notée");
+  textes = await installer("2026-10-13.2");
+  verifier(textes.some((t) => t.includes("tout se règle dans l'application")), "depuis la version « conversation » : présentation de l'application", textes);
+  textes = await installer((await etat()).etat.version_installee);
+  verifier(textes.length === 0, "même version : aucun message", textes);
+  // Sans /installer (activation du déploiement ratée) : le tic installe, une seule fois.
+  await envoyerJson(`${BOT}/test/etat`, { etat: { ...(await etat()).etat, version_installee: "2026-10-21.1" } });
+  await vider();
+  await horloge("2026-10-20T12:00", true);
+  await horloge("2026-10-20T12:05", true);
+  const annonces = tg(await appels(), "sendMessage").filter((a) => a.corps.text.includes("Ton podcast est à jour"));
+  verifier(annonces.length === 1 && (await etat()).etat.version_installee !== "2026-10-21.1", "activation par le tic : annoncée une seule fois", annonces.length);
 });
 
 await scenario("Déploiement : secrets transmis au bot", async () => {

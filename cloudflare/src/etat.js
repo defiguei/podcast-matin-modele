@@ -1323,10 +1323,14 @@ export class Etat extends DurableObject {
 
   async tic(adresse) {
     const ctx = this.contexte();
-    const etat = await this.lireEtat();
+    let etat = await this.lireEtat();
     if (adresse) etat.adresse = adresse;
     if (etat.version_installee !== VERSION && (etat.adresse || this.env.ADRESSE)) {
       await this.installer(etat.adresse || this.env.ADRESSE, false);
+      // L'installation a écrit l'état (version installée…) : repartir de celui-là, sinon
+      // l'ancien l'écraserait et le bot se réinstallerait (et l'annoncerait) à chaque tic.
+      etat = await this.lireEtat();
+      if (adresse) etat.adresse = adresse;
     }
     const config = await this.lireConfig();
     const m = ctx.maintenant;

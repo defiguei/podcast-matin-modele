@@ -1020,6 +1020,8 @@ def initialiser(chemin: Path, fichiers: dict[str, str]) -> None:
     for commande in (["init", "-q", "-b", "main"], ["add", "-A"], ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "départ"]):
         sp.run(["git", *commande], cwd=chemin, check=True, capture_output=True)
 
+journaux_maj: dict[str, str] = {}
+
 def essai_maj(jeton_github: str) -> tuple[Path, list[dict], list[str]]:
     dossier = Path(tempfile.mkdtemp())
     modele, origine, travail = dossier / "modele", dossier / "origine.git", dossier / "travail"
@@ -1059,10 +1061,13 @@ def essai_maj(jeton_github: str) -> tuple[Path, list[dict], list[str]]:
     ancien_env = dict(os.environ)
     os.environ.update({"MODELE": "auteur/modele", "GITHUB_REPOSITORY": "alice/podcast-matin", "ADRESSE": "",
                        "VERSION": "", "TELEGRAM_BOT_TOKEN": "", "BOT_GITHUB_TOKEN": jeton_github})
+    journal = io.StringIO()   # ses notices iraient sinon dans le résumé de l'exécution GitHub
     try:
-        code = mise_a_jour.main()
+        with contextlib.redirect_stdout(journal):
+            code = mise_a_jour.main()
     finally:
         mise_a_jour.RACINE, mise_a_jour.git, mise_a_jour.prevenir_bot, mise_a_jour.relancer_deploiement = anciens
+        journaux_maj[jeton_github] = journal.getvalue()
         os.environ.clear(); os.environ.update(ancien_env)
     verifier(code == 0, f"mise à jour (jeton {jeton_github or 'absent'}) : code 0")
     resultat = dossier / "resultat"
@@ -1087,6 +1092,9 @@ verifier(relances == ["deployer-bot"] and evenements and evenements[-1].get("ok"
 resultat, evenements, relances = essai_maj("mauvais")
 verifier(not (resultat / ".github/workflows/nouveau.yml").exists() and relances == ["deployer-bot"] and evenements[-1].get("workflows") is False,
          "jeton refusé : repli sans les fichiers d'automatisation")
+verifier("::notice title=Jeton GitHub::secret GitHub BOT_GITHUB_TOKEN." in journaux_maj["bon"]
+         and "::notice title=Jeton GitHub::aucun" in journaux_maj[""] and not re.search(r"\bbon\b", journaux_maj["bon"].replace("::add-mask::bon", "")),
+         "mise à jour : d'où vient le jeton, dans le résumé (jamais sa valeur)")
 
 print("\nRÉSULTAT :", "tout est vert ✅" if not echecs else f"{len(echecs)} échec(s) ❌")
 for e in echecs:
