@@ -1,12 +1,12 @@
 {
-  "version": "2026-10-21.4",
+  "version": "2026-10-21.5",
   "date": "2026-10-21",
-  "titre": "Tes épisodes gardés par ton bot",
+  "titre": "Prévenu sans Telegram",
   "nouveautes": [
-    "Ton bot garde lui-même tes épisodes (audio et pochette) pendant un an : l'application et ton flux privé ne dépendent plus de Telegram.",
-    "L'onglet Épisodes remonte jusqu'à un an en arrière.",
-    "Réglages › Application indique la place prise, sur les 5 Go offerts par Cloudflare.",
-    "Les épisodes d'avant restent lus depuis Telegram ; tu continues de les recevoir dans Telegram."
+    "Notifications : ton téléphone te prévient dès que l'épisode est prêt, ou s'il a raté ; la toucher ouvre l'épisode.",
+    "Elles s'activent dans Réglages › Application, depuis l'application ouverte hors de Telegram (sur iPhone : depuis l'icône de l'écran d'accueil).",
+    "Tu peux couper l'envoi des épisodes dans Telegram : ils t'attendent dans l'application, ton appli de podcasts et la notification.",
+    "Ton bot garde tes épisodes un an : l'onglet Épisodes remonte jusque-là (version précédente)."
   ],
   "supprimes": [
     "cloudflare/worker.js",

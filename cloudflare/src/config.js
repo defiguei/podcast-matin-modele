@@ -99,6 +99,9 @@ export function configParDefaut() {
               max_deplacements: 2, exclus: [] },
     actus: { ville: "", sujets_preferes: [], sujets_a_eviter: [], flux: null, fraicheur_heures: 36, citer_sources: "ecrit",
              locale_articles: 3 },
+    // Où arrive l'épisode : toujours dans l'application, le flux et les notifications ;
+    // dans Telegram aussi, sauf si on le coupe.
+    livraison: { telegram: true },
     consignes: [],
     a_approfondir: [],
     regles: [],
@@ -168,6 +171,7 @@ export const REGLAGES = {
   "actus.citer_sources": { nom: "Citer les sources", valider: parmi(Object.keys(CITER)) },
   "consignes": { nom: "Consignes", valider: liste(20, LONGUEUR_CONSIGNE) },
   "planning.rattrapage": { nom: "Rattrapage si l'envoi rate", valider: booleen },
+  "livraison.telegram": { nom: "Épisode aussi dans Telegram", valider: booleen },
   "planning.delai_rattrapage": { nom: "Délai avant le rattrapage (min)", valider: entier(20, 180) },
   "planning.feries": { nom: "Jours fériés", valider: parmi(["normal", "dimanche", "aucun"]) },
   "planning.avance_minutes": { nom: "Préparation lancée en avance (min)", valider: entier(0, 20) },
@@ -701,7 +705,7 @@ export function completerConfig(config) {
   const base = configParDefaut();
   const resultat = { ...base, ...(config || {}) };
   if (!PAYS[resultat.pays]) resultat.pays = PAYS_DEFAUT;
-  for (const cle of ["planning", "format", "voix", "agenda", "actus"]) resultat[cle] = { ...base[cle], ...(config?.[cle] || {}) };
+  for (const cle of ["planning", "format", "voix", "agenda", "actus", "livraison"]) resultat[cle] = { ...base[cle], ...(config?.[cle] || {}) };
   for (const cle of ["equipe", "tirage"]) if (!Array.isArray(resultat.voix[cle])) resultat.voix[cle] = [];
   if (!resultat.voix.jours || typeof resultat.voix.jours !== "object") resultat.voix.jours = {};
   resultat.planning.jours = { ...base.planning.jours, ...(config?.planning?.jours || {}) };

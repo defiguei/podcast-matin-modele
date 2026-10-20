@@ -10,6 +10,7 @@
 
 import { Etat, VERSION } from "./etat.js";
 import { Audio, objetAudio, nomValide, objetDuNom, typeDuNom, TAILLE_MAX } from "./audio.js";
+import { SERVICE_WORKER } from "./notifications.js";
 import { secretPartage, Telegram, empreinte } from "./services.js";
 import { icone192, icone512, masque512, pomme180 } from "./icones.js";
 import { verifierOuverture, verifierAudio } from "./miniapp.js";
@@ -54,6 +55,11 @@ export default {
         "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff",
       } });
     }
+    // Notifications de l'application : le service worker (portée /app).
+    if (url.pathname === "/app/sw.js") {
+      return new Response(SERVICE_WORKER, { headers: { "Content-Type": "text/javascript; charset=utf-8",
+        "Service-Worker-Allowed": "/app", "Cache-Control": "no-cache" } });
+    }
     // Application installable (écran d'accueil, navigateur) : manifeste et icônes.
     if (url.pathname === "/app/manifest.json") {
       return Response.json({
@@ -95,7 +101,9 @@ export default {
       const corps = await requete.text();
       // Une demande vocale (WAV en base64, une minute au plus) dépasse largement les autres.
       if (corps.length > 4_200_000) return Response.json({ ok: false, erreur: "Message trop long : une minute au plus." }, { status: 413 });
-      return cerveau(env).fetch(new Request("https://etat.interne/app", { method: "POST", headers: { "Content-Type": "application/json" }, body: corps }));
+      // L'appareil qui demande (vide dans Telegram) : ses notifications lui sont rattachées.
+      return cerveau(env).fetch(new Request("https://etat.interne/app", { method: "POST", body: corps,
+        headers: { "Content-Type": "application/json", "X-Appareil-Id": controle.appareil || "" } }));
     }
 
     // Flux privé du podcast (Apple Podcasts, AntennaPod…) : l'adresse contient un jeton secret.

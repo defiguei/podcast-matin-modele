@@ -1716,7 +1716,8 @@ function vueReglage() {
         <button type="button" class="lien" style="align-self:flex-end;color:var(--rouge)" data-retirer-liste="consignes" data-i="${i}">Supprimer</button></div>`).join("")}
       <div class="champ"><label for="n-consigne">Nouvelle consigne</label><textarea id="n-consigne" class="saisie" rows="2" maxlength="300" data-nouveau="consignes" placeholder="Ex. plus d'humour le vendredi"></textarea>
         <button type="button" class="bouton gris" data-ajouter-liste="consignes">Ajouter</button></div>`,
-    application: () => `<section class="carte" aria-labelledby="t-flux"><h2 id="t-flux">Dans ton appli de podcasts</h2>
+    application: () => `${vueNotifs(d)}
+      <section class="carte" aria-labelledby="t-flux"><h2 id="t-flux">Dans ton appli de podcasts</h2>
         <p class="aide">Écoute tes épisodes dans Apple Podcasts, AntennaPod… : téléchargés pendant la nuit, sur l'écran verrouillé et en voiture.</p>
         ${d.flux ? `<input class="saisie" id="adresse-flux" readonly value="${h(d.flux)}" aria-label="Adresse de ton flux privé" style="font-size:13px">
           <div class="deux"><button type="button" class="bouton plein" data-action="copier-flux">Copier l'adresse</button>
@@ -2031,6 +2032,10 @@ document.addEventListener("click", (ev) => {
     return changer("cle", { nom: ds.testerCle, valeur });
   }
   if (ds.cleRetirer) return confirmer("Retirer cette clé de l'application ? Le secret GitHub, s'il existe, prendra le relais.", () => changer("cle", { nom: ds.cleRetirer, valeur: "" }));
+  if (ds.notifRetirer) return confirmer("Ne plus prévenir cet appareil ?", () => {
+    if (((S.d.notifications || {}).abonnements || []).some((a) => a.id === ds.notifRetirer && a.fin === NOTIF.fin)) return couperNotifs();
+    return changer("notif_retirer", { id: ds.notifRetirer });
+  });
   if (ds.appareilRetirer) return confirmer("Retirer cet appareil ? Il devra entrer un nouveau code.", () => changer("appareil_retirer", { id: ds.appareilRetirer }));
   if (ds.agendaRetirer) return confirmer("Retirer cet agenda ?", () => changer("agenda_retirer", { id: ds.agendaRetirer }));
   if (ds.bienvenue) return bienvenueSuivante(Number(ds.bienvenue));
@@ -2152,6 +2157,9 @@ document.addEventListener("click", (ev) => {
     case "bienvenue-generer": return changer("generer", {}, () => {});
     case "creer-flux": return changer("flux", {});
     case "code-appareil": return changer("appareil_code", {});
+    case "notif-activer": return activerNotifs();
+    case "notif-couper": return couperNotifs();
+    case "notif-tester": return changer("notif_tester", {});
     case "verifier-maj": return changer("verifier_maj", {});
     case "mettre-a-jour": return confirmer("Mettre à jour le code de ton podcast ? Tes réglages sont gardés.", () => changer("mettre_a_jour", {}));
     case "connecter-appareil": return connecterAppareil();
@@ -2237,6 +2245,7 @@ function vueConnexionAppareil() {
     <p class="aide" style="font-size:15px;color:var(--doux-2)">Pour ouvrir ton podcast sur cet appareil, entre le code à 6 chiffres affiché dans l'application, dans Telegram : <b>Réglages › Application › Hors de Telegram</b>.</p>
     <input id="code-appareil" class="saisie" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" aria-label="Code à 6 chiffres" style="font-size:28px;letter-spacing:.3em;text-align:center">
     <button type="button" class="bouton plein" data-action="connecter-appareil">Ouvrir le podcast</button>
+    ${estIOS() && !autonome() ? `<p class="aide">Sur iPhone, ajoute d'abord cette page à ton écran d'accueil (bouton Partager › « Sur l'écran d'accueil ») et ouvre-la depuis l'icône : c'est là que les notifications marchent, et tu n'auras qu'un code à entrer.</p>` : ""}
   </div>`;
   const champ = document.getElementById("code-appareil");
   if (champ) champ.focus();
@@ -2248,6 +2257,86 @@ function nomAppareil() {
   const navigateur = /Edg\//.test(ua) ? "Edge" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "";
   const installe = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
   return `${systeme}${navigateur ? ` · ${navigateur}` : ""}${installe ? " (écran d'accueil)" : ""}`;
+}
+
+// ───────────────────────────── notifications ──────────────────────────────
+// Hors de Telegram : le navigateur s'abonne (Web Push) et le bot y envoie
+// « ton épisode est prêt ». Sur iPhone, seulement depuis l'icône de l'écran d'accueil.
+const NOTIF = { fin: null, lu: false };
+const estIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const autonome = () => (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+const notifsPossibles = () => !tg && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const octetsDe = (b64) => Uint8Array.from(atob(b64.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(b64.length / 4) * 4, "=")), (c) => c.charCodeAt(0));
+
+async function abonnementLocal() {
+  if (!notifsPossibles()) return null;
+  const reg = await navigator.serviceWorker.getRegistration("/app").catch(() => null);
+  return reg ? reg.pushManager.getSubscription().catch(() => null) : null;
+}
+
+// Au démarrage : cet appareil est-il abonné ? (et l'abonnement, renouvelé par le navigateur, est-il connu du bot ?)
+async function lireNotifs() {
+  const abo = await abonnementLocal();
+  NOTIF.fin = abo ? abo.endpoint.slice(-16) : null;
+  NOTIF.lu = true;
+  const connus = ((S.d && S.d.notifications && S.d.notifications.abonnements) || []).map((a) => a.fin);
+  if (abo && Notification.permission === "granted" && !connus.includes(NOTIF.fin)) {
+    await demander("notif_abonner", { abonnement: abo.toJSON(), nom: nomAppareil() }, { discret: true });
+  }
+}
+
+async function activerNotifs() {
+  // La demande d'autorisation doit suivre directement le toucher (iPhone).
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") { dessiner(); return annoncer("Notifications refusées : autorise-les pour ce site dans les réglages du navigateur.", true); }
+  try {
+    const reg = await navigator.serviceWorker.register("/app/sw.js", { scope: "/app" });
+    await navigator.serviceWorker.ready;
+    const cle = octetsDe(S.d.notifications.cle);
+    let abo = await reg.pushManager.getSubscription();
+    if (abo && abo.options && abo.options.applicationServerKey
+        && btoa(String.fromCharCode(...new Uint8Array(abo.options.applicationServerKey))) !== btoa(String.fromCharCode(...cle))) {
+      await abo.unsubscribe(); abo = null;   // abonnement fait avec une autre clé
+    }
+    if (!abo) abo = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: cle });
+    NOTIF.fin = abo.endpoint.slice(-16);
+    await changer("notif_abonner", { abonnement: abo.toJSON(), nom: nomAppareil() });
+  } catch (e) {
+    annoncer("Ce navigateur n'a pas pu s'abonner aux notifications.", true);
+  }
+}
+
+async function couperNotifs() {
+  const abo = await abonnementLocal();
+  if (abo) { await abo.unsubscribe().catch(() => {}); }
+  const fiche = ((S.d.notifications || {}).abonnements || []).find((a) => a.fin === NOTIF.fin);
+  NOTIF.fin = null;
+  if (fiche) await changer("notif_retirer", { id: fiche.id }); else dessiner();
+}
+
+function vueNotifs(d) {
+  const n = d.notifications || { abonnements: [] };
+  const ici = n.abonnements.find((a) => a.fin && a.fin === NOTIF.fin);
+  let local;
+  if (tg) local = `<p class="aide">Les notifications s'activent dans le navigateur de ton téléphone : ouvre ton podcast hors de Telegram (ci-dessous), puis reviens ici.</p>`;
+  else if (estIOS() && !autonome()) local = `<p class="aide">Sur iPhone, ajoute d'abord l'application à ton écran d'accueil (bouton Partager › « Sur l'écran d'accueil »), ouvre-la depuis l'icône et entre un code : tu pourras alors activer les notifications.</p>`;
+  else if (!notifsPossibles()) local = `<p class="aide">Ce navigateur ne sait pas recevoir de notifications.</p>`;
+  else if (Notification.permission === "denied") local = `<p class="aide">Les notifications sont bloquées pour ce site : autorise-les dans les réglages du navigateur, puis reviens ici.</p>`;
+  else if (ici) local = `<div class="entre"><p class="aide">✅ Activées sur cet appareil.</p>
+      <button type="button" class="lien" data-action="notif-couper">Couper ici</button></div>`;
+  else local = `<button type="button" class="bouton plein" data-action="notif-activer">Activer sur cet appareil</button>`;
+  return `<section class="carte" aria-labelledby="t-notifs"><h2 id="t-notifs">Notifications</h2>
+      <p class="aide">Une notification sur ton téléphone dès que ton épisode est prêt, ou si quelque chose coince. Touche-la : l'épisode s'ouvre.</p>
+      ${local}
+      ${n.abonnements.length ? `<span class="etiquette" style="font-size:13px;color:var(--doux)">Appareils prévenus</span>
+        <div class="bloc" style="background:var(--carte-2)">${n.abonnements.map((a) => `<div class="reglage"><span>${h(a.nom)}${a.fin === NOTIF.fin ? " (celui-ci)" : ""}<br>
+          <span class="aide">${a.erreur ? `Dernier envoi ${h(a.erreur)}` : `Depuis le ${h(dateLongue(String(a.cree_le).slice(0, 10)))}`}</span></span>
+          <button type="button" class="lien" style="color:var(--rouge)" data-notif-retirer="${h(a.id)}">Retirer</button></div>`).join("")}</div>
+        <button type="button" class="bouton gris" data-action="notif-tester">Envoyer un essai</button>` : ""}
+      ${interrupteur("Recevoir aussi l'épisode dans Telegram", d.reglages.livraison.telegram !== false, 'data-regler-bool="livraison.telegram"')}
+      <p class="aide">${d.reglages.livraison.telegram !== false ? "Tu le reçois dans Telegram et ici."
+        : `Ton épisode n'arrive plus dans Telegram : il t'attend ici${d.flux ? ", dans ton appli de podcasts" : ""}${n.abonnements.length ? " et par notification" : ""}. Les alertes (épisode raté…) restent dans Telegram.`}</p>
+    </section>`;
 }
 
 async function connecterAppareil() {
@@ -2276,10 +2365,15 @@ async function demarrer() {
   }
   // Ouverture depuis le bouton sous un épisode : directement sur cet épisode.
   if (S.d.bienvenue) S.ecran = "bienvenue";
-  const voulu = new URLSearchParams(location.search).get("episode");
-  const ep = voulu && S.d.episodes.find((e) => e.date === voulu);
+  // Depuis une notification : ?ep=<clé de l'épisode> ou ?ecran=resultats.
+  const parametres = new URLSearchParams(location.search);
+  const voulu = parametres.get("episode"), cleVoulue = parametres.get("ep");
+  const ep = (cleVoulue && S.d.episodes.find((e) => e.cle === cleVoulue)) || (voulu && S.d.episodes.find((e) => e.date === voulu));
   if (ep) { S.episode = ep.cle; S.ecran = "episode"; }
+  else if (parametres.get("ecran") === "resultats" && S.d.resultats) S.ecran = "resultats";
+  if (parametres.toString() && history.replaceState) history.replaceState(null, "", "/app");
   dessiner();
+  if (!tg) lireNotifs().then(() => { if (S.ecran === "reglage") dessiner(); });
 }
 
 if (tg) {

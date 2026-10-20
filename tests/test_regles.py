@@ -746,6 +746,22 @@ verifier(code == 0 and not [a for a in etat["appels"] if a[0] == "POST" and "gen
 code = podcast.main(["--mode", "planifie"])
 verifier(code == 0 and not [a for a in etat["appels"] if a[0] == "POST" and "generativelanguage" in a[1]], "double lancement planifié : ignoré")
 
+# Telegram coupé dans l'application : l'épisode n'arrive que chez le bot (avec son heure comme repère).
+EXPORT["config"]["livraison"] = {"telegram": False}
+etat["appels"].clear()
+code = podcast.main(["--mode", "manuel"])
+ev = [x for x in etat["evenements"] if x["type"] == "episode"][-1]
+envois = [a for a in etat["appels"] if a[0] == "POST" and a[1].endswith("sendAudio")]
+verifier(code == 0 and not envois and ev["audio"] and ev["message_id"] is None and isinstance(ev["ref"], int) and 0 < ev["ref"] < 240000,
+         f"Telegram coupé : épisode chez le bot seulement (repère {ev.get('ref')})")
+etat["stockage"] = False
+etat["appels"].clear()
+code = podcast.main(["--mode", "manuel"])
+envois = [a for a in etat["appels"] if a[0] == "POST" and a[1].endswith("sendAudio")]
+verifier(code == 0 and len(envois) == 1, "Telegram coupé mais le bot n'a pas pu garder l'audio : Telegram quand même")
+etat["stockage"] = True
+EXPORT["config"].pop("livraison")
+
 # Épisode à la demande sur une règle ponctuelle (R6), bot injoignable → sauvegarde.
 etat["appels"].clear()
 etat["bot_joignable"] = False
@@ -774,6 +790,9 @@ podcast.requests.post = ancien_post
 messages = [a for a in etat["appels"] if a[0] == "POST" and a[1].endswith("sendMessage")]
 verifier(code == 0 and messages and "Nouvel essai automatique à 7 h 45" in messages[-1][2]["text"],
          "échec planifié : rattrapage annoncé à 7 h 45 (heure prévue + 1 h)")
+echec = [x for x in etat["evenements"] if x["type"] == "echec"]
+verifier(echec and "raté pour l'instant" in echec[-1]["titre"] and "Nouvel essai automatique à 7 h 45" in echec[-1]["message"],
+         "échec signalé au bot (notification de l'application)")
 
 # ───────────────────────── 8. recherche et extraits ─────────────────────────
 print("\n8. Résultats de recherche, mini-podcast, extraits de voix")

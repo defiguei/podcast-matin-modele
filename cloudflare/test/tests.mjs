@@ -1,5 +1,5 @@
 // Tests de bout en bout du bot (wrangler dev + faux services).
-import { createHash, createHmac } from "node:crypto";
+import { createHash, createHmac, createECDH, createDecipheriv, createPublicKey, hkdfSync, randomBytes, verify } from "node:crypto";
 
 const BOT = "http://127.0.0.1:8799";
 const FAUX = "http://127.0.0.1:8790";
@@ -1331,6 +1331,116 @@ await scenario("Fichiers gardés par le bot : dépôt, lecture par plages, archi
   verifier(l.statut === 404, "son audio n'est plus servi", l.statut);
   verifier(!(await etat()).etat.episodes.some((x) => x.audio && x.date < "2026-12"), "plus de lien vers un fichier effacé");
   await horloge("2026-10-20T10:00");
+});
+
+await scenario("Notifications de l'application (Web Push)", async () => {
+  const b64 = (o) => Buffer.from(o).toString("base64url");
+  // Un « téléphone » : sa paire de clés et son secret, comme les donne le navigateur.
+  const telephone = () => { const ecdh = createECDH("prime256v1"); ecdh.generateKeys(); return { ecdh, auth: randomBytes(16) }; };
+  const abonnement = (id, t) => ({ endpoint: `${FAUX}/push/${id}`, keys: { p256dh: b64(t.ecdh.getPublicKey()), auth: b64(t.auth) } });
+  const recues = async () => (await fetch(`${FAUX}/control/pushs`)).json();
+  // Déchiffrement côté téléphone (RFC 8291), pour vérifier ce que le bot envoie.
+  const dechiffrer = (push, t) => {
+    const corps = Buffer.from(push.corps, "base64");
+    const sel = corps.subarray(0, 16), longueur = corps[20], cleServeur = corps.subarray(21, 21 + longueur), chiffre = corps.subarray(21 + longueur);
+    const partage = t.ecdh.computeSecret(cleServeur);
+    const ikm = Buffer.from(hkdfSync("sha256", partage, t.auth, Buffer.concat([Buffer.from("WebPush: info\0"), t.ecdh.getPublicKey(), cleServeur]), 32));
+    const cle = Buffer.from(hkdfSync("sha256", ikm, sel, Buffer.from("Content-Encoding: aes128gcm\0"), 16));
+    const nonce = Buffer.from(hkdfSync("sha256", ikm, sel, Buffer.from("Content-Encoding: nonce\0"), 12));
+    const d = createDecipheriv("aes-128-gcm", cle, nonce);
+    d.setAuthTag(chiffre.subarray(-16));
+    const clair = Buffer.concat([d.update(chiffre.subarray(0, -16)), d.final()]);
+    let fin = clair.length - 1;
+    while (fin > 0 && clair[fin] === 0) fin--;            // remplissage éventuel
+    if (clair[fin] !== 2) throw new Error("délimiteur absent");
+    return JSON.parse(clair.subarray(0, fin).toString("utf8"));
+  };
+  // Signature VAPID : jeton ES256 vérifiable avec la clé publique donnée à l'application.
+  const vapidValide = (push, clePublique) => {
+    const m = /^vapid t=([\w-]+\.[\w-]+\.[\w-]+), k=([\w-]+)$/.exec(push.autorisation);
+    if (!m || m[2] !== clePublique) return false;
+    const [entete, charge, signature] = m[1].split(".");
+    const brute = Buffer.from(clePublique, "base64url");
+    const cle = createPublicKey({ key: { kty: "EC", crv: "P-256", x: b64(brute.subarray(1, 33)), y: b64(brute.subarray(33)) }, format: "jwk" });
+    const contenu = JSON.parse(Buffer.from(charge, "base64url").toString());
+    return verify("sha256", Buffer.from(`${entete}.${charge}`), { key: cle, dsaEncoding: "ieee-p1363" }, Buffer.from(signature, "base64url"))
+      && contenu.aud === FAUX && contenu.exp > Date.now() / 1000 && /^(https:|mailto:)/.test(contenu.sub);
+  };
+
+  const sw = await fetch(`${BOT}/app/sw.js`);
+  const codeSw = await sw.text();
+  verifier(sw.status === 200 && sw.headers.get("service-worker-allowed") === "/app" && codeSw.includes("showNotification") && codeSw.includes("notificationclick"),
+    "service worker servi, portée /app", sw.headers.get("service-worker-allowed"));
+  let r = await app("etat");
+  const clePublique = r.donnees.notifications?.cle || "";
+  verifier(Buffer.from(clePublique, "base64url").length === 65 && r.donnees.notifications.abonnements.length === 0, "clé publique du bot pour s'abonner", clePublique);
+  verifier((await app("etat")).donnees.notifications.cle === clePublique, "la clé du bot ne change pas");
+  verifier((await app("notif_abonner", { abonnement: { endpoint: "ftp://x", keys: {} } })).ok === false, "abonnement illisible refusé");
+  verifier((await app("notif_tester")).ok === false, "essai sans appareil : refus clair");
+
+  const tel = telephone();
+  await vider();
+  r = await app("notif_abonner", { abonnement: abonnement("tel1", tel), nom: "iPhone · Safari (écran d'accueil)" });
+  let pushs = await recues();
+  verifier(r.ok && r.donnees.notifications.abonnements.length === 1 && r.donnees.notifications.abonnements[0].nom.startsWith("iPhone")
+    && !JSON.stringify(r.donnees.notifications).includes(tel.auth.toString("base64url")), "abonnement enregistré (secret jamais renvoyé)", r.erreur);
+  verifier(pushs.length === 1 && pushs[0].encodage === "aes128gcm" && Number(pushs[0].ttl) > 0 && vapidValide(pushs[0], clePublique),
+    "confirmation envoyée : chiffrée, signée (VAPID)", pushs[0]?.autorisation?.slice(0, 40));
+  verifier(dechiffrer(pushs[0], tel).titre === "🔔 Notifications activées", "le téléphone la déchiffre", dechiffrer(pushs[0], tel));
+  r = await app("notif_abonner", { abonnement: abonnement("tel1", tel), nom: "iPhone · Safari" });
+  verifier(r.ok && r.donnees.notifications.abonnements.length === 1, "même abonnement : pas de doublon");
+
+  // Un épisode prêt : la notification ouvre l'application sur lui.
+  await vider();
+  await envoyerJson(`${BOT}/api/evenement`, { type: "episode", date: "2026-10-23", titre: "Pluie et grottes", mode: "planifie", duree: 320, heure: "07:15", ref: 71502 }, { "X-Podcast-Secret": SECRET });
+  pushs = await recues();
+  let message = pushs.length ? dechiffrer(pushs.at(-1), tel) : {};
+  verifier(message.titre === "🎙️ Ton podcast du matin est prêt" && message.corps === "Pluie et grottes · 5 min" && message.url === `/app?ep=${encodeURIComponent("ep:2026-10-23:71502")}`,
+    "épisode prêt : notification avec titre, durée et lien", message);
+  r = await app("etat");
+  verifier(r.donnees.episodes.some((x) => x.cle === "ep:2026-10-23:71502"), "épisode sans Telegram : repéré par son heure d'envoi");
+  // Un échec, des idées prêtes.
+  await vider();
+  await envoyerJson(`${BOT}/api/evenement`, { type: "echec", titre: "⏳ Podcast du matin : raté pour l'instant", message: "Nouvel essai automatique à 7 h 45. Gemini est surchargé." }, { "X-Podcast-Secret": SECRET });
+  await envoyerJson(`${BOT}/api/evenement`, { type: "recherche", regles: [], idees: ["Grottes de Vallorbe", "Musée du Fer"], format: "ecrit", resultats: [] }, { "X-Podcast-Secret": SECRET });
+  pushs = (await recues()).map((p) => dechiffrer(p, tel));
+  verifier(pushs[0]?.titre.includes("raté") && pushs[0]?.corps.includes("7 h 45") && pushs[1]?.titre === "💡 Tes idées sont prêtes" && pushs[1]?.url === "/app?ecran=resultats",
+    "échec et idées prêtes : notifiés aussi", pushs);
+  r = await app("notif_tester");
+  verifier(r.ok && r.message.includes("1 appareil"), "essai depuis l'application", r.message || r.erreur);
+
+  // Un abonnement disparu (le navigateur l'a oublié) est retiré au premier envoi.
+  const tel2 = telephone();
+  await app("notif_abonner", { abonnement: abonnement("tel2", tel2), nom: "Android · Chrome" });
+  await envoyerJson(`${FAUX}/control/push-statut`, { id: "tel2", statut: 410 });
+  await vider();
+  await envoyerJson(`${BOT}/api/evenement`, { type: "episode", date: "2026-10-24", titre: "Samedi", mode: "manuel", ref: 90000 }, { "X-Podcast-Secret": SECRET });
+  r = await app("etat");
+  verifier((await recues()).length === 2 && r.donnees.notifications.abonnements.map((a) => a.nom).join() === "iPhone · Safari", "abonnement disparu (410) : oublié", r.donnees.notifications.abonnements);
+  // Service qui refuse autrement : noté, gardé.
+  await envoyerJson(`${FAUX}/control/push-statut`, { id: "tel1", statut: 500 });
+  await app("notif_tester");
+  r = await app("etat");
+  verifier(r.donnees.notifications.abonnements[0]?.erreur === "refusé (HTTP 500)", "refus passager : noté, abonnement gardé", r.donnees.notifications.abonnements);
+  await envoyerJson(`${FAUX}/control/push-statut`, { id: "tel1", statut: 201 });
+
+  // Abonné depuis un appareil connecté par code : retirer l'appareil coupe ses notifications.
+  r = await app("appareil_code");
+  const jeton = (await envoyerJson(`${BOT}/app/connexion`, { code: r.donnees.code_appareil.code, nom: "Mac · Safari" }).then((x) => x.json())).jeton;
+  const tel3 = telephone();
+  const parAppareil = await envoyerJson(`${BOT}/app/api`, { action: "notif_abonner", abonnement: abonnement("tel3", tel3), nom: "Mac · Safari", _appareil: "pirate" }, { "X-Appareil": jeton }).then((x) => x.json());
+  const appareil = parAppareil.donnees.appareils.find((a) => a.nom === "Mac · Safari");
+  verifier(parAppareil.ok && parAppareil.donnees.notifications.abonnements.length === 2, "abonnement depuis un appareil connecté");
+  r = await app("appareil_retirer", { id: appareil.id });
+  verifier(r.ok && r.donnees.notifications.abonnements.length === 1, "appareil retiré : ses notifications aussi", r.donnees.notifications.abonnements);
+  r = await app("notif_retirer", { id: r.donnees.notifications.abonnements[0].id });
+  verifier(r.ok && !r.donnees.notifications.abonnements.length, "couper les notifications");
+
+  // Recevoir l'épisode dans Telegram, ou plus.
+  r = await app("regler", { chemin: "livraison.telegram", valeur: false });
+  const exp = await (await fetch(`${BOT}/api/config`, { headers: { "X-Podcast-Secret": SECRET } })).json();
+  verifier(r.ok && r.donnees.reglages.livraison.telegram === false && exp.config.livraison.telegram === false, "Telegram coupé : GitHub le sait", exp.config.livraison);
+  await app("regler", { chemin: "livraison.telegram", valeur: true });
 });
 
 await scenario("Hors de Telegram : appareils, manifeste, icônes", async () => {

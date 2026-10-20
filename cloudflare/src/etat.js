@@ -20,9 +20,10 @@ import { Telegram, GitHub, demanderGemini, maintenantLocal, instantLocal, echapp
 import { CLES, testerCle, lireAgenda, identifiantAgenda, resumeConnexions } from "./connexions.js";
 import { fluxRss, chapitresJson, episodeDeCle, jetonValide, nouveauJeton } from "./flux.js";
 import { nomValide, objetDuNom, objetAudio } from "./audio.js";
+import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, champsDepuisFormulaire, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, nettoyerEquipe, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-21.4";
+export const VERSION = "2026-10-21.5";
 const MAX_REFAITS = 6;
 const LONGUEURS_VALIDES = ["phrase", "courte", "developpee"];
 const MAX_RECHERCHES = 15;
@@ -33,9 +34,9 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 // Message envoyé après une mise à jour : les nouveautés de cette version…
 const NOUVEAUTES = `✅ <b>Ton podcast est à jour</b> (version ${VERSION}).
 
-• Ton bot garde maintenant lui-même tes épisodes (audio et pochette), pendant un an : l'application et ton flux privé ne dépendent plus de Telegram.
-• L'onglet Épisodes remonte jusqu'à un an en arrière.
-• Les épisodes d'avant restent lus depuis Telegram.`;
+• <b>Notifications</b> : ton téléphone te prévient dès que l'épisode est prêt (ou s'il a raté) ; la toucher ouvre l'épisode. À activer dans Réglages › Application, depuis l'application ouverte hors de Telegram.
+• Une fois prévenu autrement, tu peux couper l'envoi des épisodes ici (« Recevoir aussi l'épisode dans Telegram »).
+• Ton bot garde tes épisodes un an : l'onglet Épisodes remonte jusque-là.`;
 
 // … ou, pour qui arrive d'avant l'application (installation neuve, ancienne version
 // réglée par la conversation), sa présentation.
@@ -135,7 +136,8 @@ export class Etat extends DurableObject {
         return Response.json(await this.fichierAudio(url.searchParams.get("cle") || ""));
       }
       if (url.pathname === "/app" && requete.method === "POST") {
-        const demande = await requete.json();
+        // L'appareil est donné par le Worker (vérifié), jamais par la page.
+        const demande = { ...(await requete.json()), _appareil: requete.headers.get("X-Appareil-Id") || "" };
         return Response.json(await this.enFile(() => this.actionApp(demande)));
       }
       if (url.pathname === "/api/config") return Response.json(await this.enFile(() => this.exporterConfig()));
@@ -1592,6 +1594,39 @@ export class Etat extends DurableObject {
       : { fichier: episode.audio || null, file_id: episode.file_id || null };
   }
 
+  // ───────────────────────── notifications ──────────────────────────────────
+
+  async clesVapid() {
+    let cles = await this.ctx.storage.get("vapid");
+    if (!cles?.publique || !cles?.privee) {
+      cles = await nouvellesClesVapid();
+      await this.ctx.storage.put("vapid", cles);
+    }
+    return cles;
+  }
+
+  // Envoie une notification aux appareils abonnés (tous, ou « cibles »). Un abonnement
+  // disparu (404, 410) est oublié ; une autre erreur est notée ; l'état est enregistré.
+  async notifier(etat, message, cibles = etat.abonnements || []) {
+    const bilan = { remis: 0, retires: 0 };
+    if (!cibles.length) return bilan;
+    const cles = await this.clesVapid();
+    const adresse = etat.adresse || this.env.ADRESSE || "";
+    const sujet = /^https:\/\//.test(adresse) ? adresse : "mailto:podcast-matin@example.com";
+    const statuts = await Promise.all(cibles.map((a) => envoyerNotification(a, message, cles, sujet).catch((erreur) => `erreur ${erreur.name || ""}`.trim())));
+    const oublies = new Set();
+    cibles.forEach((a, i) => {
+      const statut = statuts[i];
+      if (statut === 404 || statut === 410) { oublies.add(a.endpoint); bilan.retires++; return; }
+      const fiche = (etat.abonnements || []).find((x) => x.endpoint === a.endpoint) || a;
+      if (typeof statut === "number" && statut >= 200 && statut < 300) { bilan.remis++; fiche.erreur = null; fiche.dernier_envoi = this.contexte().maintenantIso; }
+      else fiche.erreur = typeof statut === "number" ? `refusé (HTTP ${statut})` : "service injoignable";
+    });
+    if (oublies.size) etat.abonnements = (etat.abonnements || []).filter((a) => !oublies.has(a.endpoint));
+    await this.ecrireEtat(etat);
+    return bilan;
+  }
+
   // Au-delà des MAX_EPISODES récents, les épisodes passent dans l'archive de leur mois
   // (une valeur par mois) : l'application les retrouve, l'état reste léger.
   async archiver(etat, sortants) {
@@ -1659,6 +1694,8 @@ export class Etat extends DurableObject {
     this.modelesLegers = etat.modeles_legers;
     const ancienne = cloner(config);
     const donnees = async () => ({ ...donneesApp(config, etat, ctx, VERSION, await this.liensAudio(etat)), connexions: resumeConnexions(this.cles, etat),
+      notifications: { cle: (await this.clesVapid()).publique,
+        abonnements: (etat.abonnements || []).map((a) => ({ id: a.id, nom: a.nom, cree_le: a.cree_le, erreur: a.erreur || null, fin: a.endpoint.slice(-16) })) },
       // Premier lancement : rien de personnel encore réglé.
       bienvenue: !etat.bienvenue_faite && !config.voix.prenom && !config.actus.ville && !config.regles.length,
       flux: this.adresseFlux(etat),
@@ -1894,8 +1931,41 @@ export class Etat extends DurableObject {
           const avant = (etat.appareils || []).length;
           etat.appareils = (etat.appareils || []).filter((a) => a.id !== demande.id);
           if (etat.appareils.length === avant) return refus("Appareil inconnu.");
+          etat.abonnements = (etat.abonnements || []).filter((a) => a.appareil !== demande.id);   // ses notifications aussi
           await this.ecrireEtat(etat);
           return reponse({ message: "Appareil retiré : il devra entrer un nouveau code." });
+        }
+        // ── notifications ──
+        case "notif_abonner": {
+          const abonnement = abonnementValide(demande.abonnement, this.env.MODE_TEST === "1");
+          if (!abonnement) return refus("Abonnement aux notifications illisible.");
+          const nom = String(demande.nom || "Navigateur").slice(0, 40);
+          const ancien = (etat.abonnements || []).find((a) => a.endpoint === abonnement.endpoint);
+          const fiche = { id: ancien?.id || nouveauJeton().slice(0, 12), ...abonnement, nom, appareil: demande._appareil || ancien?.appareil || null,
+                          cree_le: ancien?.cree_le || ctx.maintenantIso, erreur: null };
+          etat.abonnements = [...(etat.abonnements || []).filter((a) => a.endpoint !== abonnement.endpoint), fiche].slice(-10);
+          if (!ancien) {
+            const bilan = await this.notifier(etat, { titre: "🔔 Notifications activées", corps: "Tu seras prévenu ici à chaque nouvel épisode.", url: "/app", tag: "essai" }, [fiche]);
+            await this.ecrireEtat(etat);
+            if (!bilan.remis) return refus("Le service de notifications de ce navigateur refuse l'abonnement : réessaie plus tard.");
+            return reponse({ message: "Notifications activées sur cet appareil." });
+          }
+          await this.ecrireEtat(etat);
+          return reponse({ message: "Notifications déjà actives sur cet appareil." });
+        }
+        case "notif_retirer": {
+          const avant = (etat.abonnements || []).length;
+          etat.abonnements = (etat.abonnements || []).filter((a) => a.id !== demande.id && a.endpoint !== demande.endpoint);
+          if (etat.abonnements.length === avant) return refus("Ces notifications étaient déjà coupées.");
+          await this.ecrireEtat(etat);
+          return reponse({ message: "Notifications coupées pour cet appareil." });
+        }
+        case "notif_tester": {
+          if (!(etat.abonnements || []).length) return refus("Aucun appareil ne reçoit les notifications : active-les d'abord sur ton téléphone.");
+          const bilan = await this.notifier(etat, { titre: "🔔 Essai", corps: "Les notifications du podcast arrivent bien ici.", url: "/app", tag: "essai" });
+          await this.ecrireEtat(etat);
+          return bilan.remis ? reponse({ message: `Essai envoyé à ${bilan.remis} appareil${bilan.remis > 1 ? "s" : ""}.` })
+            : refus("L'essai n'est arrivé nulle part : réactive les notifications sur ton téléphone.");
         }
         case "verifier_maj":
           await this.verifierMaj(etat);
@@ -2189,9 +2259,12 @@ export class Etat extends DurableObject {
         pochette_id: typeof ev.pochette_id === "string" ? ev.pochette_id.slice(0, 200) : null,
         // Fichiers gardés par le bot (depuis la version 2026-10-21.4).
         audio: fichierRecu(ev.audio, ".mp3"), pochette: fichierRecu(ev.pochette, ".jpg"),
+        // Sans Telegram, pas de numéro de message : l'heure d'envoi (HHMMSS) distingue les épisodes du jour.
+        ref: Number.isInteger(Number(ev.ref)) && Number(ev.ref) > 0 && Number(ev.ref) < 240000 ? Number(ev.ref) : null,
       };
       if (ev.transcription) await this.ctx.storage.put(`texte:${cleEpisode(episode)}`, String(ev.transcription).slice(0, 20000));
-      const tous = [...etat.episodes.filter((x) => !(x.date === episode.date && x.message_id === episode.message_id)), episode];
+      const meme = (x) => x.date === episode.date && (x.message_id || x.ref || null) === (episode.message_id || episode.ref || null);
+      const tous = [...etat.episodes.filter((x) => !meme(x)), episode];
       etat.episodes = tous.slice(-MAX_EPISODES);
       await this.archiver(etat, tous.slice(0, -MAX_EPISODES));
       if (ev.mode !== "manuel") etat.declenchements[episode.date] = { ...(etat.declenchements[episode.date] || {}), envoye: true };
@@ -2208,6 +2281,15 @@ export class Etat extends DurableObject {
       await this.ecrireEtat(etat);
       await this.majTableau(config, etat).catch(() => {});
       await this.planifierReveil(config, etat).catch(() => {});
+      const duree = episode.duree ? ` · ${Math.max(1, Math.round(episode.duree / 60))} min` : "";
+      await this.notifier(etat, { titre: ev.mode === "manuel" ? "🎙️ Ton épisode est prêt" : "🎙️ Ton podcast du matin est prêt",
+        corps: `${episode.titre || "Nouvel épisode"}${duree}`, url: `/app?ep=${encodeURIComponent(cleEpisode(episode))}`, tag: `ep-${episode.date}` });
+      return { ok: true };
+    }
+    if (ev.type === "echec") {
+      // L'épisode n'a pas pu être préparé (GitHub) : prévenir aussi hors de Telegram.
+      await this.notifier(etat, { titre: String(ev.titre || "Podcast du matin").slice(0, 80),
+        corps: String(ev.message || "").slice(0, 200), url: "/app", tag: "echec" });
       return { ok: true };
     }
     if (ev.type === "modeles") {
@@ -2272,6 +2354,11 @@ export class Etat extends DurableObject {
         etat.sondages = Object.fromEntries(Object.entries(sondages).slice(-10));
       }
       await this.ecrireEtat(etat);
+      const nombre = etat.derniers_resultats.idees.length;
+      if (ev.format !== "audio" && nombre) {
+        await this.notifier(etat, { titre: "💡 Tes idées sont prêtes", corps: etat.derniers_resultats.idees.slice(0, 3).join(" · ").slice(0, 200),
+          url: "/app?ecran=resultats", tag: "idees" });
+      }
       return { ok: true };
     }
     return { ok: false, erreur: "événement inconnu" };

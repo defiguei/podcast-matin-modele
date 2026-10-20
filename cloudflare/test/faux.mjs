@@ -9,9 +9,13 @@ let messageId = 1000;
 let fileGemini = [];
 let fichiers = {};
 let geminiEnPanne = false;
+let pushs = [];            // notifications reçues par le faux service (Web Push)
+let statutsPush = {};      // abonnement → statut renvoyé (410 : disparu)
 
 function reinitialiser() {
   appels = [];
+  pushs = [];
+  statutsPush = {};
   fileGemini = [];
   geminiEnPanne = false;
   fichiers = {
@@ -39,6 +43,17 @@ function json(res, statut, objet) {
 
 const serveur = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://127.0.0.1:${PORT}`);
+  // Faux service de notifications : le corps chiffré est gardé tel quel (octets).
+  const push = /^\/push\/([\w-]+)$/.exec(url.pathname);
+  if (push && req.method === "POST") {
+    const morceaux = [];
+    for await (const m of req) morceaux.push(m);
+    const statut = statutsPush[push[1]] || 201;
+    pushs.push({ id: push[1], statut, autorisation: req.headers.authorization || "", encodage: req.headers["content-encoding"] || "",
+                 ttl: req.headers.ttl || "", corps: Buffer.concat(morceaux).toString("base64") });
+    res.writeHead(statut);
+    return res.end();
+  }
   const brut = await lireCorps(req);
   let corps = null;
   try { corps = brut ? JSON.parse(brut) : null; } catch { corps = brut; }
@@ -47,7 +62,9 @@ const serveur = http.createServer(async (req, res) => {
   // ── pilotage ──
   if (p === "/control/reset") { reinitialiser(); return json(res, 200, { ok: true }); }
   if (p === "/control/appels") return json(res, 200, appels);
-  if (p === "/control/vider") { appels = []; return json(res, 200, { ok: true }); }
+  if (p === "/control/vider") { appels = []; pushs = []; return json(res, 200, { ok: true }); }
+  if (p === "/control/pushs") return json(res, 200, pushs);
+  if (p === "/control/push-statut") { statutsPush[corps.id] = corps.statut; return json(res, 200, { ok: true }); }
   if (p === "/control/gemini") { fileGemini.push(...(Array.isArray(corps) ? corps : [corps])); return json(res, 200, { file: fileGemini.length }); }
   if (p === "/control/gemini-panne") { geminiEnPanne = Boolean(corps?.panne); return json(res, 200, { ok: true }); }
   if (p === "/control/fichiers") return json(res, 200, fichiers);

@@ -3,7 +3,7 @@
 Chaque matin, un épisode audio rien que pour toi : deux animateurs te parlent de ton agenda, des nouvelles qui t'intéressent et de tout ce que tu leur as demandé (la fête du jour, la météo, ton train, une idée de sortie pour samedi…).
 
 - **Tout se règle dans une application** : l'heure de chaque jour, la durée, les voix, les rubriques, les clés et tes agendas. Elle s'ouvre dans Telegram, ou dans le navigateur de n'importe quel appareil.
-- **Tu écoutes où tu veux** : dans l'application, dans Telegram, ou dans ton appli de podcasts (Apple Podcasts, AntennaPod…) grâce à un flux privé.
+- **Tu écoutes où tu veux** : dans l'application (avec une notification quand l'épisode est prêt), dans Telegram, ou dans ton appli de podcasts (Apple Podcasts, AntennaPod…) grâce à un flux privé.
 - **Gratuit, rien chez toi** : ton ordinateur n'a pas besoin d'être allumé (offres gratuites de Cloudflare, GitHub, Gemini, Tavily et Telegram).
 - **Suisse, France ou Belgique** : le pays règle l'heure, les jours fériés, la devise et les médias.
 - **Mises à jour en un bouton**, sans toucher à tes réglages.
@@ -55,8 +55,10 @@ Tes **agendas** (Google, Outlook…) s'ajoutent au même endroit, ou depuis la f
 
 - **Flux privé** (Réglages › Application) : une adresse secrète à coller dans ton appli de podcasts. Les épisodes s'y téléchargent la nuit, avec chapitres et pochette.
 - **Autres appareils** : ouvre l'adresse de ton bot (`https://podcast.TON-SOUS-DOMAINE.workers.dev/app`) dans n'importe quel navigateur et entre le code affiché par *Afficher un code*. L'application peut ensuite s'ajouter à l'écran d'accueil.
+- **Notifications** (Réglages › Application) : une notification sur ton téléphone dès que l'épisode est prêt, ou s'il a raté ; la toucher ouvre l'épisode. Elles s'activent dans l'application ouverte hors de Telegram. **Android** : dans Chrome, directement. **iPhone** : ajoute d'abord la page à l'écran d'accueil (Partager › « Sur l'écran d'accueil »), ouvre-la depuis l'icône, entre le code, puis active les notifications.
+- **Sans Telegram** : une fois les notifications (ou le flux) en place, coupe « Recevoir aussi l'épisode dans Telegram ». L'épisode t'attend alors dans l'application, ton appli de podcasts et la notification ; les alertes restent dans Telegram.
 
-Tes épisodes (audio, pochette, texte) sont gardés par ton bot pendant un an : l'application et le flux les lisent chez lui. Telegram reste nécessaire pour l'installation et pour recevoir l'épisode chaque matin.
+Tes épisodes (audio, pochette, texte) sont gardés par ton bot pendant un an : l'application et le flux les lisent chez lui. Telegram reste nécessaire pour l'installation.
 
 ---
 
@@ -112,7 +114,7 @@ Le détail d'une exécution : onglet *Actions* de ton dépôt → l'exécution �
 
 | Fichier | Rôle |
 |---|---|
-| `cloudflare/src/` | Le bot : état et planning (`etat.js`), application (`app.html`, `miniapp.js`), fichiers des épisodes (`audio.js`), clés et agendas (`connexions.js`), flux privé (`flux.js`), réglages et rubriques (`config.js`), compréhension des messages (`comprendre.js`) |
+| `cloudflare/src/` | Le bot : état et planning (`etat.js`), application (`app.html`, `miniapp.js`), fichiers des épisodes (`audio.js`), notifications (`notifications.js`), clés et agendas (`connexions.js`), flux privé (`flux.js`), réglages et rubriques (`config.js`), compréhension des messages (`comprendre.js`) |
 | `podcast.py` | Fabrication de l'épisode : agenda, actus, script, voix, envoi |
 | `regles.py`, `sources.py`, `trains.py` | Rubriques du jour, sources gratuites, trains |
 | `pays.py`, `donnees/pays.json` | Profils Suisse, France, Belgique |

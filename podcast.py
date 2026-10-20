@@ -2461,7 +2461,10 @@ def main(arguments: list[str] | None = None) -> int:
         nombre_sujets = min(len(script["sujets"]), int(effectifs["nombre_sujets"])) if avec_actus else 0
         noms = " & ".join(a["nom"] for a in effectifs["animateurs"])
         titre = f"{script['titre']} – {date_longue(maintenant.date(), False)}"
-        envoi = telegram.audio(
+        # Telegram coupé dans l'application (Réglages › Application) : l'épisode n'arrive que chez
+        # le bot (application, flux, notification). S'il n'a pas pu le garder, Telegram quand même.
+        par_telegram = (((config_bot or {}).get("livraison") or {}).get("telegram", True) is not False) or not audio_bot
+        envoi = None if not par_telegram else telegram.audio(
             conversation, mp3, nom_fichier, tronquer(titre, 64), noms,
             legende(script, maintenant, contenu.proches, contenu.articles, contenu.remarques,
                     contenu.prochain, contenu.deplacements, chapitres, contenu.collectes,
@@ -2471,7 +2474,7 @@ def main(arguments: list[str] | None = None) -> int:
             # avec l'application, un seul bouton qui l'ouvre sur cet épisode.
             clavier_application(export.get("app"), aujourd_hui) if export and export.get("app")
             else clavier_episode(aujourd_hui, nombre_sujets, details) if export else None)
-        journal("Envoyé sur Telegram ✅")
+        journal("Envoyé sur Telegram ✅" if par_telegram else "Telegram coupé dans l'application : épisode gardé par le bot seulement.")
         evenement = {
             "type": "episode", "date": aujourd_hui, "titre": script["titre"],
             "sujets": script["sujets"][:nombre_sujets] if nombre_sujets else [],
@@ -2486,6 +2489,7 @@ def main(arguments: list[str] | None = None) -> int:
                         for s, t, u in sources_episode(script, contenu.articles, contenu.collectes)][:30],
             "pochette_id": (((envoi or {}).get("audio") or {}).get("thumbnail") or {}).get("file_id"),
             "audio": audio_bot, "pochette": pochette_bot,
+            "ref": int(maintenant.strftime("%H%M%S")),   # distingue les épisodes du jour, avec ou sans Telegram
         }
         if bot.evenement(evenement):
             journal("Bot prévenu : boutons et tableau de bord à jour.")
@@ -2526,6 +2530,17 @@ def main(arguments: list[str] | None = None) -> int:
             essai_suivant = heure_plus(str((export or {}).get("heure_prevue_aujourdhui") or ""), delai)
         if options.retours or options.sans_envoi or options.recherche or options.echantillons or options.agendas:
             essai_suivant = ""
+        # Le bot prévient aussi par notification (application), hors des modes annexes.
+        if not (options.retours or options.sans_envoi or options.recherche or options.echantillons or options.agendas):
+            try:
+                Bot(os.environ.get("BOT_URL", ""), os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()).evenement({
+                    "type": "echec",
+                    "titre": "⏳ Podcast du matin : raté pour l'instant" if essai_suivant else
+                             ("⚠️ Épisode pas préparé" if mode == "manuel" else "⚠️ Pas d'épisode aujourd'hui"),
+                    "message": (f"Nouvel essai automatique à {heure_lisible(essai_suivant)}. " if essai_suivant else "")
+                               + raison_lisible(message)[:150]})
+            except Exception:
+                pass
         if telegram and conversation and (not options.retours or nouvel_episode):
             lien = lien_execution()
             if options.recherche or options.echantillons:

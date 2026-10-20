@@ -26,7 +26,7 @@ export const REGLAGES_APP = [
   "agenda.jours", "agenda.horizon", "agenda.notes", "agenda.deplacements", "agenda.jours_deplacements", "agenda.max_deplacements",
   "actus.locale_articles", "actus.ville", "actus.fraicheur_heures", "actus.citer_sources",
   "planning.rattrapage", "planning.delai_rattrapage", "planning.feries", "planning.avance_minutes",
-  "planning.feries_region", "voix.solo", "voix.mode", "pays",
+  "planning.feries_region", "voix.solo", "voix.mode", "pays", "livraison.telegram",
 ];
 
 // ───────────────────────────── liens audio ──────────────────────────────────
@@ -113,7 +113,8 @@ function regleVisible(r, aujourdHui) {
 }
 
 export function cleEpisode(episode) {
-  return `ep:${episode.date}${episode.message_id ? `:${episode.message_id}` : ""}`;
+  const numero = episode.message_id || episode.ref;   // message Telegram, sinon heure d'envoi (sans Telegram)
+  return `ep:${episode.date}${numero ? `:${numero}` : ""}`;
 }
 
 // Un épisode tel que l'application l'affiche (liens audio signés dans « liens »).
@@ -180,6 +181,7 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
                locale_articles: config.actus.locale_articles, flux: fluxActus(config), flux_defaut: !config.actus.flux },
       agenda: config.agenda, agendas: etat.agendas || [], agendas_vus: etat.agendas_vus || null,
       consignes: config.consignes, a_approfondir: config.a_approfondir.map((a) => a.sujet),
+      livraison: config.livraison || { telegram: true },
       echantillons: liens.voix, temps_echantillons: etat.temps_echantillons || {},
     },
     regles: config.regles.map((r) => regleVisible(r, aujourdHui)),

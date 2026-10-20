@@ -19,11 +19,11 @@ const duree = (s) => {
 };
 
 // Identifiant d'un épisode dans les adresses du flux (sans « : »).
-export const cleFlux = (ep) => `${ep.date}-${ep.message_id || 0}`;
+export const cleFlux = (ep) => `${ep.date}-${ep.message_id || ep.ref || 0}`;
 export function episodeDeCle(episodes, cle) {
   const m = /^(\d{4}-\d{2}-\d{2})-(\d+)$/.exec(String(cle || ""));
   if (!m) return null;
-  return (episodes || []).find((ep) => ep.date === m[1] && String(ep.message_id || 0) === m[2]) || null;
+  return (episodes || []).find((ep) => ep.date === m[1] && String(ep.message_id || ep.ref || 0) === m[2]) || null;
 }
 
 // ep.instant : millisecondes de l'envoi (calculé par l'appelant, avec le fuseau du pays).
