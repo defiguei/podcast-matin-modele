@@ -8,6 +8,7 @@ import io
 import json
 import math
 import os
+import re
 import shutil
 import struct
 import sys
@@ -686,8 +687,16 @@ def faux_post(url, json=None, data=None, files=None, timeout=None, headers=None)
     return Reponse(404, {"ok": False})
 
 
+def faux_put(url, params=None, data=None, timeout=None, headers=None):
+    etat["appels"].append(("PUT", url, (params or {}).get("nom"), data, (headers or {}).get("Content-Type")))
+    if url.endswith("/api/fichier") and (headers or {}).get("X-Podcast-Secret") == SECRET and etat.get("stockage", True):
+        return Reponse(200, {"ok": True, "nom": params["nom"], "taille": len(data)})
+    return Reponse(404, contenu=b"introuvable")
+
+
 podcast.requests.get = faux_get
 podcast.requests.post = faux_post
+podcast.requests.put = faux_put
 podcast.time.sleep = lambda s: None
 podcast.Sources = FaussesSources
 recherche.Sources = FaussesSources
@@ -718,6 +727,11 @@ verifier(ev["type"] == "episode" and ev["message_id"] and ev["mode"] == "planifi
 verifier(ev["regles"] == ["R1", "R2", "R3"] and "Météo" not in legende and ev["details"] == ["R2"] and ev["debut"] == "2026-10-15T06:40", f"règles appliquées : {ev['regles']}")
 verifier(len(ev["chapitres"]) >= 4 and ev["chapitres"][0] == [0, "Ouverture"] and "Léa : Bonjour Daniel" in ev["transcription"], "chapitres et texte transmis")
 verifier(ev["sujets"] == ["Budget vaudois"] and ev["nombre_sujets"] == 1, "sujets à creuser")
+depots = [a for a in etat["appels"] if a[0] == "PUT"]
+verifier(len(depots) == 2 and re.fullmatch(r"2026-10/2026-10-15-\d{6}\.mp3", depots[0][2] or "") and depots[0][4] == "audio/mpeg"
+         and depots[0][3] == fichiers_audio["audio"][1] and depots[1][2] == depots[0][2].replace(".mp3", ".jpg") and depots[1][3][:2] == b"\xff\xd8",
+         f"MP3 et pochette confiés au bot (le même fichier que Telegram) : {[d[2] for d in depots]}")
+verifier(ev["audio"] == depots[0][2] and ev["pochette"] == depots[1][2], "le bot sait où il les garde")
 gemini = [a[2] for a in etat["appels"] if a[0] == "POST" and "generativelanguage" in a[1]]
 planif = [g for g in gemini if "Tu prépares les règles" in g.get("system_instruction", "")]
 verifier(len(planif) == 1 and planif[0]["model"] == "gemini-3.5-flash-lite", "planification par le modèle léger (un appel)")
@@ -807,6 +821,9 @@ verifier(code == 0 and len(tts) == 2, f"deux voix par requête : {len(tts)} requ
 extraits = [e_ for e_ in etat["evenements"] if e_["type"] == "echantillon"]
 verifier([e_["voix"] for e_ in extraits] in (["Aoede", "Kore", "Puck"], ["Kore", "Aoede", "Puck"]) and
          extraits[0]["file_id"] == extraits[1]["file_id"], "extraits signalés au bot (même fichier pour la paire)")
+depots = [a[2] for a in etat["appels"] if a[0] == "PUT"]
+verifier(len(depots) == 2 and all(re.fullmatch(r"voix/[A-Z][a-z]+-[A-Z][a-z]+-\d+\.mp3", d) for d in depots)
+         and extraits[0]["fichier"] == extraits[1]["fichier"] == depots[0], f"extraits gardés par le bot : {depots}")
 verifier(recherche.valider_lien("https://www.grottesdevallorbe.ch/autre", {"https://www.grottesdevallorbe.ch/tarifs"})
          == "https://www.grottesdevallorbe.ch/tarifs", "lien du même site → page de la source")
 

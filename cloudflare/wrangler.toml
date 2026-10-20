@@ -22,9 +22,18 @@ crons = ["7 * * * *"]
 name = "ETAT"
 class_name = "Etat"
 
+# Fichiers des épisodes (MP3, pochettes, extraits de voix) : un objet par mois.
+[[durable_objects.bindings]]
+name = "AUDIO"
+class_name = "Audio"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Etat"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Audio"]
 
 [observability]
 enabled = true

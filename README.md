@@ -56,7 +56,7 @@ Tes **agendas** (Google, Outlook…) s'ajoutent au même endroit, ou depuis la f
 - **Flux privé** (Réglages › Application) : une adresse secrète à coller dans ton appli de podcasts. Les épisodes s'y téléchargent la nuit, avec chapitres et pochette.
 - **Autres appareils** : ouvre l'adresse de ton bot (`https://podcast.TON-SOUS-DOMAINE.workers.dev/app`) dans n'importe quel navigateur et entre le code affiché par *Afficher un code*. L'application peut ensuite s'ajouter à l'écran d'accueil.
 
-Telegram reste nécessaire pour l'installation et pour recevoir les épisodes : c'est lui qui les stocke.
+Tes épisodes (audio, pochette, texte) sont gardés par ton bot pendant un an : l'application et le flux les lisent chez lui. Telegram reste nécessaire pour l'installation et pour recevoir l'épisode chaque matin.
 
 ---
 
@@ -79,14 +79,14 @@ Les faits précis (prix, horaires, dates) viennent des sources. Quand une inform
 
 ## Comment ça marche
 
-- **Le bot** (dossier `cloudflare/`) tourne gratuitement chez Cloudflare. Il sert l'application, garde tes réglages, tes rubriques et tes clés, et **lance chaque épisode à l'heure prévue**. Il sauvegarde tout chaque nuit dans `preferences.json`.
+- **Le bot** (dossier `cloudflare/`) tourne gratuitement chez Cloudflare. Il sert l'application, garde tes réglages, tes rubriques, tes clés et **tes épisodes d'un an**, et **lance chaque épisode à l'heure prévue**. Il sauvegarde tout chaque nuit dans `preferences.json`.
 - **GitHub fabrique les épisodes** (`podcast.py`) : il demande tes réglages au bot, lit ton agenda, les actus et les sources de tes rubriques, fait écrire le dialogue par Gemini, le met en voix et l'envoie.
 - **Filet de sécurité** : si l'épisode n'est pas parti à l'heure, le bot relance un essai ; si le bot lui-même était en panne, GitHub prépare l'épisode à partir de la sauvegarde.
 - **Deux dépôts** : le **modèle** (`podcast-matin-modele`, public) porte le code commun ; chaque personne a son dépôt privé `podcast-matin`, qui se met à jour depuis le modèle avec le bouton **Mettre à jour** (Réglages › Application). `memoire.json`, `preferences.json` et `reglages.toml` ne sont jamais touchés.
 
 ## Bon à savoir
 
-- **Gratuité.** GitHub : environ 4 minutes par épisode, loin des 2 000 minutes offertes par mois. Gemini : quelques requêtes par épisode, avec un modèle de secours quand un quota du jour est épuisé (6 épisodes à la demande par jour au plus, pour garder celui du matin). Tavily : 15 recherches par jour au plus.
+- **Gratuité.** GitHub : environ 4 minutes par épisode, loin des 2 000 minutes offertes par mois. Cloudflare : un an d'épisodes tient en 1 à 2 Go, sur les 5 Go offerts (les plus anciens s'effacent d'eux-mêmes). Gemini : quelques requêtes par épisode, avec un modèle de secours quand un quota du jour est épuisé (6 épisodes à la demande par jour au plus, pour garder celui du matin). Tavily : 15 recherches par jour au plus.
 - **Confidentialité.** Tes clés et tes agendas restent chez ton bot (ou dans les secrets GitHub) : jamais dans le dépôt, les journaux ni les messages à Gemini. Pour écrire l'épisode, Google reçoit le titre, l'heure et le lieu de tes rendez-vous ; Tavily reçoit les recherches de tes rubriques. Le bot ignore toute autre personne que toi, et l'application ne s'ouvre qu'avec ton compte Telegram ou un appareil que tu as autorisé.
 - **Licence.** [PolyForm Noncommercial 1.0.0](LICENSE.md) : tu peux utiliser, modifier et partager ce code pour un usage personnel et non commercial. Tout usage commercial demande l'accord de l'auteur.
 - **Conditions d'utilisation.** Google destine officiellement l'API Gemini aux développeurs ; pour un usage personnel comme celui-ci, c'est une zone grise.
@@ -112,7 +112,7 @@ Le détail d'une exécution : onglet *Actions* de ton dépôt → l'exécution �
 
 | Fichier | Rôle |
 |---|---|
-| `cloudflare/src/` | Le bot : état et planning (`etat.js`), application (`app.html`, `miniapp.js`), clés et agendas (`connexions.js`), flux privé (`flux.js`), réglages et rubriques (`config.js`), compréhension des messages (`comprendre.js`) |
+| `cloudflare/src/` | Le bot : état et planning (`etat.js`), application (`app.html`, `miniapp.js`), fichiers des épisodes (`audio.js`), clés et agendas (`connexions.js`), flux privé (`flux.js`), réglages et rubriques (`config.js`), compréhension des messages (`comprendre.js`) |
 | `podcast.py` | Fabrication de l'épisode : agenda, actus, script, voix, envoi |
 | `regles.py`, `sources.py`, `trains.py` | Rubriques du jour, sources gratuites, trains |
 | `pays.py`, `donnees/pays.json` | Profils Suisse, France, Belgique |

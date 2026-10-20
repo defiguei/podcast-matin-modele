@@ -116,6 +116,17 @@ export function cleEpisode(episode) {
   return `ep:${episode.date}${episode.message_id ? `:${episode.message_id}` : ""}`;
 }
 
+// Un épisode tel que l'application l'affiche (liens audio signés dans « liens »).
+export function episodeApp(ep, liens) {
+  return {
+    cle: cleEpisode(ep), date: ep.date, texte: dateCourte(ep.date), titre: ep.titre || "Épisode", duree: ep.duree || null,
+    chapitres: (ep.chapitres || []).slice(0, 20), sujets: (ep.sujets || []).slice(0, 5), avis: ep.avis || null,
+    coches: ep.coches || [], audio: liens.episodes[cleEpisode(ep)] || null, texte_dispo: Boolean(ep.transcription || ep.texte),
+    image: (liens.pochettes || {})[cleEpisode(ep)] || null,
+    sources: ep.sources || [],
+  };
+}
+
 export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, voix: {} }) {
   const aujourdHui = ctx.aujourdHui;
   const prochain = prochainEpisode(config.planning, ctx.maintenant);
@@ -149,13 +160,10 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
     agenda_lu: etat.agendas_vus || null,
     dernier: dernier ? { date: dernier.date, texte: dateCourte(dernier.date), titre: dernier.titre,
                          chapitres: (dernier.chapitres || []).slice(0, 20), duree: dernier.duree || null } : null,
-    episodes: [...(etat.episodes || [])].reverse().map((ep) => ({
-      cle: cleEpisode(ep), date: ep.date, texte: dateCourte(ep.date), titre: ep.titre || "Épisode", duree: ep.duree || null,
-      chapitres: (ep.chapitres || []).slice(0, 20), sujets: (ep.sujets || []).slice(0, 5), avis: ep.avis || null,
-      coches: ep.coches || [], audio: liens.episodes[cleEpisode(ep)] || null, texte_dispo: Boolean(ep.transcription || ep.texte),
-      image: (liens.pochettes || {})[cleEpisode(ep)] || null,
-      sources: ep.sources || [],
-    })),
+    episodes: [...(etat.episodes || [])].reverse().map((ep) => episodeApp(ep, liens)),
+    // Mois plus anciens, gardés dans l'archive (un an) : chargés à la demande.
+    mois_archives: etat.archives || [],
+    stockage: Object.values(etat.stockage || {}).reduce((total, n) => total + (Number(n) || 0), 0),
     annulation: etat.annulations?.at(-1)?.libelle || null,
     resultats: etat.derniers_resultats ? {
       quand: etat.derniers_resultats.quand, regles: etat.derniers_resultats.regles || [],

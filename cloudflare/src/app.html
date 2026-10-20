@@ -345,7 +345,7 @@ const APPAREIL = "podcast-matin-appareil";
 const jetonAppareil = { lire() { try { return localStorage.getItem(APPAREIL) || ""; } catch (e) { return ""; } },
   ecrire(v) { try { if (v) localStorage.setItem(APPAREIL, v); else localStorage.removeItem(APPAREIL); } catch (e) { /* stockage refusé */ } } };
 const S = { d: null, ecran: "accueil", integree: null, fiche: null, mois: 0, occupe: false,
-            reglage: null, episode: null, texte: null, discussion: [], charge: 0, choisi: null, jourVue: { rubriques: "", deroule: "" }, jourDernier: {}, moisEpisodes: null, aPreparer: [], nouveau: { nom: "", voix: "Kore" } };
+            reglage: null, episode: null, texte: null, discussion: [], charge: 0, choisi: null, jourVue: { rubriques: "", deroule: "" }, jourDernier: {}, moisEpisodes: null, archives: {}, aPreparer: [], nouveau: { nom: "", voix: "Kore" } };
 const ecranEl = document.getElementById("ecran");
 const navEl = document.getElementById("nav");
 const miniEl = document.getElementById("mini");
@@ -354,6 +354,7 @@ const miniEl = document.getElementById("mini");
 const h = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const heure = (hm) => { if (!hm) return "—"; const [a, b] = hm.split(":"); return `${Number(a)}h${b}`; };
 const minSec = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; };
+const tailleLisible = (o) => o >= 1e9 ? `${(o / 1e9).toFixed(1).replace(".", ",")} Go` : `${Math.max(1, Math.round(o / 1e6))} Mo`;
 const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
 const JOURS_LONGS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
 const CLES_JOURS = ["dim", "lun", "mar", "mer", "jeu", "ven", "sam"];
@@ -500,7 +501,21 @@ const audio = new Audio();
 audio.preload = "metadata";
 const L = { cle: null, ep: null };
 
-function episodeParCle(cle) { return (S.d && S.d.episodes || []).find((e) => e.cle === cle) || null; }
+function episodeParCle(cle) {
+  return (S.d && S.d.episodes || []).find((e) => e.cle === cle)
+    || Object.values(S.archives).flat().find((e) => e.cle === cle) || null;
+}
+
+// Un mois plus ancien que les épisodes récents : demandé au bot, gardé pour la session.
+async function chargerMois(mois) {
+  if (S.archives[mois] || S.chargementMois === mois) return;
+  S.chargementMois = mois;
+  const j = await demander("episodes_mois", { mois }, { discret: true });
+  S.chargementMois = null;
+  if (j.occupe) { setTimeout(() => chargerMois(mois), 400); return; }   // une autre demande en cours : on réessaie
+  S.archives[mois] = j.ok && j.mois_episodes ? j.mois_episodes.episodes : [];
+  dessiner();
+}
 
 function jouer(ep, depuis = null) {
   if (!ep || !ep.audio) return annoncer("Cet épisode s'écoute dans la conversation.", true);
@@ -716,10 +731,15 @@ function vueAccueil() {
 
 // ─────────────────────────────── épisodes ───────────────────────────────
 function vueEpisodes() {
-  const d = S.d, eps = d.episodes;
-  if (!eps.length) return `${entete("Épisodes")}<div class="vide">Aucun épisode pour l'instant.</div>`;
-  const moisListe = [...new Set(eps.map((x) => x.date.slice(0, 7)))].sort();
+  const d = S.d, recents = d.episodes, archives = d.mois_archives || [];
+  if (!recents.length && !archives.length) return `${entete("Épisodes")}<div class="vide">Aucun épisode pour l'instant.</div>`;
+  const moisListe = [...new Set([...recents.map((x) => x.date.slice(0, 7)), ...archives])].sort();
   const mois = S.moisEpisodes && moisListe.includes(S.moisEpisodes) ? S.moisEpisodes : moisListe.at(-1);
+  // Le mois affiché : ses épisodes récents, plus ceux de l'archive (chargés à la demande).
+  if (archives.includes(mois) && !S.archives[mois]) setTimeout(() => chargerMois(mois), 0);
+  const deja = new Set(recents.map((x) => x.cle));
+  const eps = [...recents, ...(S.archives[mois] || []).filter((x) => !deja.has(x.cle))]
+    .sort((a, b) => b.date.localeCompare(a.date) || b.cle.localeCompare(a.cle));
   const i = moisListe.indexOf(mois);
   const premier = `${mois}-01`, m = dateObj(premier);
   const decalage = (m.getUTCDay() + 6) % 7;
@@ -734,7 +754,8 @@ function vueEpisodes() {
       ${x.image ? `<img src="${h(x.image)}" alt="">` : `<span class="sans-img" aria-hidden="true">${icone("aube", 20, 1.4)}</span>`}
       <span class="num">${Number(date.slice(8))}</span></button>`;
   };
-  return `${entete("Épisodes", `${eps.length} épisode${eps.length > 1 ? "s" : ""}`)}
+  const enCours = archives.includes(mois) && !S.archives[mois];
+  return `${entete("Épisodes", `${recents.length} épisode${recents.length > 1 ? "s" : ""}`)}
   <section class="carte">
     <div class="entre"><h2>${majuscule(MOIS[m.getUTCMonth()])} ${m.getUTCFullYear()}</h2>
       <div class="ligne" style="gap:4px">
@@ -746,6 +767,7 @@ function vueEpisodes() {
       ${"<span></span>".repeat(decalage)}${jours.map(cellule).join("")}
     </div>
   </section>
+  ${enCours ? `<p class="aide">Chargement des épisodes de ce mois…</p>` : ""}
   <div class="liste">${eps.filter((x) => x.date.slice(0, 7) === mois).reverse().map((ep) => `<button type="button" class="episode-ligne" data-episode="${h(ep.cle)}">
     ${ep.image ? `<img src="${h(ep.image)}" alt="" class="miniature petite">` : `<span class="miniature petite vide-img" aria-hidden="true">${icone("aube", 20, 1.4)}</span>`}
     <span style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600">${h(ep.titre)}</span>
@@ -770,7 +792,7 @@ function vueEpisode() {
   ${ep.image ? `<img src="${h(ep.image)}" alt="Miniature de l'épisode" class="grande-miniature">` : ""}
   <h1 style="font-size:24px">${h(ep.titre)}</h1>
   <section class="carte">${vueLecteur(ep)}</section>
-  <section class="carte">
+  ${ep.archive ? "" : `<section class="carte">
     <div class="entre"><h2>Ton avis</h2><div class="pouces">
       <button type="button" data-geste="up" data-cle="${h(ep.cle)}" aria-pressed="${ep.avis === "up"}" aria-label="J'ai aimé">${icone("haut", 20)}</button>
       <button type="button" data-geste="down" data-cle="${h(ep.cle)}" aria-pressed="${ep.avis === "down"}" aria-label="Pas aimé">${icone("bas", 20)}</button></div></div>
@@ -781,7 +803,7 @@ function vueEpisode() {
     <div class="gestes">${geste("court", "Plus court")}${geste("long", "Plus long")}${geste("lent", "Moins vite")}${geste("vite", "Plus vite")}</div>
     ${ep.sujets.length ? `<span class="etiquette" style="font-size:13px;color:var(--doux)">Creuser un sujet au prochain épisode</span>
       <div class="gestes">${ep.sujets.map((s, i) => geste(`cr${i + 1}`, h(s))).join("")}</div>` : ""}
-  </section>
+  </section>`}
   <section class="carte"><h2>Sources</h2>
     ${sections.length ? sections.map((g) => `${sections.length > 1 || g.nom !== "Sources" ? `<span class="groupe" style="padding-top:4px">${h(g.nom)}</span>` : ""}
       <div class="sources">${g.liste.map((x) => `<button type="button" data-lien="${h(x.url)}"><span>${++numero}</span><span>${h(x.titre || x.url)}<br><span class="aide">${h(x.url.replace(/^https:\/\/(www\.)?/, "").split("/")[0])}</span></span></button>`).join("")}</div>`).join("")
@@ -1720,6 +1742,7 @@ function vueReglage() {
       </section>
       <section class="carte" aria-labelledby="t-version"><h2 id="t-version">Version</h2>
         <p class="aide">Tu as la version ${h(d.version)}. Tout changement fait ici s'annule avec « Annuler » sur l'accueil.</p>
+        ${d.stockage ? `<p class="aide">Épisodes gardés par ton bot (un an) : ${h(tailleLisible(d.stockage))} sur 5 Go offerts.</p>` : ""}
         ${d.maj_etat && d.maj_etat.etat === "en_cours" ? `<p class="aide" style="color:var(--aube-clair)">Mise à jour vers la version ${h(d.maj_etat.version)} en cours : compte deux à trois minutes, puis rouvre l'application.</p>` : ""}
         ${d.maj_etat && d.maj_etat.etat === "erreur" ? `<p class="aide" style="color:var(--rouge)">La mise à jour n'a pas abouti : ${h(d.maj_etat.message)}</p>` : ""}
         ${d.maj_etat && d.maj_etat.etat === "fait" && d.maj_etat.message ? `<p class="aide">Dernière mise à jour : ${h(d.maj_etat.message)}</p>` : ""}
@@ -2198,6 +2221,7 @@ document.addEventListener("keydown", (ev) => {
 // Après une longue absence, les données (et les liens audio) se rafraîchissent.
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && S.d && Date.now() - S.charge > 30 * 60000 && S.ecran !== "fiche") {
+    S.archives = {};   // mois archivés rechargés à la demande, avec des liens neufs
     demander("etat", {}, { discret: true }).then((j) => { if (j.ok) dessiner(); });
   }
 });

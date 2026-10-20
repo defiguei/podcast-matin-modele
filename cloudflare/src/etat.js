@@ -19,19 +19,23 @@ import {
 import { Telegram, GitHub, demanderGemini, maintenantLocal, instantLocal, echapper as e, base64, secretPartage, definirFuseau, empreinte } from "./services.js";
 import { CLES, testerCle, lireAgenda, identifiantAgenda, resumeConnexions } from "./connexions.js";
 import { fluxRss, chapitresJson, episodeDeCle, jetonValide, nouveauJeton } from "./flux.js";
-import { donneesApp, champsDepuisFormulaire, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, nettoyerEquipe, telechargerFeries } from "./miniapp.js";
+import { nomValide, objetDuNom, objetAudio } from "./audio.js";
+import { donneesApp, episodeApp, champsDepuisFormulaire, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, nettoyerEquipe, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-21.3";
+export const VERSION = "2026-10-21.4";
 const MAX_REFAITS = 6;
 const LONGUEURS_VALIDES = ["phrase", "courte", "developpee"];
 const MAX_RECHERCHES = 15;
-const MAX_EPISODES = 60;      // historique gardé pour l'application (calendrier des épisodes)
+const MAX_EPISODES = 60;      // épisodes récents, dans l'état ; les plus anciens vont dans l'archive de leur mois
+const MAX_ARCHIVE_MOIS = 400; // épisodes gardés par mois d'archive (bien plus que nécessaire)
+const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et les douze précédents
 
 // Message envoyé après une mise à jour : les nouveautés de cette version…
 const NOUVEAUTES = `✅ <b>Ton podcast est à jour</b> (version ${VERSION}).
 
-• Ménage dans ton dépôt GitHub : les anciens outils de développement sont retirés.
-• Rien ne change dans tes épisodes ni dans tes réglages.`;
+• Ton bot garde maintenant lui-même tes épisodes (audio et pochette), pendant un an : l'application et ton flux privé ne dépendent plus de Telegram.
+• L'onglet Épisodes remonte jusqu'à un an en arrière.
+• Les épisodes d'avant restent lus depuis Telegram.`;
 
 // … ou, pour qui arrive d'avant l'application (installation neuve, ancienne version
 // réglée par la conversation), sa présentation.
@@ -44,6 +48,25 @@ const PRESENTATION = `📱 <b>Nouvelle version de ton podcast : tout se règle d
 • Écoute aussi ton podcast dans Apple Podcasts ou AntennaPod, ou ouvre l'application hors de Telegram (Réglages › Application).
 
 Chaque matin, tu reçois ici ton épisode, avec un bouton pour l'ouvrir dans l'application.`;
+
+// « 2026-10 » décalé de n mois.
+function moisDecale(mois, n) {
+  const [a, m] = mois.split("-").map(Number);
+  const t = a * 12 + (m - 1) + n;
+  return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}`;
+}
+
+// Nom d'un fichier déposé chez le bot par GitHub (voir audio.js), ou null.
+function fichierRecu(nom, extension) {
+  return typeof nom === "string" && nomValide(nom) && nom.endsWith(extension) ? nom : null;
+}
+
+// Place prise par les fichiers, par objet (« 2026-10 », « voix ») : affichée dans l'application.
+function noterStockage(etat, nom, taille) {
+  if (!nomValide(nom) || !(taille > 0)) return;
+  const objet = objetDuNom(nom);
+  etat.stockage = { ...(etat.stockage || {}), [objet]: (etat.stockage?.[objet] || 0) + Math.round(taille) };
+}
 
 // « 2026-10-21.1 » est plus récente que « 2026-10-20.2 ».
 export function plusRecente(a, b) {
@@ -109,7 +132,7 @@ export class Etat extends DurableObject {
         return Response.json({ config: await this.ctx.storage.get("config"), etat: await this.ctx.storage.get("etat"), reveil: await this.ctx.storage.getAlarm(), fini: this.fini || 0 });
       }
       if (url.pathname === "/app/fichier") {
-        return Response.json({ file_id: await this.fichierAudio(url.searchParams.get("cle") || "") });
+        return Response.json(await this.fichierAudio(url.searchParams.get("cle") || ""));
       }
       if (url.pathname === "/app" && requete.method === "POST") {
         const demande = await requete.json();
@@ -120,6 +143,14 @@ export class Etat extends DurableObject {
       if (url.pathname === "/api/maj") return await this.enFile(() => this.jetonPourMaj());
       if (url.pathname === "/appareil/connexion") { const corps = await requete.json().catch(() => ({})); return Response.json(await this.enFile(() => this.connecterAppareil(corps))); }
       if (url.pathname === "/appareil/verifier") return Response.json(await this.enFile(() => this.verifierAppareil(url.searchParams.get("e") || "")));
+      if (url.pathname === "/fichier-depose") {
+        await this.enFile(async () => {
+          const etat = await this.lireEtat();
+          noterStockage(etat, url.searchParams.get("nom") || "", Number(url.searchParams.get("taille")) || 0);
+          await this.ecrireEtat(etat);
+        });
+        return Response.json({ ok: true });
+      }
       if (url.pathname === "/api/evenement") {
         const evenement = await requete.json();
         return Response.json(await this.enFile(() => this.recevoirEvenement(evenement)));
@@ -1379,6 +1410,12 @@ export class Etat extends DurableObject {
       await this.ecrireEtat(etat);
       await this.sauvegarder(config).catch((erreur) => console.log("Sauvegarde :", erreur.message));
     }
+    // Une fois par jour : ménage des fichiers de plus d'un an, place prise recomptée.
+    if (m.heure >= "03:00" && etat.menage !== m.date) {
+      etat.menage = m.date;
+      await this.menageFichiers(etat, m.date).catch((erreur) => console.log("Ménage :", erreur.message));
+      await this.ecrireEtat(etat);
+    }
     // Une fois par jour : une nouvelle version du modèle ?
     if (this.env.MODELE && etat.maj_verifie !== m.date && m.heure >= "04:00") {
       etat.maj_verifie = m.date;
@@ -1502,19 +1539,19 @@ export class Etat extends DurableObject {
   }
 
   // Adresses audio signées : épisodes et extraits de voix (fichiers gardés par Telegram).
-  async liensAudio(etat) {
+  async liensAudio(etat, episodes = etat.episodes || []) {
     const secret = await secretPartage(this.env);
     // Le lien est vérifié avec l'heure réelle (index.js) : jamais signé dans le passé,
     // même quand l'horloge des tests est simulée.
     const maintenant = () => Math.max(this.maintenant(), Date.now());
     const liens = { episodes: {}, voix: {} };
     liens.pochettes = {};
-    for (const episode of etat.episodes || []) {
-      if (episode.file_id) liens.episodes[cleEpisode(episode)] = await lienAudio(secret, cleEpisode(episode), maintenant());
-      if (episode.pochette_id) liens.pochettes[cleEpisode(episode)] = await lienAudio(secret, `img:${cleEpisode(episode)}`, maintenant());
+    for (const episode of episodes) {
+      if (episode.audio || episode.file_id) liens.episodes[cleEpisode(episode)] = await lienAudio(secret, cleEpisode(episode), maintenant());
+      if (episode.pochette || episode.pochette_id) liens.pochettes[cleEpisode(episode)] = await lienAudio(secret, `img:${cleEpisode(episode)}`, maintenant());
     }
-    for (const [voix, fichier] of Object.entries(etat.echantillons || {})) {
-      if (fichier && /^[A-Za-z]+$/.test(voix)) liens.voix[voix] = await lienAudio(secret, `voix:${voix}`, maintenant());
+    for (const voix of new Set([...Object.keys(etat.echantillons || {}), ...Object.keys(etat.echantillons_fichiers || {})])) {
+      if (/^[A-Za-z]+$/.test(voix) && (etat.echantillons?.[voix] || etat.echantillons_fichiers?.[voix])) liens.voix[voix] = await lienAudio(secret, `voix:${voix}`, maintenant());
     }
     return liens;
   }
@@ -1523,7 +1560,7 @@ export class Etat extends DurableObject {
   // numéro, mais le transférer (sans notification, aussitôt retiré) renvoie son
   // fichier audio et sa légende, d'où l'on tire les sources.
   async completerEpisodes(etat) {
-    const aCompleter = (etat.episodes || []).filter((ep) => ep.message_id && !ep.file_id && !ep.complete_tente);
+    const aCompleter = (etat.episodes || []).filter((ep) => ep.message_id && !ep.file_id && !ep.audio && !ep.complete_tente);
     if (!aCompleter.length) return false;
     for (const episode of aCompleter.slice(0, 7)) {
       episode.complete_tente = true;
@@ -1541,11 +1578,76 @@ export class Etat extends DurableObject {
   }
 
   // Identifiant Telegram d'un fichier audio, pour le lecteur de l'application.
+  // Où trouver un fichier : chez le bot (fichier) et/ou chez Telegram (file_id, épisodes d'avant).
   async fichierAudio(cle) {
     const etat = await this.lireEtat();
-    if (cle.startsWith("voix:")) return etat.echantillons?.[cle.slice(5)] || null;
-    if (cle.startsWith("img:")) return (etat.episodes || []).find((ep) => cleEpisode(ep) === cle.slice(4))?.pochette_id || null;
-    return (etat.episodes || []).find((ep) => cleEpisode(ep) === cle)?.file_id || null;
+    if (cle.startsWith("voix:")) {
+      const voix = cle.slice(5);
+      return { fichier: etat.echantillons_fichiers?.[voix] || null, file_id: etat.echantillons?.[voix] || null };
+    }
+    const image = cle.startsWith("img:");
+    const episode = await this.trouverEpisode(etat, image ? cle.slice(4) : cle);
+    if (!episode) return { fichier: null, file_id: null };
+    return image ? { fichier: episode.pochette || null, file_id: episode.pochette_id || null }
+      : { fichier: episode.audio || null, file_id: episode.file_id || null };
+  }
+
+  // Au-delà des MAX_EPISODES récents, les épisodes passent dans l'archive de leur mois
+  // (une valeur par mois) : l'application les retrouve, l'état reste léger.
+  async archiver(etat, sortants) {
+    const parMois = {};
+    for (const ep of sortants) if (/^\d{4}-\d{2}-\d{2}$/.test(ep.date || "")) (parMois[ep.date.slice(0, 7)] ||= []).push(ep);
+    for (const [mois, liste] of Object.entries(parMois)) {
+      const avant = (await this.ctx.storage.get(`archive:${mois}`)) || [];
+      const cles = new Set(liste.map(cleEpisode));
+      const fusion = [...avant.filter((ep) => !cles.has(cleEpisode(ep))), ...liste]
+        .sort((a, b) => `${a.date} ${a.heure || ""}`.localeCompare(`${b.date} ${b.heure || ""}`)).slice(-MAX_ARCHIVE_MOIS);
+      await this.ctx.storage.put(`archive:${mois}`, fusion);
+      etat.archives = [...new Set([...(etat.archives || []), mois])].sort();
+    }
+  }
+
+  // Chaque nuit : on garde le mois en cours et les douze précédents. Plus ancien,
+  // l'audio (tout l'objet du mois), les textes et l'archive du mois s'en vont.
+  // La place prise est recomptée, et les extraits de voix remplacés sont retirés.
+  async menageFichiers(etat, aujourdHui) {
+    const limite = moisDecale(aujourdHui.slice(0, 7), -CONSERVATION_MOIS);
+    for (const mois of (etat.archives || []).filter((m) => m < limite)) {
+      const liste = (await this.ctx.storage.get(`archive:${mois}`)) || [];
+      const cles = liste.map((ep) => `texte:${cleEpisode(ep)}`);
+      for (let i = 0; i < cles.length; i += 128) await this.ctx.storage.delete(cles.slice(i, i + 128));
+      await this.ctx.storage.delete(`archive:${mois}`);
+    }
+    etat.archives = (etat.archives || []).filter((m) => m >= limite);
+    for (const ep of etat.episodes || []) {
+      if ((ep.date || "").slice(0, 7) < limite && (ep.audio || ep.pochette)) { ep.audio = null; ep.pochette = null; }
+    }
+    const utiles = new Set(Object.values(etat.echantillons_fichiers || {}));
+    for (const objet of Object.keys(etat.stockage || {})) {
+      const audio = objetAudio(this.env, objet);
+      if (/^\d{4}-\d{2}$/.test(objet) && objet < limite) {
+        await audio.fetch(new Request("https://audio.interne/tout", { method: "DELETE" }));
+        delete etat.stockage[objet];
+        continue;
+      }
+      let fichiers = await (await audio.fetch(new Request("https://audio.interne/liste"))).json();
+      if (objet === "voix") {
+        for (const f of fichiers.filter((x) => !utiles.has(x.nom))) {
+          await audio.fetch(new Request(`https://audio.interne/f/${encodeURIComponent(f.nom)}`, { method: "DELETE" }));
+        }
+        fichiers = fichiers.filter((x) => utiles.has(x.nom));
+      }
+      etat.stockage[objet] = fichiers.reduce((total, f) => total + (Number(f.taille) || 0), 0);
+    }
+  }
+
+  // Un épisode par sa clé : parmi les récents, sinon dans l'archive de son mois.
+  async trouverEpisode(etat, cle) {
+    const recent = (etat.episodes || []).find((ep) => cleEpisode(ep) === cle);
+    if (recent) return recent;
+    const mois = /^ep:(\d{4}-\d{2})-\d{2}/.exec(String(cle || ""))?.[1];
+    if (!mois) return null;
+    return ((await this.ctx.storage.get(`archive:${mois}`)) || []).find((ep) => cleEpisode(ep) === cle) || null;
   }
 
   // Une demande de la page : lire l'état, enregistrer une rubrique, un réglage…
@@ -1841,7 +1943,7 @@ export class Etat extends DurableObject {
           // Une voix est prête quand son extrait existe et qu'on sait où elle commence et finit.
           const connues = new Set(VOIX.map(([nom]) => nom));
           const demandees = Array.isArray(demande.voix) && demande.voix.length ? demande.voix.filter((v) => connues.has(v)) : VOIX_CONSEILLEES;
-          const manquants = demandees.filter((v) => !etat.echantillons?.[v] || !etat.temps_echantillons?.[v]).slice(0, 8);
+          const manquants = demandees.filter((v) => !(etat.echantillons?.[v] || etat.echantillons_fichiers?.[v]) || !etat.temps_echantillons?.[v]).slice(0, 8);
           if (!manquants.length) return reponse({ message: "Ces extraits sont déjà prêts." });
           // Quota gratuit de la voix : 16 extraits par jour au plus.
           const deja = etat.extraits_jour?.date === ctx.aujourdHui ? etat.extraits_jour.nombre : 0;
@@ -1885,8 +1987,16 @@ export class Etat extends DurableObject {
           episode.coches = [...new Set([...(episode.coches || []), geste])];
           break;
         }
+        case "episodes_mois": {
+          // Un mois de l'archive (au-delà des épisodes récents), pour le calendrier des épisodes.
+          const mois = String(demande.mois || "");
+          if (!/^\d{4}-\d{2}$/.test(mois) || !(etat.archives || []).includes(mois)) return refus("Pas d'épisodes gardés pour ce mois.");
+          const liste = (await this.ctx.storage.get(`archive:${mois}`)) || [];
+          const liens = await this.liensAudio(etat, liste);
+          return reponse({ mois_episodes: { mois, episodes: liste.slice().reverse().map((ep) => ({ ...episodeApp(ep, liens), archive: true })) } });
+        }
         case "texte": {
-          const episode = (etat.episodes || []).find((ep) => cleEpisode(ep) === demande.cle);
+          const episode = await this.trouverEpisode(etat, String(demande.cle || ""));
           const texte = episode ? await this.texteEpisode(episode) : "";
           if (!texte) return refus("Pas de texte pour cet épisode.");
           return reponse({ texte });
@@ -2036,7 +2146,8 @@ export class Etat extends DurableObject {
     const episode = episodeDeCle(etat.episodes, parametres.get("cle"));
     if (!episode) return new Response("introuvable", { status: 404 });
     if (quoi === "chapitres") return Response.json(chapitresJson(episode), { headers: { "Content-Type": "application/json+chapters" } });
-    return Response.json({ file_id: quoi === "image" ? episode.pochette_id : episode.file_id });
+    return Response.json(quoi === "image" ? { fichier: episode.pochette || null, file_id: episode.pochette_id || null }
+      : { fichier: episode.audio || null, file_id: episode.file_id || null });
   }
 
   // ─────────────────────────── API pour GitHub ───────────────────────────────
@@ -2076,9 +2187,13 @@ export class Etat extends DurableObject {
         heure: /^\d{2}:\d{2}$/.test(ev.heure || "") ? ev.heure : null, taille: Number(ev.taille) || null,
         sources: nettoyerSources(ev.sources),
         pochette_id: typeof ev.pochette_id === "string" ? ev.pochette_id.slice(0, 200) : null,
+        // Fichiers gardés par le bot (depuis la version 2026-10-21.4).
+        audio: fichierRecu(ev.audio, ".mp3"), pochette: fichierRecu(ev.pochette, ".jpg"),
       };
       if (ev.transcription) await this.ctx.storage.put(`texte:${cleEpisode(episode)}`, String(ev.transcription).slice(0, 20000));
-      etat.episodes = [...etat.episodes.filter((x) => !(x.date === episode.date && x.message_id === episode.message_id)), episode].slice(-MAX_EPISODES);
+      const tous = [...etat.episodes.filter((x) => !(x.date === episode.date && x.message_id === episode.message_id)), episode];
+      etat.episodes = tous.slice(-MAX_EPISODES);
+      await this.archiver(etat, tous.slice(0, -MAX_EPISODES));
       if (ev.mode !== "manuel") etat.declenchements[episode.date] = { ...(etat.declenchements[episode.date] || {}), envoye: true };
       const config = await this.lireConfig();
       for (const id of ev.regles || []) {
@@ -2127,9 +2242,15 @@ export class Etat extends DurableObject {
       await this.ecrireEtat(etat);
       return { ok: true };
     }
-    if (ev.type === "echantillon" && ev.voix && ev.file_id) {
-      etat.echantillons = { ...(etat.echantillons || {}), [ev.voix]: ev.file_id };
-      etat.legendes_echantillons = { ...(etat.legendes_echantillons || {}), [ev.file_id]: String(ev.legende || "").slice(0, 300) };
+    if (ev.type === "echantillon" && /^[A-Za-z]{2,20}$/.test(ev.voix || "") && (ev.file_id || ev.fichier)) {
+      if (ev.file_id) {
+        etat.echantillons = { ...(etat.echantillons || {}), [ev.voix]: ev.file_id };
+        etat.legendes_echantillons = { ...(etat.legendes_echantillons || {}), [ev.file_id]: String(ev.legende || "").slice(0, 300) };
+      }
+      const fichier = fichierRecu(ev.fichier, ".mp3");
+      if (fichier && objetDuNom(fichier) === "voix") {
+        etat.echantillons_fichiers = { ...(etat.echantillons_fichiers || {}), [ev.voix]: fichier };
+      }
       const debut = Number(ev.debut), fin = Number(ev.fin);
       if (Number.isFinite(debut) && Number.isFinite(fin) && fin > debut) {
         etat.temps_echantillons = { ...(etat.temps_echantillons || {}), [ev.voix]: [debut, fin] };

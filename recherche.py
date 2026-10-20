@@ -13,6 +13,7 @@ import html
 import json
 import os
 import re
+import time
 from typing import Any
 
 import pays
@@ -385,12 +386,15 @@ def echantillons(liste: str, effectifs: dict, cle_gemini: str, telegram: p.Teleg
             p.journal(f"Extrait {premiere}/{seconde} prêt ({len(mp3)} octets).")
             continue
         legende_audio = f"🎤 <b>{premiere}</b> ({VOIX[premiere]})" + (f" puis <b>{seconde}</b> ({VOIX[seconde]})" if seconde != premiere else "")
+        # Le bot garde l'extrait (l'application le lit chez lui) ; Telegram en a une copie.
+        nom_bot = f"voix/{premiere}-{seconde}-{int(time.time())}.mp3"
+        fichier = nom_bot if bot.deposer(nom_bot, mp3, "audio/mpeg") else None
         envoi = telegram.audio(conversation, mp3, f"voix-{premiere}-{seconde}.mp3", f"Voix : {premiere} & {seconde}",
                                "Podcast du matin", legende_audio, round(len(pcm) / (2 * taux)))
         file_id = ((envoi or {}).get("audio") or {}).get("file_id")
-        if file_id:
+        if file_id or fichier:
             for nom in set(paire):
-                bot.evenement({"type": "echantillon", "voix": nom, "file_id": file_id, "legende": legende_audio,
+                bot.evenement({"type": "echantillon", "voix": nom, "file_id": file_id, "fichier": fichier, "legende": legende_audio,
                                "debut": temps[nom][0], "fin": temps[nom][1]})
             if discret and (envoi or {}).get("message_id"):
                 telegram.appeler("deleteMessage", {"chat_id": conversation, "message_id": envoi["message_id"]})

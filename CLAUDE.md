@@ -13,7 +13,9 @@ Tout est en français : code, commentaires, messages, commits. L'application tut
 
 ## Architecture
 
-- **Bot** (`cloudflare/`) : Cloudflare Worker + Durable Object `Etat` (stockage : `config`, `etat`, `cles`, `texte:*`).
+- **Bot** (`cloudflare/`) : Cloudflare Worker + Durable Object `Etat` (stockage : `config`, `etat`, `cles`, `texte:*`, `archive:AAAA-MM`).
+  - Fichiers des épisodes (`audio.js`) : Durable Object `Audio`, un objet par mois (`2026-10`) plus `voix` pour les extraits ; fichiers en morceaux d'1 Mio (2 Mo au plus par valeur), recollés à la lecture, plages `Range` et `HEAD`. GitHub les dépose par `PUT /api/fichier?nom=AAAA-MM/….mp3` (`liaison.Bot.deposer`) avant Telegram ; l'événement `episode` porte `audio` et `pochette`. Lecture : chez le bot, sinon `file_id` Telegram (épisodes d'avant 2026-10-21.4).
+  - Épisodes : les 60 derniers dans `etat.episodes`, les autres dans `archive:AAAA-MM` (action `episodes_mois` de l'application). Chaque nuit (`menageFichiers`) : on garde le mois en cours et les 12 précédents (audio, textes, archives), la place prise (`etat.stockage`) est recomptée.
   - `index.js` routes ; `etat.js` état, planning, tic, API ; `miniapp.js` données de l'application ; `app.html` l'application (une seule page) ; `config.js` modèle des réglages et des rubriques (`RUBRIQUES`, `deroule`, règles R1…, `sourcesAuto`) ; `connexions.js` clés et agendas ; `flux.js` flux RSS privé ; `services.js` Telegram, GitHub, Gemini ; `comprendre.js`, `assistant.js`, `ui.js` conversation Telegram ; `icones.js` icônes générées (`test/fabriquer_icones.py`).
   - Application : `/app/api`, ouverte par Telegram (initData signé) ou par un appareil autorisé (en-tête `X-Appareil`, code à 6 chiffres).
   - GitHub ↔ bot : `/api/*` avec `X-Podcast-Secret` = sha256(`podcast:` + jeton Telegram), 48 premiers caractères (`liaison.secret_partage`).

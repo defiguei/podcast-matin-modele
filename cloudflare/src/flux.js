@@ -1,7 +1,7 @@
 // Flux privé du podcast (RSS) : pour écouter les épisodes dans Apple Podcasts,
 // AntennaPod ou toute application qui accepte une adresse de flux. L'adresse
-// contient un jeton secret ; la changer coupe l'ancienne. Les fichiers restent
-// chez Telegram : le bot les relaie, morceau par morceau.
+// contient un jeton secret ; la changer coupe l'ancienne. Les fichiers sont gardés
+// par le bot (audio.js) ; ceux d'avant la version 2026-10-21.4 restent chez Telegram.
 
 const xml = (t) => String(t ?? "").replace(/[<>&'"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" }[c]));
 const MOIS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -28,8 +28,8 @@ export function episodeDeCle(episodes, cle) {
 
 // ep.instant : millisecondes de l'envoi (calculé par l'appelant, avec le fuseau du pays).
 export function fluxRss({ episodes, base, titre, auteur, langue = "fr" }) {
-  const avecAudio = (episodes || []).filter((ep) => ep.file_id).slice(-30).reverse();
-  const derniere = avecAudio.find((ep) => ep.pochette_id);
+  const avecAudio = (episodes || []).filter((ep) => ep.audio || ep.file_id).slice(-30).reverse();
+  const derniere = avecAudio.find((ep) => ep.pochette || ep.pochette_id);
   const image = derniere ? `${base}/${cleFlux(derniere)}.jpg` : "";
   const items = avecAudio.map((ep) => {
     const cle = cleFlux(ep);
@@ -44,7 +44,7 @@ export function fluxRss({ episodes, base, titre, auteur, langue = "fr" }) {
       <itunes:duration>${duree(ep.duree)}</itunes:duration>
       <description>${xml(description)}</description>
       <content:encoded><![CDATA[<p>${xml(description).replace(/\n/g, "<br>")}</p>${sources ? `<p>Sources :</p><ul>${sources}</ul>` : ""}]]></content:encoded>
-      ${ep.pochette_id ? `<itunes:image href="${xml(`${base}/${cle}.jpg`)}"/>` : ""}
+      ${ep.pochette || ep.pochette_id ? `<itunes:image href="${xml(`${base}/${cle}.jpg`)}"/>` : ""}
       ${(ep.chapitres || []).length ? `<podcast:chapters url="${xml(`${base}/${cle}.json`)}" type="application/json+chapters"/>` : ""}
       <itunes:explicit>false</itunes:explicit>
     </item>`;

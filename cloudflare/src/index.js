@@ -9,12 +9,13 @@
 // Variables (wrangler.toml) : DEPOT, ADRESSE.
 
 import { Etat, VERSION } from "./etat.js";
+import { Audio, objetAudio, nomValide, objetDuNom, typeDuNom, TAILLE_MAX } from "./audio.js";
 import { secretPartage, Telegram, empreinte } from "./services.js";
 import { icone192, icone512, masque512, pomme180 } from "./icones.js";
 import { verifierOuverture, verifierAudio } from "./miniapp.js";
 import PAGE_APP from "./app.html";
 
-export { Etat };
+export { Etat, Audio };
 
 function cerveau(env) {
   return env.ETAT.get(env.ETAT.idFromName("podcast"));
@@ -73,13 +74,12 @@ export default {
       return cerveau(env).fetch(new Request("https://etat.interne/appareil/connexion", { method: "POST", headers: { "Content-Type": "application/json" }, body: corps }));
     }
 
-    // Lecteur audio de l'application : adresse signée, fichier gardé par Telegram.
+    // Lecteur audio de l'application : adresse signée ; fichier gardé par le bot (ou, avant, par Telegram).
     if (url.pathname === "/app/audio") {
       const cle = await verifierAudio(secret, url.searchParams);
       if (!cle) return new Response("lien expiré : rouvre l'application", { status: 403 });
-      const { file_id: fichier } = await (await cerveau(env).fetch(new Request(`https://etat.interne/app/fichier?cle=${encodeURIComponent(cle)}`))).json();
-      if (!fichier) return new Response("fichier introuvable", { status: 404 });
-      return lireAudio(env, fichier, requete.headers.get("Range"), cle.startsWith("img:") ? "image/jpeg" : "audio/mpeg");
+      const ref = await (await cerveau(env).fetch(new Request(`https://etat.interne/app/fichier?cle=${encodeURIComponent(cle)}`))).json();
+      return servirFichier(env, ref, requete, cle.startsWith("img:") ? "image/jpeg" : "audio/mpeg");
     }
     if (url.pathname === "/app/api") {
       if (requete.method !== "POST") return new Response("interdit", { status: 405 });
@@ -105,14 +105,25 @@ export default {
       const quoi = !cle ? "xml" : extension === "json" ? "chapitres" : extension === "jpg" ? "image" : "audio";
       const r = await versCerveau(env, `/flux?jeton=${jeton}&quoi=${quoi}${cle ? `&cle=${cle}` : ""}`);
       if (quoi === "xml" || quoi === "chapitres" || !r.ok) return r;
-      const { file_id: fichier } = await r.json();
-      if (!fichier) return new Response("introuvable", { status: 404 });
-      return lireAudio(env, fichier, requete.headers.get("Range"), quoi === "image" ? "image/jpeg" : "audio/mpeg");
+      return servirFichier(env, await r.json(), requete, quoi === "image" ? "image/jpeg" : "audio/mpeg");
     }
 
     // GitHub (fabrication des épisodes) : lecture des réglages, événements.
     if (url.pathname.startsWith("/api/")) {
       if (requete.headers.get("X-Podcast-Secret") !== secret) return new Response("interdit", { status: 403 });
+      // Dépôt d'un fichier (MP3, pochette, extrait de voix) : rangé directement dans l'objet de son mois.
+      if (url.pathname === "/api/fichier") {
+        const nom = url.searchParams.get("nom") || "";
+        if (requete.method !== "PUT") return new Response("méthode refusée", { status: 405 });
+        if (!nomValide(nom) || !typeDuNom(nom)) return Response.json({ ok: false, erreur: "nom de fichier refusé" }, { status: 400 });
+        if (Number(requete.headers.get("Content-Length") || 0) > TAILLE_MAX) return Response.json({ ok: false, erreur: "fichier trop gros" }, { status: 413 });
+        const r = await objetAudio(env, objetDuNom(nom)).fetch(new Request(`https://audio.interne/f/${encodeURIComponent(nom)}`,
+          { method: "PUT", body: requete.body, headers: { "Content-Type": typeDuNom(nom) } }));
+        const resultat = await r.json().catch(() => ({ ok: false, erreur: `stockage : erreur ${r.status}` }));
+        // Le cerveau tient le compte de la place prise (affichée dans l'application, ménage d'un an).
+        if (resultat.ok) await cerveau(env).fetch(new Request(`https://etat.interne/fichier-depose?nom=${encodeURIComponent(nom)}&taille=${resultat.taille}`));
+        return Response.json(resultat, { status: r.status });
+      }
       return versCerveau(env, url.pathname + url.search, requete);
     }
 
@@ -148,6 +159,18 @@ export default {
       .catch((erreur) => console.log("Tic impossible :", erreur.message)));
   },
 };
+
+// Un fichier d'épisode : gardé par le bot (ref.fichier) ou, pour les épisodes d'avant, par Telegram (ref.file_id).
+async function servirFichier(env, ref, requete, type) {
+  if (ref?.fichier && nomValide(ref.fichier)) {
+    const plage = requete.headers.get("Range");
+    const r = await objetAudio(env, objetDuNom(ref.fichier)).fetch(new Request(`https://audio.interne/f/${encodeURIComponent(ref.fichier)}`,
+      { method: requete.method === "HEAD" ? "HEAD" : "GET", headers: plage ? { Range: plage } : {} }));
+    if (r.status !== 404 || !ref.file_id) return r;    // perdu chez le bot : Telegram en secours
+  }
+  if (!ref?.file_id) return new Response("fichier introuvable", { status: 404 });
+  return lireAudio(env, ref.file_id, requete.headers.get("Range"), type);
+}
 
 // Récupère un fichier chez Telegram et le renvoie au lecteur, morceau par morceau
 // (les iPhone exigent les requêtes « Range » pour lire et avancer dans l'audio).

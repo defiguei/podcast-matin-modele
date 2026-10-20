@@ -2447,6 +2447,15 @@ def main(arguments: list[str] | None = None) -> int:
             journal(f"Écrit dans {dossier}/ (aucun envoi, mémoire inchangée).")
             return 0
 
+        # Le bot garde le fichier (un an) : l'application et le flux privé le lisent chez lui.
+        base_bot = f"{maintenant:%Y-%m}/{maintenant:%Y-%m-%d-%H%M%S}"
+        audio_bot = f"{base_bot}.mp3" if bot.deposer(f"{base_bot}.mp3", mp3, "audio/mpeg") else None
+        pochette_bot = f"{base_bot}.jpg" if audio_bot and vignette and bot.deposer(f"{base_bot}.jpg", vignette, "image/jpeg") else None
+        if audio_bot:
+            journal("Audio gardé par le bot ✅")
+        elif export:
+            journal("::warning::Le bot n'a pas pu garder l'audio : l'épisode n'est que chez Telegram.")
+
         details = [rid for rid, c in (contenu.collectes or {}).items() if moteur.est_recherche(c.regle)]
         avec_actus = any(c == "actualites" for c, _ in contenu.rubriques or [])
         nombre_sujets = min(len(script["sujets"]), int(effectifs["nombre_sujets"])) if avec_actus else 0
@@ -2476,6 +2485,7 @@ def main(arguments: list[str] | None = None) -> int:
             "sources": [{"section": s, "titre": t, "url": u}
                         for s, t, u in sources_episode(script, contenu.articles, contenu.collectes)][:30],
             "pochette_id": (((envoi or {}).get("audio") or {}).get("thumbnail") or {}).get("file_id"),
+            "audio": audio_bot, "pochette": pochette_bot,
         }
         if bot.evenement(evenement):
             journal("Bot prévenu : boutons et tableau de bord à jour.")

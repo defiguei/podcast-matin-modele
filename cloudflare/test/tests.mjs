@@ -1250,6 +1250,89 @@ await scenario("Flux privé du podcast", async () => {
   verifier(r.ok && r.donnees.flux !== adresse && (await obtenir(`${BOT}/flux/${jeton}.xml`)).statut === 404, "nouvelle adresse : l'ancienne ne marche plus");
 });
 
+await scenario("Fichiers gardés par le bot : dépôt, lecture par plages, archive, un an", async () => {
+  const S = { "X-Podcast-Secret": SECRET };
+  // Un MP3 de 2,5 Mo (trois morceaux d'1 Mio), dont chaque octet dépend de sa place.
+  const taille = 2_500_000, bord = 1024 * 1024;
+  const mp3 = new Uint8Array(taille);
+  for (let i = 0; i < taille; i++) mp3[i] = (i * 7 + (i >> 8)) & 255;
+  const deposer = (nom, octets, entetes = S) => fetch(`${BOT}/api/fichier?nom=${encodeURIComponent(nom)}`, { method: "PUT", body: octets, headers: entetes });
+  verifier((await deposer("2026-10/essai.mp3", mp3, {})).status === 403, "dépôt refusé sans le secret");
+  verifier((await deposer("../essai.mp3", mp3)).status === 400 && (await deposer("2026-10/essai.exe", mp3)).status === 400
+    && (await deposer("2026-13/essai.mp3", mp3)).status === 400, "nom de fichier refusé");
+  let r = await (await deposer("2026-10/2026-10-22-071500.mp3", mp3)).json();
+  verifier(r.ok && r.taille === taille, "MP3 déposé", r);
+  await deposer("2026-10/2026-10-22-071500.jpg", new Uint8Array([0xff, 0xd8, 0xff, 1, 2, 3]));
+  await envoyerJson(`${BOT}/api/evenement`, { type: "episode", date: "2026-10-22", titre: "Gardé par le bot", message_id: 400, duree: 300, heure: "07:15",
+    file_id: "AUDIO-TG", audio: "2026-10/2026-10-22-071500.mp3", pochette: "2026-10/2026-10-22-071500.jpg", taille, transcription: "Léa : Bonjour !" }, S);
+  r = await app("etat");
+  const ep = r.donnees.episodes.find((x) => x.titre === "Gardé par le bot");
+  verifier(ep?.audio && ep?.image && r.donnees.stockage >= taille, "lien audio, pochette et place prise", { audio: ep?.audio, stockage: r.donnees.stockage });
+  await vider();
+  const lire = async (adresse, plage, methode = "GET") => {
+    const rep = await fetch(`${BOT}${adresse}`, { method: methode, headers: plage ? { Range: plage } : {} });
+    return { statut: rep.status, entetes: rep.headers, octets: new Uint8Array(await rep.arrayBuffer()) };
+  };
+  const pareil = (octets, debut) => octets.every((o, i) => o === mp3[debut + i]);
+  let l = await lire(ep.audio);
+  verifier(l.statut === 200 && l.octets.length === taille && pareil(l.octets, 0) && l.entetes.get("content-type") === "audio/mpeg", "fichier entier : identique à l'original", l.statut);
+  verifier(!tg(await appels(), "getFile").length, "lu chez le bot, pas chez Telegram");
+  l = await lire(ep.audio, "bytes=0-1");
+  verifier(l.statut === 206 && l.octets.length === 2 && l.entetes.get("content-range") === `bytes 0-1/${taille}`, "deux premiers octets (iPhone)", l.entetes.get("content-range"));
+  l = await lire(ep.audio, `bytes=${bord - 10}-${bord + 9}`);
+  verifier(l.statut === 206 && l.octets.length === 20 && pareil(l.octets, bord - 10), "plage à cheval sur deux morceaux", l.octets.length);
+  l = await lire(ep.audio, `bytes=${2 * bord - 5}-`);
+  verifier(l.statut === 206 && l.octets.length === taille - (2 * bord - 5) && pareil(l.octets, 2 * bord - 5), "de quelque part jusqu'à la fin");
+  l = await lire(ep.audio, "bytes=-100");
+  verifier(l.statut === 206 && l.octets.length === 100 && pareil(l.octets, taille - 100), "les 100 derniers octets");
+  l = await lire(ep.audio, `bytes=${taille}-`);
+  verifier(l.statut === 416 && l.entetes.get("content-range") === `bytes */${taille}`, "plage hors du fichier : 416", l.statut);
+  l = await lire(ep.audio, null, "HEAD");
+  verifier(l.statut === 200 && l.entetes.get("content-length") === String(taille) && !l.octets.length, "HEAD : la taille sans le contenu");
+  l = await lire(ep.image);
+  verifier(l.statut === 200 && l.entetes.get("content-type") === "image/jpeg" && l.octets.length === 6, "pochette gardée par le bot");
+  // Le flux privé sert le même fichier.
+  const base = new URL((await app("flux")).donnees.flux).pathname.replace(/\.xml$/, "");
+  const rss = (await obtenir(`${BOT}${base}.xml`)).texte;
+  verifier(rss.includes("<title>Gardé par le bot</title>") && rss.includes(`length="${taille}"`) && rss.includes(`${base}/2026-10-22-400.jpg`), "dans le flux, avec sa taille et sa pochette");
+  l = await lire(`${base}/2026-10-22-400.mp3`, "bytes=1000-1999");
+  verifier(l.statut === 206 && l.octets.length === 1000 && pareil(l.octets, 1000), "flux : plage lue chez le bot", l.statut);
+  // Un extrait de voix gardé par le bot (un autre, remplacé, sera retiré au ménage).
+  await deposer("voix/Kore-Puck-1.mp3", mp3.slice(0, 5000));
+  await deposer("voix/Kore-Puck-0.mp3", mp3.slice(0, 7000));
+  await envoyerJson(`${BOT}/api/evenement`, { type: "echantillon", voix: "Kore", fichier: "voix/Kore-Puck-1.mp3", debut: 0, fin: 2.5 }, S);
+  r = await app("etat");
+  l = await lire(r.donnees.reglages.echantillons.Kore);
+  verifier(l.statut === 200 && l.octets.length === 5000, "extrait de voix lu chez le bot", l.statut);
+
+  // Au-delà de 60 épisodes, les plus anciens passent dans l'archive de leur mois.
+  for (let i = 1; i <= 60; i++) {
+    const date = new Date(Date.UTC(2026, 9, 22 + i)).toISOString().slice(0, 10);
+    await envoyerJson(`${BOT}/api/evenement`, { type: "episode", date, titre: `Épisode ${i}`, message_id: 1000 + i, heure: "07:00" }, S);
+  }
+  r = await app("etat");
+  verifier(r.donnees.episodes.length === 60 && !r.donnees.episodes.some((x) => x.titre === "Gardé par le bot") && r.donnees.mois_archives.includes("2026-10"),
+    "61e épisode : le plus ancien est archivé", { nb: r.donnees.episodes.length, archives: r.donnees.mois_archives });
+  r = await app("episodes_mois", { mois: "2026-10" });
+  const archive = r.mois_episodes?.episodes.find((x) => x.titre === "Gardé par le bot");
+  verifier(r.ok && archive?.archive && archive.audio, "le mois archivé se charge, avec ses liens", r.mois_episodes?.episodes.map((x) => x.titre));
+  l = await lire(archive.audio, "bytes=0-9");
+  verifier(l.statut === 206 && pareil(l.octets, 0), "un épisode archivé s'écoute toujours");
+  verifier((await app("texte", { cle: archive.cle })).texte?.includes("Bonjour"), "et son texte se lit");
+  verifier((await app("episodes_mois", { mois: "2025-01" })).ok === false, "mois sans archive : refus");
+
+  // Un an plus tard (le mois en cours et les douze précédents sont gardés) : le ménage de la nuit.
+  await horloge("2027-12-02T03:30", true);
+  const { etat: apres } = await etat();
+  verifier(!apres.archives.includes("2026-10") && !apres.stockage["2026-10"] && apres.stockage.voix === 5000,
+    "plus d'un an : archive et audio d'octobre 2026 effacés ; extrait remplacé retiré", { archives: apres.archives, stockage: apres.stockage });
+  verifier((await app("episodes_mois", { mois: "2026-10" })).ok === false, "le mois effacé n'est plus proposé");
+  l = await lire(archive.audio, "bytes=0-9");
+  verifier(l.statut === 404, "son audio n'est plus servi", l.statut);
+  verifier(!(await etat()).etat.episodes.some((x) => x.audio && x.date < "2026-12"), "plus de lien vers un fichier effacé");
+  await horloge("2026-10-20T10:00");
+});
+
 await scenario("Hors de Telegram : appareils, manifeste, icônes", async () => {
   const manifeste = JSON.parse((await obtenir(`${BOT}/app/manifest.json`)).texte);
   verifier(manifeste.start_url === "/app" && manifeste.icons.length === 3, "manifeste de l'application", manifeste);

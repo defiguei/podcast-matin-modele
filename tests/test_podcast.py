@@ -494,8 +494,14 @@ def a_la_date(annee, mois, jour, heure=5, minute=46):
     podcast.heure_actuelle = lambda fuseau: dt.datetime(annee, mois, jour, heure, minute, tzinfo=ZH).astimezone(fuseau)
 
 
+def faux_put(url, params=None, data=None, timeout=None, headers=None):
+    appels.append(("PUT", url, (params or {}).get("nom"), len(data or b"")))
+    return Reponse(404, contenu=b"introuvable")   # bot d'avant le stockage des fichiers
+
+
 podcast.requests.get = faux_get
 podcast.requests.post = faux_post
+podcast.requests.put = faux_put
 sommeils = []
 podcast.time.sleep = sommeils.append
 podcast.SEUIL_SCRIPT_COURT = 0   # le faux script est court : testé à part (5l)
@@ -710,6 +716,10 @@ verifier(code == 0, "WAV accepté")
 verifier(len(voix) == 3, f"audio tronqué → nouvelle tentative en deux moitiés ({len(voix)} appels)")
 verifier("mode" in voix[0]["generation_config"]["speech_config"], "option conversational envoyée quand elle est acceptée")
 verifier([t[0] for t in appels_telegram()] == ["getUpdates", "sendAudio"], "avec TELEGRAM_CHAT_ID : lecture puis envoi")
+depots = [a for a in appels if a[0] == "PUT"]
+evenements_bot = [a[2] for a in appels if a[0] == "POST" and a[1].endswith("/api/evenement")]
+verifier(len(depots) == 1 and depots[0][2].endswith(".mp3") and evenements_bot and evenements_bot[-1]["audio"] is None,
+         "bot sans stockage (ancienne version) : un seul essai, l'épisode part quand même")
 debit = memoire()["debit_mots_minute"]["lente"]
 verifier(f"entre {7 * debit} et" in appels_gemini("script")[0]["system_instruction"],
          f"durée de 7 minutes appliquée, au débit mesuré pour « lente » ({debit} mots/min)")

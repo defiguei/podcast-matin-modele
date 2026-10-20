@@ -1,8 +1,8 @@
 """Liaison avec le bot (Cloudflare) : lecture des réglages, envoi d'événements.
 
 Le bot garde les réglages, les règles et le planning. GitHub les lit au début
-de chaque épisode (/api/config) et lui signale ce qui a été envoyé
-(/api/evenement), pour les boutons sous l'épisode et le tableau de bord.
+de chaque épisode (/api/config), lui confie les fichiers (/api/fichier) et lui
+signale ce qui a été envoyé (/api/evenement).
 Le secret partagé est dérivé du jeton du bot Telegram : rien de plus à régler.
 """
 
@@ -47,6 +47,24 @@ class Bot:
             except (requests.RequestException, ValueError):
                 continue
         return None
+
+    def deposer(self, nom: str, contenu: bytes, type_mime: str) -> bool:
+        """Confie un fichier au bot (MP3, pochette, extrait de voix), qui le garde un an :
+        l'application et le flux privé le lisent chez lui. nom : « 2026-10/….mp3 » ou « voix/….mp3 »."""
+        if not self.secret or not contenu:
+            return False
+        for _ in range(2):
+            try:
+                reponse = requests.put(f"{self.adresse}/api/fichier", params={"nom": nom}, data=contenu,
+                                       timeout=max(self.delai, 60),
+                                       headers={"X-Podcast-Secret": self.secret, "Content-Type": type_mime})
+                if reponse.status_code == 200:
+                    return bool(reponse.json().get("ok"))
+                if reponse.status_code in (400, 403, 404, 405, 413):
+                    return False   # bot d'avant (sans stockage) ou fichier refusé : inutile d'insister
+            except (requests.RequestException, ValueError):
+                continue
+        return False
 
     def evenement(self, evenement: dict[str, Any]) -> bool:
         if not self.secret:
