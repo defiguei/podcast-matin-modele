@@ -994,17 +994,21 @@ with tempfile.TemporaryDirectory() as dossier:
 
 # Les repères n'apparaissent que sous leur forme exacte : chez chacun, il n'en reste aucun
 # (une forme échappée, comme dans une expression régulière, échapperait au remplacement).
-with tempfile.TemporaryDirectory() as dossier:
-    copie = Path(dossier) / "copie"
-    copie.mkdir()
+# Vérifié dans le modèle seulement : un dépôt personnel peut avoir ses propres fichiers.
+def reperes_restants() -> list[str]:
     ignores = {"node_modules", ".git", ".wrangler", "__pycache__", "sortie", ".venv"}
-    with tempfile.TemporaryDirectory() as source_propre:
-        propre = Path(source_propre) / "modele"
+    with tempfile.TemporaryDirectory() as dossier:
+        propre, copie = Path(dossier) / "modele", Path(dossier) / "copie"
         shutil.copytree(PROJET, propre, ignore=lambda d, noms: [n for n in noms if n in ignores])
+        copie.mkdir()
         mise_a_jour.copier(propre, copie, "alice/podcast-matin", "podcast.alice.workers.dev")
-    restes = [str(f.relative_to(copie)) for f in copie.rglob("*") if f.is_file() and f.suffix in mise_a_jour.TEXTE
-              and f.name != "mise_a_jour.py"   # il garde les repères, écrits en deux morceaux
-              and ("TON-" "COMPTE" in f.read_text(encoding="utf-8", errors="replace") or "TON-" "SOUS-DOMAINE" in f.read_text(encoding="utf-8", errors="replace"))]
+        return [str(f.relative_to(copie)) for f in copie.rglob("*")
+                if f.is_file() and f.suffix in mise_a_jour.TEXTE
+                and f.name != "mise_a_jour.py"   # il garde les repères, écrits en deux morceaux
+                and any(r in f.read_text(encoding="utf-8", errors="replace") for r in ("TON-" "COMPTE", "TON-" "SOUS-DOMAINE"))]
+
+if mise_a_jour.REPERE_DEPOT in (PROJET / "cloudflare" / "wrangler.toml").read_text(encoding="utf-8"):
+    restes = reperes_restants()
     verifier(not restes, f"mise à jour : aucun repère du modèle ne reste chez chacun {restes}")
 
 # Mise à jour de bout en bout, sur des dépôts locaux (clone, envoi, repli sans « Workflows »).
