@@ -705,6 +705,10 @@ function vueAccueil() {
       <span class="pastille f-sortie" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center">${icone("idees", 20)}</span>
       <span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">Idées trouvées</span>
       <span class="sous" style="font-size:13px">${h(res.details.map((r) => r.titre || r.regle).join(" · "))}</span></span>${icone("suite", 18, 2)}</button>` : ""}
+  ${d.maj ? `<button type="button" class="episode-ligne" data-reglage="application">
+      <span class="pastille f-jour" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center">${icone("aube", 20)}</span>
+      <span style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600">Nouvelle version disponible</span>
+      <span class="sous" style="font-size:13px">${h(d.maj.titre || `Version ${d.maj.version}`)}</span></span>${icone("suite", 18, 2)}</button>` : ""}
   <button type="button" class="demander" data-aller="parler">${icone("bulle", 20)}<span>Demande-moi quelque chose…</span></button>
   ${d.annulation ? `<div class="annul"><span>Dernier changement : ${h(d.annulation)}</span><button type="button" class="lien" style="min-height:36px;padding:0 10px" data-action="annuler">Annuler</button></div>` : ""}
 `;
@@ -1714,7 +1718,17 @@ function vueReglage() {
           : `<p class="aide"><b>iPhone</b> (Safari) : bouton Partager › « Sur l'écran d'accueil ».<br><b>Android</b> (Chrome) : menu ⋮ › « Installer l'application » ou « Ajouter à l'écran d'accueil ».</p>
           <button type="button" class="bouton gris" data-action="deconnecter-appareil">Déconnecter cet appareil</button>`}
       </section>
-      <section class="carte"><h2>À propos</h2><p class="aide">Version ${h(d.version)}. Tout changement fait ici s'annule avec « Annuler » sur l'accueil, ou /annuler dans la conversation.</p>
+      <section class="carte" aria-labelledby="t-version"><h2 id="t-version">Version</h2>
+        <p class="aide">Tu as la version ${h(d.version)}. Tout changement fait ici s'annule avec « Annuler » sur l'accueil.</p>
+        ${d.maj_etat && d.maj_etat.etat === "en_cours" ? `<p class="aide" style="color:var(--aube-clair)">Mise à jour vers la version ${h(d.maj_etat.version)} en cours : compte deux à trois minutes, puis rouvre l'application.</p>` : ""}
+        ${d.maj_etat && d.maj_etat.etat === "erreur" ? `<p class="aide" style="color:var(--rouge)">La mise à jour n'a pas abouti : ${h(d.maj_etat.message)}</p>` : ""}
+        ${d.maj_etat && d.maj_etat.etat === "fait" && d.maj_etat.message ? `<p class="aide">Dernière mise à jour : ${h(d.maj_etat.message)}</p>` : ""}
+        ${d.maj ? `<div class="sous-bloc" style="background:var(--carte-2)"><strong>${h(d.maj.titre || "Nouvelle version")} · ${h(d.maj.version)}</strong>
+            ${d.maj.nouveautes.length ? `<ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:1.4">${d.maj.nouveautes.map((n) => `<li>${h(n)}</li>`).join("")}</ul>` : ""}
+            <p class="aide">Tes réglages, tes rubriques et tes épisodes sont gardés : seul le code change.</p>
+            <button type="button" class="bouton plein" data-action="mettre-a-jour">Mettre à jour</button></div>`
+          : `<button type="button" class="bouton gris" data-action="verifier-maj">Chercher une nouvelle version</button>`}
+        ${d.maj_modele === "prive" ? `<p class="aide">Le modèle n'est pas public : les mises à jour arriveront quand il le sera.</p>` : ""}
         <button type="button" class="bouton gris" data-action="recharger">Recharger les données</button></section>`,
   }[cle];
   return `${entete(titre, "Réglages")}${corps ? corps() : ""}`;
@@ -2115,6 +2129,8 @@ document.addEventListener("click", (ev) => {
     case "bienvenue-generer": return changer("generer", {}, () => {});
     case "creer-flux": return changer("flux", {});
     case "code-appareil": return changer("appareil_code", {});
+    case "verifier-maj": return changer("verifier_maj", {});
+    case "mettre-a-jour": return confirmer("Mettre à jour le code de ton podcast ? Tes réglages sont gardés.", () => changer("mettre_a_jour", {}));
     case "connecter-appareil": return connecterAppareil();
     case "deconnecter-appareil": return confirmer("Déconnecter cet appareil ? Il faudra un nouveau code pour le rouvrir.", () => { jetonAppareil.ecrire(""); vueConnexionAppareil(); });
     case "renouveler-flux": return confirmer("Changer l'adresse du flux ? L'ancienne ne marchera plus : il faudra ajouter la nouvelle dans ton appli de podcasts.", () => changer("flux", { renouveler: true }));

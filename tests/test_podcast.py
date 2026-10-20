@@ -961,6 +961,37 @@ for cle, valeur in anciens.items():
     else:
         os.environ[cle] = valeur
 
+# Le modèle annonce la version du bot (version.json = VERSION de cloudflare/src/etat.js).
+version_modele = json.loads((PROJET / "version.json").read_text(encoding="utf-8"))
+version_bot = re.search(r'export const VERSION = "([^"]+)"', (PROJET / "cloudflare" / "src" / "etat.js").read_text(encoding="utf-8")).group(1)
+verifier(version_modele["version"] == version_bot, f"version.json ({version_modele['version']}) = VERSION du bot ({version_bot})")
+
+# Mise à jour depuis le modèle : tout sauf les fichiers personnels, repères remplacés.
+import mise_a_jour
+with tempfile.TemporaryDirectory() as dossier:
+    modele, copie = Path(dossier) / "modele", Path(dossier) / "copie"
+    for base in (modele, copie):
+        (base / ".github" / "workflows").mkdir(parents=True)
+    (modele / "version.json").write_text(json.dumps({"version": "9", "supprimes": ["vieux.py", "memoire.json"]}), encoding="utf-8")
+    (modele / "podcast.py").write_text("DEPOT = 'TON-COMPTE/podcast-matin' ; BOT = 'https://podcast.TON-SOUS-DOMAINE.workers.dev'\n", encoding="utf-8")
+    (modele / "memoire.json").write_text("{}\n", encoding="utf-8")
+    (modele / "reglages.toml").write_text("fuseau_horaire = \"Europe/Zurich\"\n", encoding="utf-8")
+    (modele / ".github" / "workflows" / "a.yml").write_text("name: A\n", encoding="utf-8")
+    (copie / "memoire.json").write_text('{"dernier_episode": {"date": "2026-10-20"}}\n', encoding="utf-8")
+    (copie / "reglages.toml").write_text("fuseau_horaire = \"Europe/Paris\"\n", encoding="utf-8")
+    (copie / "vieux.py").write_text("x = 1\n", encoding="utf-8")
+    (copie / "outils.py").write_text("y = 2\n", encoding="utf-8")
+    changes, supprimes = mise_a_jour.copier(modele, copie, "alice/podcast-matin", "podcast.alice.workers.dev")
+    verifier("alice/podcast-matin" in (copie / "podcast.py").read_text() and "podcast.alice.workers.dev" in (copie / "podcast.py").read_text(),
+             "mise à jour : dépôt et adresse du bot de la personne")
+    verifier("dernier_episode" in (copie / "memoire.json").read_text() and "Paris" in (copie / "reglages.toml").read_text(),
+             "mise à jour : memoire.json et reglages.toml intacts")
+    verifier(supprimes == ["vieux.py"] and (copie / "outils.py").exists() and (copie / "memoire.json").exists(), f"mise à jour : seuls les fichiers retirés du modèle disparaissent ({supprimes})")
+    verifier(".github/workflows/a.yml" in changes, "mise à jour : fichiers d'automatisation copiés")
+    (copie / ".github" / "workflows" / "a.yml").unlink()
+    changes2, _ = mise_a_jour.copier(modele, copie, "alice/podcast-matin", "podcast.alice.workers.dev", sans_workflows=True)
+    verifier(changes2 == [] and not (copie / ".github" / "workflows" / "a.yml").exists(), "sans la permission Workflows : automatisation laissée de côté")
+
 print("\nRÉSULTAT :", "tout est vert ✅" if not echecs else f"{len(echecs)} échec(s) ❌")
 for e in echecs:
     print("  -", e)

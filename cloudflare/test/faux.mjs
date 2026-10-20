@@ -94,6 +94,10 @@ const serveur = http.createServer(async (req, res) => {
     appels.push({ service: "tavily" });
     return json(res, req.headers.authorization === "Bearer tvly-bonne" ? 200 : 401, { results: [] });
   }
+  if (p === "/brut/auteur/modele/main/version.json") {
+    appels.push({ service: "modele" });
+    return json(res, 200, { version: "2099-01-01.1", titre: "Plus tard", nouveautes: ["Une nouveauté", "Une autre"] });
+  }
   if (p === "/sncf/v1/coverage/sncf") return json(res, req.headers.authorization === "sncf-bonne" ? 200 : 401, {});
   if (p === "/ics/perso.ics") {
     res.writeHead(200, { "Content-Type": "text/calendar" });

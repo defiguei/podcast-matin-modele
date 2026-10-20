@@ -1272,6 +1272,25 @@ await scenario("Hors de Telegram : appareils, manifeste, icônes", async () => {
   verifier((await connexion(code2)).ok === false, "cinq erreurs : code bloqué");
 });
 
+await scenario("Mises à jour depuis le modèle", async () => {
+  let r = await app("verifier_maj");
+  verifier(r.ok && r.donnees.maj?.version === "2099-01-01.1" && r.donnees.maj.nouveautes.length === 2 && r.donnees.maj_modele === "ok", "nouvelle version vue", r.donnees.maj);
+  verifier((await obtenir(`${BOT}/api/maj`, { headers: { "X-Podcast-Secret": SECRET } })).statut === 403, "pas de jeton hors d'une mise à jour");
+  await vider();
+  r = await app("mettre_a_jour");
+  const lance = lancements(await appels()).find((a) => a.workflow === "mettre-a-jour.yml");
+  verifier(r.ok && lance?.entrees?.version === "2099-01-01.1" && lance.entrees.modele === "auteur/modele" && lance.entrees.adresse, "mise à jour lancée", lance);
+  verifier((await appels()).some((a) => a.methode === "ecrire" && a.chemin === "preferences.json"), "réglages sauvegardés avant la mise à jour");
+  verifier((await app("mettre_a_jour")).ok === false, "pas deux mises à jour à la fois");
+  const jeton = JSON.parse((await obtenir(`${BOT}/api/maj`, { headers: { "X-Podcast-Secret": SECRET } })).texte);
+  verifier(jeton.jeton === "gh-test", "jeton donné au workflow pendant la mise à jour");
+  verifier((await obtenir(`${BOT}/api/maj`)).statut === 403, "jamais sans le secret partagé");
+  await envoyerJson(`${BOT}/api/evenement`, { type: "maj", ok: true, version: "2099-01-01.1", message: "12 fichier(s) mis à jour." }, { "X-Podcast-Secret": SECRET });
+  r = await app("etat");
+  verifier(r.donnees.maj_etat?.etat === "fait" && r.donnees.maj_etat.message.includes("12"), "fin de mise à jour signalée", r.donnees.maj_etat);
+  verifier((await obtenir(`${BOT}/api/maj`, { headers: { "X-Podcast-Secret": SECRET } })).statut === 403, "jeton refusé une fois la mise à jour finie");
+});
+
 await scenario("Pays : réglage et reprise des anciennes installations", async () => {
   // Choisir la France : fuseau, devise, médias par défaut et jours fériés suivent.
   const avant = (await etat()).config;

@@ -21,17 +21,29 @@ import { CLES, testerCle, lireAgenda, identifiantAgenda, resumeConnexions } from
 import { fluxRss, chapitresJson, episodeDeCle, jetonValide, nouveauJeton } from "./flux.js";
 import { donneesApp, champsDepuisFormulaire, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, nettoyerEquipe, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-20.2";
+export const VERSION = "2026-10-21.1";
 const MAX_REFAITS = 6;
 const LONGUEURS_VALIDES = ["phrase", "courte", "developpee"];
 const MAX_RECHERCHES = 15;
 const MAX_EPISODES = 60;      // historique gardé pour l'application (calendrier des épisodes)
 
-const NOUVEAUTES = `📱 <b>Tout ton podcast tient maintenant dans l'application.</b>
+const NOUVEAUTES = `📱 <b>Nouvelle version de ton podcast : tout se règle dans l'application.</b>
 
-Écoute les épisodes avec leurs chapitres, donne ton avis, règle le planning, la voix, les actus, les consignes et tes rubriques, lance des recherches, ou demande ce que tu veux en une phrase : tout se fait depuis l'application.
+• <b>Épisode</b> : toutes tes rubriques dans l'ordre, chacune avec sa fiche ; « + » ajoute une fête du prénom, la météo, un rappel selon l'agenda, une idée de sortie…
+• <b>Idées</b> : tes recherches de sorties, à part.
+• <b>Réglages</b> : ton pays, tes clés et tes agendas se gèrent maintenant ici.
+• Écoute aussi ton podcast dans Apple Podcasts ou AntennaPod, ou ouvre l'application hors de Telegram (Réglages › Application).
 
-Cette conversation devient calme : chaque matin, tu y reçois ton épisode, avec un bouton pour l'ouvrir dans l'application. Tu peux toujours m'écrire ici si tu préfères.`;
+Chaque matin, tu reçois ici ton épisode, avec un bouton pour l'ouvrir dans l'application.`;
+
+// « 2026-10-21.1 » est plus récente que « 2026-10-20.2 ».
+export function plusRecente(a, b) {
+  const x = String(a || "").split(/[-.]/).map(Number), y = String(b || "").split(/[-.]/).map(Number);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+  }
+  return false;
+}
 
 export class Etat extends DurableObject {
   constructor(ctx, env) {
@@ -94,6 +106,7 @@ export class Etat extends DurableObject {
       }
       if (url.pathname === "/api/config") return Response.json(await this.enFile(() => this.exporterConfig()));
       if (url.pathname === "/flux") return await this.enFile(() => this.servirFlux(url.searchParams));
+      if (url.pathname === "/api/maj") return await this.enFile(() => this.jetonPourMaj());
       if (url.pathname === "/appareil/connexion") { const corps = await requete.json().catch(() => ({})); return Response.json(await this.enFile(() => this.connecterAppareil(corps))); }
       if (url.pathname === "/appareil/verifier") return Response.json(await this.enFile(() => this.verifierAppareil(url.searchParams.get("e") || "")));
       if (url.pathname === "/api/evenement") {
@@ -1351,6 +1364,12 @@ export class Etat extends DurableObject {
       await this.ecrireEtat(etat);
       await this.sauvegarder(config).catch((erreur) => console.log("Sauvegarde :", erreur.message));
     }
+    // Une fois par jour : une nouvelle version du modèle ?
+    if (this.env.MODELE && etat.maj_verifie !== m.date && m.heure >= "04:00") {
+      etat.maj_verifie = m.date;
+      await this.verifierMaj(etat);
+      await this.ecrireEtat(etat);
+    }
     // Jours fériés téléchargés (hors Vaud et France) : on garde l'année en cours et la suivante.
     const region = config.planning.feries_region || "CH-VD";
     const annee = Number(m.date.slice(0, 4));
@@ -1522,6 +1541,9 @@ export class Etat extends DurableObject {
       // Premier lancement : rien de personnel encore réglé.
       bienvenue: !etat.bienvenue_faite && !config.voix.prenom && !config.actus.ville && !config.regles.length,
       flux: this.adresseFlux(etat),
+      maj: etat.maj && plusRecente(etat.maj.version, VERSION) ? etat.maj : null,
+      maj_etat: etat.maj_etat ? { etat: etat.maj_etat.etat, version: etat.maj_etat.version, message: etat.maj_etat.message || "" } : null,
+      maj_modele: etat.maj_modele || null,
       adresse_app: `${etat.adresse || this.env.ADRESSE || ""}/app`,
       appareils: (etat.appareils || []).map((a) => ({ id: a.id, nom: a.nom, cree_le: a.cree_le, vu_le: a.vu_le })),
       code_appareil: etat.code_appareil && etat.code_appareil.expire > Date.now() && etat.code_appareil.essais < 5
@@ -1754,6 +1776,26 @@ export class Etat extends DurableObject {
           await this.ecrireEtat(etat);
           return reponse({ message: "Appareil retiré : il devra entrer un nouveau code." });
         }
+        case "verifier_maj":
+          await this.verifierMaj(etat);
+          etat.maj_verifie = ctx.aujourdHui;
+          await this.ecrireEtat(etat);
+          return reponse({ message: etat.maj_modele === "prive" ? "Le modèle n'est pas public : pas de mise à jour possible pour l'instant."
+            : etat.maj_modele !== "ok" ? "Le modèle ne répond pas : réessaie plus tard."
+            : etat.maj && plusRecente(etat.maj.version, VERSION) ? `Version ${etat.maj.version} disponible.` : "Tu as la dernière version." });
+        case "mettre_a_jour": {
+          if (!etat.maj || !plusRecente(etat.maj.version, VERSION)) return refus("Pas de nouvelle version pour l'instant.");
+          if (etat.maj_etat?.etat === "en_cours" && Date.now() - etat.maj_etat.depuis < 15 * 60 * 1000) return refus("Une mise à jour est déjà en cours.");
+          await this.sauvegarder(config).catch(() => {});   // réglages en lieu sûr d'abord
+          try {
+            await this.gh.lancer("mettre-a-jour.yml", { version: etat.maj.version, modele: this.env.MODELE, adresse: etat.adresse || this.env.ADRESSE || "" });
+          } catch (erreur) {
+            return refus("GitHub refuse de lancer « Mettre à jour » : ce dépôt n'a peut-être pas encore ce workflow (voir docs/MISE-A-JOUR.md).");
+          }
+          etat.maj_etat = { etat: "en_cours", depuis: Date.now(), version: etat.maj.version };
+          await this.ecrireEtat(etat);
+          return reponse({ message: "Mise à jour lancée : compte deux à trois minutes, puis rouvre l'application." });
+        }
         case "flux": {
           if (!etat.flux_jeton || demande.renouveler) etat.flux_jeton = nouveauJeton();
           await this.ecrireEtat(etat);
@@ -1921,6 +1963,34 @@ export class Etat extends DurableObject {
     return { ok: true, id: appareil.id };
   }
 
+  // ───────────────────────── mises à jour du code ─────────────────────────────
+  // Le modèle (dépôt public MODELE) publie version.json ; le bouton « Mettre à jour »
+  // lance le workflow qui recopie le code dans ton dépôt, sans tes fichiers à toi.
+
+  async verifierMaj(etat) {
+    const modele = this.env.MODELE;
+    if (!modele) return;
+    try {
+      const r = await fetch(`${this.env.MODELE_BRUT || "https://raw.githubusercontent.com"}/${modele}/main/version.json`, { headers: { "Cache-Control": "no-cache" } });
+      if (!r.ok) { etat.maj_modele = r.status === 404 ? "prive" : "injoignable"; return; }
+      const v = await r.json();
+      etat.maj_modele = "ok";
+      etat.maj = plusRecente(v.version, VERSION) ? { version: String(v.version).slice(0, 20), titre: String(v.titre || "").slice(0, 120),
+        nouveautes: (Array.isArray(v.nouveautes) ? v.nouveautes : []).slice(0, 8).map((x) => String(x).slice(0, 300)), date: String(v.date || "").slice(0, 10) } : null;
+    } catch {
+      etat.maj_modele = "injoignable";
+    }
+  }
+
+  // Le jeton GitHub du bot, pour pousser aussi les fichiers d'automatisation :
+  // seulement pendant une mise à jour demandée dans l'application (30 minutes).
+  async jetonPourMaj() {
+    const etat = await this.lireEtat();
+    const enCours = etat.maj_etat?.etat === "en_cours" && Date.now() - etat.maj_etat.depuis < 30 * 60 * 1000;
+    if (!enCours || !this.env.GITHUB_TOKEN) return new Response("interdit", { status: 403 });
+    return Response.json({ jeton: this.env.GITHUB_TOKEN });
+  }
+
   // ───────────────────────── flux privé du podcast ────────────────────────────
 
   adresseFlux(etat) {
@@ -2009,6 +2079,12 @@ export class Etat extends DurableObject {
     if (ev.type === "modeles") {
       const legers = (ev.rapides || []).filter((m) => typeof m === "string" && /^gemini-[\d.]+-flash-lite/.test(m)).slice(0, 3);
       if (legers.length) etat.modeles_legers = legers;
+      await this.ecrireEtat(etat);
+      return { ok: true };
+    }
+    if (ev.type === "maj") {
+      etat.maj_etat = { etat: ev.ok ? "fait" : "erreur", depuis: Date.now(), version: String(ev.version || "").slice(0, 20),
+                        message: String(ev.message || "").slice(0, 300) };
       await this.ecrireEtat(etat);
       return { ok: true };
     }

@@ -10,6 +10,8 @@ keep_vars = true
 [vars]
 DEPOT = "TON-COMPTE/podcast-matin"
 ADRESSE = "https://podcast.TON-SOUS-DOMAINE.workers.dev"
+# Dépôt public d'où viennent les mises à jour (bouton « Mettre à jour » de l'application).
+MODELE = "defiguei/podcast-matin-modele"
 
 # Filet de sécurité : le bot se réveille de lui-même à l'heure des épisodes
 # (alarme du Durable Object) ; ce tic horaire vérifie juste que tout est en place.

@@ -1,0 +1,15 @@
+{
+  "version": "2026-10-21.1",
+  "date": "2026-10-21",
+  "titre": "Tout se règle dans l'application",
+  "nouveautes": [
+    "« Ton épisode » : toutes les rubriques dans l'ordre, chacune avec sa fiche (rubriques fournies comprises).",
+    "Catalogue de rubriques : fête du prénom, journée du jour, météo, rappel selon l'agenda, mon train, actu d'un thème, idée de sortie.",
+    "Onglet Idées pour les recherches de sorties ; consignes réservées au style.",
+    "Le pays est un réglage (Suisse, France, Belgique) : heure, jours fériés, devise et médias suivent.",
+    "Clés et agendas se règlent dans Réglages › Connexions.",
+    "Ton podcast dans Apple Podcasts ou AntennaPod, et l'application hors de Telegram.",
+    "Mises à jour en un bouton, sans toucher à tes réglages."
+  ],
+  "supprimes": ["cloudflare/worker.js", ".github/workflows/retours.yml"]
+}

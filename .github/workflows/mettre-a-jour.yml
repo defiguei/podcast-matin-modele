@@ -1,0 +1,52 @@
+name: Mettre à jour
+run-name: Mise à jour depuis le modèle (${{ inputs.version }})
+
+# Lancé par le bouton « Mettre à jour » de l'application : recopie le code du
+# modèle dans ce dépôt, sans toucher à memoire.json, preferences.json ni
+# reglages.toml (tes réglages vivent dans ton bot). Le bot redémarre ensuite.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version proposée par le modèle (remplie par le bot)"
+        required: true
+        type: string
+      modele:
+        description: "Dépôt modèle, ex. auteur/podcast-matin-modele (rempli par le bot)"
+        required: true
+        type: string
+      adresse:
+        description: "Adresse de ton bot (remplie par le bot)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: mettre-a-jour
+  cancel-in-progress: false
+
+jobs:
+  maj:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v6
+
+      - name: Installer requests
+        run: |
+          python3 -m venv /tmp/venv
+          /tmp/venv/bin/pip install --quiet --disable-pip-version-check requests
+
+      - name: Recopier le modèle
+        env:
+          MODELE: ${{ inputs.modele }}
+          VERSION: ${{ inputs.version }}
+          ADRESSE: ${{ inputs.adresse }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: /tmp/venv/bin/python mise_a_jour.py
