@@ -1,0 +1,54 @@
+name: Recherche
+run-name: ${{ format('Recherche {0} ({1})', inputs.regles, inputs.format || 'ecrit') }}
+
+# Lancée par le bot (« 📝 Résultats écrits » ou « 🎧 Mini-podcast » sur une
+# règle) : idées concrètes avec photos, lieux sur la carte, liens et sondage,
+# ou un mini-podcast qui les présente.
+
+on:
+  workflow_dispatch:
+    inputs:
+      regles:
+        description: "Règles à traiter, ex. R5,R6"
+        required: true
+        type: string
+      format:
+        description: "ecrit ou audio"
+        required: false
+        default: "ecrit"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: recherche
+  cancel-in-progress: false
+
+env:
+  BOT_URL: ${{ vars.BOT_URL || 'https://podcast.TON-SOUS-DOMAINE.workers.dev' }}
+
+jobs:
+  recherche:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v6
+
+      - name: Installer les dépendances
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet --disable-pip-version-check -r requirements.txt
+
+      - name: Chercher et envoyer les résultats
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CALENDAR_ICS_URL: ${{ secrets.CALENDAR_ICS_URL }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          SNCF_API_KEY: ${{ secrets.SNCF_API_KEY }}
+          RECHERCHE: ${{ inputs.regles }}
+          FORMAT: ${{ inputs.format }}
+        run: .venv/bin/python podcast.py

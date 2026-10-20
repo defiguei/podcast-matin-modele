@@ -1,0 +1,51 @@
+name: Tests
+
+on:
+  push:
+    branches-ignore: [sondes]
+    paths-ignore: ["memoire.json", "preferences.json", "**.md"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v6
+      - name: Installer les dépendances
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet --disable-pip-version-check -r requirements.txt pyflakes
+      - name: Vérifier le code
+        run: .venv/bin/pyflakes *.py tests/*.py
+      - name: Tests de l'usine (hors ligne)
+        run: .venv/bin/python tests/test_podcast.py && .venv/bin/python tests/test_regles.py
+
+  bot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: cloudflare
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v6
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cloudflare/package-lock.json
+      - name: Installer wrangler
+        run: npm ci --no-audit --no-fund
+      - name: Tests du bot (bout en bout, faux services)
+        run: npm test

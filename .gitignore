@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+sortie/
+cloudflare/node_modules
+cloudflare/.wrangler/
+cloudflare/.dev.vars

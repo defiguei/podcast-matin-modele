@@ -1,0 +1,40 @@
+name: Extraits de voix
+run-name: ${{ format('Extraits de voix ({0})', inputs.voix) }}
+
+# Lancé par le bot (« 🎧 Écouter les voix conseillées ») : deux voix par
+# extrait, pour ménager le quota gratuit de la synthèse vocale.
+
+on:
+  workflow_dispatch:
+    inputs:
+      voix:
+        description: "Voix, ex. Aoede,Kore,Puck,Charon (8 au plus)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  BOT_URL: ${{ vars.BOT_URL || 'https://podcast.TON-SOUS-DOMAINE.workers.dev' }}
+
+jobs:
+  extraits:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v6
+
+      - name: Installer les dépendances
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet --disable-pip-version-check -r requirements.txt
+
+      - name: Préparer et envoyer les extraits
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ECHANTILLONS: ${{ inputs.voix }}
+        run: .venv/bin/python podcast.py

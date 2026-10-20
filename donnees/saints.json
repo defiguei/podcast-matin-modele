@@ -1,0 +1,1663 @@
+{
+ "source": "data.gouv.fr — « Les saints et fêtes du calendrier », Licence Ouverte",
+ "jours": {
+  "01-01": [
+   "Jour de l'an",
+   "Ste-Marie Mère de Dieu",
+   "Ste-Euphrosine",
+   "St-Odilon"
+  ],
+  "01-02": [
+   "St-Adélard (ou Adalhard)",
+   "St-Basile le Grand",
+   "St-Grégoire de Nazianze (le Jeune)",
+   "St-Macaire le Jeune"
+  ],
+  "01-03": [
+   "Ste-Bertille",
+   "St-Daniel",
+   "Ste-Geneviève"
+  ],
+  "01-04": [
+   "Ste-Angèle de Foligno",
+   "St-Grégoire de Langres",
+   "St-Marcien",
+   "St-Robert de Reims"
+  ],
+  "01-05": [
+   "Ste-Emilienne",
+   "St-Télesphore"
+  ],
+  "01-06": [
+   "St-Balthazar",
+   "St-Gaspard",
+   "St-Guérin",
+   "St-Melaine de Rennes",
+   "St-Melchior"
+  ],
+  "01-07": [
+   "St-Aldric",
+   "St-Canut Lavard",
+   "St-Raymond de Penyafort",
+   "St-Reynold"
+  ],
+  "01-08": [
+   "Ste-Gudule",
+   "St-Lucien"
+  ],
+  "01-09": [
+   "St-Adrien de Canterbury",
+   "St-Julien l'Hospitalier"
+  ],
+  "01-10": [
+   "St-Guillaume de Bourges",
+   "Ste-Séthride"
+  ],
+  "01-11": [
+   "Ste-Fidelmie",
+   "St-Théodose le Cénobiarque"
+  ],
+  "01-12": [
+   "St-Arcade",
+   "Ste-Césarie",
+   "Ste-Tatienne (ou Tatiana)"
+  ],
+  "01-13": [
+   "St-Hilaire de Poitiers",
+   "St-Léonce de Césarée"
+  ],
+  "01-14": [
+   "St-Engelmar",
+   "St-Félix de Nole",
+   "Ste-Macrine l'Ancienne"
+  ],
+  "01-15": [
+   "St-Paul l'Ermite",
+   "Ste-Tarcice"
+  ],
+  "01-16": [
+   "St-Marcel 1er"
+  ],
+  "01-17": [
+   "St-Antoine le Grand",
+   "St-Sulpice le Pieux"
+  ],
+  "01-18": [
+   "Ste-Prisque (ou Prisca)",
+   "Ste-Thècle"
+  ],
+  "01-19": [
+   "St-Canut",
+   "Ste-Messaline",
+   "Ste-Pia"
+  ],
+  "01-20": [
+   "St-Fabien",
+   "St-Sébastien"
+  ],
+  "01-21": [
+   "Ste-Agnès de Rome",
+   "St-Fructueux"
+  ],
+  "01-22": [
+   "St-Vincent Pallotti",
+   "St-Vincent, Diacre"
+  ],
+  "01-23": [
+   "St-Barnard",
+   "Ste-Erémentienne",
+   "St-Ildefonse de Tolède",
+   "Ste-Lufthilde"
+  ],
+  "01-24": [
+   "St-François de Sales"
+  ],
+  "01-25": [
+   "Converstion de St-Paul"
+  ],
+  "01-26": [
+   "St-Timothée",
+   "St-Tite"
+  ],
+  "01-27": [
+   "Ste-Angèle de Mérici",
+   "St-Julien du Mans"
+  ],
+  "01-28": [
+   "St-Callinique",
+   "Ste-Cannera"
+  ],
+  "01-29": [
+   "St-Gildas le Sage",
+   "St-Valère",
+   "St-Sulpice"
+  ],
+  "01-30": [
+   "Ste-Aldegonde",
+   "Ste-Hyacinthe de Mariscotti",
+   "Ste-Martine"
+  ],
+  "01-31": [
+   "St-Cyrus",
+   "St-Eusèbe, ermite",
+   "St-Jean Bosco",
+   "Ste-Marcelle",
+   "St-Zotique"
+  ],
+  "02-01": [
+   "Ste-Brigitte de Kildare",
+   "St-Jean de la Grille",
+   "St-Sévère de Ravenne"
+  ],
+  "02-02": [
+   "St-Adalbaud",
+   "Chandeleur",
+   "Ste Hadéloge"
+  ],
+  "02-03": [
+   "St-Anschaire",
+   "St-Blaise de Sébaste"
+  ],
+  "02-04": [
+   "St-André Corsini",
+   "St-Gilbert de Sempringham",
+   "Ste-Jeanne de Valois"
+  ],
+  "02-05": [
+   "Ste-Agathe de Catane"
+  ],
+  "02-06": [
+   "Ste-Dorothée",
+   "St-Paul Miki"
+  ],
+  "02-07": [
+   "Ste-Julienne de Bologne",
+   "St-Chryseuil"
+  ],
+  "02-08": [
+   "St-Jean de Matha",
+   "St-Jérôme Emiliani"
+  ],
+  "02-09": [
+   "Ste-Apolline"
+  ],
+  "02-10": [
+   "Ste-Scholastique"
+  ],
+  "02-11": [
+   "St-Adolphe",
+   "Notre-Dame de Lourdes"
+  ],
+  "02-12": [
+   "Ste-Eulalie de Barcelone"
+  ],
+  "02-13": [
+   "Ste-Béatrice d'Ornacieux",
+   "St-Polyeucte"
+  ],
+  "02-14": [
+   "St-Méthode",
+   "St-Valentin"
+  ],
+  "02-15": [
+   "St-Faustin",
+   "St-Jovite"
+  ],
+  "02-16": [
+   "Ste-Julienne de Nicomédie",
+   "St-Onésime"
+  ],
+  "02-17": [
+   "St Polychrone",
+   "St-Théodule"
+  ],
+  "02-18": [
+   "St-Claude",
+   "St-Flavien de Constantinople",
+   "St-Fructule",
+   "Ste-Gertrude Comensoli"
+  ],
+  "02-19": [
+   "St-Boniface de Lausanne",
+   "St-Conrad de Plaisance",
+   "St-Gabin de Rome"
+  ],
+  "02-20": [
+   "Ste-Aimée"
+  ],
+  "02-21": [
+   "St-Pierre Damien"
+  ],
+  "02-22": [
+   "Chaire St-Pierre Apôtre",
+   "Ste Marguerite de Cortone"
+  ],
+  "02-23": [
+   "St-Lazare",
+   "St-Polycarpe de Smyrne"
+  ],
+  "02-24": [
+   "St-Modeste",
+   "Ste-Primitive"
+  ],
+  "02-25": [
+   "St-Césaire de Nazianze",
+   "St-Tarasius",
+   "Ste-Walburge"
+  ],
+  "02-26": [
+   "St-Alexandre",
+   "St-Nestor"
+  ],
+  "02-27": [
+   "St-Gabriel de l'Addolorata",
+   "Ste-Honorine"
+  ],
+  "02-28": [
+   "St-Hilaire, pape",
+   "St-Romain de Condat",
+   "St-Théophile d'Adana"
+  ],
+  "02-29": [
+   "St-Oswald de Worcester"
+  ],
+  "03-01": [
+   "St-Albin d'Anvers",
+   "St-Charles le bon",
+   "St-Guénolé",
+   "Ste-Cunégonde"
+  ],
+  "03-02": [
+   "St-Siméon le Juste"
+  ],
+  "03-03": [
+   "Ste-Cunégonde"
+  ],
+  "03-04": [
+   "St-Casimir"
+  ],
+  "03-05": [
+   "St-Eusèbe de Crémone",
+   "St-Jean-Joseph de la Croix",
+   "Ste-Olive",
+   "St-Théophile de Césarée"
+  ],
+  "03-06": [
+   "Ste-Agnès de Bohème",
+   "St-Chrodegang (ou Rotgang)",
+   "Ste-Colette de Corbie",
+   "St-Fridolin"
+  ],
+  "03-07": [
+   "Ste-Félicité",
+   "Ste-Perpétue",
+   "St-Révocat",
+   "St-Saturnin",
+   "St-Secondule",
+   "St-Thomas D'Aquin"
+  ],
+  "03-08": [
+   "St-Jean de Dieu",
+   "St-Julien de Tolède"
+  ],
+  "03-09": [
+   "Ste-Catherine de Bologne",
+   "St-Dominique Savio",
+   "Ste-Françoise Romaine",
+   "St-Grégoire de Nysse"
+  ],
+  "03-10": [
+   "St-Crescent",
+   "St-Droctovée"
+  ],
+  "03-11": [
+   "St-Euloge de Cordoue",
+   "St-Euthyme de Sardes"
+  ],
+  "03-12": [
+   "St-Maximilien de théveste",
+   "Ste-Séraphine"
+  ],
+  "03-13": [
+   "Ste-Euphrasie",
+   "St-Roderick"
+  ],
+  "03-14": [
+   "Ste-Mathilde"
+  ],
+  "03-15": [
+   "St-Longin",
+   "Ste-Louise de Marillac"
+  ],
+  "03-16": [
+   "Ste-Eusébie",
+   "St-Héribert"
+  ],
+  "03-17": [
+   "Ste-Gertrude de Nivelle",
+   "St-Patrick d'Irlande"
+  ],
+  "03-18": [
+   "St-Cyrille de Jérusalem"
+  ],
+  "03-19": [
+   "St-Joseph"
+  ],
+  "03-20": [
+   "St-Herbert",
+   "St-Rémy de Strasbourg",
+   "St-Wulfran"
+  ],
+  "03-21": [
+   "St-Birillus",
+   "St-Endée",
+   "St-Philémon"
+  ],
+  "03-22": [
+   "Ste-Léa",
+   "St-Octavien"
+  ],
+  "03-23": [
+   "St-Toribio de Mogrovejo",
+   "St-Victorien"
+  ],
+  "03-24": [
+   "Ste-Catherine de Suède",
+   "St-Pigmène",
+   "St-Romule"
+  ],
+  "03-25": [
+   "St-Dismas",
+   "St-Humbert"
+  ],
+  "03-26": [
+   "St-Bathuse",
+   "St-Dizier",
+   "St-Emmanuel"
+  ],
+  "03-27": [
+   "St-Jean d'Egypte",
+   "St-Rupert de Salzbourg"
+  ],
+  "03-28": [
+   "St-Gontran, roi de Bourgogne",
+   "Ste-Gundelinde"
+  ],
+  "03-29": [
+   "Ste-Gladys",
+   "St-Ludolphe"
+  ],
+  "03-30": [
+   "St-Amédée IX",
+   "St-Jean Climaque"
+  ],
+  "03-31": [
+   "Ste-Balbine",
+   "St-Benjamin"
+  ],
+  "04-01": [
+   "Ste-Catherine Thomas",
+   "St-Hugues de Grenoble"
+  ],
+  "04-02": [
+   "St-François de Paule",
+   "Ste-Théodosie",
+   "St-Urbain de Langres"
+  ],
+  "04-03": [
+   "Ste-Agape",
+   "St-Richard de Chichester"
+  ],
+  "04-04": [
+   "St-Benoît Le More",
+   "St-Isidore de Séville"
+  ],
+  "04-05": [
+   "Ste-Ethelburge",
+   "St-Gérard de Sauve-Majeure",
+   "St-Vincent Ferrier"
+  ],
+  "04-06": [
+   "St-Amand",
+   "St-Marcellin de Carthage",
+   "Ste-Modérate"
+  ],
+  "04-07": [
+   "St-Hégésippe",
+   "St-Jean Baptiste de la Salle"
+  ],
+  "04-08": [
+   "St-Hérodion",
+   "Ste-Julie Billart"
+  ],
+  "04-09": [
+   "St-Gautier",
+   "St-Marcel",
+   "Ste-Marie de Cléophas"
+  ],
+  "04-10": [
+   "St-Badème",
+   "St-Ezéchiel",
+   "St-Fulbert"
+  ],
+  "04-11": [
+   "Ste-Gemma Galgani",
+   "St-Stanislas"
+  ],
+  "04-12": [
+   "St-Jules 1er",
+   "St-Wigbert"
+  ],
+  "04-13": [
+   "St-Hermenegild",
+   "St-Martin 1er"
+  ],
+  "04-14": [
+   "Ste-Lidwine",
+   "St-Maxime",
+   "St-Valérien"
+  ],
+  "04-15": [
+   "Ste-Anastasie",
+   "Ste-Basilisse",
+   "St-Paterne"
+  ],
+  "04-16": [
+   "St-Benoît-Joseph Labre",
+   "Ste-Bernadette Soubirous",
+   "St-Crémence",
+   "St-Drogon",
+   "Ste-Encratide"
+  ],
+  "04-17": [
+   "St-Anicet",
+   "St-Hermogène",
+   "St-Wandon"
+  ],
+  "04-18": [
+   "St-Eleuthère",
+   "St-Parfait"
+  ],
+  "04-19": [
+   "St-Expédit",
+   "St-Ursmer"
+  ],
+  "04-20": [
+   "Ste-Agnès de Monte Pulciano",
+   "Ste-Hildegonde",
+   "St-Théodore Trichinas",
+   "St-Théotime le Philosophe"
+  ],
+  "04-21": [
+   "St-Anselme de Cantorbéry",
+   "St-Conrad de Parhzam"
+  ],
+  "04-22": [
+   "St-Alexandre",
+   "St-Caïus",
+   "Ste-Léonide",
+   "St-Soter",
+   "Ste-Tarbula"
+  ],
+  "04-23": [
+   "St-Fortunat",
+   "St-Georges de Lydda",
+   "Ste-Pusinne"
+  ],
+  "04-24": [
+   "Ste-Beuve",
+   "St-Fidèle de Sigmaringen"
+  ],
+  "04-25": [
+   "St-Marc, apôre",
+   "St-Phébade"
+  ],
+  "04-26": [
+   "St-Clet (ou Anaclet)",
+   "Ste-Exupérance",
+   "St-Marcellin"
+  ],
+  "04-27": [
+   "St-Anthime",
+   "Ste-Zita"
+  ],
+  "04-28": [
+   "St-Pierre Chanel",
+   "Ste-Prudence",
+   "St-Vital de Milan"
+  ],
+  "04-29": [
+   "Ste-Catherine de Sienne",
+   "St-Pierre de Vérone"
+  ],
+  "04-30": [
+   "St-Pie V",
+   "Ste-Sophie"
+  ],
+  "05-01": [
+   "St-Caprais",
+   "St-Clair",
+   "St-Justin le Philosophe",
+   "St-Marcellin",
+   "St-Pierre"
+  ],
+  "05-02": [
+   "Ste-Blandine",
+   "St-Erasme",
+   "St-Eugène 1er",
+   "St-Marcellin",
+   "St-Pothin",
+   "St-Sadoc"
+  ],
+  "05-03": [
+   "St-Charles Lwanga",
+   "Ste-Clotilde",
+   "St-Kévin"
+  ],
+  "05-04": [
+   "Ste-Burienne",
+   "St-François de Caracciolo",
+   "St-Métrophane",
+   "St-Quirin",
+   "St-Rutilus"
+  ],
+  "05-05": [
+   "St-Boniface",
+   "St-Dorothée de Tyr",
+   "St-Dorothée l'Archimandrite",
+   "St-Dorothée le Jeune",
+   "Ste-Marcia",
+   "Ste-Valérie"
+  ],
+  "05-06": [
+   "St-Bertrand",
+   "St-Marcellin Champagnat",
+   "St-Norbert de Xanten",
+   "Ste-Pauline"
+  ],
+  "05-07": [
+   "St-Mériadec",
+   "Ste-Potamienne la Jeune"
+  ],
+  "05-08": [
+   "Ste-Eustadiole",
+   "St-Médard de Noyon",
+   "Ste-Mélanie l'Ancienne"
+  ],
+  "05-09": [
+   "St-Cumian",
+   "St-Ephrem le Syrien",
+   "St-Félicien",
+   "St-Prime"
+  ],
+  "05-10": [
+   "St-Bogomile",
+   "St-Gétule",
+   "St-Landry"
+  ],
+  "05-11": [
+   "St-Barnabé, apôtre",
+   "St-Hérébald"
+  ],
+  "05-12": [
+   "St-Gaspard Bertoni",
+   "St-Gerbaud",
+   "St-Guy"
+  ],
+  "05-13": [
+   "St-Antoine de Padoue",
+   "Ste-Aquiline",
+   "St-Fandilas",
+   "St-Pérégrin",
+   "St-Triphyllius"
+  ],
+  "05-14": [
+   "St-Elisée",
+   "St-Rufin",
+   "St-Valère"
+  ],
+  "05-15": [
+   "Ste Bénilde",
+   "Ste-Eutrope",
+   "Ste-Germaine Cousin"
+  ],
+  "05-16": [
+   "St-Cyr",
+   "Ste-Lutgarde",
+   "St-Simplice de Bourges"
+  ],
+  "05-17": [
+   "St-Hervé",
+   "St-Raynier"
+  ],
+  "05-18": [
+   "St-Amand de Bordeaux",
+   "St-Léonce de Tripoli"
+  ],
+  "05-19": [
+   "St-Gervais",
+   "St-Innocent",
+   "St-Romuald"
+  ],
+  "05-20": [
+   "Ste-Florence",
+   "Ste-Hélène",
+   "St-Sylvère"
+  ],
+  "05-21": [
+   "St-Aloysius de Gonzague (ou Louis)",
+   "St-Démétrie",
+   "St-Eusèbe de Samosate",
+   "St-Radulphe"
+  ],
+  "05-22": [
+   "St-Jean Fisher",
+   "St-Paulin de Nole",
+   "St-Thomas Moore"
+  ],
+  "05-23": [
+   "Ste-Etheldrède",
+   "St-Libert"
+  ],
+  "05-24": [
+   "Jean le Baptiste (naissance de)"
+  ],
+  "05-25": [
+   "St-Adalbert d'Egmond",
+   "Ste-Fébronie",
+   "St-Gallican",
+   "St-Guillaume d'Orange, dit le Grand",
+   "St-Maxime de Turin",
+   "St-Molock",
+   "St-Prosper",
+   "Sts-Salomon Ier et Salomon III"
+  ],
+  "05-26": [
+   "St-Anthelme de Chignin",
+   "St-Baboléin",
+   "St-Maxence",
+   "Ste-Persévérande"
+  ],
+  "05-27": [
+   "St-Cyrille d'Alexandrie",
+   "St-Ferdinand d'Aragon",
+   "St-Ladislas"
+  ],
+  "05-28": [
+   "St-Irénée de Lyon"
+  ],
+  "05-29": [
+   "St-Pierre, apôtre",
+   "St-Paul, apôtre"
+  ],
+  "05-30": [
+   "Ste-Clotsende",
+   "Ste-Erentrude",
+   "St-Martial de Limoges",
+   "Premiers martyrs de Rome"
+  ],
+  "05-31": [
+   "Ste-Pétronille"
+  ],
+  "06-01": [
+   "St-Joseph",
+   "Ste-Panacée",
+   "St-Sigismond"
+  ],
+  "06-02": [
+   "St-Athanase d'Alexandrie",
+   "St-Célestin",
+   "Ste-Zoé"
+  ],
+  "06-03": [
+   "Ste-Adalsinde",
+   "St-Alexandre 1er, pape",
+   "St-Jacques le Mineur, apôtre",
+   "St-Juvénal de Narni",
+   "St-Philippe, apôtre"
+  ],
+  "06-04": [
+   "St-Florian",
+   "St-Godard",
+   "St-Silvain"
+  ],
+  "06-05": [
+   "St-Ange de Jérusalem",
+   "Ste-Jutta",
+   "St-Pérégrin"
+  ],
+  "06-06": [
+   "Ste-Bénédicte",
+   "St-Héliodore"
+  ],
+  "06-07": [
+   "Ste-Augustin de Nicomédie",
+   "St-Sérène",
+   "St-Villain"
+  ],
+  "06-08": [
+   "St-Désiré, évêque de Bourges",
+   "St-Hellade d'Auxerre",
+   "St-Wiron"
+  ],
+  "06-09": [
+   "St-Béat",
+   "St-Géronce"
+  ],
+  "06-10": [
+   "St-Antonin",
+   "St-Isidore le Laboureur",
+   "Ste-Solange"
+  ],
+  "06-11": [
+   "St-Gengoul",
+   "St-Mayeul",
+   "St-Mamert"
+  ],
+  "06-12": [
+   "St-Achilée",
+   "St-Nérée",
+   "St-Pancrace",
+   "Ste-Rictrude"
+  ],
+  "06-13": [
+   "Ste-Glycérie",
+   "St-Mael",
+   "St-Servais"
+  ],
+  "06-14": [
+   "St-Matthias"
+  ],
+  "06-15": [
+   "Ste-Césarie",
+   "St-Crésiphon",
+   "Ste-Denise"
+  ],
+  "06-16": [
+   "St-Honorat d'Amiens",
+   "St-Jean Népomucène",
+   "St-Ubald Baldassini"
+  ],
+  "06-17": [
+   "St-Adrion",
+   "St-Héradius",
+   "St-Pascal Baylon"
+  ],
+  "06-18": [
+   "St-Eric",
+   "St-Félix de Cantalice",
+   "St-Jean 1er",
+   "Ste-Juliette d'Ancyre",
+   "St-Venance"
+  ],
+  "06-19": [
+   "St-Pierre Célestin",
+   "Ste-Pudentienne",
+   "St-Yves de Kermartin"
+  ],
+  "06-20": [
+   "St-Bernardin de Sienne",
+   "Ste-Plautilla"
+  ],
+  "06-21": [
+   "St-Constantin 1er le Grand",
+   "St-Nicostrate",
+   "St-Théopompe"
+  ],
+  "06-22": [
+   "St-Emile",
+   "Ste-Julie",
+   "Ste-Rita de Cascia"
+  ],
+  "06-23": [
+   "St-Eutyche",
+   "St-Mercurial",
+   "St-Yves de Chartres"
+  ],
+  "06-24": [
+   "St-Donatien",
+   "St-Rogatien"
+  ],
+  "06-25": [
+   "St-Bède le Vénérable",
+   "St-Grégoire VII",
+   "St-Injurieux",
+   "Ste-Marie-Madeleine de Pazzi"
+  ],
+  "06-26": [
+   "St-Bérenger",
+   "St-Philippe de Néri"
+  ],
+  "06-27": [
+   "St-Augustin de Cantorbéry",
+   "St-Ranulphe",
+   "Ste-Restitute"
+  ],
+  "06-28": [
+   "St-Chéron",
+   "St-Germain de Paris"
+  ],
+  "06-29": [
+   "St-Conon",
+   "St-Martyrius",
+   "St-Maximin de Trèves",
+   "St-Sisinnius"
+  ],
+  "06-30": [
+   "Ste-Emmélie de Césarée",
+   "St-Ferdinand III",
+   "Ste-Jeanne D'Arc"
+  ],
+  "06-31": [
+   "Ste-Pétronille"
+  ],
+  "07-01": [
+   "St-Domitien",
+   "St-Gall de Clermont",
+   "St-Théodoric (ou Thierry)"
+  ],
+  "07-02": [
+   "St-Martinien",
+   "Ste-Monégonde",
+   "St-Othon de Bamberg",
+   "Ste-Symphorose"
+  ],
+  "07-03": [
+   "St-Anatole",
+   "St-Thomas, apôtre"
+  ],
+  "07-04": [
+   "Ste-Berthe",
+   "Ste-Elisabeth du Portugal"
+  ],
+  "07-05": [
+   "St-Antoine-Marie Zaccaria",
+   "St-Blanche",
+   "St-Modivène"
+  ],
+  "07-06": [
+   "Ste-Dominique",
+   "Ste-Lucie",
+   "Ste-Maria Goretti"
+  ],
+  "07-07": [
+   "St-Félix de Nantes",
+   "St-Prosper d'Aquitaine"
+  ],
+  "07-08": [
+   "St-Edgar le Pacifique",
+   "Ste-Landrade",
+   "Ste-Priscilla",
+   "St-Procope",
+   "St-Withburge"
+  ],
+  "07-09": [
+   "Ste-Evrilde",
+   "Ste-Procule",
+   "Ste-Véronique Giuliani"
+  ],
+  "07-10": [
+   "Ste-Rufine",
+   "Ste-Seconde"
+  ],
+  "07-11": [
+   "St-Benoît de Nursie",
+   "St-Hidulphe",
+   "St-Jean de Bergame",
+   "Ste-Olga de Russie",
+   "St-Pie 1er",
+   "St-Savin (ou Sabin)"
+  ],
+  "07-12": [
+   "St-Jean Gualbert",
+   "Ste-Marcienne",
+   "St-Nabor",
+   "Ste-Véronique"
+  ],
+  "07-13": [
+   "St-Henri II de Germanie",
+   "St-Joël"
+  ],
+  "07-14": [
+   "St-Camille de Lellis"
+  ],
+  "07-15": [
+   "St-Bonaventure",
+   "St-Donald"
+  ],
+  "07-16": [
+   "Ste-Marie-Madeleine Postel"
+  ],
+  "07-17": [
+   "St-Alexis",
+   "St-Ennode",
+   "St-Léon IV",
+   "Ste-Marcelline"
+  ],
+  "07-18": [
+   "St-Arnoul de Metz",
+   "St-Frédéric"
+  ],
+  "07-19": [
+   "St-Arsène le Grand",
+   "Ste-Macrine la Jeune",
+   "Ste-Marie d'Espagne"
+  ],
+  "07-20": [
+   "St-Joseph Barsabas",
+   "Ste-Marguerite d'Antioche",
+   "Ste-Sévère"
+  ],
+  "07-21": [
+   "St-Laurent de Brindisi",
+   "Ste-Praxède"
+  ],
+  "07-22": [
+   "Ste-Marie-Madeleine",
+   "Ste-Wandrille"
+  ],
+  "07-23": [
+   "St-Apollinaire",
+   "Ste-Brigitte de Suède"
+  ],
+  "07-24": [
+   "Ste-Christine de Bolsène",
+   "St-Wulfhad"
+  ],
+  "07-25": [
+   "St-Christophe",
+   "St-Jacques, dit le Majeur",
+   "Ste-Valentine"
+  ],
+  "07-26": [
+   "Ste-Anne",
+   "St-Joachim"
+  ],
+  "07-27": [
+   "St-Désiré",
+   "Ste-Natalie",
+   "St-Panthaléon"
+  ],
+  "07-28": [
+   "St-Botwin",
+   "St-Nazaire",
+   "St-Samson",
+   "St-Victor 1er"
+  ],
+  "07-29": [
+   "Ste-Marthe de Béthanie"
+  ],
+  "07-30": [
+   "Ste-Juliette de Césarée",
+   "St-Pierre Chrysologue"
+  ],
+  "07-31": [
+   "St-Germain d'Auxerre",
+   "St-Ignace de Loyola"
+  ],
+  "08-01": [
+   "Ste-Almède",
+   "St-Alphonse-Marie de Liguori",
+   "St-Exupère"
+  ],
+  "08-02": [
+   "St-Eusèbe de Verceil"
+  ],
+  "08-03": [
+   "Ste-Lydie la Pourpre"
+  ],
+  "08-04": [
+   "St-Jean-Marie Baptiste Vianney"
+  ],
+  "08-05": [
+   "St-Abel",
+   "St-Memmius",
+   "St-Oswald"
+  ],
+  "08-06": [
+   "St-Sixte II",
+   "Transfiguration"
+  ],
+  "08-07": [
+   "St-Albert",
+   "St-Donat",
+   "St-Gaétan"
+  ],
+  "08-08": [
+   "St-Cyriaque",
+   "St-Dominique de Guzman"
+  ],
+  "08-09": [
+   "St-Amour (ou Amor)"
+  ],
+  "08-10": [
+   "St-Blain",
+   "St-Deusdedit (ou Dieudonné)",
+   "St-Laurent De Rome"
+  ],
+  "08-11": [
+   "Ste-Claire D'Assise",
+   "Ste-Suzanne"
+  ],
+  "08-12": [
+   "St-Euplius",
+   "Ste-Julienne"
+  ],
+  "08-13": [
+   "Ste-Concordia",
+   "St-Jean Berchmans",
+   "Ste-Radegonde"
+  ],
+  "08-14": [
+   "St-Eusèbe de Rome",
+   "St-Hippolyte",
+   "St-Maximien Kolbe",
+   "Ste-Radegonde"
+  ],
+  "08-15": [
+   "St-Alfred",
+   "St-Eusèbe",
+   "Assomption (Fête de Marie)",
+   "St-Tarcisius"
+  ],
+  "08-16": [
+   "St-Armagillus",
+   "St-Etienne de Hongrie",
+   "St-Frimbaud",
+   "St-Roch"
+  ],
+  "08-17": [
+   "St-Hyacinthe"
+  ],
+  "08-18": [
+   "St-Agapet",
+   "Ste-Hélène"
+  ],
+  "08-19": [
+   "St-Jean Eudes"
+  ],
+  "08-20": [
+   "St-Bernard de Clairvaux"
+  ],
+  "08-21": [
+   "St-Pie X"
+  ],
+  "08-22": [
+   "St-Fabrice",
+   "St-Philibert",
+   "St-Symphorien"
+  ],
+  "08-23": [
+   "Ste-Rose de Lima"
+  ],
+  "08-24": [
+   "St-Barthélémy",
+   "St-Ouen"
+  ],
+  "08-25": [
+   "St-Joseph de Calsanz",
+   "St-Louis IX de France"
+  ],
+  "08-26": [
+   "St-Zéphirin"
+  ],
+  "08-27": [
+   "Ste-Monique"
+  ],
+  "08-28": [
+   "St-Augustin",
+   "St-Julien de Brioude"
+  ],
+  "08-29": [
+   "Ste-Sabine"
+  ],
+  "08-30": [
+   "St-Fiacre"
+  ],
+  "08-31": [
+   "St-Aristide",
+   "St-Raymond Nonnat"
+  ],
+  "09-01": [
+   "St-Gilles",
+   "Ste-Vérène"
+  ],
+  "09-02": [
+   "St-Agricole",
+   "St-Concorde",
+   "St-Elpide"
+  ],
+  "09-03": [
+   "St-Grégoire 1er, dit le Grand",
+   "St-Siméon stylite le Jeune"
+  ],
+  "09-04": [
+   "St-Boniface 1er",
+   "St-Calétric",
+   "Ste-Rosalie",
+   "St-Vitalique"
+  ],
+  "09-05": [
+   "St-Bertin",
+   "St-Laurent Justinien"
+  ],
+  "09-06": [
+   "St-Bertrand de Garrigues",
+   "St-Eustache"
+  ],
+  "09-07": [
+   "St-Cloud",
+   "Ste-Reine"
+  ],
+  "09-08": [
+   "St-Adrien",
+   "Naissance de Marie"
+  ],
+  "09-09": [
+   "St-Gorgon",
+   "St-Omer",
+   "St-Pierre Claver",
+   "St-Tiburce"
+  ],
+  "09-10": [
+   "St-Aubert",
+   "St-Nicolas de Tolentino",
+   "Ste Pulchérie Auguste"
+  ],
+  "09-11": [
+   "St-Adelphe",
+   "St-Patient",
+   "St-Protus"
+  ],
+  "09-12": [
+   "St-Autonome",
+   "St-Curonote",
+   "St-Théodule"
+  ],
+  "09-13": [
+   "St-Aimé",
+   "St-Israël",
+   "St-Jean Chrysostome",
+   "St-Macrobe",
+   "St-Nectaire"
+  ],
+  "09-14": [
+   "Croix Glorieuse",
+   "St-Céréal",
+   "St-Général",
+   "St-Materne"
+  ],
+  "09-15": [
+   "St-Alfred le Grand",
+   "St-Nicomède"
+  ],
+  "09-16": [
+   "St-Corneille",
+   "St-Cyprien",
+   "Ste-Edith de Wilton",
+   "St-Victor III"
+  ],
+  "09-17": [
+   "Ste-Hildegarde",
+   "St-Lambert"
+  ],
+  "09-18": [
+   "St-Hygbald",
+   "St-Joseph de Cupertino",
+   "Ste-Richarde"
+  ],
+  "09-19": [
+   "Ste-Constancia",
+   "Ste-Emilie de Rodat",
+   "St-Janvier",
+   "St-Théodore de Tarse"
+  ],
+  "09-20": [
+   "St-André Kim",
+   "St-Eustache",
+   "St-Jacques Chastan",
+   "St-Laurent Imbert",
+   "St-Pierre Maubant"
+  ],
+  "09-21": [
+   "St-Matthieu, apôtre"
+  ],
+  "09-22": [
+   "Ste-Salaberge",
+   "St-Thomas de Villeneuve"
+  ],
+  "09-23": [
+   "St-Constance",
+   "St-Lin"
+  ],
+  "09-24": [
+   "St-Cuniald",
+   "St-Isarne de Toulouse"
+  ],
+  "09-25": [
+   "St-Cléophas",
+   "St-Firmin 1er Damien",
+   "St-Hermann le Boîteux"
+  ],
+  "09-26": [
+   "St-Côme",
+   "St-Damien"
+  ],
+  "09-27": [
+   "St-Vincent de Paul"
+  ],
+  "09-28": [
+   "St-Annemond",
+   "Ste-Eustochium",
+   "St-Wanceslas"
+  ],
+  "09-29": [
+   "St-Gabriel",
+   "St-Gudélie",
+   "St-Michel",
+   "St-Raphael"
+  ],
+  "09-30": [
+   "St-Grégoire l'Illuminateur",
+   "St-Jérôme",
+   "St-Léopard"
+  ],
+  "10-01": [
+   "Ste-Thérèse de Lisieux"
+  ],
+  "10-02": [
+   "St-Léger"
+  ],
+  "10-03": [
+   "St-Ewald",
+   "St-Gérard de Brogne"
+  ],
+  "10-04": [
+   "St-Aurée",
+   "St-François d'Assise"
+  ],
+  "10-05": [
+   "Ste-Flavie",
+   "St-Placide"
+  ],
+  "10-06": [
+   "St-Bruno de Cologne"
+  ],
+  "10-07": [
+   "St-Serge",
+   "N. Dame du Rosaire"
+  ],
+  "10-08": [
+   "Ste-Pélagie la Pénitente"
+  ],
+  "10-09": [
+   "St-Denis, évêque de Paris",
+   "St-Dominin",
+   "St-Eleuthère",
+   "St-Jean Léonardi",
+   "St-Rustique"
+  ],
+  "10-10": [
+   "Ste-Eulampie",
+   "St-François de Borgia",
+   "St-Gédéon"
+  ],
+  "10-11": [
+   "St-Anastase 1er",
+   "St-Firmin d'Uzès",
+   "Ste-Zénaïde"
+  ],
+  "10-12": [
+   "St-Pantale",
+   "St-Séraphin du Mont Granario",
+   "St-Wilfried"
+  ],
+  "10-13": [
+   "St-Géraud d'Aurillac",
+   "St-Théophile d'Antioche"
+  ],
+  "10-14": [
+   "St-Calixte 1er",
+   "St-Juste de Lyon"
+  ],
+  "10-15": [
+   "St-Agilée",
+   "Ste-Thérèse d'Avilla"
+  ],
+  "10-16": [
+   "St-Bertrand de Comminges",
+   "Ste-Eremberte",
+   "St-Gall",
+   "St-Gérard Magella",
+   "Ste-Hedwige",
+   "Ste-Marguerite-Marie Alacoque"
+  ],
+  "10-17": [
+   "St-Ignace de Constantinople"
+  ],
+  "10-18": [
+   "Ste-Gwendolène",
+   "St-Luc, apôtre",
+   "Ste-Tryphonie"
+  ],
+  "10-19": [
+   "St-Isaac Jogues",
+   "St-Jean de Bréboeuf",
+   "St-Paul de la croix",
+   "St-Pierre d'Alcantara",
+   "St-René Goupil"
+  ],
+  "10-20": [
+   "Ste-Adeline",
+   "Ste-Irène"
+  ],
+  "10-21": [
+   "Ste-Céline (ou Cilinia)",
+   "St-Hilarion",
+   "Ste-Ursule"
+  ],
+  "10-22": [
+   "St-Philippe",
+   "St-Vallier"
+  ],
+  "10-23": [
+   "St-Hyacinthe",
+   "St-Jean de Capistran"
+  ],
+  "10-24": [
+   "St-Antoine-Marie Claret"
+  ],
+  "10-25": [
+   "St-Chrysanthe",
+   "St-Crépin (ou Crispin)",
+   "Ste-Darie"
+  ],
+  "10-26": [
+   "St-Evariste",
+   "St-Rustique"
+  ],
+  "10-27": [
+   "Ste-Antoinette",
+   "Ste-Frumence"
+  ],
+  "10-28": [
+   "St-Cyrille",
+   "St-Jude",
+   "St-Simon le Cananéen"
+  ],
+  "10-29": [
+   "St-Narcisse"
+  ],
+  "10-30": [
+   "St-Alphonse Rodriguez"
+  ],
+  "10-31": [
+   "St-Foillan",
+   "St-Quentin"
+  ],
+  "11-01": [
+   "St-Austremoine",
+   "St-Floribert",
+   "St-Mathurin",
+   "Toussaint (tous les saints)"
+  ],
+  "11-02": [
+   "St-Anempodiste",
+   "Défunts",
+   "St-Elpidephore"
+  ],
+  "11-03": [
+   "St-Gwénaël",
+   "St-Hubert",
+   "St-Martin de Porrès"
+  ],
+  "11-04": [
+   "St-Charles Borromée",
+   "St-Porphyre"
+  ],
+  "11-05": [
+   "Ste-Elisabeth (mère de Jean-Baptiste)",
+   "St-Zacharie (père de Jean-Baptiste)"
+  ],
+  "11-06": [
+   "St-Léonard de Noblac"
+  ],
+  "11-07": [
+   "Ste-Carine",
+   "St-Ernest",
+   "St-Florent de Strasbourg",
+   "St-Willibrord"
+  ],
+  "11-08": [
+   "St-Geoffroy (ou Godefroy)",
+   "St-Maur"
+  ],
+  "11-09": [
+   "St-Théodore le Tiron"
+  ],
+  "11-10": [
+   "St-André Avellin",
+   "St-Léon le Grand",
+   "St-Tryphon"
+  ],
+  "11-11": [
+   "St-Martin de Tours",
+   "St-Théodore le Studite"
+  ],
+  "11-12": [
+   "St-Christin",
+   "St-Josaphat"
+  ],
+  "11-13": [
+   "St-Brice",
+   "St-Didace",
+   "St-Nicolas 1er le Grand"
+  ],
+  "11-14": [
+   "St-Saens",
+   "St-Sérapion"
+  ],
+  "11-15": [
+   "St-Albert le Grand"
+  ],
+  "11-16": [
+   "Ste-Gertrude la Grande",
+   "Ste-Marguerite d'Ecosse"
+  ],
+  "11-17": [
+   "St-Aignan",
+   "Ste-Elisabeth de Hongrie",
+   "St-Grégoire le Thaumaturge"
+  ],
+  "11-18": [
+   "St-Hésyque d'Antioche",
+   "St-Mummole",
+   "St-Pierre, apôtre",
+   "St-Tanguy"
+  ],
+  "11-19": [
+   "Ste-Ermenburge",
+   "St-Exupère"
+  ],
+  "11-20": [
+   "St-Edmond",
+   "St-Félix de Valois",
+   "St-Octave"
+  ],
+  "11-21": [
+   "Ste-Amalberge",
+   "Présence de Marie"
+  ],
+  "11-22": [
+   "Ste-Appia",
+   "Ste-Cécile",
+   "St-Philémon"
+  ],
+  "11-23": [
+   "St-Clément 1er"
+  ],
+  "11-24": [
+   "Ste-Flora",
+   "St-Chrysogone",
+   "Ste-Maria",
+   "St-Romain du Mans"
+  ],
+  "11-25": [
+   "Ste-Catherine d'Alexandrie",
+   "Ste-Joconde",
+   "St-Moïse"
+  ],
+  "11-26": [
+   "St-Conrad de Constance",
+   "Ste-Delphine",
+   "St-Gautier d'Aulne"
+  ],
+  "11-27": [
+   "St-Maxime de Riez",
+   "St-Séverin"
+  ],
+  "11-28": [
+   "Ste-Catherine Labouré",
+   "St-Jacques de la Marche",
+   "St-Sosthène"
+  ],
+  "11-29": [
+   "St-Hilaire",
+   "Ste-Illuminée",
+   "St-Saturnin"
+  ],
+  "11-30": [
+   "St-André, apôtre",
+   "Ste-Justine"
+  ],
+  "12-01": [
+   "St-Diodore",
+   "St-Eloi"
+  ],
+  "12-02": [
+   "Ste-Aurélie",
+   "Ste-Viviane (ou Bibiane)"
+  ],
+  "12-03": [
+   "St-François-Xavier"
+  ],
+  "12-04": [
+   "Ste-Barbe",
+   "St-Jean Damascène"
+  ],
+  "12-05": [
+   "St-Gérard",
+   "St-Nicet",
+   "St-Sabbas"
+  ],
+  "12-06": [
+   "St-Nicolas de Myre"
+  ],
+  "12-07": [
+   "St-Agathon",
+   "St-Ambroise de Milan"
+  ],
+  "12-08": [
+   "Ste-Gonthilde",
+   "Immaculée conception",
+   "St-Romaric"
+  ],
+  "12-09": [
+   "Ste-Léocadie",
+   "St-Pierre Fourier"
+  ],
+  "12-10": [
+   "St-Miltiade"
+  ],
+  "12-11": [
+   "St-Damasse 1er",
+   "St-Daniel le Stylite"
+  ],
+  "12-12": [
+   "Ste-Jeanne-Françoise de Chantal"
+  ],
+  "12-13": [
+   "St-Josse de Bretagne",
+   "Ste-Lucie de Syracuse",
+   "Ste-Odile"
+  ],
+  "12-14": [
+   "St-Jean de la Croix"
+  ],
+  "12-15": [
+   "Ste-Marie Crucifiée de Rose",
+   "Ste-Ninon"
+  ],
+  "12-16": [
+   "Ste-Adélaïde",
+   "St-Adon"
+  ],
+  "12-17": [
+   "St-Calanique",
+   "St-Judicaël",
+   "Ste-Olympiade"
+  ],
+  "12-18": [
+   "St-Gatien",
+   "St-Zozime"
+  ],
+  "12-19": [
+   "St-Nemèse",
+   "St-Urbain IV"
+  ],
+  "12-20": [
+   "St-Ammon",
+   "St-Théophile"
+  ],
+  "12-21": [
+   "St-Dioscore",
+   "St-Honorat de Toulouse",
+   "St-Pierre Casinius",
+   "St-Thémistocle"
+  ],
+  "12-22": [
+   "St-Flavien",
+   "Ste-Françoise-Xavière Cabrini",
+   "St-Zénon"
+  ],
+  "12-23": [
+   "Ste-Anatolie",
+   "St-Servule",
+   "Ste-Victoire"
+  ],
+  "12-24": [
+   "Ste-Adèle",
+   "St-Delphin",
+   "Ste-Irmine",
+   "St-Métrobe"
+  ],
+  "12-25": [
+   "Ste-Adalsinde",
+   "Ste-Alburge",
+   "Noël"
+  ],
+  "12-26": [
+   "St-Denys",
+   "St-Etienne de Protomartyr"
+  ],
+  "12-27": [
+   "St-Jean l'Evangéliste, apôtre"
+  ],
+  "12-28": [
+   "Sts-Innocents"
+  ],
+  "12-29": [
+   "St-David",
+   "St-Thomas Becket"
+  ],
+  "12-30": [
+   "St-Sabin (ou Sabinien)"
+  ],
+  "12-31": [
+   "St-Sylvestre",
+   "Ste-Colombe de Sens",
+   "Ste-Mélanie la Jeune",
+   "St-Potentin"
+  ]
+ }
+}

@@ -1,0 +1,88 @@
+# ──────────────────────────────────────────────────────────────
+#  Réglages du « Podcast du matin »
+#  Modifie ce fichier directement sur GitHub (icône crayon ✏️),
+#  puis « Commit changes ». Le prochain épisode en tiendra compte.
+#  ⚠️ Aucune clé secrète ici : elles sont dans Settings → Secrets.
+#  (L'heure d'envoi se règle dans .github/workflows/podcast-du-matin.yml)
+#
+#  💬 Le plus simple : écris à ton bot Telegram (« parle plus lentement »,
+#  « le sport ne m'intéresse pas »…). Ce que tu lui dis est gardé dans
+#  memoire.json et l'emporte sur les valeurs ci-dessous.
+# ──────────────────────────────────────────────────────────────
+
+fuseau_horaire = "Europe/Zurich"
+
+# Durée visée de l'épisode, en minutes (2 à 12)
+duree_minutes = 3
+
+# Nombre de sujets d'actualité traités
+nombre_sujets = 3
+
+# Vitesse de parole : "très lente", "lente", "normale", "rapide" ou "très rapide"
+vitesse_parole = "normale"
+
+# Façon dont les animateurs s'adressent à toi
+tutoiement = true
+prenom_auditeur = ""        # ex. "Daniel" — vide = pas de prénom
+
+# Ta ville : sert à repérer tes déplacements et à ajouter l'actu locale
+ville_habituelle = ""       # ex. "Lausanne"
+
+# Pour orienter le choix des actualités (vide = actualité générale)
+centres_interet = ""        # ex. "économie suisse, technologie, vélo"
+
+# Agenda : nombre de jours couverts, aujourd'hui compris
+jours_agenda = 7
+inclure_notes_agenda = true # résumer aussi les notes des événements
+# Si rien n'est prévu pendant ces jours-là, le podcast cherche le prochain
+# événement jusqu'à cet horizon (en jours) pour en parler
+horizon_prochain_evenement_jours = 90
+# Voyages, rencontres et sorties repérés jusqu'à ce nombre de jours
+# (idées d'activités, culture, actus du lieu). 0 = désactivé
+jours_deplacements = 14
+
+# Actualités : nombre d'articles lus par flux et âge maximum
+articles_par_flux = 8
+fraicheur_heures = 36
+# Recherches Google Actualités (sujets à creuser, lieux, centres d'intérêt)
+recherches_actus = true
+langue_actus = "fr"
+pays_actus = "CH"
+
+# ── Réglages avancés (inutile d'y toucher en temps normal) ──
+# Modèles essayés dans l'ordre (si le quota gratuit de l'un est épuisé,
+# le suivant prend le relais)
+modeles_texte = ["gemini-3.8-flash", "gemini-3.6-flash"]
+# Modèles légers : lecture de tes messages, repérage des déplacements,
+# et dernier recours pour écrire l'épisode si les autres sont surchargés
+modeles_rapides = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
+modeles_voix = ["gemini-3.8-flash-tts", "gemini-3.8-flash-lite-tts"]
+reflexion = "medium"        # minimal, low, medium ou high
+debit_mp3_kbps = 64         # 64 suffit pour la voix ; 96 pour plus de finesse
+
+# ── Les deux animateurs ─────────────────────────────────────
+# Voix plutôt féminines : Aoede, Kore, Leda, Zephyr
+# Voix plutôt masculines : Puck, Charon, Fenrir, Orus
+# (il y en a 30 : écoute-les sur https://aistudio.google.com/generate-speech)
+[[animateurs]]
+nom = "Léa"
+voix = "Aoede"
+
+[[animateurs]]
+nom = "Hugo"
+voix = "Puck"
+
+# ── Flux d'actualités (RSS) ─────────────────────────────────
+# Ajoute ou retire des blocs [[flux]] à volonté. Un flux qui ne répond pas
+# est simplement ignoré (c'est indiqué dans le journal de GitHub).
+[[flux]]
+nom = "Google Actualités – Suisse"
+url = "https://news.google.com/rss?hl=fr&gl=CH&ceid=CH:fr"
+
+[[flux]]
+nom = "RTS Info"
+url = "https://www.rts.ch/info/?format=rss/news"
+
+[[flux]]
+nom = "Le Monde"
+url = "https://www.lemonde.fr/rss/une.xml"

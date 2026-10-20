@@ -1,0 +1,28 @@
+# Bot du « Podcast du matin » — déployé automatiquement par GitHub
+# (workflow « Déployer le bot ») à chaque changement du dossier cloudflare/.
+name = "podcast"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+# Garde les variables et secrets réglés dans le tableau de bord Cloudflare.
+keep_vars = true
+
+[vars]
+DEPOT = "TON-COMPTE/podcast-matin"
+ADRESSE = "https://podcast.TON-SOUS-DOMAINE.workers.dev"
+
+# Filet de sécurité : le bot se réveille de lui-même à l'heure des épisodes
+# (alarme du Durable Object) ; ce tic horaire vérifie juste que tout est en place.
+[triggers]
+crons = ["7 * * * *"]
+
+[[durable_objects.bindings]]
+name = "ETAT"
+class_name = "Etat"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Etat"]
+
+[observability]
+enabled = true

@@ -1,0 +1,1851 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Podcast Matin</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --fond: #12151C; --fond-nav: #161A22; --carte: #1C212B; --carte-2: #262C38; --trait: #2C3340; --trait-2: #3A4250;
+  --texte: #F2EEE6; --doux: #9AA3B2; --doux-2: #C3C9D4; --eteint: #6B7383;
+  --aube: #F2A65A; --aube-clair: #F7C48E; --sur-aube: #1A1206; --aube-fond: #2A2620;
+  --bleu: #8DB8F2; --bleu-fond: #1F2836; --vert: #8FD3A8; --vert-fond: #1E2A24; --rouge: #F28B82;
+  --titre: "Bricolage Grotesque", system-ui, sans-serif; --corps: "Figtree", system-ui, sans-serif;
+  --bas: max(env(safe-area-inset-bottom, 0px), var(--tg-content-safe-area-inset-bottom, 0px));
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--fond); color: var(--texte); font-family: var(--corps); font-size: 15px; }
+body { min-height: 100vh; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--aube); }
+:focus-visible { outline: 2px solid var(--aube); outline-offset: 2px; }
+.cache { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+main { padding: 20px 18px calc(170px + var(--bas)); display: flex; flex-direction: column; gap: 16px; max-width: 560px; margin: 0 auto; }
+main.avec-barre { padding-bottom: calc(96px + var(--bas)); }
+h1 { margin: 0; font-family: var(--titre); font-weight: 700; font-size: 30px; line-height: 1.05; letter-spacing: -0.02em; }
+h2 { margin: 0; font-family: var(--titre); font-weight: 700; font-size: 18px; }
+.surtitre { font-size: 13px; color: var(--doux); letter-spacing: 0.04em; text-transform: uppercase; }
+.sous { font-size: 14px; color: var(--doux); }
+.groupe { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--doux); padding: 6px 2px 0; }
+.carte { background: var(--carte); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.ligne { display: flex; align-items: center; gap: 10px; }
+.entre { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.vide { color: var(--doux); font-size: 14px; text-align: center; padding: 24px 12px; background: var(--carte); border-radius: 16px; }
+
+.badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 6px 10px; }
+.badge.ok { color: var(--vert); background: #1B2A22; }
+.badge.ok::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--vert); }
+.puce { font-size: 11px; font-weight: 600; border-radius: 999px; padding: 3px 8px; white-space: nowrap; }
+.puce.prio { color: var(--sur-aube); background: var(--aube); }
+
+.bouton { min-height: 46px; border: 0; border-radius: 14px; padding: 0 16px; font-weight: 600; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.bouton.plein { background: var(--aube); color: var(--sur-aube); }
+.bouton.sombre { background: var(--sur-aube); color: #F7E3C8; }
+.bouton.contour { background: transparent; border: 1.5px solid var(--sur-aube); color: var(--sur-aube); }
+.bouton.gris { background: var(--carte-2); color: var(--texte); }
+.bouton.pointille { background: transparent; border: 1.5px dashed var(--trait-2); color: var(--texte); width: 100%; }
+.bouton[disabled] { opacity: 0.55; cursor: default; }
+.icone { width: 44px; height: 44px; border: 0; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; background: transparent; color: var(--texte); flex: none; }
+.icone.plein { background: var(--aube); color: var(--sur-aube); }
+.lien { background: none; border: 0; color: var(--aube); font-weight: 600; font-size: 14px; padding: 8px 0; min-height: 44px; }
+
+/* accueil */
+.soleil { background: var(--aube); color: var(--sur-aube); border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.soleil .heure { font-family: var(--titre); font-weight: 700; font-size: 44px; line-height: 1; letter-spacing: -0.03em; }
+.soleil .puces { display: flex; flex-wrap: wrap; gap: 8px; font-size: 13px; font-weight: 600; }
+.soleil .puces span { background: rgba(26, 18, 6, 0.12); border-radius: 999px; padding: 6px 10px; }
+.soleil .actions { display: flex; gap: 8px; }
+.soleil .actions .bouton { flex: 1; }
+.soleil .saute { font-size: 13px; font-weight: 500; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid rgba(26, 18, 6, 0.2); padding-top: 10px; }
+.soleil .saute button { background: none; border: 0; color: var(--sur-aube); font-weight: 700; text-decoration: underline; min-height: 36px; }
+.chapitres { display: flex; flex-direction: column; }
+.chapitres div { display: flex; gap: 12px; padding: 9px 0; border-top: 1px solid var(--trait); font-size: 14px; }
+.chapitres span:first-child { color: var(--aube); font-variant-numeric: tabular-nums; width: 42px; flex: none; }
+.semaine { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; text-align: center; }
+.semaine div { background: var(--carte-2); border-radius: 12px; padding: 8px 0; display: flex; flex-direction: column; gap: 3px; }
+.semaine div span:first-child { font-size: 12px; color: var(--doux); }
+.semaine div span:last-child { font-size: 13px; font-weight: 600; }
+.semaine div.prochain { outline: 2px solid var(--aube); }
+.semaine div.prochain span:first-child { color: var(--aube); }
+.semaine div.sans { background: transparent; border: 1.5px dashed var(--trait-2); }
+.semaine div.sans span:last-child { color: var(--doux); font-weight: 400; }
+
+/* rubriques */
+.onglets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: var(--carte); border-radius: 14px; padding: 4px; }
+.onglets button { min-height: 40px; border: 0; border-radius: 10px; background: transparent; color: var(--doux-2); font-size: 14px; }
+.onglets button[aria-selected="true"] { background: var(--texte); color: var(--fond); font-weight: 600; }
+.liste { display: flex; flex-direction: column; gap: 8px; }
+.rubrique { display: flex; align-items: center; gap: 12px; background: var(--carte); border-radius: 16px; padding: 12px 14px; border: 0; width: 100%; text-align: left; color: var(--texte); }
+.rubrique .pastille { width: 40px; height: 40px; flex: none; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+.rubrique .textes { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rubrique .nom { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rubrique .detail { font-size: 13px; color: var(--doux); }
+.f-jour { background: var(--aube-fond); color: var(--aube); }
+.f-info { background: var(--bleu-fond); color: var(--bleu); }
+.f-sortie, .f-agenda { background: var(--vert-fond); color: var(--vert); }
+
+/* fiche */
+.entete-fiche { display: flex; align-items: center; gap: 4px; margin: -8px -8px 0; }
+.entete-fiche .surtitre { flex: 1; color: var(--bleu); font-weight: 600; }
+.champ { display: flex; flex-direction: column; gap: 6px; }
+.champ > label, .champ > .etiquette { font-size: 13px; color: var(--doux); }
+.saisie { min-height: 48px; border: 0; border-radius: 14px; background: var(--carte); color: var(--texte); padding: 0 14px; font-size: 15px; width: 100%; }
+textarea.saisie { padding: 12px 14px; line-height: 1.4; resize: vertical; min-height: 84px; }
+input.titre { font-family: var(--titre); font-size: 20px; font-weight: 700; }
+select.saisie { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%239AA3B2' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px; }
+input[type="date"].saisie { color-scheme: dark; }
+.segments { display: grid; gap: 4px; background: var(--carte); border-radius: 14px; padding: 4px; }
+.segments button { min-height: 40px; border: 0; border-radius: 10px; background: transparent; color: var(--doux-2); font-size: 14px; padding: 0 4px; }
+.segments button[aria-pressed="true"] { background: var(--aube); color: var(--sur-aube); font-weight: 600; }
+.jours { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.jours button { min-height: 44px; border: 1.5px solid var(--trait-2); border-radius: 12px; background: transparent; color: var(--doux); font-size: 14px; }
+.jours button[aria-pressed="true"] { background: var(--texte); color: var(--fond); border-color: var(--texte); font-weight: 600; }
+.puces-choix { display: flex; flex-wrap: wrap; gap: 6px; }
+.puces-choix button { min-height: 38px; border: 1.5px solid var(--trait-2); border-radius: 999px; background: transparent; color: var(--doux); padding: 0 12px; font-size: 14px; }
+.puces-choix button[aria-pressed="true"] { background: var(--bleu-fond); color: var(--bleu); border-color: var(--bleu-fond); font-weight: 600; }
+.deux { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.aide { font-size: 13px; color: var(--doux); line-height: 1.4; margin: 0; }
+.bloc { background: var(--carte); border-radius: 16px; display: flex; flex-direction: column; }
+.bloc > * + * { border-top: 1px solid var(--trait); }
+.interrupteur { min-height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; font-size: 15px; background: none; border: 0; width: 100%; color: var(--texte); text-align: left; }
+.interrupteur .rail { width: 46px; height: 28px; border-radius: 999px; background: var(--trait-2); display: flex; align-items: center; padding: 3px; flex: none; transition: background .15s; }
+.interrupteur .rail span { width: 22px; height: 22px; border-radius: 50%; background: var(--doux); transition: transform .15s; }
+.interrupteur[aria-checked="true"] .rail { background: var(--aube); }
+.interrupteur[aria-checked="true"] .rail span { background: var(--sur-aube); transform: translateX(18px); }
+.sous-bloc { background: var(--carte); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.sous-bloc .saisie { background: var(--carte-2); }
+.barre { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 18px calc(14px + var(--bas)); background: var(--fond); border-top: 1px solid var(--carte-2); z-index: 5; }
+.barre .bouton { width: 100%; max-width: 524px; margin: 0 auto; display: flex; min-height: 52px; font-size: 16px; font-weight: 700; }
+
+/* déroulé */
+.deroule { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; position: relative; }
+.deroule li { display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 6px 0 12px; border-radius: 14px; background: var(--carte); position: relative; }
+.deroule li.fixe { background: #171B23; color: var(--doux); min-height: 50px; }
+.deroule li.glisse { background: #2A2F3B; outline: 2px solid var(--aube); box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45); z-index: 3; }
+.deroule li.eteint .nom { color: var(--doux); text-decoration: line-through; }
+.deroule .num { width: 22px; font-variant-numeric: tabular-nums; font-size: 14px; color: var(--doux); flex: none; }
+.deroule .textes { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; background: none; border: 0; padding: 8px 0; text-align: left; color: inherit; }
+.deroule .nom { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.deroule .detail { font-size: 12px; color: var(--doux); }
+.deroule .poignee { width: 44px; height: 44px; border: 0; background: none; color: var(--eteint); touch-action: none; display: flex; align-items: center; justify-content: center; flex: none; cursor: grab; }
+.deroule li.glisse .poignee { color: var(--aube); }
+.mini-inter { width: 44px; height: 44px; border: 0; background: none; display: flex; align-items: center; justify-content: center; flex: none; padding: 0; }
+.mini-inter .rail { width: 40px; height: 24px; border-radius: 999px; background: var(--trait-2); display: flex; padding: 3px; }
+.mini-inter .rail span { width: 18px; height: 18px; border-radius: 50%; background: var(--doux); transition: transform .15s; }
+.mini-inter[aria-checked="true"] .rail { background: var(--aube); }
+.mini-inter[aria-checked="true"] .rail span { background: var(--sur-aube); transform: translateX(16px); }
+
+/* planning */
+.jour-ligne { display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 0 14px; font-size: 15px; }
+.jour-ligne span:first-child { flex: 1; }
+.jour-ligne .h { font-weight: 600; font-variant-numeric: tabular-nums; background: var(--carte-2); border-radius: 10px; padding: 6px 12px; }
+.jour-ligne.sans { color: var(--doux); }
+.jour-ligne.sans .h { background: none; font-weight: 400; }
+.calendrier { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 4px; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums; }
+.calendrier .tete { font-size: 12px; color: var(--doux); padding-bottom: 4px; }
+.calendrier button { min-height: 38px; border: 0; background: none; border-radius: 10px; color: var(--texte); padding: 0; position: relative; }
+.calendrier button.passe { color: var(--eteint); }
+.calendrier button.sans { color: var(--doux); }
+.calendrier button.pause { background: var(--bleu-fond); color: var(--bleu); font-weight: 600; border-radius: 0; }
+.calendrier button.saute { color: var(--doux); text-decoration: line-through; }
+.calendrier button.pause { color: var(--doux); border-radius: 0; background: var(--carte-2); }
+.calendrier button.pause::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; background: var(--doux); }
+.calendrier button.pause.debut { border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
+.calendrier button.pause.debut::before { left: 8px; }
+.calendrier button.pause.fin { border-top-right-radius: 10px; border-bottom-right-radius: 10px; }
+.calendrier button.pause.fin::before { right: 8px; }
+.calendrier button.autre::after, .calendrier button.ferie::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--aube); }
+.calendrier button.ferie::after { background: var(--vert); }
+.calendrier button.aujourdhui { outline: 2px solid var(--aube); outline-offset: -2px; color: var(--aube); font-weight: 700; }
+.legende { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--doux-2); }
+.legende span { display: inline-flex; align-items: center; gap: 6px; }
+.legende i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+/* navigation, messages */
+nav.onglets-bas { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 6px 4px calc(8px + var(--bas)); background: var(--fond-nav); border-top: 1px solid var(--carte-2); z-index: 5; }
+nav.onglets-bas button { min-height: 52px; border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--doux); font-size: 12px; font-weight: 500; }
+nav.onglets-bas button[aria-current="page"] { color: var(--aube); font-weight: 600; }
+#annonce { position: fixed; left: 18px; right: 18px; bottom: calc(92px + var(--bas)); max-width: 524px; margin: 0 auto; background: var(--texte); color: var(--fond); border-radius: 14px; padding: 12px 14px; font-size: 14px; font-weight: 500; box-shadow: 0 10px 30px rgba(0,0,0,.4); z-index: 10; transform: translateY(20px); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
+#annonce.visible { transform: none; opacity: 1; }
+#annonce.erreur { background: var(--rouge); color: #2A0E0B; }
+.chargement { padding: 80px 24px; text-align: center; color: var(--doux); }
+.attente { display: inline-block; width: 22px; height: 22px; border: 2.5px solid var(--trait-2); border-top-color: var(--aube); border-radius: 50%; animation: tourne .8s linear infinite; margin-bottom: 12px; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation-duration: 2s !important; } }
+
+/* lecteur */
+.lecteur { display: flex; flex-direction: column; gap: 10px; }
+.lecteur .haut { display: flex; align-items: center; gap: 12px; }
+.lire { width: 52px; height: 52px; flex: none; border: 0; border-radius: 50%; background: var(--texte); color: var(--fond); display: flex; align-items: center; justify-content: center; }
+.lire.petit { width: 40px; height: 40px; }
+input.avance { width: 100%; accent-color: var(--aube); margin: 0; height: 24px; }
+.temps { display: flex; justify-content: space-between; font-size: 12px; color: var(--doux); font-variant-numeric: tabular-nums; }
+.chapitres button { display: flex; gap: 12px; padding: 10px 0; border: 0; border-top: 1px solid var(--trait); background: none; color: var(--texte); font-size: 14px; text-align: left; width: 100%; }
+.chapitres button span:first-child { color: var(--aube); font-variant-numeric: tabular-nums; width: 42px; flex: none; }
+.chapitres button.encours { color: var(--aube); font-weight: 600; }
+#mini { position: fixed; left: 10px; right: 10px; bottom: calc(76px + var(--bas)); max-width: 540px; margin: 0 auto; background: var(--carte-2); border-radius: 16px; padding: 8px 8px 8px 14px; display: flex; align-items: center; gap: 10px; z-index: 6; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+#mini .t { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: none; border: 0; color: var(--texte); text-align: left; min-height: 40px; }
+#mini .barre-mini { position: absolute; left: 14px; right: 14px; bottom: 3px; height: 2px; background: var(--trait-2); border-radius: 2px; overflow: hidden; }
+#mini .barre-mini i { display: block; height: 100%; background: var(--aube); width: 0; }
+.gestes { display: flex; flex-wrap: wrap; gap: 6px; }
+.gestes button { min-height: 40px; border: 1.5px solid var(--trait-2); border-radius: 999px; background: transparent; color: var(--texte); padding: 0 14px; font-size: 14px; }
+.gestes button[aria-pressed="true"] { background: var(--aube-fond); border-color: var(--aube); color: var(--aube); font-weight: 600; }
+.pouces { display: flex; gap: 8px; }
+.pouces button { width: 48px; height: 44px; border: 0; border-radius: 12px; background: var(--carte-2); color: var(--texte); display: flex; align-items: center; justify-content: center; }
+.pouces button[aria-pressed="true"] { background: var(--aube); color: var(--sur-aube); }
+.transcription { white-space: pre-wrap; font-size: 15px; line-height: 1.55; color: var(--doux-2); }
+.episode-ligne { display: flex; align-items: center; gap: 12px; background: var(--carte); border-radius: 16px; padding: 12px 14px; border: 0; width: 100%; text-align: left; color: var(--texte); }
+.dates { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; margin: 0 -4px; padding-left: 4px; scrollbar-width: none; }
+.dates button { flex: none; min-height: 36px; border: 1.5px solid var(--trait-2); border-radius: 999px; background: transparent; color: var(--doux-2); padding: 0 12px; font-size: 13px; }
+.dates button[aria-pressed="true"] { background: var(--texte); border-color: var(--texte); color: var(--fond); font-weight: 600; }
+.sources { display: flex; flex-direction: column; }
+.sources button { display: flex; gap: 12px; padding: 10px 0; border: 0; border-top: 1px solid var(--trait); background: none; color: var(--texte); text-align: left; font-size: 14px; line-height: 1.35; width: 100%; }
+.sources button > span:first-child { color: var(--aube); width: 22px; flex: none; font-variant-numeric: tabular-nums; }
+.tete-episode { display: flex; align-items: center; gap: 12px; background: none; border: 0; padding: 0; color: var(--texte); text-align: left; width: 100%; }
+.miniature { width: 76px; height: 76px; border-radius: 14px; object-fit: cover; flex: none; background: var(--carte-2); }
+.miniature.petite { width: 52px; height: 52px; border-radius: 12px; }
+.vide-img { display: flex; align-items: center; justify-content: center; color: var(--aube); background: var(--aube-fond); }
+.grande-miniature { width: 100%; max-width: 320px; aspect-ratio: 1; object-fit: cover; border-radius: 22px; align-self: center; }
+.cal-ep { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; text-align: center; }
+.cal-ep .tete { font-size: 12px; color: var(--doux); padding-bottom: 2px; }
+.case-ep { aspect-ratio: 1; border-radius: 10px; position: relative; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--eteint); border: 0; background: none; padding: 0; overflow: hidden; }
+.case-ep.aujourdhui { outline: 2px solid var(--aube); outline-offset: -2px; color: var(--aube); }
+.case-ep.avec { background: var(--carte-2); color: var(--texte); }
+.case-ep img, .case-ep .sans-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.case-ep .sans-img { display: flex; align-items: center; justify-content: center; color: var(--aube); background: var(--aube-fond); }
+.case-ep.avec .num { position: absolute; left: 3px; bottom: 2px; font-size: 11px; font-weight: 700; color: #fff; background: rgba(14,16,22,.7); border-radius: 6px; padding: 0 4px; }
+.enregistre { flex: 1; min-height: 52px; display: flex; align-items: center; gap: 10px; background: var(--carte); border-radius: 14px; padding: 0 6px 0 14px; font-size: 14px; color: var(--doux-2); font-variant-numeric: tabular-nums; }
+.enregistre .point { width: 10px; height: 10px; border-radius: 50%; background: var(--rouge); animation: clignote 1s ease-in-out infinite; }
+@keyframes clignote { 50% { opacity: .3; } }
+.grise { opacity: .45; }
+.quand { color: var(--aube); font-weight: 600; }
+.interrupteur[disabled] { cursor: default; }
+.budget { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.budget input { grid-column: 1 / -1; }
+.bulles { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--carte-2); border-radius: 14px; padding: 8px; min-height: 48px; }
+.bulles span { display: inline-flex; align-items: center; gap: 2px; background: var(--bleu-fond); color: var(--bleu); border-radius: 999px; padding: 0 2px 0 12px; font-size: 14px; font-weight: 600; min-height: 34px; }
+.bulles span button { width: 30px; height: 30px; border: 0; background: none; color: var(--bleu); }
+.bulles input { flex: 1; min-width: 140px; border: 0; background: transparent; color: var(--texte); font-size: 15px; min-height: 34px; padding: 0 6px; outline: none; }
+.coche { min-height: 36px; border: 1.5px solid var(--trait-2); border-radius: 999px; background: transparent; color: var(--doux-2); padding: 0 12px; font-size: 13px; flex: none; }
+.coche[aria-checked="true"] { background: var(--aube-fond); border-color: var(--aube); color: var(--aube); font-weight: 600; }
+.agenda { display: flex; flex-direction: column; gap: 10px; }
+.agenda-jour { display: flex; flex-direction: column; gap: 4px; }
+.agenda-date { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--doux); }
+.agenda-ev { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; padding: 4px 0; }
+.agenda-ev i { width: 4px; align-self: stretch; border-radius: 2px; flex: none; }
+.agenda-h { width: 58px; flex: none; color: var(--doux-2); font-variant-numeric: tabular-nums; }
+.agenda-t { flex: 1; min-width: 0; line-height: 1.35; }
+/* demande libre */
+.demander { display: flex; align-items: center; gap: 10px; min-height: 50px; border: 1.5px solid var(--trait-2); border-radius: 16px; background: transparent; color: var(--doux); padding: 0 14px; font-size: 15px; width: 100%; text-align: left; }
+.bulle { max-width: 88%; border-radius: 18px; padding: 10px 14px; font-size: 15px; line-height: 1.45; white-space: pre-wrap; }
+.bulle.moi { align-self: flex-end; background: var(--aube); color: var(--sur-aube); border-bottom-right-radius: 6px; }
+.bulle.bot { align-self: flex-start; background: var(--carte); border-bottom-left-radius: 6px; }
+.bulle ul { margin: 6px 0 0; padding-left: 18px; }
+.annul { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--carte); border-radius: 14px; padding: 6px 6px 6px 14px; font-size: 13px; color: var(--doux-2); }
+/* réglages */
+.menu-reglages { background: var(--carte); border-radius: 18px; display: flex; flex-direction: column; overflow: hidden; }
+.menu-reglages button { display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 0 14px; border: 0; background: none; color: var(--texte); text-align: left; width: 100%; }
+.menu-reglages button + button { border-top: 1px solid var(--trait); }
+.menu-reglages .textes { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.menu-reglages .detail { font-size: 13px; color: var(--doux); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reglage { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 6px 14px; }
+.reglage > span:first-child { flex: 1; font-size: 15px; }
+.reglage .aide { margin-top: 2px; }
+.pas { display: flex; align-items: center; gap: 4px; }
+.pas button { width: 40px; height: 40px; border: 0; border-radius: 12px; background: var(--carte-2); color: var(--texte); font-size: 20px; }
+.pas output { min-width: 58px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.etiquettes { display: flex; flex-wrap: wrap; gap: 6px; }
+.etiquettes span { display: inline-flex; align-items: center; gap: 2px; background: var(--carte-2); border-radius: 999px; padding: 0 2px 0 12px; font-size: 14px; min-height: 36px; }
+.etiquettes button { width: 32px; height: 32px; border: 0; background: none; color: var(--doux); }
+.ajout { display: flex; gap: 8px; }
+.ajout .saisie { flex: 1; }
+.ajout .bouton { flex: none; }
+.compacte { min-height: 40px; background: var(--carte-2); border: 0; border-radius: 10px; padding: 0 10px; color: var(--texte); font-variant-numeric: tabular-nums; }
+.idee { background: var(--carte); border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+.idee h3 { margin: 0; font-family: var(--titre); font-size: 17px; }
+.idee .infos { display: flex; flex-wrap: wrap; gap: 6px; }
+.idee .infos span { font-size: 12px; background: var(--carte-2); border-radius: 999px; padding: 4px 10px; color: var(--doux-2); }
+.idee .infos span.ok { background: var(--vert-fond); color: var(--vert); }
+/* feuille de choix (plus de 2 actions : la fenêtre Telegram n'en accepte que 3 avec « Annuler ») */
+#feuille { position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-end; justify-content: center; background: rgba(5,7,10,.55); }
+#feuille .panneau { width: 100%; max-width: 560px; background: var(--fond-nav); border-radius: 22px 22px 0 0; padding: 18px 16px calc(16px + var(--bas)); display: flex; flex-direction: column; gap: 10px; }
+#feuille .entete { display: flex; flex-direction: column; gap: 4px; padding: 0 4px 4px; }
+#feuille .entete strong { font-family: var(--titre); font-size: 18px; }
+#feuille .entete span { font-size: 14px; color: var(--doux); }
+#feuille .choix { background: var(--carte); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; }
+#feuille .choix button { min-height: 54px; border: 0; background: none; color: var(--texte); font-size: 16px; font-weight: 500; }
+#feuille .choix button + button { border-top: 1px solid var(--trait); }
+#feuille .choix button.danger { color: var(--rouge); }
+#feuille { overscroll-behavior: contain; touch-action: none; }
+#feuille .panneau { max-height: calc(var(--tg-viewport-stable-height, 100dvh) - 24px); overflow: hidden; touch-action: pan-y; }
+#feuille .panneau > * { flex: none; }
+#feuille .panneau:not(:has(.defile)) { overflow-y: auto; overscroll-behavior: contain; }
+#feuille .panneau > .defile { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+body.feuille-ouverte { overflow: hidden; }
+#feuille .bloc-jour { background: var(--carte); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+#feuille .bloc-jour .compacte { background: var(--carte-2); }
+/* listes déroulantes : choix dans une feuille de l'application, pas dans le sélecteur du téléphone */
+select { pointer-events: none; cursor: pointer; }
+select.compacte { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239AA3B2' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 32px; }
+#feuille .liste-choix button { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 50px; padding: 10px 16px; text-align: left; font-size: 15px; font-weight: 500; line-height: 1.3; }
+#feuille .liste-choix button[aria-selected="true"] { color: var(--aube); font-weight: 600; }
+#feuille .liste-choix button svg { flex: none; }
+#feuille .liste-choix .groupe { padding: 12px 16px 4px; }
+#feuille .annuler { min-height: 54px; border: 0; border-radius: 16px; background: var(--carte-2); color: var(--texte); font-size: 16px; font-weight: 600; }
+</style>
+</head>
+<body>
+<main id="ecran" aria-live="polite"><div class="chargement"><span class="attente" aria-hidden="true"></span><br>Chargement…</div></main>
+<div id="mini" class="cache" role="region" aria-label="Lecture en cours">
+  <button type="button" id="mini-titre" class="t"></button>
+  <button type="button" class="lire petit" data-mini aria-label="Lecture"></button>
+  <div class="barre-mini" aria-hidden="true"><i></i></div>
+</div>
+<nav class="onglets-bas cache" id="nav" aria-label="Navigation"></nav>
+<div id="annonce" role="status" aria-live="polite"></div>
+<div id="feuille" class="cache" role="dialog" aria-modal="true" aria-labelledby="feuille-titre"></div>
+<script>
+"use strict";
+const tg = window.Telegram && window.Telegram.WebApp;
+const S = { d: null, ecran: "accueil", onglet_ecran: "accueil", onglet: "active", fiche: null, mois: 0, occupe: false,
+            reglage: null, episode: null, texte: null, discussion: [], charge: 0, choisi: null, jourVue: { rubriques: "", deroule: "" }, jourDernier: {}, moisEpisodes: null, aPreparer: [], nouveau: { nom: "", voix: "Kore" } };
+const ecranEl = document.getElementById("ecran");
+const navEl = document.getElementById("nav");
+const miniEl = document.getElementById("mini");
+
+// ───────────────────────────── utilitaires ─────────────────────────────
+const h = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const heure = (hm) => { if (!hm) return "—"; const [a, b] = hm.split(":"); return `${Number(a)}h${b}`; };
+const minSec = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; };
+const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+const JOURS_LONGS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+const CLES_JOURS = ["dim", "lun", "mar", "mer", "jeu", "ven", "sam"];
+const dateObj = (iso) => new Date(`${iso}T12:00:00Z`);
+const dateLongue = (iso) => { const d = dateObj(iso); return `${JOURS_LONGS[d.getUTCDay()]} ${d.getUTCDate()} ${MOIS[d.getUTCMonth()]}`; };
+const majuscule = (t) => String(t || "").charAt(0).toUpperCase() + String(t || "").slice(1);
+const plusJours = (iso, n) => { const d = dateObj(iso); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const nombre = (n) => String(n).replace(".", ",");
+const LONGUEURS = { phrase: "une phrase", courte: "courte", developpee: "développée" };
+const PERIODES = [["toujours", "Tous les jours"], ["jours", "Certains jours de la semaine"], ["dates", "Entre deux dates"], ["une_fois", "Une seule fois (prochain épisode)"], ["ponctuelle", "Recherche ponctuelle (hors podcast)"]];
+const MOMENTS = [["jour_meme", "le jour même"], ["veille", "la veille"], ["jours_avant", "quelques jours avant"]];
+const CHAMPS_FICHE = [["quoi", "Quoi"], ["avec_qui", "Avec qui"], ["ages", "Âges"], ["ou", "Où"], ["quand", "Quand"], ["attendu", "Résultat attendu"]];
+
+const ICONES = {
+  coche: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  accueil: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  rubriques: '<rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/>',
+  deroule: '<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>',
+  planning: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  reglages: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+  jour: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  info: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
+  sortie: '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  agenda: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>', retour: '<path d="M15 6l-6 6 6 6"/>', suite: '<path d="M9 6l6 6-6 6"/>', croix: '<path d="M6 6l12 12M18 6L6 18"/>',
+  plusieurs: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
+  cadenas: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  aube: '<path d="M4 18h16"/><path d="M7 18a5 5 0 0 1 10 0"/><path d="M12 7v3M5.6 10.6l1.8 1.8M18.4 10.6l-1.8 1.8"/>',
+  bulle: '<path d="M4 5h16v11H9l-5 4z"/>',
+  envoyer: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  haut: '<path d="M7 10v11H4V10zM7 10l4-7a2 2 0 0 1 3 2l-1 5h6a2 2 0 0 1 2 2.3l-1.3 7A2 2 0 0 1 17.7 21H7"/>',
+  bas: '<path d="M17 14V3h3v11zM17 14l-4 7a2 2 0 0 1-3-2l1-5H5a2 2 0 0 1-2-2.3l1.3-7A2 2 0 0 1 6.3 3H17"/>',
+  format: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+  voix: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+  actus: '<rect x="3" y="5" width="18" height="15" rx="2"/><path d="M7 9h10M7 13h10M7 17h6"/>',
+  sources: '<path d="M5 19a1 1 0 1 0 0-.01M5 12a7 7 0 0 1 7 7M5 5a14 14 0 0 1 14 14"/>',
+  consignes: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+  creuser: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4M11 8v6M8 11h6"/>',
+  telephone: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
+  stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
+  idees: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
+};
+const icone = (nom, taille = 22, epaisseur = 1.8) => `<svg width="${taille}" height="${taille}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${epaisseur}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONES[nom]}</svg>`;
+const LECTURE = '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z" fill="currentColor"/></svg>';
+const PAUSE = '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg>';
+const POIGNEE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
+const interrupteur = (nom, coche, attributs) => `<button type="button" class="interrupteur" role="switch" aria-checked="${Boolean(coche)}" ${attributs}>${nom}<span class="rail"><span></span></span></button>`;
+
+function vibrer(type) { try { tg && tg.HapticFeedback && (type === "choix" ? tg.HapticFeedback.selectionChanged() : tg.HapticFeedback.notificationOccurred(type)); } catch (e) { /* ancien Telegram */ } }
+const recent = (v) => tg && tg.isVersionAtLeast && tg.isVersionAtLeast(v);
+
+let minuterie = null;
+function annoncer(texte, erreur = false) {
+  const el = document.getElementById("annonce");
+  el.textContent = texte;
+  el.classList.toggle("erreur", erreur);
+  el.classList.add("visible");
+  clearTimeout(minuterie);
+  minuterie = setTimeout(() => el.classList.remove("visible"), erreur ? 5000 : 3200);
+}
+
+function confirmer(message, ok) {
+  if (tg && tg.showConfirm && recent("6.2")) tg.showConfirm(message, (oui) => { if (oui) ok(); });
+  else if (window.confirm(message)) ok();
+}
+
+// Fenêtre Telegram : 3 boutons au plus, « Annuler » compris. Au-delà (ou si
+// Telegram refuse), une feuille de choix dans l'application prend le relais.
+function choisir(titre, message, boutons, suite) {
+  if (tg && tg.showPopup && recent("6.2") && boutons.length <= 2) {
+    try {
+      tg.showPopup({ title: titre, message, buttons: [...boutons, { type: "cancel" }] }, (id) => { if (id) suite(id); });
+      return;
+    } catch (e) { /* on passe à la feuille */ }
+  }
+  feuilleDeChoix(titre, message, boutons, suite);
+}
+
+function feuilleDeChoix(titre, message, boutons, suite) {
+  const el = document.getElementById("feuille");
+  const fermer = () => {
+    el.classList.add("cache"); el.innerHTML = ""; el.onclick = null; document.removeEventListener("keydown", echap);
+  };
+  const echap = (ev) => { if (ev.key === "Escape") fermer(); };
+  el.innerHTML = `<div class="panneau">
+    <div class="entete"><strong id="feuille-titre">${h(titre)}</strong>${message ? `<span>${h(message)}</span>` : ""}</div>
+    <div class="choix defile">${boutons.map((b) => `<button type="button" data-choix="${h(b.id)}"${b.type === "destructive" ? ' class="danger"' : ""}>${h(b.text)}</button>`).join("")}</div>
+    <button type="button" class="annuler" data-choix="">Annuler</button></div>`;
+  el.classList.remove("cache");
+  el.onclick = (ev) => {
+    ev.stopPropagation();
+    const bouton = ev.target.closest("[data-choix]");
+    if (!bouton && ev.target !== el) return;
+    const id = bouton ? bouton.dataset.choix : "";
+    fermer();
+    if (id) { vibrer("choix"); suite(id); }
+  };
+  document.addEventListener("keydown", echap);
+  const premier = el.querySelector("[data-choix]");
+  if (premier) premier.focus();
+}
+
+function ouvrirLien(url) {
+  if (tg && tg.openLink) tg.openLink(url); else window.open(url, "_blank", "noopener");
+}
+
+// ──────────────────────────────── serveur ───────────────────────────────
+async function demander(action, extra = {}, options = {}) {
+  if (S.occupe && !options.toujours) return { ok: false, occupe: true };
+  S.occupe = true;
+  try {
+    const r = await fetch("/app/api", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Telegram-Init-Data": (tg && tg.initData) || "" },
+      body: JSON.stringify({ action, ...extra }),
+    });
+    const j = await r.json().catch(() => ({ ok: false, erreur: `Le bot ne répond pas (erreur ${r.status}).` }));
+    if (j.donnees) { S.d = j.donnees; S.charge = Date.now(); }
+    if (!j.ok && !options.discret) { annoncer(j.erreur || "Impossible pour l'instant.", true); vibrer("error"); }
+    return j;
+  } catch (e) {
+    annoncer("Pas de connexion au bot. Vérifie ton réseau et réessaie.", true);
+    return { ok: false };
+  } finally {
+    S.occupe = false;
+  }
+}
+
+// Une action qui change un réglage : message, vibration, nouvel affichage.
+async function changer(action, extra = {}, apres) {
+  const j = await demander(action, extra);
+  if (j.ok) { vibrer("success"); if (j.message) annoncer(j.message); }
+  if (apres) apres(j); else dessiner();
+  return j;
+}
+
+// ─────────────────────────────── lecteur ────────────────────────────────
+const audio = new Audio();
+audio.preload = "metadata";
+const L = { cle: null, ep: null };
+
+function episodeParCle(cle) { return (S.d && S.d.episodes || []).find((e) => e.cle === cle) || null; }
+
+function jouer(ep, depuis = null) {
+  if (!ep || !ep.audio) return annoncer("Cet épisode s'écoute dans la conversation.", true);
+  if (L.cle !== ep.cle) {
+    L.cle = ep.cle; L.ep = ep;
+    audio.src = ep.audio;
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({ title: ep.titre, artist: (S.d.animateurs || []).join(" & "), album: "Podcast Matin" });
+      navigator.mediaSession.setActionHandler("play", () => audio.play());
+      navigator.mediaSession.setActionHandler("pause", () => audio.pause());
+      navigator.mediaSession.setActionHandler("seekbackward", () => { audio.currentTime = Math.max(0, audio.currentTime - 15); });
+      navigator.mediaSession.setActionHandler("seekforward", () => { audio.currentTime = audio.currentTime + 30; });
+    }
+  }
+  if (depuis !== null) {
+    const aller = () => { audio.currentTime = depuis; };
+    if (audio.readyState >= 1) aller(); else audio.addEventListener("loadedmetadata", aller, { once: true });
+  }
+  audio.play().catch(() => annoncer("Lecture impossible : touche encore ▶.", true));
+  majLecteur();
+}
+
+function basculer(ep) {
+  if (L.cle === ep.cle && !audio.paused) audio.pause(); else jouer(ep);
+}
+
+function duree(ep) { return (L.cle === ep.cle && isFinite(audio.duration) && audio.duration) || ep.duree || 0; }
+
+function vueLecteur(ep) {
+  const actif = L.cle === ep.cle;
+  const position = actif ? audio.currentTime : 0;
+  const total = duree(ep);
+  if (!ep.audio) {
+    return `<div class="lecteur"><p class="aide">Cet épisode a été envoyé avant l'application : il s'écoute dans la conversation.</p>
+      <button type="button" class="bouton gris" data-action="fermer">Écouter dans la conversation</button></div>`;
+  }
+  return `<div class="lecteur" data-lecteur="${h(ep.cle)}">
+    <div class="haut">
+      <button type="button" class="lire" data-lire="${h(ep.cle)}" aria-label="${actif && !audio.paused ? "Pause" : "Lecture"}">${actif && !audio.paused ? PAUSE : LECTURE}</button>
+      <div style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0">
+        <input type="range" class="avance" min="0" max="${Math.max(1, Math.round(total))}" step="1" value="${Math.round(position)}" data-avance="${h(ep.cle)}" aria-label="Position dans l'épisode">
+        <div class="temps"><span data-temps="${h(ep.cle)}">${minSec(position)}</span><span>${minSec(total)}</span></div>
+      </div>
+    </div>
+    ${ep.chapitres.length ? `<div class="chapitres">${ep.chapitres.map(([t, titre], i) => `<button type="button" data-chapitre="${h(ep.cle)}" data-t="${t}" data-i="${i}">
+      <span>${minSec(t)}</span><span>${h(titre)}</span></button>`).join("")}</div>` : ""}
+  </div>`;
+}
+
+function majLecteur() {
+  const ep = L.ep;
+  document.querySelectorAll("[data-lire]").forEach((b) => {
+    const enCours = b.dataset.lire === L.cle && !audio.paused;
+    b.innerHTML = enCours ? PAUSE : LECTURE;
+    b.setAttribute("aria-label", enCours ? "Pause" : "Lecture");
+  });
+  if (!ep) { miniEl.classList.add("cache"); return; }
+  const position = audio.currentTime || 0, total = duree(ep);
+  document.querySelectorAll(`[data-avance="${CSS.escape(ep.cle)}"]`).forEach((r) => { if (document.activeElement !== r) { r.max = Math.max(1, Math.round(total)); r.value = Math.round(position); } });
+  document.querySelectorAll(`[data-temps="${CSS.escape(ep.cle)}"]`).forEach((t) => { t.textContent = minSec(position); });
+  document.querySelectorAll(`[data-chapitre="${CSS.escape(ep.cle)}"]`).forEach((b, i, tous) => {
+    const debut = Number(b.dataset.t), suivant = tous[i + 1] ? Number(tous[i + 1].dataset.t) : Infinity;
+    b.classList.toggle("encours", position >= debut && position < suivant && (position > 0 || !audio.paused));
+  });
+  // Mini-lecteur en bas, sauf sur l'écran qui montre déjà ce lecteur.
+  const visible = document.querySelector(`[data-lecteur="${CSS.escape(ep.cle)}"]`);
+  miniEl.classList.toggle("cache", Boolean(visible) || S.ecran === "fiche");
+  miniEl.querySelector(".t").textContent = ep.titre;
+  miniEl.querySelector(".barre-mini i").style.width = `${total ? (100 * position) / total : 0}%`;
+  const b = miniEl.querySelector("[data-mini]");
+  b.innerHTML = audio.paused ? LECTURE : PAUSE;
+  b.setAttribute("aria-label", audio.paused ? "Lecture" : "Pause");
+}
+["play", "pause", "timeupdate", "loadedmetadata", "ended"].forEach((ev) => audio.addEventListener(ev, majLecteur));
+audio.addEventListener("play", () => { if (!extrait.paused) extrait.pause(); });
+
+// Extraits de voix : deux voix partagent un fichier ; on ne lit que le passage de la voix choisie.
+const extrait = new Audio();
+extrait.preload = "metadata";
+const X = { voix: null, debut: 0, fin: 0 };
+function basculerExtrait(voix) {
+  const r = S.d.reglages, url = r.echantillons[voix], t = r.temps_echantillons[voix];
+  if (!url || !t) return;
+  if (X.voix === voix && !extrait.paused) { extrait.pause(); return majExtraits(); }
+  if (!audio.paused) audio.pause();
+  if (X.voix !== voix) { extrait.src = url; X.voix = voix; X.debut = t[0]; X.fin = t[1]; }
+  const lancer = () => {
+    if (extrait.currentTime < X.debut || extrait.currentTime >= X.fin - 0.15) extrait.currentTime = X.debut;
+    extrait.play().catch(() => annoncer("Lecture impossible.", true));
+  };
+  if (extrait.readyState >= 1) lancer(); else extrait.addEventListener("loadedmetadata", lancer, { once: true });
+  majExtraits();
+}
+function majExtraits() {
+  document.querySelectorAll("[data-extrait]").forEach((b) => {
+    const enCours = b.dataset.extrait === X.voix && !extrait.paused;
+    b.innerHTML = enCours ? PAUSE : LECTURE;
+    b.setAttribute("aria-label", `${enCours ? "Pause" : "Écouter"} ${b.dataset.extrait}`);
+  });
+}
+extrait.addEventListener("timeupdate", () => {
+  if (X.voix && extrait.currentTime >= X.fin) { extrait.pause(); extrait.currentTime = X.debut; }
+});
+["play", "pause", "ended"].forEach((ev) => extrait.addEventListener(ev, majExtraits));
+audio.addEventListener("error", () => { if (L.cle) annoncer("L'audio ne se charge pas. Rouvre l'application pour rafraîchir le lien.", true); });
+
+// ─────────────────────────────── écrans ─────────────────────────────────
+const ONGLETS = [["accueil", "Accueil"], ["rubriques", "Rubriques"], ["deroule", "Déroulé"], ["planning", "Planning"], ["reglages", "Réglages"]];
+const SOUS_ECRANS = { fiche: "rubriques", episode: "accueil", episodes: "accueil", resultats: "accueil", parler: "accueil", reglage: "reglages" };
+
+function dessiner() {
+  const vues = { accueil: vueAccueil, rubriques: vueRubriques, fiche: vueFiche, deroule: vueDeroule, planning: vuePlanning,
+                 reglages: vueReglages, reglage: vueReglage, episode: vueEpisode, episodes: vueEpisodes, resultats: vueResultats, parler: vueParler };
+  ecranEl.innerHTML = vues[S.ecran]();
+  ecranEl.classList.toggle("avec-barre", S.ecran === "fiche" || S.ecran === "parler");
+  navEl.classList.toggle("cache", S.ecran === "fiche" || S.ecran === "parler");
+  const onglet = SOUS_ECRANS[S.ecran] || S.ecran;
+  navEl.innerHTML = ONGLETS.map(([cle, nom]) => `<button type="button" data-aller="${cle}" ${onglet === cle ? 'aria-current="page"' : ""}>${icone(cle)}${nom}</button>`).join("");
+  if (tg && tg.BackButton) { if (SOUS_ECRANS[S.ecran]) tg.BackButton.show(); else tg.BackButton.hide(); }
+  if (S.ecran === "deroule") brancherGlisser();
+  const choisi = document.querySelector('#dates [aria-pressed="true"]');
+  if (choisi) choisi.scrollIntoView({ block: "nearest", inline: "center" });
+  if (S.ecran === "parler") { const fil = document.getElementById("fil"); if (fil) window.scrollTo(0, document.body.scrollHeight); }
+  majLecteur();
+}
+
+function aller(ecran) {
+  if (S.ecran === "fiche" && S.fiche && S.fiche.modifie && ecran !== "fiche") {
+    return confirmer("Quitter sans enregistrer les changements ?", () => { S.fiche = null; S.ecran = ecran; dessiner(); window.scrollTo(0, 0); });
+  }
+  if (S.ecran === "fiche" && ecran !== "fiche") S.fiche = null;
+  S.ecran = ecran;
+  dessiner();
+  window.scrollTo(0, 0);
+}
+
+function retour() {
+  if (V.enCours) couperVocal();
+  aller(SOUS_ECRANS[S.ecran] || "accueil");
+}
+
+const entete = (titre, surtitre = "", droite = "") => `
+  <div class="entete-fiche">
+    <button type="button" class="icone" data-action="retour" aria-label="Retour">${icone("retour", 22, 2)}</button>
+    <span class="surtitre">${h(surtitre)}</span>${droite}
+  </div>${titre ? `<h1>${h(titre)}</h1>` : ""}`;
+
+// ─────────────────────────────── accueil ────────────────────────────────
+function vueAccueil() {
+  const d = S.d, p = d.prochain;
+  const actifs = d.deroule.filter((x) => x.actif).length;
+  let quand = "";
+  if (p) quand = p.date === d.aujourdhui ? "Aujourd'hui" : p.date === plusJours(d.aujourdhui, 1) ? `Demain, ${dateLongue(p.date)}` : majuscule(dateLongue(p.date));
+  const sautes = d.sautes.map((s) => `<div class="saute"><span>Pas d'épisode le ${h(s.texte)}</span><button type="button" data-retablir="${s.date}">Rétablir</button></div>`).join("");
+  const ep = episodeParCle(S.choisi) || d.episodes[0];
+  const res = d.resultats && d.resultats.details && d.resultats.details.length && (Date.now() - new Date(d.resultats.quand).getTime() < 4 * 86400000) ? d.resultats : null;
+  return `
+  <div class="entre" style="align-items:flex-end">
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <span class="surtitre">${h(majuscule(dateLongue(d.aujourdhui)))}</span>
+      <h1 style="font-size:32px">Podcast Matin</h1>
+    </div>
+    <span class="badge ok">Bot actif</span>
+  </div>
+  <section class="soleil" aria-labelledby="t-prochain">
+    <div class="entre" style="align-items:flex-start">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span id="t-prochain" style="font-size:13px;font-weight:600;opacity:.85">Prochain épisode</span>
+        ${p ? `<span class="heure">${heure(p.heure)}</span><span style="font-size:14px;font-weight:500">${h(quand)}</span>` : `<span class="heure" style="font-size:28px">Aucun prévu</span>`}
+      </div>
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true">${ICONES.aube}</svg>
+    </div>
+    <div class="puces"><span>${actifs} passages</span><span>≈ ${h(nombre(d.format.duree_minutes))} min</span><span>${h(d.animateurs.join(" & "))}</span></div>
+    <div class="actions">
+      <button type="button" class="bouton sombre" data-action="generer">Générer maintenant</button>
+      ${p ? `<button type="button" class="bouton contour" data-sauter="${p.date}">Sauter</button>` : ""}
+    </div>
+    ${sautes}
+  </section>
+  ${ep ? `<section class="carte" aria-labelledby="t-dernier">
+    <div class="entre"><h2 id="t-dernier">Épisodes</h2><button type="button" class="lien" style="min-height:32px;padding:0" data-aller="episodes">Tous</button></div>
+    ${d.episodes.length > 1 ? `<div class="dates" id="dates" role="group" aria-label="Choisir l'épisode">${d.episodes.slice(0, 14).reverse().map((x) => `<button type="button" data-choisir="${h(x.cle)}" aria-pressed="${x.cle === ep.cle}">${h(x.date === d.aujourdhui ? "Ce matin" : x.texte.replace(/\.$/, ""))}</button>`).join("")}</div>` : ""}
+    <button type="button" class="tete-episode" data-episode="${h(ep.cle)}">
+      ${ep.image ? `<img src="${h(ep.image)}" alt="" class="miniature">` : `<span class="miniature vide-img" aria-hidden="true">${icone("aube", 28, 1.4)}</span>`}
+      <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px"><span class="sous" style="font-size:13px">${h(majuscule(dateLongue(ep.date)))}</span>
+      <span style="font-weight:600;font-size:16px;line-height:1.3">${h(ep.titre)}</span></span></button>
+    ${vueLecteur(ep)}
+    <div class="entre">
+      <div class="pouces">
+        <button type="button" data-geste="up" data-cle="${h(ep.cle)}" aria-pressed="${ep.avis === "up"}" aria-label="J'ai aimé">${icone("haut", 20)}</button>
+        <button type="button" data-geste="down" data-cle="${h(ep.cle)}" aria-pressed="${ep.avis === "down"}" aria-label="Pas aimé">${icone("bas", 20)}</button>
+      </div>
+      <button type="button" class="lien" data-episode="${h(ep.cle)}">Sources, ajuster, texte</button>
+    </div>
+  </section>` : `<section class="carte"><h2>Épisodes</h2><p class="sous" style="margin:0">Aucun épisode reçu pour l'instant.</p></section>`}
+  ${res ? `<button type="button" class="episode-ligne" data-aller="resultats">
+      <span class="pastille f-sortie" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center">${icone("idees", 20)}</span>
+      <span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">Idées trouvées</span>
+      <span class="sous" style="font-size:13px">${h(res.details.map((r) => r.titre || r.regle).join(" · "))}</span></span>${icone("suite", 18, 2)}</button>` : ""}
+  <button type="button" class="demander" data-aller="parler">${icone("bulle", 20)}<span>Demande-moi quelque chose…</span></button>
+  ${d.annulation ? `<div class="annul"><span>Dernier changement : ${h(d.annulation)}</span><button type="button" class="lien" style="min-height:36px;padding:0 10px" data-action="annuler">Annuler</button></div>` : ""}
+`;
+}
+
+// ─────────────────────────────── épisodes ───────────────────────────────
+function vueEpisodes() {
+  const d = S.d, eps = d.episodes;
+  if (!eps.length) return `${entete("Épisodes")}<div class="vide">Aucun épisode pour l'instant.</div>`;
+  const moisListe = [...new Set(eps.map((x) => x.date.slice(0, 7)))].sort();
+  const mois = S.moisEpisodes && moisListe.includes(S.moisEpisodes) ? S.moisEpisodes : moisListe.at(-1);
+  const i = moisListe.indexOf(mois);
+  const premier = `${mois}-01`, m = dateObj(premier);
+  const decalage = (m.getUTCDay() + 6) % 7;
+  const jours = [];
+  for (let k = 0; k < 31; k++) { const date = plusJours(premier, k); if (date.slice(0, 7) !== mois) break; jours.push(date); }
+  const parJour = {};
+  for (const x of eps) if (!parJour[x.date]) parJour[x.date] = x;   // le plus récent du jour
+  const cellule = (date) => {
+    const x = parJour[date];
+    if (!x) return `<span class="case-ep${date === d.aujourdhui ? " aujourdhui" : ""}"><span class="num">${Number(date.slice(8))}</span></span>`;
+    return `<button type="button" class="case-ep avec" data-episode="${h(x.cle)}" aria-label="${h(dateLongue(date))} : ${h(x.titre)}">
+      ${x.image ? `<img src="${h(x.image)}" alt="">` : `<span class="sans-img" aria-hidden="true">${icone("aube", 20, 1.4)}</span>`}
+      <span class="num">${Number(date.slice(8))}</span></button>`;
+  };
+  return `${entete("Épisodes", `${eps.length} épisode${eps.length > 1 ? "s" : ""}`)}
+  <section class="carte">
+    <div class="entre"><h2>${majuscule(MOIS[m.getUTCMonth()])} ${m.getUTCFullYear()}</h2>
+      <div class="ligne" style="gap:4px">
+        <button type="button" class="icone" style="background:var(--carte-2);width:40px;height:40px" data-mois-ep="${moisListe[i - 1] || ""}" ${i > 0 ? "" : "disabled"} aria-label="Mois précédent">${icone("retour", 16, 2.2)}</button>
+        <button type="button" class="icone" style="background:var(--carte-2);width:40px;height:40px" data-mois-ep="${moisListe[i + 1] || ""}" ${i < moisListe.length - 1 ? "" : "disabled"} aria-label="Mois suivant">${icone("suite", 16, 2.2)}</button>
+      </div></div>
+    <div class="cal-ep">
+      ${["L", "M", "M", "J", "V", "S", "D"].map((x) => `<span class="tete" aria-hidden="true">${x}</span>`).join("")}
+      ${"<span></span>".repeat(decalage)}${jours.map(cellule).join("")}
+    </div>
+  </section>
+  <div class="liste">${eps.filter((x) => x.date.slice(0, 7) === mois).reverse().map((ep) => `<button type="button" class="episode-ligne" data-episode="${h(ep.cle)}">
+    ${ep.image ? `<img src="${h(ep.image)}" alt="" class="miniature petite">` : `<span class="miniature petite vide-img" aria-hidden="true">${icone("aube", 20, 1.4)}</span>`}
+    <span style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600">${h(ep.titre)}</span>
+    <span class="sous" style="font-size:13px">${h(majuscule(ep.texte))}${ep.duree ? ` · ${minSec(ep.duree)}` : ""}${ep.avis === "up" ? " · aimé" : ep.avis === "down" ? " · pas aimé" : ""}</span></span>
+    ${icone("suite", 18, 2)}</button>`).join("")}</div>`;
+}
+
+function vueEpisode() {
+  const ep = episodeParCle(S.episode);
+  if (!ep) return `${entete("Épisode")}<div class="vide">Cet épisode n'est plus disponible.</div>`;
+  const coche = (g) => ep.coches.includes(g);
+  const geste = (g, nom) => `<button type="button" data-geste="${g}" data-cle="${h(ep.cle)}" aria-pressed="${coche(g)}">${coche(g) ? "✓ " : ""}${nom}</button>`;
+  const sections = [];
+  for (const x of ep.sources) {
+    const nom = x.section || "Sources";
+    let g = sections.find((s) => s.nom === nom);
+    if (!g) { g = { nom, liste: [] }; sections.push(g); }
+    g.liste.push(x);
+  }
+  let numero = 0;
+  return `${entete("", majuscule(ep.texte))}
+  ${ep.image ? `<img src="${h(ep.image)}" alt="Miniature de l'épisode" class="grande-miniature">` : ""}
+  <h1 style="font-size:24px">${h(ep.titre)}</h1>
+  <section class="carte">${vueLecteur(ep)}</section>
+  <section class="carte">
+    <div class="entre"><h2>Ton avis</h2><div class="pouces">
+      <button type="button" data-geste="up" data-cle="${h(ep.cle)}" aria-pressed="${ep.avis === "up"}" aria-label="J'ai aimé">${icone("haut", 20)}</button>
+      <button type="button" data-geste="down" data-cle="${h(ep.cle)}" aria-pressed="${ep.avis === "down"}" aria-label="Pas aimé">${icone("bas", 20)}</button></div></div>
+    ${ep.avis === "down" ? `<p class="aide">Qu'est-ce qui n'allait pas ? Touche ce qui convient, ou explique-le.</p>
+      <div class="gestes"><button type="button" data-action="parler-sujets" data-cle="${h(ep.cle)}">Sujets sans intérêt</button>
+      <button type="button" data-reglage="format">Ton à revoir</button><button type="button" data-aller="parler">Autre chose…</button></div>` : ""}
+    <span class="etiquette" style="font-size:13px;color:var(--doux)">Pour les prochains épisodes</span>
+    <div class="gestes">${geste("court", "Plus court")}${geste("long", "Plus long")}${geste("lent", "Moins vite")}${geste("vite", "Plus vite")}</div>
+    ${ep.sujets.length ? `<span class="etiquette" style="font-size:13px;color:var(--doux)">Creuser un sujet au prochain épisode</span>
+      <div class="gestes">${ep.sujets.map((s, i) => geste(`cr${i + 1}`, h(s))).join("")}</div>` : ""}
+  </section>
+  <section class="carte"><h2>Sources</h2>
+    ${sections.length ? sections.map((g) => `${sections.length > 1 || g.nom !== "Sources" ? `<span class="groupe" style="padding-top:4px">${h(g.nom)}</span>` : ""}
+      <div class="sources">${g.liste.map((x) => `<button type="button" data-lien="${h(x.url)}"><span>${++numero}</span><span>${h(x.titre || x.url)}<br><span class="aide">${h(x.url.replace(/^https:\/\/(www\.)?/, "").split("/")[0])}</span></span></button>`).join("")}</div>`).join("")
+      : `<p class="aide">Pas de source enregistrée pour cet épisode. Les épisodes envoyés avant ce soir n'avaient pas la place de les garder (légende Telegram limitée) : elles s'afficheront ici à partir du prochain.</p>`}
+  </section>
+  ${S.texte && S.texte.cle === ep.cle ? `<section class="carte"><h2>Texte de l'épisode</h2><div class="transcription">${h(S.texte.texte)}</div></section>`
+    : ep.texte_dispo ? `<button type="button" class="bouton gris" data-texte="${h(ep.cle)}">Lire le texte de l'épisode</button>` : ""}
+  <button type="button" class="bouton gris" data-action="generer">Refaire un épisode maintenant</button>`;
+}
+
+async function geste(cle, g) {
+  const j = await demander("geste", { cle, geste: g });
+  if (j.ok) { vibrer(g === "down" ? "warning" : "success"); annoncer(j.message); }
+  if (g === "down" && j.ok && S.ecran !== "episode") { S.episode = cle; aller("episode"); return; }
+  dessiner();
+}
+
+// ─────────────────────────────── résultats ──────────────────────────────
+function vueResultats() {
+  const res = S.d.resultats;
+  if (!res || !res.details.length) return `${entete("Idées trouvées")}<div class="vide">Aucun résultat récent. Lance une recherche depuis une rubrique.</div>`;
+  return `${entete("Idées trouvées", res.quand ? `Le ${dateLongue(res.quand.slice(0, 10))}` : "")}
+  ${res.details.map((r) => `
+    <section style="display:flex;flex-direction:column;gap:10px">
+      <div class="entre"><h2>${h(r.titre || r.regle)}</h2>${r.regle ? `<button type="button" class="lien" data-ouvrir="${h(r.regle)}">Rubrique</button>` : ""}</div>
+      ${r.intro ? `<p class="aide" style="font-size:14px;color:var(--doux-2)">${h(r.intro)}</p>` : ""}
+      ${r.idees.map((i) => `<article class="idee">
+        <h3>${h(i.titre)}</h3>
+        <div class="infos">${i.lieu ? `<span>${h(i.lieu)}</span>` : ""}${i.prix ? `<span class="${i.dans_le_budget ? "ok" : ""}">${h(i.prix)}</span>` : ""}${i.duree ? `<span>${h(i.duree)}</span>` : ""}${i.horaires ? `<span>${h(i.horaires)}</span>` : ""}</div>
+        ${i.resume ? `<p style="margin:0;line-height:1.45">${h(i.resume)}</p>` : ""}
+        ${i.pourquoi ? `<p class="aide">${h(i.pourquoi)}</p>` : ""}
+        ${i.acces ? `<p class="aide">Accès : ${h(i.acces)}</p>` : ""}
+        <div class="gestes">${i.lien ? `<button type="button" data-lien="${h(i.lien)}">Voir le site</button>` : ""}
+          ${i.adresse || i.lieu ? `<button type="button" data-lien="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(i.adresse || i.lieu)}">Carte</button>` : ""}
+          <button type="button" data-creuser="${h(i.titre)}">En parler demain</button></div>
+      </article>`).join("")}
+      ${r.conseil ? `<p class="aide">${h(r.conseil)}</p>` : ""}
+      ${r.regle ? `<button type="button" class="bouton gris" data-chercher="${h(r.regle)}">D'autres idées</button>` : ""}
+    </section>`).join("")}`;
+}
+
+// ─────────────────────────────── demande libre ──────────────────────────
+const DESTINATIONS = { planning: "planning", deroule: "deroule", regles: "rubriques", reglages: "reglages",
+                       format: "r:format", voix: "r:voix", actus: "r:actus", agenda: "r:agenda", consignes: "r:consignes" };
+
+function vueParler() {
+  return `${entete("Demande au bot", "En une phrase")}
+  <p class="aide">Écris, ou touche le micro et parle. Par exemple : « 6 h 45 en semaine, rien le dimanche », « parle plus lentement », « le sport ne m'intéresse pas », « chaque vendredi, propose une sortie à Lausanne ».</p>
+  <div id="fil" style="display:flex;flex-direction:column;gap:8px">
+    ${S.discussion.map((m) => m.moi ? `<div class="bulle moi">${h(m.texte)}</div>` : `<div class="bulle bot">${m.html}</div>`).join("")}
+    ${S.occupe ? `<div class="bulle bot"><span class="attente" style="width:16px;height:16px;margin:0" aria-hidden="true"></span> Je réfléchis…</div>` : ""}
+  </div>
+  <div class="barre"><div style="display:flex;gap:8px;max-width:524px;margin:0 auto;align-items:center">
+    ${V.enCours ? `<div class="enregistre" role="status"><span class="point" aria-hidden="true"></span><span id="duree-vocal">${minSec(V.secondes)}</span><span style="flex:1">Je t'écoute… touche ■ pour envoyer</span>
+        <button type="button" class="lien" style="min-height:40px" data-action="vocal-annuler">Annuler</button></div>
+      <button type="button" class="icone plein" style="width:52px;height:52px" data-action="vocal" aria-label="Envoyer le message vocal">${icone("stop", 22, 2.2)}</button>`
+    : `<textarea id="demande" class="saisie" rows="1" style="min-height:52px;resize:none;padding:14px" placeholder="Écris ou parle…" aria-label="Ta demande"></textarea>
+      <button type="button" class="icone" style="width:52px;height:52px;background:var(--carte-2)" data-action="vocal" aria-label="Parler">${icone("voix", 22, 2)}</button>
+      <button type="button" class="icone plein" style="width:52px;height:52px" data-action="envoyer" aria-label="Envoyer">${icone("envoyer", 22, 2.2)}</button>`}
+  </div></div>`;
+}
+
+async function envoyerDemande(texte, audio = null) {
+  texte = String(texte || "").trim();
+  if (!texte && !audio) return;
+  S.discussion.push({ moi: true, texte: audio ? `🎤 Message vocal (${minSec(audio.secondes)})` : texte });
+  const promesse = demander("parler", audio ? { audio: audio.base64 } : { texte }, { discret: true });
+  dessiner();
+  const j = await promesse;
+  let html = "";
+  if (!j.ok) html = h(j.erreur || "Je n'ai pas pu traiter ta demande.");
+  else {
+    html = h(j.reponse || (j.changements && j.changements.length ? "C'est fait." : "D'accord."));
+    const lignes = [...(j.changements || []), ...(j.suites || [])];
+    if (lignes.length) html += `<ul>${lignes.map((c) => `<li>${h(c)}</li>`).join("")}</ul>`;
+    if (j.erreurs && j.erreurs.length) html += `<br>Pas compris ou impossible : ${h(j.erreurs.join(" ; "))}`;
+    const boutons = [];
+    if (j.changements && j.changements.length) boutons.push(`<button type="button" data-action="annuler">Annuler</button>`);
+    if (j.ouvrir) {
+      if (j.ouvrir.ecran === "fiche" && j.ouvrir.id) boutons.push(`<button type="button" data-ouvrir="${h(j.ouvrir.id)}">Voir la rubrique</button>`);
+      else if (j.ouvrir.ecran === "recherche") boutons.push(`<button type="button" data-action="nouvelle-recherche">Préparer la recherche</button>`);
+      else if (DESTINATIONS[j.ouvrir.ecran]) boutons.push(`<button type="button" data-destination="${DESTINATIONS[j.ouvrir.ecran]}">Ouvrir</button>`);
+    }
+    if (boutons.length) html += `<div class="gestes" style="margin-top:8px">${boutons.join("")}</div>`;
+    vibrer(j.changements && j.changements.length ? "success" : "choix");
+  }
+  S.discussion.push({ moi: false, html });
+  S.discussion = S.discussion.slice(-20);
+  if (S.ecran === "parler") dessiner();
+}
+
+// Enregistrement de la voix : micro du téléphone → WAV 16 kHz mono, une minute au plus.
+const V = { enCours: false, secondes: 0, flux: null, contexte: null, noeud: null, morceaux: [], taux: 16000, minuterie: null };
+
+async function demarrerVocal() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return annoncer("Ton téléphone ne permet pas le micro ici : utilise la dictée du clavier.", true);
+  try {
+    V.flux = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+  } catch (e) {
+    return annoncer("Micro refusé : autorise-le pour Telegram dans les réglages du téléphone.", true);
+  }
+  const Contexte = window.AudioContext || window.webkitAudioContext;
+  V.contexte = new Contexte();
+  const source = V.contexte.createMediaStreamSource(V.flux);
+  V.noeud = V.contexte.createScriptProcessor(4096, 1, 1);
+  V.morceaux = [];
+  V.taux = V.contexte.sampleRate;
+  V.noeud.onaudioprocess = (e) => { V.morceaux.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+  source.connect(V.noeud);
+  V.noeud.connect(V.contexte.destination);
+  V.enCours = true; V.secondes = 0;
+  vibrer("choix");
+  V.minuterie = setInterval(() => {
+    V.secondes++;
+    const el = document.getElementById("duree-vocal");
+    if (el) el.textContent = minSec(V.secondes);
+    if (V.secondes >= 60) arreterVocal(true);
+  }, 1000);
+  dessiner();
+}
+
+function couperVocal() {
+  clearInterval(V.minuterie);
+  try { V.noeud && V.noeud.disconnect(); } catch (e) { /* déjà coupé */ }
+  try { V.flux && V.flux.getTracks().forEach((t) => t.stop()); } catch (e) { /* déjà coupé */ }
+  try { V.contexte && V.contexte.close(); } catch (e) { /* déjà fermé */ }
+  V.enCours = false;
+}
+
+function arreterVocal(envoyer) {
+  if (!V.enCours) return;
+  couperVocal();
+  const secondes = V.secondes;
+  if (!envoyer || secondes < 1) { V.morceaux = []; return dessiner(); }
+  // Rééchantillonnage à 16 kHz et encodage WAV 16 bits.
+  const total = V.morceaux.reduce((n, m) => n + m.length, 0);
+  const brut = new Float32Array(total);
+  let pos = 0;
+  for (const m of V.morceaux) { brut.set(m, pos); pos += m.length; }
+  V.morceaux = [];
+  const cible = 16000, rapport = V.taux / cible, n = Math.floor(brut.length / rapport);
+  const wav = new DataView(new ArrayBuffer(44 + n * 2));
+  const ecrire = (o, t) => { for (let i = 0; i < t.length; i++) wav.setUint8(o + i, t.charCodeAt(i)); };
+  ecrire(0, "RIFF"); wav.setUint32(4, 36 + n * 2, true); ecrire(8, "WAVE"); ecrire(12, "fmt ");
+  wav.setUint32(16, 16, true); wav.setUint16(20, 1, true); wav.setUint16(22, 1, true); wav.setUint32(24, cible, true);
+  wav.setUint32(28, cible * 2, true); wav.setUint16(32, 2, true); wav.setUint16(34, 16, true); ecrire(36, "data"); wav.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) {
+    const v = Math.max(-1, Math.min(1, brut[Math.floor(i * rapport)]));
+    wav.setInt16(44 + i * 2, v < 0 ? v * 0x8000 : v * 0x7fff, true);
+  }
+  const octets = new Uint8Array(wav.buffer);
+  let binaire = "";
+  for (let i = 0; i < octets.length; i += 0x8000) binaire += String.fromCharCode.apply(null, octets.subarray(i, i + 0x8000));
+  envoyerDemande("", { base64: btoa(binaire), secondes });
+}
+
+// ─────────────────────────────── rubriques ──────────────────────────────
+function categorie(r) {
+  if (r.etat === "pause" || r.etat === "terminee") return "inactives";
+  if (r.etat === "a_venir") return "avenir";
+  return "active";
+}
+
+// Quand la rubrique passe (« Toujours », « Les lundi », « Jusqu'au 20 oct. »), en orange.
+const quand = (r) => r && r.periode_texte ? `<span class="quand">${h(majuscule(r.periode_texte))}</span>` : "";
+
+function carteRubrique(r, detailForce = "") {
+  const longueur = r.periode.type === "ponctuelle" ? "hors podcast" : r.longueur ? LONGUEURS[r.longueur] : "sans passage";
+  let detail = `${quand(r)} · ${h(longueur)}`;
+  if (r.etat === "a_venir" && r.prochain) detail = `${quand(r)} · prochain passage : ${h(r.prochain)} · ${h(longueur)}`;
+  if (r.etat === "terminee") detail = `Terminée · ${quand(r)}`;
+  if (r.etat === "pause") detail = `En pause · ${quand(r)}`;
+  if (detailForce) detail = `${quand(r)} · ${h(detailForce)}`;
+  return `<button type="button" class="rubrique" data-ouvrir="${h(r.id)}">
+    <span class="pastille f-${r.famille}">${icone(r.famille, 20)}</span>
+    <span class="textes"><span class="nom">${h(r.titre)}</span><span class="detail">${detail}</span></span>
+    ${r.importance === "prioritaire" ? '<span class="puce prio">Prioritaire</span>' : `<span style="color:var(--eteint)">${icone("suite", 18, 2)}</span>`}
+  </button>`;
+}
+
+// Ce qui s'applique un jour donné (même règle que le bot pour les périodes).
+function appliqueLe(r, date) {
+  if (r.pause) return false;
+  const p = r.periode;
+  if (p.type === "ponctuelle") return false;
+  if (p.type === "une_fois") return !r.servie && Boolean(S.d.prochain) && date === S.d.prochain.date;
+  if (p.debut && date < p.debut) return false;
+  if (p.fin && date > p.fin) return false;
+  if (p.type === "jours" && p.jours.length && !p.jours.includes(CLES_JOURS[dateObj(date).getUTCDay()])) return false;
+  return true;
+}
+
+function vueFiltreJour() {
+  const d = S.d, date = S.jourVue.rubriques;
+  const c = d.planning.calendrier[date] || {};
+  const ordre = d.deroule.map((x) => x.cle);
+  const valables = d.regles.filter((r) => appliqueLe(r, date));
+  const avecPassage = valables.filter((r) => r.longueur && !r.condition).sort((a, b) => ordre.indexOf(a.id) - ordre.indexOf(b.id));
+  const glissees = valables.filter((r) => !r.longueur && !r.condition);
+  const agenda = valables.filter((r) => r.condition);
+  const moments = { jour_meme: "le jour même", veille: "la veille", jours_avant: "quelques jours avant" };
+  return `
+    <p class="aide" style="font-size:14px;color:var(--doux-2)">${c.heure ? `Épisode à ${heure(c.heure)} ce jour-là.` : c.pause ? "Pas d'épisode ce jour-là (pause)." : "Pas d'épisode prévu ce jour-là."}</p>
+    ${valables.length ? [["Dans l'épisode, dans l'ordre", avecPassage], ["Glissées dans l'épisode", glissees]].filter(([, l]) => l.length)
+        .map(([titre, l]) => `<span class="groupe">${titre}</span>${l.map((r) => carteRubrique(r)).join("")}`).join("")
+      + (agenda.length ? `<span class="groupe">Selon ton agenda</span>${agenda.map((r) => carteRubrique(r, `si l'agenda contient « ${r.condition.texte} » ${moments[r.condition.moment] || ""}`)).join("")}` : "")
+      : `<div class="vide">Aucune de tes rubriques ne s'applique ce jour-là.</div>`}`;
+}
+
+function vueRubriques() {
+  const d = S.d;
+  const compte = { active: 0, avenir: 0, inactives: 0 };
+  d.regles.forEach((r) => compte[categorie(r)]++);
+  const visibles = d.regles.filter((r) => categorie(r) === S.onglet);
+  const groupes = [
+    ["Avec leur propre passage", visibles.filter((r) => r.longueur && r.periode.type !== "ponctuelle")],
+    ["Glissées dans l'épisode", visibles.filter((r) => !r.longueur && r.periode.type !== "ponctuelle")],
+    ["Recherches hors podcast", visibles.filter((r) => r.periode.type === "ponctuelle")],
+  ].filter(([, liste]) => liste.length);
+  const videTexte = { active: "Aucune rubrique active aujourd'hui.", avenir: "Rien à venir.", inactives: "Aucune rubrique en pause ou terminée." }[S.onglet];
+  return `
+  <div class="entre"><h1>Rubriques</h1>
+    <button type="button" class="icone plein" data-action="nouvelle" aria-label="Ajouter une rubrique ou une recherche">${icone("plus", 20, 2.2)}</button></div>
+  ${choixJour("rubriques")}
+  ${S.jourVue.rubriques ? `<div class="liste">${vueFiltreJour()}</div>` : `<div class="onglets" role="tablist" aria-label="Filtrer les rubriques">
+    ${[["active", "Actives"], ["avenir", "À venir"], ["inactives", "En pause"]].map(([cle, nom]) =>
+      `<button type="button" role="tab" data-onglet="${cle}" aria-selected="${S.onglet === cle}">${nom} · ${compte[cle]}</button>`).join("")}
+  </div>
+  <div class="liste">
+    ${groupes.length ? groupes.map(([titre, liste]) => `<span class="groupe">${titre}</span>${liste.map((r) => carteRubrique(r)).join("")}`).join("")
+      : `<div class="vide">${videTexte}${S.onglet === "active" ? "<br>Touche + pour en créer une." : ""}</div>`}
+  </div>`}
+  <button type="button" class="bouton pointille" data-action="nouvelle-recherche">${icone("idees", 20)}Chercher une sortie, une activité…</button>`;
+}
+
+function ouvrirFiche(id, modele = null) {
+  const r = id ? S.d.regles.find((x) => x.id === id) : null;
+  if (id && !r) return annoncer("Cette rubrique n'existe plus.", true);
+  const vide = { quoi: "", avec_qui: "", ages: "", ou: "", quand: "", attendu: "" };
+  S.fiche = {
+    id: r ? r.id : null, modifie: false,
+    recherche: Boolean(r && (r.recherche && (Object.values(r.fiche).some(Boolean) || r.transport || r.budget.max !== null))) || modele === "recherche",
+    f: {
+      titre: r ? r.titre : "", consigne: r ? r.consigne : "",
+      longueur: r ? (r.longueur || "aucune") : "courte",
+      periode: r ? { type: r.periode.type, debut: r.periode.debut || "", fin: r.periode.fin || "", jours: [...(r.periode.jours || [])] }
+                 : { type: modele === "recherche" ? "ponctuelle" : "toujours", debut: "", fin: "", jours: [] },
+      sources: r ? [...r.sources] : modele === "recherche" ? ["web", "lieux"] : [],
+      fiche: r ? { ...vide, ...r.fiche } : { ...vide },
+      transport: r ? r.transport : "",
+      budget: r ? { max: r.budget.max ?? "", unite: r.budget.unite || "personne", devise: r.budget.devise || "CHF", transport_inclus: Boolean(r.budget.transport_inclus) }
+                : { max: "", unite: "personne", devise: "CHF", transport_inclus: false },
+      inclure: r ? [...r.inclure] : [], exclure: r ? [...r.exclure] : [],
+      condition: r && r.condition ? { ...r.condition } : null,
+      prioritaire: r ? r.importance === "prioritaire" : false,
+      active: r ? !r.pause : true,
+    },
+  };
+  S.ecran = "fiche";
+  dessiner();
+  window.scrollTo(0, 0);
+}
+
+function vueFiche() {
+  const F = S.fiche, f = F.f, r = F.id ? S.d.regles.find((x) => x.id === F.id) : null;
+  const ponctuelle = f.periode.type === "ponctuelle";
+  const famille = r ? { jour: "Le jour", info: "Veille et actualité", sortie: "Sorties et lieux", agenda: "Selon l'agenda" }[r.famille] : ponctuelle ? "Nouvelle recherche" : "Nouvelle rubrique";
+  const segments = [["aucune", "Sans passage"], ["phrase", "Une phrase"], ["courte", "Courte"], ["developpee", "Développée"]];
+  const libelleBouton = F.id ? "Enregistrer" : ponctuelle ? "Créer et chercher" : "Créer la rubrique";
+  return `
+  <div class="entete-fiche">
+    <button type="button" class="icone" data-action="retour" aria-label="Retour aux rubriques">${icone("retour", 22, 2)}</button>
+    <span class="surtitre">${h(famille)}${r ? ` · ${h(r.id)}` : ""}</span>
+    ${r ? `<button type="button" class="icone" data-action="plus" aria-label="Plus d'options">${icone("plusieurs", 22, 2)}</button>` : ""}
+  </div>
+  ${r && r.prochain && r.etat !== "active" ? `<p class="aide">Prochain passage : ${h(r.prochain)}</p>` : ""}
+  <div class="champ"><label for="c-titre">Titre${ponctuelle ? "" : " (aussi titre du chapitre)"}</label>
+    <input id="c-titre" class="saisie titre" type="text" maxlength="50" data-champ="titre" value="${h(f.titre)}" placeholder="${ponctuelle ? "Ex. Sortie en famille samedi" : "Ex. Fête du prénom du jour"}"></div>
+  <div class="champ"><label for="c-consigne">${ponctuelle ? "Ce que tu cherches" : "Consigne aux animateurs"}</label>
+    <textarea id="c-consigne" class="saisie" maxlength="400" rows="3" data-champ="consigne" placeholder="${ponctuelle ? "Ex. Une activité au calme, plutôt en intérieur s'il pleut" : "Ce qu'ils doivent dire ou faire"}">${h(f.consigne)}</textarea></div>
+  ${ponctuelle ? "" : `<div class="champ">
+    <div class="bloc">${interrupteur("Un moment à elle dans l'épisode", f.longueur !== "aucune", 'data-action="passage"')}</div>
+    ${f.longueur !== "aucune" ? `<span class="etiquette" id="e-longueur">Durée de ce moment</span>
+      <div class="segments" role="group" aria-labelledby="e-longueur" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+        ${segments.filter(([cle]) => cle !== "aucune").map(([cle, nom]) => `<button type="button" data-longueur="${cle}" aria-pressed="${f.longueur === cle}">${nom}</button>`).join("")}
+      </div><p class="aide">Elle a son propre passage, avec son chapitre, à la place choisie dans le déroulé.</p>`
+    : `<p class="aide">Pas de passage dédié : les animateurs glissent l'information là où c'est naturel (par exemple pendant les actualités).</p>`}</div>`}
+  <div class="champ"><label for="c-periode">Quand</label>
+    <select id="c-periode" class="saisie" data-champ="periode.type">
+      ${PERIODES.map(([cle, nom]) => `<option value="${cle}" ${f.periode.type === cle ? "selected" : ""}>${nom}</option>`).join("")}
+    </select>
+    ${f.periode.type === "jours" ? `<div class="jours" role="group" aria-label="Jours de la semaine">
+      ${S.d.listes.jours.map(([j, court, long]) => `<button type="button" data-jour="${j}" aria-pressed="${f.periode.jours.includes(j)}" aria-label="${long}">${court[0]}</button>`).join("")}</div>` : ""}
+    ${f.periode.type === "jours" || f.periode.type === "dates" ? `<div class="deux">
+      <div class="champ"><label for="c-debut">Du (facultatif)</label><input id="c-debut" class="saisie" type="date" data-champ="periode.debut" value="${h(f.periode.debut)}"></div>
+      <div class="champ"><label for="c-fin">Au (facultatif)</label><input id="c-fin" class="saisie" type="date" data-champ="periode.fin" value="${h(f.periode.fin)}"></div></div>` : ""}
+  </div>
+  <div class="champ"><span class="etiquette" id="e-sources">Sources</span>
+    <div class="puces-choix" role="group" aria-labelledby="e-sources">
+      ${Object.entries(S.d.listes.sources).map(([cle, nom]) => `<button type="button" data-source="${cle}" aria-pressed="${f.sources.includes(cle)}">${h(nom.replace(/ \(.*\)/, ""))}</button>`).join("")}
+    </div></div>
+  ${ponctuelle ? "" : f.condition ? `<div class="sous-bloc">
+      <div class="entre"><span class="etiquette" style="font-size:13px;color:var(--doux)">Seulement si mon agenda contient…</span>
+        <button type="button" class="lien" data-action="sans-condition">Retirer</button></div>
+      <input class="saisie" type="text" maxlength="120" data-champ="condition.texte" value="${h(f.condition.texte)}" aria-label="Texte cherché dans l'agenda" placeholder="Ex. match, train, dentiste">
+      <div class="deux"><select class="saisie" data-champ="condition.moment" aria-label="Quand en parler">
+        ${MOMENTS.map(([cle, nom]) => `<option value="${cle}" ${f.condition.moment === cle ? "selected" : ""}>${nom}</option>`).join("")}</select>
+        ${f.condition.moment === "jours_avant" ? `<input class="saisie" type="number" min="1" max="30" data-champ="condition.n" value="${h(f.condition.n || 1)}" aria-label="Nombre de jours avant">` : "<span></span>"}</div>
+    </div>` : `<button type="button" class="bouton pointille" data-action="condition">+ Seulement si mon agenda contient…</button>`}
+  ${F.recherche || ponctuelle ? `<div class="sous-bloc">
+      <span class="etiquette" style="font-size:13px;color:var(--doux)">Détails pour la recherche</span>
+      ${CHAMPS_FICHE.map(([cle, nom]) => `<input class="saisie" type="text" maxlength="120" data-champ="fiche.${cle}" value="${h(f.fiche[cle])}" aria-label="${nom}" placeholder="${nom}">`).join("")}
+      <select class="saisie ${f.transport === "aucun" ? "grise" : ""}" data-champ="transport" aria-label="Transport">
+        <option value="" ${f.transport ? "" : "selected"}>Transport : peu importe</option>
+        ${Object.entries(S.d.listes.transports).map(([cle, nom]) => `<option value="${cle}" ${f.transport === cle ? "selected" : ""}>${h(cle === "aucun" ? "Pas de transport (sur place)" : nom.replace(/^\S+\s/, ""))}</option>`).join("")}
+      </select>
+      <div class="budget">
+        <input class="saisie" type="number" min="0" step="1" inputmode="decimal" data-champ="budget.max" value="${h(f.budget.max)}" placeholder="Budget max" aria-label="Budget maximum">
+        <select class="saisie" data-champ="budget.devise" aria-label="Devise">${S.d.listes.devises.map((x) => `<option ${f.budget.devise === x ? "selected" : ""}>${x}</option>`).join("")}</select>
+        <select class="saisie" data-champ="budget.unite" aria-label="Budget par personne ou pour le groupe">
+          <option value="personne" ${f.budget.unite === "personne" ? "selected" : ""}>par personne</option>
+          <option value="total" ${f.budget.unite === "total" ? "selected" : ""}>pour le groupe</option></select>
+      </div>
+      ${interrupteur("Transport compris dans le budget", f.transport !== "aucun" && f.budget.transport_inclus, `data-bascule="budget.transport_inclus" ${f.transport === "aucun" ? "disabled" : ""}`).replace('class="interrupteur"', `class="interrupteur ${f.transport === "aucun" ? "grise" : ""}" style="padding:0"`)}
+      ${bulles("inclure", f.inclure, "À inclure : piscine, musée…")}
+      ${bulles("exclure", f.exclure, "À exclure : randonnée longue…")}
+    </div>` : `<button type="button" class="bouton pointille" data-action="recherche">+ Détails pour une recherche (activité, lieu…)</button>`}
+  <div class="bloc">
+    ${ponctuelle ? "" : interrupteur("Prioritaire", f.prioritaire, 'data-bascule="prioritaire"')}
+    ${interrupteur("Active", f.active, 'data-bascule="active"')}
+  </div>
+  <div class="barre"><button type="button" class="bouton plein" data-action="enregistrer">${libelleBouton}</button></div>`;
+}
+
+// Liste en bulles : chaque élément est une bulle ; Entrée ou virgule ajoute la saisie.
+function bulles(champ, valeurs, exemple) {
+  return `<div class="bulles" data-bulles="${champ}">
+    ${valeurs.map((v, i) => `<span>${h(v)}<button type="button" data-retirer-bulle="${champ}" data-i="${i}" aria-label="Retirer ${h(v)}">${icone("croix", 14, 2)}</button></span>`).join("")}
+    <input type="text" maxlength="80" data-bulle="${champ}" placeholder="${h(exemple)}" aria-label="${h(exemple)}" enterkeyhint="done">
+  </div>`;
+}
+
+function ajouterBulle(el) {
+  const morceaux = el.value.split(",").map((x) => x.trim()).filter(Boolean);
+  if (!morceaux.length || !S.fiche) return false;
+  const liste = S.fiche.f[el.dataset.bulle];
+  for (const m of morceaux) if (!liste.some((x) => x.toLowerCase() === m.toLowerCase()) && liste.length < 8) liste.push(m);
+  S.fiche.modifie = true;
+  el.value = "";
+  dessiner();
+  const nouveau = document.querySelector(`[data-bulle="${el.dataset.bulle}"]`);
+  if (nouveau) nouveau.focus();
+  return true;
+}
+
+function saisirChamp(el) {
+  const f = S.fiche.f, [a, b] = el.dataset.champ.split(".");
+  const valeur = el.type === "number" && a !== "budget" ? Number(el.value) : el.value;
+  if (b) f[a][b] = valeur; else f[a] = valeur;
+  S.fiche.modifie = true;
+  if (el.tagName === "SELECT") dessiner();
+}
+
+async function enregistrerFiche() {
+  const F = S.fiche;
+  // Une saisie en cours dans les bulles compte aussi.
+  document.querySelectorAll("[data-bulle]").forEach((el) => { if (el.value.trim()) { const l = F.f[el.dataset.bulle]; el.value.split(",").map((x) => x.trim()).filter(Boolean).forEach((m) => { if (!l.includes(m)) l.push(m); }); } });
+  const nouvelleRecherche = !F.id && F.f.periode.type === "ponctuelle";
+  const bouton = document.querySelector('[data-action="enregistrer"]');
+  if (bouton) bouton.disabled = true;
+  const j = await demander("rubrique", { id: F.id, formulaire: F.f });
+  if (bouton) bouton.disabled = false;
+  if (!j.ok) return;
+  vibrer("success");
+  S.fiche = null;
+  if (nouvelleRecherche) {
+    const k = await demander("recherche", { id: j.id, format: "ecrit" });
+    annoncer(k.ok ? k.message : `Rubrique ${j.id} créée`);
+    S.ecran = "accueil";
+    return dessiner();
+  }
+  annoncer(j.message);
+  const r = S.d.regles.find((x) => x.id === j.id);
+  if (r) S.onglet = categorie(r);
+  S.ecran = "rubriques";
+  dessiner();
+}
+
+function menuFiche() {
+  const F = S.fiche;
+  const r = S.d.regles.find((x) => x.id === F.id);
+  const boutons = r && r.recherche
+    ? [{ id: "chercher", type: "default", text: "Chercher maintenant" }, { id: "mini", type: "default", text: "Mini-podcast" }, { id: "supprimer", type: "destructive", text: "Supprimer" }]
+    : [{ id: "tester", type: "default", text: "Épisode test avec elle" }, { id: "supprimer", type: "destructive", text: "Supprimer" }];
+  choisir("Rubrique " + F.id, "Que veux-tu faire ?", boutons, (choix) => {
+    if (choix === "chercher" || choix === "mini") return chercher(F.id, choix === "mini" ? "audio" : "ecrit");
+    if (choix === "tester") return confirmer("Lancer maintenant un épisode qui inclut cette rubrique ?", () => changer("generer", { id: F.id }, () => {}));
+    if (choix === "supprimer") return confirmer(`Supprimer « ${F.f.titre} » ? Les rubriques suivantes seront renumérotées.`, async () => {
+      const j = await demander("supprimer", { id: F.id });
+      if (!j.ok) return;
+      vibrer("success"); annoncer("Rubrique supprimée");
+      S.fiche = null; S.ecran = "rubriques"; dessiner();
+    });
+  });
+}
+
+async function chercher(id, format) {
+  const j = await demander("recherche", { id, format });
+  if (j.ok) { vibrer("success"); annoncer(j.message); }
+}
+
+// ─────────────────────────────── déroulé ────────────────────────────────
+// Choix d'affichage (Rubriques, Déroulé) : tous les jours, ou une date précise.
+// La date reste grisée tant que « Tous les jours » est choisi.
+function choixJour(vue) {
+  const date = S.jourVue[vue];
+  return `<div class="ligne">
+    <label for="j-${vue}" class="sous" style="flex:none">Jour</label>
+    <select id="j-${vue}" class="saisie" style="min-height:44px;width:auto;flex:none" data-jour-mode="${vue}" aria-label="Jour affiché">
+      <option value="" ${date ? "" : "selected"}>Tous les jours</option>
+      <option value="date" ${date ? "selected" : ""}>Autre date</option>
+    </select>
+    <input type="date" class="saisie ${date ? "" : "grise"}" style="min-height:44px;flex:1;min-width:0" min="${S.d.aujourdhui}"
+      value="${h(date || S.jourDernier[vue] || S.d.aujourdhui)}" data-jour-date="${vue}" ${date ? "" : "disabled"} aria-label="Date affichée">
+  </div>`;
+}
+
+// Le déroulé d'une date : seulement ce qui passe ce jour-là, dans l'ordre (lecture seule).
+function vueDerouleDuJour(date) {
+  const d = S.d, c = d.planning.calendrier[date] || {};
+  const moments = { jour_meme: "le jour même", veille: "la veille", jours_avant: "quelques jours avant" };
+  const lignes = [];
+  for (const x of d.deroule) {
+    if (!x.actif) continue;
+    const r = x.integree ? null : d.regles.find((y) => y.id === x.cle);
+    if (r && !appliqueLe(r, date)) continue;
+    const detail = x.integree ? (["deplacements", "approfondissements"].includes(x.cle) ? "S'il y a de quoi en parler" : "Rubrique intégrée")
+      : [quand(r), r && r.condition ? h(`si l'agenda contient « ${r.condition.texte} » ${moments[r.condition.moment] || ""}`) : x.longueur ? h(LONGUEURS[x.longueur]) : ""].filter(Boolean).join(" · ");
+    const cible = x.integree ? { agenda: "agenda", actu_locale: "actus", actualites: "actus", approfondissements: "creuser", deplacements: "agenda" }[x.cle] : null;
+    const textes = `<span class="nom">${h(x.nom)}</span><span class="detail">${x.integree ? h(detail) : detail}</span>`;
+    lignes.push(`<li data-cle="${h(x.cle)}"><span class="num">${lignes.length + 1}</span>
+      ${cible ? `<button type="button" class="textes" data-reglage="${cible}">${textes}</button>`
+        : r ? `<button type="button" class="textes" data-ouvrir="${h(x.cle)}">${textes}</button>` : `<span class="textes">${textes}</span>`}</li>`);
+  }
+  const etat = c.heure ? `Épisode à ${heure(c.heure)}` : c.pause ? "Pas d'épisode ce jour-là (pause)" : "Pas d'épisode prévu ce jour-là";
+  return `<p class="aide" style="font-size:14px;color:var(--doux-2)">${h(majuscule(dateLongue(date)))} · ${h(etat)} · ${lignes.length} passages</p>
+    <ol class="deroule">${lignes.join("")}</ol>
+    <p class="aide">Pour changer l'ordre ou mettre un passage en pause, reviens à « Tous les jours ».</p>`;
+}
+
+function vueDeroule() {
+  const d = S.d;
+  const liste = d.deroule;
+  const fixe = (i) => (i === 0 && liste[i].cle === "ouverture") || (i === liste.length - 1 && liste[i].cle === "cloture");
+  if (S.jourVue.deroule) return `<h1>Déroulé</h1>${choixJour("deroule")}${vueDerouleDuJour(S.jourVue.deroule)}`;
+  return `
+  <div style="display:flex;flex-direction:column;gap:4px"><h1>Déroulé</h1>
+    <span class="sous">Ordre de chaque épisode · ${liste.filter((x) => x.actif).length} passages · ≈ ${h(nombre(d.format.duree_minutes))} min</span></div>
+  ${choixJour("deroule")}
+  <p class="aide">Fais glisser une ligne par sa poignée pour changer l'ordre. L'interrupteur met un passage en pause. Touche une rubrique pour la régler.</p>
+  <ol class="deroule" id="deroule">
+    ${liste.map((x, i) => {
+      const regle = x.integree ? null : d.regles.find((y) => y.id === x.cle);
+      const detail = x.integree ? "Rubrique intégrée" : [quand(regle), x.longueur ? h(LONGUEURS[x.longueur]) : "", x.pause ? "pas aujourd'hui" : ""].filter(Boolean).join(" · ");
+      const textes = `<span class="nom">${h(x.nom)}</span><span class="detail">${detail}</span>`;
+      const reglage = { agenda: "agenda", actu_locale: "actus", actualites: "actus", approfondissements: "creuser", deplacements: "agenda" }[x.cle];
+      if (fixe(i)) return `<li class="fixe" data-cle="${h(x.cle)}"><span class="num">${i + 1}</span><span class="textes">${textes}</span>
+        <span class="mini-inter" style="color:var(--eteint)" role="img" aria-label="Position fixe">${icone("cadenas", 18)}</span></li>`;
+      return `<li class="mobile ${x.actif ? "" : "eteint"}" data-cle="${h(x.cle)}">
+        <span class="num">${i + 1}</span>
+        ${x.integree ? (reglage ? `<button type="button" class="textes" data-reglage="${reglage}">${textes}</button>` : `<span class="textes">${textes}</span>`)
+          : `<button type="button" class="textes" data-ouvrir="${h(x.cle)}">${textes}</button>`}
+        <button type="button" class="mini-inter" role="switch" aria-checked="${x.actif}" data-actif="${h(x.cle)}" aria-label="${h(x.nom)} : ${x.actif ? "actif" : "en pause"}"><span class="rail"><span></span></span></button>
+        <button type="button" class="poignee" data-poignee aria-label="Déplacer ${h(x.nom)} (flèches haut et bas)">${POIGNEE}</button>
+      </li>`;
+    }).join("")}
+  </ol>`;
+}
+
+function ordreAffiche() { return [...document.querySelectorAll("#deroule li")].map((li) => li.dataset.cle); }
+function renumeroter() { document.querySelectorAll("#deroule li .num").forEach((el, i) => { el.textContent = i + 1; }); }
+
+let envoiDeroule = null;
+function enregistrerDeroule(actifs) {
+  clearTimeout(envoiDeroule);
+  envoiDeroule = setTimeout(async () => {
+    const avant = S.d.deroule.map((x) => x.cle).join(",");
+    const ordre = ordreAffiche();
+    if (!actifs && ordre.join(",") === avant) return;
+    const j = await demander("deroule", { ordre, actifs: actifs || {} });
+    if (j.ok) { vibrer("success"); annoncer("Déroulé enregistré"); }
+    if (S.ecran === "deroule") dessiner();
+  }, actifs ? 0 : 350);
+}
+
+function brancherGlisser() {
+  const liste = document.getElementById("deroule");
+  if (!liste) return;
+  liste.querySelectorAll("[data-poignee]").forEach((poignee) => {
+    const li = poignee.closest("li");
+    poignee.addEventListener("keydown", (ev) => {
+      if (ev.key !== "ArrowUp" && ev.key !== "ArrowDown") return;
+      ev.preventDefault();
+      const voisin = ev.key === "ArrowUp" ? li.previousElementSibling : li.nextElementSibling;
+      if (!voisin || !voisin.classList.contains("mobile")) return;
+      if (ev.key === "ArrowUp") liste.insertBefore(li, voisin); else liste.insertBefore(voisin, li);
+      renumeroter(); poignee.focus(); enregistrerDeroule();
+    });
+    poignee.addEventListener("pointerdown", (ev) => {
+      if (ev.button !== undefined && ev.button !== 0) return;
+      ev.preventDefault();
+      poignee.setPointerCapture(ev.pointerId);
+      const departY = ev.clientY, departHaut = li.offsetTop;
+      li.classList.add("glisse");
+      vibrer("choix");
+      const bouger = (e) => {
+        const mobiles = [...liste.querySelectorAll("li.mobile")];
+        const haut = mobiles[0].offsetTop, bas = mobiles[mobiles.length - 1].offsetTop + mobiles[mobiles.length - 1].offsetHeight - li.offsetHeight;
+        const voulu = Math.max(haut, Math.min(bas, departHaut + (e.clientY - departY)));
+        const milieu = voulu + li.offsetHeight / 2;
+        for (let cran = 0; cran < 20; cran++) {
+          const avant = li.previousElementSibling, apres = li.nextElementSibling;
+          if (avant && avant.classList.contains("mobile") && milieu < avant.offsetTop + avant.offsetHeight / 2) liste.insertBefore(li, avant);
+          else if (apres && apres.classList.contains("mobile") && milieu > apres.offsetTop + apres.offsetHeight / 2) liste.insertBefore(apres, li);
+          else break;
+          vibrer("choix"); renumeroter();
+        }
+        li.style.transform = `translateY(${voulu - li.offsetTop}px)`;
+      };
+      const finir = () => {
+        poignee.removeEventListener("pointermove", bouger);
+        poignee.removeEventListener("pointerup", finir);
+        poignee.removeEventListener("pointercancel", finir);
+        li.classList.remove("glisse");
+        li.style.transform = "";
+        enregistrerDeroule();
+      };
+      poignee.addEventListener("pointermove", bouger);
+      poignee.addEventListener("pointerup", finir);
+      poignee.addEventListener("pointercancel", finir);
+    });
+  });
+}
+
+// ─────────────────────────────── planning ───────────────────────────────
+function vuePlanning() {
+  const d = S.d, pl = d.planning;
+  const premier = `${d.aujourdhui.slice(0, 8)}01`;
+  const mois = S.mois === 0 ? premier : (() => { const x = dateObj(premier); x.setUTCMonth(x.getUTCMonth() + 1); return x.toISOString().slice(0, 10); })();
+  const m = dateObj(mois);
+  const decalage = (m.getUTCDay() + 6) % 7;
+  const jours = [];
+  for (let i = 0; i < 31; i++) { const date = plusJours(mois, i); if (date.slice(5, 7) !== mois.slice(5, 7)) break; jours.push(date); }
+  const normal = (date) => pl.jours[CLES_JOURS[dateObj(date).getUTCDay()]];
+  const cellule = (date) => {
+    const c = pl.calendrier[date] || {};
+    const classes = [];
+    if (date < d.aujourdhui) classes.push("passe");
+    if (date === d.aujourdhui) classes.push("aujourdhui");
+    if (c.pause) {
+      // Bande continue sur les jours de la pause, arrondie à ses bouts et en fin de semaine.
+      const enPause = (x) => (pl.calendrier[x] || {}).pause;
+      const col = (dateObj(date).getUTCDay() + 6) % 7;
+      classes.push("pause");
+      if (col === 0 || !enPause(plusJours(date, -1)) || date.slice(8) === "01") classes.push("debut");
+      if (col === 6 || !enPause(plusJours(date, 1)) || plusJours(date, 1).slice(8) === "01") classes.push("fin");
+    } else if (c.exception && !c.heure) classes.push("saute");
+    else if (!c.heure) classes.push("sans");
+    else if (c.exception || c.heure !== normal(date)) classes.push("autre");
+    if (c.ferie) classes.push("ferie");
+    const etiquette = `${dateLongue(date)} : ${c.heure ? `épisode à ${heure(c.heure)}` : "pas d'épisode"}${c.ferie ? ", férié" : ""}`;
+    return `<button type="button" class="${classes.join(" ")}" data-jourcal="${date}" aria-label="${h(etiquette)}">${Number(date.slice(8))}</button>`;
+  };
+  const regions = [...d.listes.regions].sort((a, b) => a[1].localeCompare(b[1], "fr", { sensitivity: "base" }));
+  return `
+  <h1>Planning</h1>
+  <section class="carte" aria-labelledby="t-mois">
+    <div class="entre"><h2 id="t-mois">${majuscule(MOIS[m.getUTCMonth()])} ${m.getUTCFullYear()}</h2>
+      <div class="ligne" style="gap:4px">
+        <button type="button" class="icone" style="background:var(--carte-2);width:40px;height:40px" data-mois="0" ${S.mois === 0 ? "disabled" : ""} aria-label="Mois en cours">${icone("retour", 16, 2.2)}</button>
+        <button type="button" class="icone" style="background:var(--carte-2);width:40px;height:40px" data-mois="1" ${S.mois === 1 ? "disabled" : ""} aria-label="Mois suivant">${icone("suite", 16, 2.2)}</button>
+      </div></div>
+    <div class="calendrier">
+      ${["L", "M", "M", "J", "V", "S", "D"].map((x) => `<span class="tete" aria-hidden="true">${x}</span>`).join("")}
+      ${"<span></span>".repeat(decalage)}${jours.map(cellule).join("")}
+    </div>
+    <div class="legende"><span><i style="background:var(--aube);border-radius:50%"></i>Autre heure</span>
+      <span><i style="background:var(--vert);border-radius:50%"></i>Férié</span><span><s>12</s>&nbsp;Sauté</span><span><i style="width:22px;height:10px;border-radius:5px;background:var(--carte-2);background-image:linear-gradient(var(--doux),var(--doux));background-size:100% 2px;background-position:center;background-repeat:no-repeat"></i>Plusieurs jours</span></div>
+    <p class="aide">Touche un jour pour changer son heure ou ne pas avoir d'épisode (un ou plusieurs jours).</p>
+  </section>
+  <section class="bloc" aria-label="Heure de chaque jour">
+    ${d.listes.jours.map(([j, , long]) => `<div class="reglage"><span>${majuscule(long)}</span>
+      ${pl.jours[j] ? `<input type="time" class="compacte" value="${h(pl.jours[j])}" data-heure-jour="${j}" aria-label="Heure du ${long}">` : `<span class="sous">Pas d'épisode</span>`}
+      <button type="button" class="mini-inter" role="switch" aria-checked="${Boolean(pl.jours[j])}" data-jour-actif="${j}" aria-label="Épisode le ${long}"><span class="rail"><span></span></span></button></div>`).join("")}
+  </section>
+  <section class="bloc">
+    <div class="reglage"><span>Jours fériés de</span>
+      <select class="compacte" style="max-width:190px" data-region aria-label="Pays ou canton des jours fériés">
+        ${regions.map(([c, n]) => `<option value="${c}" ${pl.feries_region === c ? "selected" : ""}>${h(n)}</option>`).join("")}</select></div>
+    <div class="reglage"><span>Un jour férié</span>
+      <select class="compacte" data-regler="planning.feries" aria-label="Jours fériés">
+        ${[["normal", "comme d'habitude"], ["dimanche", "heure du dimanche"], ["aucun", "pas d'épisode"]].map(([v, n]) => `<option value="${v}" ${pl.feries === v ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+    ${interrupteur("Relancer si l'épisode n'est pas arrivé", pl.rattrapage, 'data-regler-bool="planning.rattrapage"')}
+    ${pl.rattrapage ? `<div class="reglage"><span>Relancer après</span><select class="compacte" data-regler="planning.delai_rattrapage" aria-label="Délai du rattrapage">
+      ${d.listes.delais.map((v) => `<option value="${v}" ${Number(pl.delai_rattrapage) === v ? "selected" : ""}>${v} min</option>`).join("")}</select></div>` : ""}
+    <div class="reglage"><span>Préparation en avance<br><span class="aide">pour que l'épisode arrive à l'heure</span></span><select class="compacte" data-regler="planning.avance_minutes" aria-label="Préparation en avance">
+      ${[0, 5, 10, 15, 20].map((v) => `<option value="${v}" ${Number(pl.avance_minutes) === v ? "selected" : ""}>${v} min</option>`).join("")}</select></div>
+  </section>`;
+}
+
+// Aperçu de l'agenda : les 7 prochains jours, tous agendas lus confondus.
+function vueAgenda() {
+  const d = S.d, evs = d.agenda_apercu || [];
+  const agendas = d.reglages.agendas.map((a) => a.id);
+  const couleurs = ["var(--aube)", "var(--bleu)", "var(--vert)", "#E8A0D8", "#C3C9D4"];
+  const jours = Array.from({ length: 7 }, (_, i) => plusJours(d.aujourdhui, i));
+  const parJour = jours.map((date) => [date, evs.filter((ev) => ev.debut.slice(0, 10) === date || (ev.journee && ev.debut.slice(0, 10) < date && (ev.fin || "").slice(0, 10) > date))]);
+  const nom = (date, i) => i === 0 ? "Aujourd'hui" : i === 1 ? "Demain" : majuscule(dateLongue(date));
+  return `<section class="carte" aria-labelledby="t-agenda">
+    <div class="entre"><h2 id="t-agenda">Mon agenda</h2><button type="button" class="lien" style="min-height:32px;padding:0" data-action="lire-agendas">Relire</button></div>
+    ${evs.length ? `<div class="agenda">${parJour.filter(([, l]) => l.length).map(([date, l]) => `<div class="agenda-jour">
+        <span class="agenda-date">${h(nom(date, jours.indexOf(date)))}</span>
+        ${l.map((ev) => `<div class="agenda-ev"><i style="background:${couleurs[Math.max(0, agendas.indexOf(ev.agenda)) % couleurs.length]}"></i>
+          <span class="agenda-h">${ev.journee ? "Journée" : h(ev.debut.slice(11, 16).replace(":", "h"))}</span>
+          <span class="agenda-t">${h(ev.titre)}${ev.lieu ? `<br><span class="aide">${h(ev.lieu)}</span>` : ""}</span></div>`).join("")}
+      </div>`).join("") || `<p class="aide">Rien dans les 7 prochains jours.</p>`}</div>
+      ${d.agenda_lu ? `<p class="aide">Lu le ${h(dateLongue(d.agenda_lu.slice(0, 10)))} à ${h(d.agenda_lu.slice(11, 16).replace(":", "h"))}.</p>` : ""}`
+    : `<p class="aide">L'aperçu apparaîtra après la prochaine lecture de tes agendas (chaque matin, ou avec « Relire »).</p>`}
+  </section>`;
+}
+
+// Tant qu'une feuille est ouverte, la page derrière ne défile pas.
+new MutationObserver(() => document.body.classList.toggle("feuille-ouverte", !document.getElementById("feuille").classList.contains("cache")))
+  .observe(document.getElementById("feuille"), { attributes: true, attributeFilter: ["class"] });
+// iPhone : seul un contenu qui défile vraiment reçoit le glissé ; le reste ne fait pas bouger la page.
+document.getElementById("feuille").addEventListener("touchmove", (ev) => {
+  const zone = ev.target.closest(".defile, .panneau");
+  if (!zone || zone.scrollHeight <= zone.clientHeight) ev.preventDefault();
+}, { passive: false });
+
+// ───────────────────────────── listes de choix ─────────────────────────────
+// Les <select> restent dans la page (valeur, accessibilité au clavier), mais un
+// appui ouvre une feuille de l'application au lieu du sélecteur du téléphone.
+function ouvrirListe(sel) {
+  if (sel.disabled) return;
+  const el = document.getElementById("feuille");
+  const etiquette = sel.getAttribute("aria-label") || (sel.id && document.querySelector(`label[for="${sel.id}"]`)?.textContent)
+    || sel.closest(".reglage")?.querySelector("span")?.textContent || "Choisir";
+  const ligne = (o) => `<button type="button" role="option" aria-selected="${o.selected}" data-liste-valeur="${h(o.value)}" ${o.disabled ? "disabled" : ""}>
+    <span>${h(o.textContent)}</span>${o.selected ? icone("coche", 18, 2.4) : ""}</button>`;
+  const contenu = [...sel.children].map((x) => x.tagName === "OPTGROUP"
+    ? `<span class="groupe">${h(x.label)}</span>${[...x.children].map(ligne).join("")}` : ligne(x)).join("");
+  el.innerHTML = `<div class="panneau">
+    <div class="entete"><strong id="feuille-titre">${h(String(etiquette).trim())}</strong></div>
+    <div class="choix liste-choix defile" role="listbox" aria-labelledby="feuille-titre">${contenu}</div>
+    <button type="button" class="annuler" data-liste-valeur="" data-liste-fermer>Annuler</button></div>`;
+  el.classList.remove("cache");
+  const fermer = () => { el.classList.add("cache"); el.innerHTML = ""; el.onclick = null; document.removeEventListener("keydown", echap); sel.focus({ preventScroll: true }); };
+  const echap = (ev) => { if (ev.key === "Escape") fermer(); };
+  document.addEventListener("keydown", echap);
+  el.onclick = (ev) => {
+    ev.stopPropagation();
+    const b = ev.target.closest("[data-liste-valeur]");
+    if (!b && ev.target !== el) return;
+    fermer();
+    if (!b || b.dataset.listeFermer !== undefined || b.dataset.listeValeur === sel.value) return;
+    sel.value = b.dataset.listeValeur;
+    vibrer("choix");
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+  const choisie = el.querySelector('[aria-selected="true"]') || el.querySelector("[data-liste-valeur]");
+  if (choisie) { choisie.scrollIntoView({ block: "center" }); choisie.focus({ preventScroll: true }); }
+}
+
+// Un appui (sans glisser) sur une liste l'ouvre ; le <select> ne reçoit pas le toucher.
+let appui = null;
+document.addEventListener("pointerdown", (ev) => { appui = { x: ev.clientX, y: ev.clientY }; }, true);
+document.addEventListener("pointerup", (ev) => {
+  if (!appui || Math.hypot(ev.clientX - appui.x, ev.clientY - appui.y) > 10) return;
+  appui = null;
+  if (!document.getElementById("feuille").classList.contains("cache")) return;
+  const sel = [...document.querySelectorAll("main select")].find((x) => {
+    const r = x.getBoundingClientRect();
+    return !x.disabled && r.width && ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+  });
+  if (!sel) return;
+  ev.preventDefault();
+  // Le clic qui suit l'appui tomberait sur le fond de la feuille et la refermerait.
+  const avaler = (e) => { e.stopPropagation(); e.preventDefault(); };
+  document.addEventListener("click", avaler, { capture: true, once: true });
+  setTimeout(() => document.removeEventListener("click", avaler, true), 600);
+  ouvrirListe(sel);
+});
+document.addEventListener("keydown", (ev) => {
+  if (ev.target.tagName === "SELECT" && [" ", "Enter", "ArrowDown", "ArrowUp"].includes(ev.key) && !ev.altKey) { ev.preventDefault(); ouvrirListe(ev.target); }
+});
+
+// Toucher un jour du calendrier : changer son heure, ou pas d'épisode pendant N jours.
+const J = { date: "", heure: "", nb: 1 };
+function toucherJour(date) {
+  const d = S.d, pl = d.planning, c = pl.calendrier[date] || {};
+  if (date < d.aujourdhui) return;
+  const habituelle = pl.jours[CLES_JOURS[dateObj(date).getUTCDay()]] || "";
+  if (J.date !== date) Object.assign(J, { date, heure: c.heure || habituelle || "07:30", nb: 1 });
+  const pause = pl.pauses.find((x) => date >= x.du && date <= x.au);
+  const exception = pl.exceptions.find((x) => x.date === date);
+  const etat = pause ? `Pas d'épisode : pause du ${dateLongue(pause.du)} au ${dateLongue(pause.au)}.`
+    : c.heure ? `Épisode à ${heure(c.heure)}${exception ? " (heure changée pour ce jour)" : ""}.`
+    : exception ? "Pas d'épisode ce jour-là." : "Pas d'épisode prévu ce jour-là.";
+  const fin = plusJours(date, J.nb - 1);
+  const el = document.getElementById("feuille");
+  const fermer = () => { el.classList.add("cache"); el.innerHTML = ""; el.onclick = el.oninput = null; J.date = ""; };
+  el.innerHTML = `<div class="panneau">
+    <div class="entete"><strong id="feuille-titre">${h(majuscule(dateLongue(date)))}</strong>
+      <span>${h(etat)}${c.ferie ? ` Férié${c.ferie_nom ? ` : ${h(c.ferie_nom)}` : ""}.` : ""}</span></div>
+    ${pause ? `<button type="button" class="annuler" style="background:var(--carte)" data-jour-faire="retirer-pause">Retirer cette pause</button>` : `
+    <div class="bloc-jour">
+      <div class="entre"><label for="j-heure" style="font-weight:600">Heure de l'épisode</label>
+        <input id="j-heure" type="time" class="compacte" value="${h(J.heure)}" data-jour-heure></div>
+      <button type="button" class="bouton gris" data-jour-faire="heure">${c.heure ? "Changer l'heure ce jour-là" : "Avoir un épisode ce jour-là"}</button>
+    </div>
+    <div class="bloc-jour">
+      <div class="entre"><span style="font-weight:600">Pas d'épisode pendant</span>
+        <div class="pas"><button type="button" data-jour-nb="-1" ${J.nb <= 1 ? "disabled" : ""} aria-label="Un jour de moins">−</button>
+          <output aria-live="polite">${J.nb} jour${J.nb > 1 ? "s" : ""}</output>
+          <button type="button" data-jour-nb="1" ${J.nb >= 60 ? "disabled" : ""} aria-label="Un jour de plus">+</button></div></div>
+      <span class="aide">${J.nb > 1 ? `Du ${h(dateLongue(date))} au ${h(dateLongue(fin))}` : `Seulement le ${h(dateLongue(date))}`}</span>
+      <button type="button" class="bouton gris" style="color:var(--rouge)" data-jour-faire="sans">Pas d'épisode</button>
+    </div>
+    ${exception ? `<button type="button" class="annuler" style="background:var(--carte)" data-jour-faire="retablir">Revenir à l'horaire habituel</button>` : ""}`}
+    <button type="button" class="annuler" data-jour-faire="fermer">Fermer</button></div>`;
+  el.classList.remove("cache");
+  el.oninput = (ev) => { if (ev.target.dataset.jourHeure !== undefined) J.heure = ev.target.value; };
+  el.onclick = (ev) => {
+    ev.stopPropagation();
+    const b = ev.target.closest("button");
+    if (!b && ev.target === el) return fermer();
+    if (!b || b.disabled) return;
+    if (b.dataset.jourNb) { J.nb = Math.max(1, Math.min(60, J.nb + Number(b.dataset.jourNb))); vibrer("choix"); return toucherJour(date); }
+    const faire = b.dataset.jourFaire;
+    if (!faire) return;
+    const nb = J.nb, h0 = J.heure;
+    fermer();
+    if (faire === "heure") {
+      if (!h0) return annoncer("Choisis une heure.", true);
+      return h0 === habituelle && exception ? changer("retablir", { date }) : changer("exception", { date, heure: h0 });
+    }
+    if (faire === "sans") return nb > 1 ? changer("pause", { du: date, au: plusJours(date, nb - 1) }) : changer("exception", { date, heure: null });
+    if (faire === "retablir") return changer("retablir", { date });
+    if (faire === "retirer-pause") return changer("retirer_pause", { du: pause.du });
+  };
+  const premier = el.querySelector("[data-jour-heure], [data-jour-faire]");
+  if (premier && !el.contains(document.activeElement)) premier.focus();
+}
+
+// ─────────────────────────────── réglages ───────────────────────────────
+const SECTIONS = [
+  ["format", "Format", "format", (r) => `${nombre(r.format.duree_minutes)} min · ${r.format.nombre_sujets} sujets · ${(S.d.listes.tons[r.format.ton] || "").toLowerCase()}`],
+  ["voix", "Voix", "voix", (r) => `${r.voix.animateurs.map((a) => a.nom).join(" & ")} · vitesse ${r.voix.vitesse}`],
+  ["actus", "Actualités", "actus", (r) => `${r.actus.ville || "ville non précisée"} · ${r.actus.sujets_preferes.length} thèmes préférés`],
+  ["sources", "Sources d'actus", "sources", (r) => `${r.actus.flux.length} médias${r.actus.flux_defaut ? " (par défaut)" : ""}`],
+  ["agenda", "Agenda et déplacements", "agenda", (r) => `${r.agenda.jours} jours couverts${r.agendas.length ? ` · ${r.agendas.length - r.agenda.exclus.length} agendas lus` : ""}`],
+  ["consignes", "Consignes", "consignes", (r) => r.consignes.length ? `${r.consignes.length} consigne${r.consignes.length > 1 ? "s" : ""}` : "Aucune"],
+  ["creuser", "À creuser", "creuser", (r) => r.a_approfondir.length ? r.a_approfondir.join(" · ") : "Rien pour l'instant"],
+  ["application", "Application", "telephone", () => `Version ${S.d.version}`],
+];
+
+function vueReglages() {
+  const r = S.d.reglages;
+  return `<h1>Réglages</h1>
+  <div class="menu-reglages">${SECTIONS.map(([cle, nom, ic, detail]) => `<button type="button" data-reglage="${cle}">
+    <span style="color:var(--aube)">${icone(ic, 22)}</span><span class="textes"><span style="font-weight:600">${nom}</span><span class="detail">${h(detail(r))}</span></span>
+    <span style="color:var(--eteint)">${icone("suite", 18, 2)}</span></button>`).join("")}</div>
+  ${S.d.annulation ? `<div class="annul"><span>Dernier changement : ${h(S.d.annulation)}</span><button type="button" class="lien" style="min-height:36px;padding:0 10px" data-action="annuler">Annuler</button></div>` : ""}`;
+}
+
+const pas = (chemin, valeur, min, max, saut, unite = "") => `<div class="pas">
+  <button type="button" data-pas="${chemin}" data-valeur="${Math.max(min, Math.round((valeur - saut) * 10) / 10)}" ${valeur <= min ? "disabled" : ""} aria-label="Moins">−</button>
+  <output>${nombre(valeur)}${unite}</output>
+  <button type="button" data-pas="${chemin}" data-valeur="${Math.min(max, Math.round((valeur + saut) * 10) / 10)}" ${valeur >= max ? "disabled" : ""} aria-label="Plus">+</button></div>`;
+
+const choix = (chemin, valeur, options) => `<select class="compacte" data-regler="${chemin}">
+  ${options.map(([v, n]) => `<option value="${h(v)}" ${String(valeur) === String(v) ? "selected" : ""}>${h(n)}</option>`).join("")}</select>`;
+
+function etiquettes(chemin, valeurs, exemple) {
+  return `${valeurs.length ? `<div class="etiquettes">${valeurs.map((v, i) => `<span>${h(v)}<button type="button" data-retirer-liste="${chemin}" data-i="${i}" aria-label="Retirer ${h(v)}">${icone("croix", 14, 2)}</button></span>`).join("")}</div>` : ""}
+  <div class="ajout"><input class="saisie" type="text" maxlength="80" placeholder="${h(exemple)}" data-nouveau="${chemin}" aria-label="Ajouter"><button type="button" class="bouton gris" data-ajouter-liste="${chemin}">Ajouter</button></div>`;
+}
+
+function vueReglage() {
+  const d = S.d, r = d.reglages, cle = S.reglage;
+  const titre = (SECTIONS.find((s) => s[0] === cle) || [])[1] || "Réglages";
+  const corps = {
+    format: () => `<section class="bloc">
+        <div class="reglage"><span>Durée visée</span>${pas("format.duree_minutes", r.format.duree_minutes, 2, 12, 0.5, " min")}</div>
+        <div class="reglage"><span>Sujets d'actualité</span>${pas("format.nombre_sujets", r.format.nombre_sujets, 1, 8, 1)}</div>
+      </section>
+      <div class="champ"><span class="etiquette">Ton</span><div class="segments" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        ${Object.entries(d.listes.tons).map(([v, n]) => `<button type="button" data-valeur-segment="${v}" data-chemin="format.ton" aria-pressed="${r.format.ton === v}">${h(n)}</button>`).join("")}</div></div>`,
+    voix: () => {
+      const v = r.voix, equipe = [...v.animateurs, ...v.equipe];
+      const optionsVoix = (choisie) => [["Conseillées", (x) => x.conseillee], ["Voix féminines", (x) => !x.conseillee && x.genre === "f"], ["Voix masculines", (x) => !x.conseillee && x.genre === "m"]]
+        .map(([groupe, filtre]) => `<optgroup label="${groupe}">${d.listes.voix.filter(filtre).map((x) => `<option value="${x.nom}" ${choisie === x.nom ? "selected" : ""}>${x.nom} — ${h(x.description)}</option>`).join("")}</optgroup>`).join("");
+      const pastilles = (choisis, attribut) => equipe.map((a) => `<button type="button" ${attribut} data-nom="${h(a.nom)}" aria-pressed="${choisis.includes(a.nom)}">${h(a.nom)}</button>`).join("");
+      const ligneVoix = (x) => {
+        const pret = r.echantillons[x.nom] && r.temps_echantillons[x.nom];
+        return `<div class="reglage"><span>${x.nom} <span class="aide">${h(x.description)}</span></span>
+          ${pret ? `<button type="button" class="lire petit" data-extrait="${x.nom}" aria-label="Écouter ${x.nom}">${X.voix === x.nom && !extrait.paused ? PAUSE : LECTURE}</button>`
+            : `<button type="button" class="coche" role="checkbox" aria-checked="${S.aPreparer.includes(x.nom)}" data-a-preparer="${x.nom}" aria-label="Préparer l'extrait de ${x.nom}">${S.aPreparer.includes(x.nom) ? "✓ " : ""}Préparer</button>`}</div>`;
+      };
+      return `<section class="bloc">
+        <div class="reglage"><span>Vitesse</span>${choix("voix.vitesse", v.vitesse, d.listes.vitesses.map((x) => [x, majuscule(x)]))}</div>
+        ${interrupteur("Tutoiement", v.tutoiement, 'data-regler-bool="voix.tutoiement"')}
+        <div class="reglage"><span>Ton prénom</span><input class="compacte" style="width:150px" maxlength="40" value="${h(v.prenom)}" data-regler-texte="voix.prenom" placeholder="—" aria-label="Ton prénom"></div>
+      </section>
+      <section class="carte" aria-labelledby="t-anim">
+        <h2 id="t-anim">Animateurs</h2>
+        <p class="aide" style="font-size:14px;color:var(--doux-2)">Prochain épisode : ${h(v.du_prochain.map((a) => `${a.nom} (${a.voix})`).join(" & "))}</p>
+        <div class="segments" style="grid-template-columns:repeat(3,minmax(0,1fr));background:var(--carte-2)">
+          ${Object.entries(d.listes.modes_voix).map(([m, n]) => `<button type="button" style="font-size:13px" data-valeur-segment="${m}" data-chemin="voix.mode" aria-pressed="${v.mode === m}">${n}</button>`).join("")}</div>
+        <div class="bloc" style="background:var(--carte-2)">${interrupteur("Une seule voix (sans second animateur)", v.solo, 'data-regler-bool="voix.solo"')}</div>
+        ${v.mode === "jours" ? `<p class="aide">Choisis ${v.solo ? "l'animateur" : "deux animateurs"} pour chaque jour. Rien de coché : les animateurs habituels.</p>
+          <div class="bloc" style="background:var(--carte-2)">${d.listes.jours.map(([j, , long]) => `<div class="reglage" style="flex-wrap:wrap"><span style="flex:0 0 84px">${majuscule(long)}</span>
+            <div class="puces-choix" style="flex:1">${pastilles(v.jours[j] || [], `data-voix-jour="${j}"`)}</div></div>`).join("")}</div>` : ""}
+        ${v.mode === "aleatoire" ? `<p class="aide">Chaque épisode tire au sort ${v.solo ? "un animateur" : "deux animateurs"} parmi ceux cochés (au moins ${v.solo ? "un" : "deux"} ; sinon toute l'équipe).</p>
+          <div class="puces-choix">${pastilles(v.tirage, "data-tirage")}</div>` : ""}
+      </section>
+      ${v.animateurs.map((a, i) => `<section class="sous-bloc ${v.solo && i === 1 && v.mode === "fixe" ? "grise" : ""}"><span class="etiquette" style="font-size:13px;color:var(--doux)">Animateur habituel ${i + 1}${v.solo && i === 1 && v.mode === "fixe" ? " · pas utilisé avec une seule voix" : ""}</span>
+        <input class="saisie" maxlength="20" value="${h(a.nom)}" data-regler-texte="voix.animateurs.${i}.nom" aria-label="Prénom de l'animateur ${i + 1}">
+        <select class="saisie" data-regler="voix.animateurs.${i}.voix" aria-label="Voix de l'animateur ${i + 1}">${optionsVoix(a.voix)}</select></section>`).join("")}
+      <section class="carte" aria-labelledby="t-equipe"><h2 id="t-equipe">Autres animateurs</h2>
+        <p class="aide">Pour varier selon le jour ou au hasard.</p>
+        ${v.equipe.map((a, i) => `<div class="sous-bloc" style="background:var(--carte-2)">
+          <div class="ajout"><input class="saisie" maxlength="20" value="${h(a.nom)}" data-equipe-nom="${i}" aria-label="Prénom">
+          <button type="button" class="icone" data-retirer-equipe="${i}" aria-label="Retirer ${h(a.nom)}">${icone("croix", 18, 2)}</button></div>
+          <select class="saisie" data-equipe-voix="${i}" aria-label="Voix de ${h(a.nom)}">${optionsVoix(a.voix)}</select></div>`).join("")}
+        <div class="ajout"><input class="saisie" maxlength="20" placeholder="Prénom" data-nouveau="animateur-nom" aria-label="Prénom du nouvel animateur" value="${h(S.nouveau.nom)}">
+          <button type="button" class="bouton gris" data-action="ajouter-animateur">Ajouter</button></div>
+        <select class="saisie" data-nouveau="animateur-voix" aria-label="Voix du nouvel animateur">${optionsVoix(S.nouveau.voix)}</select>
+      </section>
+      <section class="carte" aria-labelledby="t-ecoute"><h2 id="t-ecoute">Écouter les voix</h2>
+        <p class="aide">Coche les voix à découvrir, puis prépare leurs extraits (16 par jour au plus). Ils restent ici, pas dans la conversation.</p>
+        ${[["Conseillées", (x) => x.conseillee], ["Voix féminines", (x) => !x.conseillee && x.genre === "f"], ["Voix masculines", (x) => !x.conseillee && x.genre === "m"]]
+          .map(([groupe, filtre]) => `<span class="groupe">${groupe}</span><div class="bloc" style="background:var(--carte-2)">${d.listes.voix.filter(filtre).map(ligneVoix).join("")}</div>`).join("")}
+        ${S.aPreparer.length ? `<button type="button" class="bouton plein" data-action="extraits">Préparer ${S.aPreparer.length > 1 ? `ces ${S.aPreparer.length} extraits` : "cet extrait"}</button>` : ""}
+      </section>`;
+    },
+    actus: () => `<section class="bloc">
+        <div class="reglage"><span>Ville</span><input class="compacte" style="width:170px" maxlength="60" value="${h(r.actus.ville)}" data-regler-texte="actus.ville" placeholder="Ex. Yverdon-les-Bains" aria-label="Ville"></div>
+        <div class="reglage"><span>Âge maximum des nouvelles</span>${choix("actus.fraicheur_heures", r.actus.fraicheur_heures, [[12, "12 h"], [24, "24 h"], [36, "36 h"], [48, "2 jours"], [72, "3 jours"], [168, "1 semaine"]].concat([12, 24, 36, 48, 72, 168].includes(Number(r.actus.fraicheur_heures)) ? [] : [[r.actus.fraicheur_heures, `${r.actus.fraicheur_heures} h`]]))}</div>
+        <div class="reglage"><span>Articles d'actu locale</span>${pas("actus.locale_articles", r.actus.locale_articles, 1, 8, 1)}</div>
+        <div class="reglage"><span>Citer les sources</span>${choix("actus.citer_sources", r.actus.citer_sources, Object.entries(d.listes.citer))}</div>
+      </section>
+      <div class="champ"><span class="etiquette">Thèmes préférés</span>${etiquettes("actus.sujets_preferes", r.actus.sujets_preferes, "Ex. vélo, économie suisse")}</div>
+      <div class="champ"><span class="etiquette">Thèmes à éviter</span>${etiquettes("actus.sujets_a_eviter", r.actus.sujets_a_eviter, "Ex. sport, people")}</div>`,
+    sources: () => `<div class="bloc">${r.actus.flux.map((f, i) => `<div class="reglage"><span>${h(f.nom || f.url)}<br><span class="aide" style="word-break:break-all">${h(f.url)}</span></span>
+        <button type="button" class="icone" data-retirer-source="${i}" aria-label="Retirer ${h(f.nom)}">${icone("croix", 18, 2)}</button></div>`).join("")}</div>
+      <div class="champ"><label for="n-source">Ajouter un média</label><div class="ajout"><input id="n-source" class="saisie" maxlength="300" placeholder="Son nom ou l'adresse de son flux RSS" data-nouveau="source">
+        <button type="button" class="bouton gris" data-action="ajouter-source">Ajouter</button></div><p class="aide">Avec un nom (« 24 heures »), je cherche son flux RSS : ça prend quelques secondes.</p></div>
+      ${r.actus.flux_defaut ? "" : `<button type="button" class="bouton pointille" data-action="sources-defaut">Revenir aux sources par défaut</button>`}`,
+    agenda: () => `<section class="carte"><h2>Mes agendas</h2>
+        ${r.agendas.length ? `<div class="bloc" style="background:var(--carte-2)">${r.agendas.map((a) => interrupteur(`${h(a.nom)} <span class="aide">${a.nb} évén.</span>`, !r.agenda.exclus.includes(a.id), `data-agenda="${h(a.id)}"`)).join("")}</div>` : `<p class="aide">La liste apparaît après une première lecture.</p>`}
+        <button type="button" class="bouton gris" data-action="lire-agendas">Relire mes agendas</button>
+      </section>
+      <section class="bloc">
+        <div class="reglage"><span>Jours d'agenda couverts</span>${pas("agenda.jours", r.agenda.jours, 1, 31, 1)}</div>
+        <div class="reglage"><span>Prochain événement cherché jusqu'à</span>${choix("agenda.horizon", r.agenda.horizon, [[30, "1 mois"], [60, "2 mois"], [90, "3 mois"], [180, "6 mois"], [365, "1 an"]].concat([30, 60, 90, 180, 365].includes(Number(r.agenda.horizon)) ? [] : [[r.agenda.horizon, `${r.agenda.horizon} jours`]]))}</div>
+        ${interrupteur("Lire les notes des événements", r.agenda.notes, 'data-regler-bool="agenda.notes"')}
+        ${interrupteur("Repérer les déplacements", r.agenda.deplacements, 'data-regler-bool="agenda.deplacements"')}
+        ${r.agenda.deplacements ? `<div class="reglage"><span>Déplacements repérés jusqu'à</span>${pas("agenda.jours_deplacements", r.agenda.jours_deplacements, 1, 60, 7, " j")}</div>
+        <div class="reglage"><span>Lieux présentés au maximum</span>${pas("agenda.max_deplacements", r.agenda.max_deplacements, 1, 4, 1)}</div>` : ""}
+      </section>
+      ${vueAgenda()}`,
+    consignes: () => `<p class="aide">Une consigne est transmise telle quelle à l'IA qui écrit chaque épisode (« plus d'humour », « toujours un point sur Yverdon »).</p>
+      ${r.consignes.map((c, i) => `<div class="sous-bloc"><textarea class="saisie" rows="2" maxlength="300" data-consigne="${i}" aria-label="Consigne ${i + 1}">${h(c)}</textarea>
+        <button type="button" class="lien" style="align-self:flex-end;color:var(--rouge)" data-retirer-liste="consignes" data-i="${i}">Supprimer</button></div>`).join("")}
+      <div class="champ"><label for="n-consigne">Nouvelle consigne</label><textarea id="n-consigne" class="saisie" rows="2" maxlength="300" data-nouveau="consignes" placeholder="Ex. plus d'humour le vendredi"></textarea>
+        <button type="button" class="bouton gris" data-ajouter-liste="consignes">Ajouter</button></div>`,
+    creuser: () => `<p class="aide">Ces sujets seront développés dans le prochain épisode, puis retirés.</p>
+      ${r.a_approfondir.length ? `<div class="bloc">${r.a_approfondir.map((s, i) => `<div class="reglage"><span>${h(s)}</span>
+        <button type="button" class="icone" data-retirer-creuser="${i}" aria-label="Retirer ${h(s)}">${icone("croix", 18, 2)}</button></div>`).join("")}</div>` : ""}
+      <div class="ajout"><input class="saisie" maxlength="80" placeholder="Ex. la réforme des retraites" data-nouveau="creuser" aria-label="Sujet à creuser"><button type="button" class="bouton gris" data-action="ajouter-creuser">Ajouter</button></div>`,
+    application: () => `<section class="carte"><h2>Sur ton écran d'accueil</h2>
+        <p class="aide">Ajoute une icône sur ton téléphone pour ouvrir le podcast directement, sans passer par la conversation.</p>
+        ${tg && tg.addToHomeScreen && recent("8.0") ? `<button type="button" class="bouton plein" data-action="ecran-accueil">Ajouter à l'écran d'accueil</button>`
+          : `<p class="aide">Ta version de Telegram ne le permet pas encore : mets-la à jour.</p>`}
+      </section>
+      <section class="carte"><h2>À propos</h2><p class="aide">Version ${h(d.version)}. Tout changement fait ici s'annule avec « Annuler » sur l'accueil, ou /annuler dans la conversation.</p>
+        <button type="button" class="bouton gris" data-action="recharger">Recharger les données</button></section>`,
+  }[cle];
+  return `${entete(titre, "Réglages")}${corps ? corps() : ""}`;
+}
+
+async function regler(chemin, valeur) {
+  return changer("regler", { chemin, valeur });
+}
+
+async function majListe(chemin, valeurs) {
+  return changer("liste", { chemin, valeurs });
+}
+
+function listeActuelle(chemin) {
+  const r = S.d.reglages;
+  return chemin === "consignes" ? [...r.consignes] : [...r.actus[chemin.split(".")[1]]];
+}
+
+// ─────────────────────────────── événements ─────────────────────────────
+document.addEventListener("click", (ev) => {
+  const el = ev.target.closest("button");
+  if (!el || el.disabled) return;
+  const ds = el.dataset;
+  if (el.id === "mini-titre") { S.episode = L.cle; return aller("episode"); }
+  if (ds.mini !== undefined) { if (audio.paused) audio.play(); else audio.pause(); return; }
+  if (ds.aller) return aller(ds.aller);
+  if (ds.destination) { if (ds.destination.startsWith("r:")) { S.reglage = ds.destination.slice(2); return aller("reglage"); } return aller(ds.destination); }
+  if (ds.reglage) { S.reglage = ds.reglage; return aller("reglage"); }
+  if (ds.onglet) { S.onglet = ds.onglet; vibrer("choix"); return dessiner(); }
+  if (ds.ouvrir) return ouvrirFiche(ds.ouvrir);
+  if (ds.episode) { S.episode = ds.episode; return aller("episode"); }
+  if (ds.choisir) { S.choisi = ds.choisir; vibrer("choix"); return dessiner(); }
+  if (ds.moisEp !== undefined) { if (ds.moisEp) { S.moisEpisodes = ds.moisEp; dessiner(); } return; }
+  if (ds.lire) return basculer(episodeParCle(ds.lire));
+  if (ds.chapitre) return jouer(episodeParCle(ds.chapitre), Number(ds.t));
+  if (ds.geste) return geste(ds.cle, ds.geste);
+  if (ds.texte) return demander("texte", { cle: ds.texte }).then((j) => { if (j.ok) { S.texte = { cle: ds.texte, texte: j.texte }; dessiner(); } });
+  if (ds.extrait) return basculerExtrait(ds.extrait);
+  if (ds.aPreparer) { S.aPreparer = S.aPreparer.includes(ds.aPreparer) ? S.aPreparer.filter((x) => x !== ds.aPreparer) : [...S.aPreparer, ds.aPreparer]; vibrer("choix"); return dessiner(); }
+  if (ds.retirerEquipe) { const equipe = S.d.reglages.voix.equipe.filter((_, i) => i !== Number(ds.retirerEquipe)); return changer("equipe", { equipe }); }
+  if (ds.voixJour) {
+    const v = S.d.reglages.voix, max = v.solo ? 1 : 2;
+    let noms = [...(v.jours[ds.voixJour] || [])];
+    noms = noms.includes(ds.nom) ? noms.filter((n) => n !== ds.nom) : [...noms, ds.nom].slice(-max);
+    return changer("voix_jour", { jour: ds.voixJour, noms });
+  }
+  if (ds.tirage !== undefined && ds.nom) {
+    const t = S.d.reglages.voix.tirage;
+    return changer("tirage", { noms: t.includes(ds.nom) ? t.filter((n) => n !== ds.nom) : [...t, ds.nom] });
+  }
+  if (ds.lien) return ouvrirLien(ds.lien);
+  if (ds.creuser) return changer("creuser", { sujet: ds.creuser }, () => {});
+  if (ds.chercher) return chercher(ds.chercher, "ecrit");
+  if (ds.sauter) return confirmer(`Pas d'épisode le ${dateLongue(ds.sauter)} ?`, () => changer("sauter", { date: ds.sauter }));
+  if (ds.retablir) return changer("retablir", { date: ds.retablir });
+  if (ds.jourcal) return toucherJour(ds.jourcal);
+  if (ds.mois) { S.mois = Number(ds.mois); return dessiner(); }
+  if (ds.jourActif) { const actif = S.d.planning.jours[ds.jourActif]; return changer("jour", { jour: ds.jourActif, heure: actif ? null : "07:30" }); }
+  if (ds.pas) return regler(ds.pas, Number(ds.valeur));
+  if (ds.valeurSegment) return regler(ds.chemin, ds.valeurSegment);
+  if (ds.reglerBool) return regler(ds.reglerBool, el.getAttribute("aria-checked") !== "true");
+  if (ds.agenda) return changer("agenda", { id: ds.agenda, lu: el.getAttribute("aria-checked") !== "true" });
+  if (ds.retirerListe) { const l = listeActuelle(ds.retirerListe); l.splice(Number(ds.i), 1); return majListe(ds.retirerListe, l); }
+  if (ds.ajouterListe) {
+    const champ = document.querySelector(`[data-nouveau="${ds.ajouterListe}"]`);
+    const valeurs = String(champ && champ.value || "").split(ds.ajouterListe === "consignes" ? /\n/ : /[,;]/).map((x) => x.trim()).filter(Boolean);
+    if (!valeurs.length) return annoncer("Écris d'abord ce que tu veux ajouter.", true);
+    return majListe(ds.ajouterListe, [...listeActuelle(ds.ajouterListe), ...valeurs]);
+  }
+  if (ds.retirerSource) return changer("retirer_source", { index: Number(ds.retirerSource) });
+  if (ds.retirerCreuser) return changer("retirer_creuser", { index: Number(ds.retirerCreuser) });
+  if (ds.actif) {
+    const x = S.d.deroule.find((y) => y.cle === ds.actif);
+    if (!x) return;
+    el.setAttribute("aria-checked", String(!x.actif));
+    el.closest("li").classList.toggle("eteint", x.actif);
+    vibrer("choix");
+    return enregistrerDeroule({ [ds.actif]: !x.actif });
+  }
+  if (S.fiche && S.ecran === "fiche") {
+    const f = S.fiche.f;
+    let change = true;
+    if (ds.retirerBulle) f[ds.retirerBulle].splice(Number(ds.i), 1);
+    else if (ds.action === "passage") f.longueur = f.longueur === "aucune" ? "courte" : "aucune";
+    else if (ds.longueur) f.longueur = ds.longueur;
+    else if (ds.jour) f.periode.jours = f.periode.jours.includes(ds.jour) ? f.periode.jours.filter((j) => j !== ds.jour) : [...f.periode.jours, ds.jour];
+    else if (ds.source) f.sources = f.sources.includes(ds.source) ? f.sources.filter((s) => s !== ds.source) : [...f.sources, ds.source];
+    else if (ds.bascule) { const [a, b] = ds.bascule.split("."); if (b) f[a][b] = !f[a][b]; else f[a] = !f[a]; }
+    else change = false;
+    if (change) { S.fiche.modifie = true; vibrer("choix"); return dessiner(); }
+  }
+  switch (ds.action) {
+    case "generer":
+      return confirmer("Générer un nouvel épisode maintenant ? Il arrivera ici et dans la conversation.", () => changer("generer", {}, () => {}));
+    case "fermer": return tg ? tg.close() : null;
+    case "nouvelle":
+      return choisir("Ajouter", "Une rubrique dans tes épisodes, ou une recherche ponctuelle (sortie, activité…) ?", [
+        { id: "rubrique", type: "default", text: "Rubrique" }, { id: "recherche", type: "default", text: "Recherche" }],
+        (c) => ouvrirFiche(null, c === "recherche" ? "recherche" : null));
+    case "nouvelle-recherche": return ouvrirFiche(null, "recherche");
+    case "retour": return retour();
+    case "plus": return menuFiche();
+    case "enregistrer": return enregistrerFiche();
+    case "condition": S.fiche.f.condition = { texte: "", moment: "jour_meme", n: 1 }; S.fiche.modifie = true; return dessiner();
+    case "sans-condition": S.fiche.f.condition = null; S.fiche.modifie = true; return dessiner();
+    case "recherche": S.fiche.recherche = true; return dessiner();
+    case "annuler": return changer("annuler");
+    case "envoyer": { const t = document.getElementById("demande"); const v = t ? t.value : ""; if (t) t.value = ""; return envoyerDemande(v); }
+    case "vocal": return V.enCours ? arreterVocal(true) : demarrerVocal();
+    case "vocal-annuler": return arreterVocal(false);
+    case "parler-sujets": {
+      const ep = episodeParCle(ds.cle);
+      S.ecran = "parler"; dessiner();
+      const t = document.getElementById("demande");
+      if (t) { t.value = `Ces sujets m'intéressaient peu : ${(ep && ep.sujets || []).join(", ")}. `; t.focus(); }
+      return;
+    }
+    case "ajouter-source": {
+      const champ = document.querySelector('[data-nouveau="source"]');
+      if (!champ || !champ.value.trim()) return annoncer("Écris le nom du média ou l'adresse de son flux.", true);
+      annoncer("Je cherche le flux RSS…");
+      return changer("source", { valeur: champ.value.trim() });
+    }
+    case "sources-defaut": return confirmer("Revenir aux sources par défaut ?", () => changer("sources_defaut"));
+    case "ajouter-creuser": {
+      const champ = document.querySelector('[data-nouveau="creuser"]');
+      return changer("creuser", { sujet: champ ? champ.value : "" });
+    }
+    case "lire-agendas": return changer("lire_agendas", {}, () => {});
+    case "extraits": return changer("extraits", { voix: S.aPreparer }, (j) => { if (j.ok) S.aPreparer = []; dessiner(); });
+    case "ajouter-animateur": {
+      const champ = document.querySelector('[data-nouveau="animateur-nom"]');
+      const nom = champ ? champ.value.trim() : "";
+      if (!nom) return annoncer("Donne un prénom au nouvel animateur.", true);
+      return changer("equipe", { equipe: [...S.d.reglages.voix.equipe, { nom, voix: S.nouveau.voix }] }, (j) => { if (j.ok) S.nouveau = { nom: "", voix: "Kore" }; dessiner(); });
+    }
+    case "ecran-accueil": try { tg.addToHomeScreen(); } catch (e) { annoncer("Impossible ici : mets Telegram à jour.", true); } return;
+    case "recharger": return demarrer();
+  }
+});
+
+document.addEventListener("input", (ev) => {
+  const t = ev.target;
+  if (!t.dataset) return;
+  if (t.dataset.champ && S.fiche && t.tagName !== "SELECT") return saisirChamp(t);
+  if (t.dataset.avance && L.cle === t.dataset.avance) { audio.currentTime = Number(t.value); return; }
+  if (t.dataset.nouveau === "animateur-nom") { S.nouveau.nom = t.value; return; }
+});
+document.addEventListener("change", (ev) => {
+  const t = ev.target;
+  if (!t.dataset) return;
+  if (t.dataset.bulle) return ajouterBulle(t);
+  if (t.dataset.region !== undefined) return changer("feries", { region: t.value });
+  if (t.dataset.equipeNom !== undefined || t.dataset.equipeVoix !== undefined) {
+    const equipe = S.d.reglages.voix.equipe.map((a) => ({ ...a }));
+    const i = Number(t.dataset.equipeNom ?? t.dataset.equipeVoix);
+    if (t.dataset.equipeNom !== undefined) equipe[i].nom = t.value; else equipe[i].voix = t.value;
+    return changer("equipe", { equipe });
+  }
+  if (t.dataset.nouveau === "animateur-voix") { S.nouveau.voix = t.value; return; }
+  if (t.dataset.champ && S.fiche && t.tagName === "SELECT") return saisirChamp(t);
+  if (t.dataset.jourMode) {
+    const vue = t.dataset.jourMode;
+    S.jourVue[vue] = t.value === "date" ? (S.jourDernier[vue] || plusJours(S.d.aujourdhui, 1)) : "";
+    return dessiner();
+  }
+  if (t.dataset.jourDate) { if (t.value) { S.jourVue[t.dataset.jourDate] = S.jourDernier[t.dataset.jourDate] = t.value; dessiner(); } return; }
+  if (t.dataset.regler) return regler(t.dataset.regler, t.value);
+  if (t.dataset.reglerTexte !== undefined && t.dataset.reglerTexte) return regler(t.dataset.reglerTexte, t.value);
+  if (t.dataset.heureJour) return t.value && changer("jour", { jour: t.dataset.heureJour, heure: t.value });
+  if (t.dataset.consigne !== undefined) {
+    const l = listeActuelle("consignes");
+    if (t.value.trim()) l[Number(t.dataset.consigne)] = t.value.trim(); else l.splice(Number(t.dataset.consigne), 1);
+    return majListe("consignes", l);
+  }
+});
+document.addEventListener("keydown", (ev) => {
+  if ((ev.key === "Enter" || ev.key === ",") && ev.target.dataset && ev.target.dataset.bulle) { if (ajouterBulle(ev.target) || ev.key === "Enter") ev.preventDefault(); return; }
+  if (ev.key === "Enter" && !ev.shiftKey && ev.target.id === "demande") { ev.preventDefault(); const v = ev.target.value; ev.target.value = ""; envoyerDemande(v); }
+});
+// Après une longue absence, les données (et les liens audio) se rafraîchissent.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && S.d && Date.now() - S.charge > 30 * 60000 && S.ecran !== "fiche") {
+    demander("etat", {}, { discret: true }).then((j) => { if (j.ok) dessiner(); });
+  }
+});
+
+// ─────────────────────────────── démarrage ──────────────────────────────
+async function demarrer() {
+  if (!tg || !tg.initData) {
+    ecranEl.innerHTML = `<div class="chargement"><h1 style="margin-bottom:12px">Podcast Matin</h1>
+      Cette application s'ouvre depuis ton bot Telegram : touche le bouton <b>Application</b> à gauche du champ de saisie.</div>`;
+    return;
+  }
+  const j = await demander("etat", {}, { toujours: true });
+  if (!j.ok || !S.d) {
+    ecranEl.innerHTML = `<div class="chargement"><h1 style="margin-bottom:12px">Oups</h1>${h(j.erreur || "Le bot ne répond pas.")}<br><br>
+      <button type="button" class="bouton plein" data-action="recharger">Réessayer</button></div>`;
+    return;
+  }
+  // Ouverture depuis le bouton sous un épisode : directement sur cet épisode.
+  const voulu = new URLSearchParams(location.search).get("episode");
+  const ep = voulu && S.d.episodes.find((e) => e.date === voulu);
+  if (ep) { S.episode = ep.cle; S.ecran = "episode"; }
+  dessiner();
+}
+
+if (tg) {
+  tg.ready();
+  tg.expand();
+  try {
+    tg.setHeaderColor("#12151C"); tg.setBackgroundColor("#12151C");
+    if (tg.setBottomBarColor) tg.setBottomBarColor("#161A22");
+    if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+    if (tg.onEvent) tg.onEvent("homeScreenAdded", () => annoncer("Icône ajoutée à ton écran d'accueil"));
+  } catch (e) { /* ancien Telegram */ }
+  if (tg.BackButton) tg.BackButton.onClick(retour);
+}
+demarrer();
+</script>
+</body>
+</html>

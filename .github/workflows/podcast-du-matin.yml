@@ -1,0 +1,98 @@
+name: Podcast du matin
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('Podcast ({0}{1})', inputs.mode || 'manuel', inputs.regles && format(' · {0}', inputs.regles) || '') || 'Podcast du matin (filet)' }}
+
+on:
+  # C'est le bot (Cloudflare) qui lance l'épisode à l'heure choisie, jour par
+  # jour, puis un rattrapage une heure plus tard si besoin. Ces créneaux ne
+  # sont qu'un filet de sécurité : horaire.py ne laisse passer un épisode que
+  # s'il n'est toujours pas parti 75 minutes après l'heure prévue (ou, sans
+  # bot, à HEURE_LOCALE comme avant : 7 h 30, rattrapage à 8 h 30).
+  schedule:
+    - cron: "30 5 * * *"
+    - cron: "30 6 * * *"
+    - cron: "30 7 * * *"
+    - cron: "17 9 * * *"
+    - cron: "17 11 * * *"
+  workflow_dispatch: # bouton « Run workflow », et lancements par le bot
+    inputs:
+      mode:
+        description: "planifie, rattrapage ou manuel (rempli par le bot)"
+        required: false
+        default: "manuel"
+        type: string
+      regles:
+        description: "Règles à traiter aussi dans l'épisode, ex. R3,R5 (facultatif)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: write # pour enregistrer memoire.json (débit de la voix, dernier épisode)
+
+concurrency:
+  group: podcast-du-matin
+  cancel-in-progress: false
+
+env:
+  HEURE_LOCALE: "07:30" # utilisé seulement sans bot
+  FUSEAU: "Europe/Zurich"
+  BOT_URL: ${{ vars.BOT_URL || 'https://podcast.TON-SOUS-DOMAINE.workers.dev' }}
+
+jobs:
+  podcast:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v6
+
+      - name: Faut-il un épisode ?
+        id: horaire
+        env:
+          EVENEMENT: ${{ github.event_name }}
+          PROGRAMMATION: ${{ github.event.schedule }}
+          MODE_DEMANDE: ${{ inputs.mode }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: python3 horaire.py
+
+      - name: Installer les dépendances
+        if: steps.horaire.outputs.go == 'true'
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet --disable-pip-version-check -r requirements.txt
+
+      - name: Préparer et envoyer le podcast
+        if: steps.horaire.outputs.go == 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CALENDAR_ICS_URL: ${{ secrets.CALENDAR_ICS_URL }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          SNCF_API_KEY: ${{ secrets.SNCF_API_KEY }}
+          MODE: ${{ steps.horaire.outputs.mode }}
+          REGLES: ${{ inputs.regles }}
+          RATTRAPAGE: ${{ steps.horaire.outputs.rattrapage }}
+          ESSAI_SUIVANT: ${{ steps.horaire.outputs.essai_suivant }}
+        run: .venv/bin/python podcast.py
+
+      - name: Enregistrer la mémoire
+        if: always() && steps.horaire.outputs.go == 'true'
+        run: |
+          if [ -z "$(git status --porcelain -- memoire.json)" ]; then
+            echo "Mémoire inchangée."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add memoire.json
+          git commit --quiet -m "Mémoire du podcast mise à jour"
+          for essai in 1 2 3; do
+            if git pull --quiet --rebase origin "$GITHUB_REF_NAME" && git push --quiet origin "HEAD:$GITHUB_REF_NAME"; then
+              echo "Mémoire enregistrée."
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep 5
+          done
+          echo "::warning::memoire.json n'a pas pu être enregistrée : le débit mesuré sera recalculé la prochaine fois."

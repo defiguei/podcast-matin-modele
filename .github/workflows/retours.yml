@@ -1,0 +1,67 @@
+name: Messages au bot
+run-name: ${{ inputs.declencheur && format('Messages au bot ({0})', inputs.declencheur) || 'Messages au bot' }}
+
+# Lit ce que tu écris (ou dis en vocal) à ton bot Telegram, ajuste le podcast
+# et te répond. L'épisode du matin lit aussi tes messages avant de s'écrire.
+
+on:
+  # Plus de lecture programmée : le bot instantané (cloudflare/worker.js) répond
+  # tout seul. Sans lui, remets ces lignes pour une lecture toutes les 2 heures :
+  # schedule:
+  #   - cron: "17 5-21/2 * * *"
+  workflow_dispatch: # bouton « Run workflow », ou relais Cloudflare dès que tu écris
+    inputs:
+      declencheur:
+        description: "Rempli automatiquement par le relais Cloudflare (laisser vide)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: write # pour enregistrer memoire.json
+
+concurrency:
+  group: podcast-du-matin # jamais en même temps que l'épisode du matin
+  cancel-in-progress: false
+
+jobs:
+  messages:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25 # « refais le podcast » prépare un épisode complet
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v6
+
+      - name: Installer les dépendances
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet --disable-pip-version-check -r requirements.txt
+
+      - name: Lire tes messages et y répondre
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CALENDAR_ICS_URL: ${{ secrets.CALENDAR_ICS_URL }}
+        run: .venv/bin/python podcast.py --retours
+
+      - name: Enregistrer la mémoire
+        if: always()
+        run: |
+          if [ -z "$(git status --porcelain -- memoire.json)" ]; then
+            echo "Mémoire inchangée."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add memoire.json
+          git commit --quiet -m "Mémoire du podcast mise à jour"
+          for essai in 1 2 3; do
+            if git pull --quiet --rebase origin "$GITHUB_REF_NAME" && git push --quiet origin "HEAD:$GITHUB_REF_NAME"; then
+              echo "Mémoire enregistrée."
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep 5
+          done
+          echo "::warning::memoire.json n'a pas pu être enregistrée : tes derniers messages seront relus au prochain passage."

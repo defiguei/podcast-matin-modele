@@ -1,0 +1,107 @@
+name: Déployer le bot
+
+# Met en ligne le bot Telegram (dossier cloudflare/) sur ton compte Cloudflare
+# à chaque changement, après ses tests. Secrets GitHub nécessaires :
+#   CLOUDFLARE_API_TOKEN  (modèle « Edit Cloudflare Workers »)
+#   CLOUDFLARE_ACCOUNT_ID (identifiant de ton compte Cloudflare)
+# Les secrets du bot lui-même (jetons Telegram, GitHub, Gemini) restent dans
+# Cloudflare : ce déploiement ne les touche pas.
+
+on:
+  push:
+    branches: [main]
+    paths: ["cloudflare/**", ".github/workflows/deployer-bot.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deployer-bot
+  cancel-in-progress: false
+
+env:
+  BOT_URL: ${{ vars.BOT_URL || 'https://podcast.TON-SOUS-DOMAINE.workers.dev' }}
+
+jobs:
+  deployer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: cloudflare
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v6
+
+      - name: Vérifier les secrets Cloudflare
+        id: secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::warning::Bot non déployé : ajoute les secrets CLOUDFLARE_API_TOKEN et CLOUDFLARE_ACCOUNT_ID (README, « Passer à la version 3 »), puis relance ce workflow. En attendant, l'ancien bot et l'épisode de 7 h 30 continuent comme avant."
+            echo "pret=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Espaces ou retours à la ligne autour : tolérés. À l'intérieur : collage raté.
+          nettoyer() { local v="${1//$'\r'/}"; v="${v#"${v%%[![:space:]]*}"}"; v="${v%"${v##*[![:space:]]}"}"; printf %s "$v"; }
+          jeton="$(nettoyer "$CLOUDFLARE_API_TOKEN")"
+          compte="$(nettoyer "$CLOUDFLARE_ACCOUNT_ID")"
+          case "$jeton" in *[[:space:]]*)
+            echo "::error::Le secret CLOUDFLARE_API_TOKEN contient plusieurs morceaux (retour à la ligne ou espace au milieu). Recolle uniquement le jeton, sur une seule ligne, puis relance ce workflow."
+            exit 1 ;;
+          esac
+          if ! printf %s "$compte" | grep -Eq '^[0-9a-f]{32}$'; then
+            echo "::error::Le secret CLOUDFLARE_ACCOUNT_ID doit faire 32 caractères (chiffres et lettres a à f) : recopie l'Account ID de Cloudflare, puis relance ce workflow."
+            exit 1
+          fi
+          echo "pret=true" >> "$GITHUB_OUTPUT"
+
+      - name: Installer Node
+        if: steps.secrets.outputs.pret == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cloudflare/package-lock.json
+
+      - name: Installer wrangler
+        if: steps.secrets.outputs.pret == 'true'
+        run: npm ci --no-audit --no-fund
+
+      - name: Tester le bot
+        if: steps.secrets.outputs.pret == 'true'
+        run: npm test
+
+      - name: Mettre en ligne
+        if: steps.secrets.outputs.pret == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set +e
+          nettoyer() { local v="${1//$'\r'/}"; v="${v#"${v%%[![:space:]]*}"}"; v="${v%"${v##*[![:space:]]}"}"; printf %s "$v"; }
+          CLOUDFLARE_API_TOKEN="$(nettoyer "$CLOUDFLARE_API_TOKEN")"
+          CLOUDFLARE_ACCOUNT_ID="$(nettoyer "$CLOUDFLARE_ACCOUNT_ID")"
+          export CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID
+          npx wrangler deploy --var "DEPOT:${GITHUB_REPOSITORY}" --var "ADRESSE:${BOT_URL}" 2>&1 | tee /tmp/deploiement.txt
+          code=${PIPESTATUS[0]}
+          if [ "$code" != "0" ]; then
+            # L'erreur remonte aussi en annotation, lisible sans ouvrir le journal.
+            erreur="$(sed 's/\x1b\[[0-9;]*m//g' /tmp/deploiement.txt | grep -v '^[[:space:]]*$' | tail -30 | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')"
+            echo "::error title=Mise en ligne refusée::$erreur"
+            exit "$code"
+          fi
+
+      - name: Activer la nouvelle version
+        if: steps.secrets.outputs.pret == 'true'
+        run: |
+          for essai in 1 2 3 4 5; do
+            reponse="$(curl -fsS "$BOT_URL/installer" || true)"
+            echo "$reponse"
+            case "$reponse" in *activé*) exit 0 ;; esac
+            sleep 10
+          done
+          echo "::warning::Activation à confirmer : ouvre $BOT_URL/installer dans ton navigateur (le bot s'active aussi tout seul dans l'heure)."

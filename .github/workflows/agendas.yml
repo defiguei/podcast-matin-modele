@@ -1,0 +1,35 @@
+name: Lire mes agendas
+run-name: Lire mes agendas
+
+# Lancé par le bot (Agenda → Mes agendas → Lire mes agendas) : lit seulement le
+# nom de chaque agenda pour que tu puisses cocher ceux à utiliser. Aucun appel à Gemini.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BOT_URL: ${{ vars.BOT_URL || 'https://podcast.TON-SOUS-DOMAINE.workers.dev' }}
+
+jobs:
+  agendas:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v6
+
+      - name: Installer les dépendances
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet --disable-pip-version-check -r requirements.txt
+
+      - name: Lire les noms des agendas
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CALENDAR_ICS_URL: ${{ secrets.CALENDAR_ICS_URL }}
+        run: .venv/bin/python podcast.py --agendas

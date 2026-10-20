@@ -1,0 +1,14 @@
+{
+  "name": "podcast-bot",
+  "private": true,
+  "description": "Bot Telegram du Podcast du matin (Cloudflare Worker + Durable Object)",
+  "type": "module",
+  "scripts": {
+    "test": "node test/lancer.mjs",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.149.0"
+  }
+}
