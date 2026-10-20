@@ -2,7 +2,6 @@ name: Tests
 
 on:
   push:
-    branches-ignore: [sondes]
     paths-ignore: ["memoire.json", "preferences.json", "**.md"]
   pull_request:
   workflow_dispatch:

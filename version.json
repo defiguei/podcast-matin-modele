@@ -1,12 +1,15 @@
 {
-  "version": "2026-10-21.2",
+  "version": "2026-10-21.3",
   "date": "2026-10-21",
-  "titre": "Petite mise à jour de fiabilité",
+  "titre": "Ménage",
   "nouveautes": [
-    "Déploiement plus fiable : les vérifications automatiques ne ratent plus au hasard.",
-    "Automatisation GitHub à jour (fin de l'avertissement « Node.js 20 »).",
-    "Après une mise à jour, le bot t'écrit la version installée.",
+    "Ménage dans ton dépôt GitHub : les anciens outils de développement (partage par zip, sondes) sont retirés.",
     "Rien ne change dans tes épisodes ni dans tes réglages."
   ],
-  "supprimes": ["cloudflare/worker.js", ".github/workflows/retours.yml"]
+  "supprimes": [
+    "cloudflare/worker.js", ".github/workflows/retours.yml",
+    ".github/workflows/sondes.yml", "docs/PARTAGER.md", "outils/preparer_partage.py",
+    "outils/sonde.py", "outils/sonde_fetes.py", "outils/sonde_modeles.py", "outils/sonde_osm.py",
+    "outils/sonde_suivi_trains.py", "outils/sonde_trains.py", "outils/sonde_tts.py", "outils/sonde_v3.py"
+  ]
 }

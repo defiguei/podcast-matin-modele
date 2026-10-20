@@ -21,7 +21,7 @@ import { CLES, testerCle, lireAgenda, identifiantAgenda, resumeConnexions } from
 import { fluxRss, chapitresJson, episodeDeCle, jetonValide, nouveauJeton } from "./flux.js";
 import { donneesApp, champsDepuisFormulaire, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, nettoyerEquipe, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-21.2";
+export const VERSION = "2026-10-21.3";
 const MAX_REFAITS = 6;
 const LONGUEURS_VALIDES = ["phrase", "courte", "developpee"];
 const MAX_RECHERCHES = 15;
@@ -30,7 +30,7 @@ const MAX_EPISODES = 60;      // historique gardé pour l'application (calendrie
 // Message envoyé après une mise à jour : les nouveautés de cette version…
 const NOUVEAUTES = `✅ <b>Ton podcast est à jour</b> (version ${VERSION}).
 
-• Déploiement plus fiable : les vérifications automatiques ne ratent plus au hasard.
+• Ménage dans ton dépôt GitHub : les anciens outils de développement sont retirés.
 • Rien ne change dans tes épisodes ni dans tes réglages.`;
 
 // … ou, pour qui arrive d'avant l'application (installation neuve, ancienne version
