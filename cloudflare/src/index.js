@@ -9,7 +9,8 @@
 // Variables (wrangler.toml) : DEPOT, ADRESSE.
 
 import { Etat, VERSION } from "./etat.js";
-import { secretPartage, Telegram } from "./services.js";
+import { secretPartage, Telegram, empreinte } from "./services.js";
+import { icone192, icone512, masque512, pomme180 } from "./icones.js";
 import { verifierOuverture, verifierAudio } from "./miniapp.js";
 import PAGE_APP from "./app.html";
 
@@ -52,6 +53,26 @@ export default {
         "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff",
       } });
     }
+    // Application installable (écran d'accueil, navigateur) : manifeste et icônes.
+    if (url.pathname === "/app/manifest.json") {
+      return Response.json({
+        name: "Podcast Matin", short_name: "Podcast", lang: "fr", start_url: "/app", scope: "/app", display: "standalone",
+        background_color: "#12151C", theme_color: "#12151C",
+        icons: [{ src: "/app/icone-192.png", sizes: "192x192", type: "image/png" }, { src: "/app/icone-512.png", sizes: "512x512", type: "image/png" },
+                { src: "/app/icone-masque.png", sizes: "512x512", type: "image/png", purpose: "maskable" }],
+      }, { headers: { "Content-Type": "application/manifest+json", "Cache-Control": "public, max-age=86400" } });
+    }
+    const icones = { "/app/icone-192.png": icone192, "/app/icone-512.png": icone512, "/app/icone-masque.png": masque512, "/app/apple-touch-icon.png": pomme180 };
+    if (icones[url.pathname]) {
+      return new Response(Uint8Array.from(atob(icones[url.pathname]), (c) => c.charCodeAt(0)), { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=604800" } });
+    }
+    // Hors de Telegram : un appareil se connecte avec le code affiché dans l'application.
+    if (url.pathname === "/app/connexion") {
+      if (requete.method !== "POST") return new Response("interdit", { status: 405 });
+      const corps = (await requete.text()).slice(0, 2000);
+      return cerveau(env).fetch(new Request("https://etat.interne/appareil/connexion", { method: "POST", headers: { "Content-Type": "application/json" }, body: corps }));
+    }
+
     // Lecteur audio de l'application : adresse signée, fichier gardé par Telegram.
     if (url.pathname === "/app/audio") {
       const cle = await verifierAudio(secret, url.searchParams);
@@ -62,7 +83,14 @@ export default {
     }
     if (url.pathname === "/app/api") {
       if (requete.method !== "POST") return new Response("interdit", { status: 405 });
-      const controle = await verifierOuverture(requete.headers.get("X-Telegram-Init-Data"), env);
+      let controle = await verifierOuverture(requete.headers.get("X-Telegram-Init-Data"), env);
+      // Hors de Telegram : le jeton de l'appareil (seule son empreinte est gardée par le bot).
+      const jetonAppareil = requete.headers.get("X-Appareil") || "";
+      if (!controle.ok && /^[0-9a-f]{64}$/.test(jetonAppareil)) {
+        const verifie = await (await cerveau(env).fetch(new Request(`https://etat.interne/appareil/verifier?e=${await empreinte(`appareil:${jetonAppareil}`, 64)}`))).json();
+        if (verifie.ok) controle = { ok: true, appareil: verifie.id };
+        else return Response.json({ ok: false, erreur: "Cet appareil n'est plus autorisé : reconnecte-le avec un nouveau code.", appareil: "inconnu" }, { status: 401 });
+      }
       if (!controle.ok) return Response.json({ ok: false, erreur: "Ouverture non reconnue : ferme puis rouvre l'application depuis le bot.", raison: controle.raison }, { status: 401 });
       const corps = await requete.text();
       // Une demande vocale (WAV en base64, une minute au plus) dépasse largement les autres.

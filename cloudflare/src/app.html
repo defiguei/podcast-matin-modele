@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
 <title>Podcast Matin</title>
+<link rel="manifest" href="/app/manifest.json">
+<link rel="apple-touch-icon" href="/app/apple-touch-icon.png">
+<meta name="theme-color" content="#12151C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Podcast Matin">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -105,6 +111,10 @@ h2 { margin: 0; font-family: var(--titre); font-weight: 700; font-size: 18px; }
 .points { display: flex; gap: 6px; }
 .points i { width: 22px; height: 4px; border-radius: 2px; background: var(--trait-2); }
 .points i.actif { background: var(--aube); }
+
+.connexion { display: flex; flex-direction: column; gap: 16px; padding-top: 12vh; text-align: center; }
+.connexion .icone-app { width: 84px; height: 84px; border-radius: 22px; background: var(--aube); color: var(--sur-aube); display: flex; align-items: center; justify-content: center; align-self: center; }
+.code-geant { font-family: var(--titre); font-size: 44px; font-weight: 700; letter-spacing: .18em; text-align: center; color: var(--aube); font-variant-numeric: tabular-nums; }
 
 /* fiche */
 .entete-fiche { display: flex; align-items: center; gap: 4px; margin: -8px -8px 0; }
@@ -328,7 +338,12 @@ select.compacte { appearance: none; background-image: url("data:image/svg+xml,%3
 <div id="feuille" class="cache" role="dialog" aria-modal="true" aria-labelledby="feuille-titre"></div>
 <script>
 "use strict";
-const tg = window.Telegram && window.Telegram.WebApp;
+// Dans Telegram : l'objet WebApp et sa signature. Ailleurs (navigateur, écran d'accueil) : rien.
+const tg = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData ? window.Telegram.WebApp : null;
+// Hors de Telegram, chaque appareil a son propre jeton (donné contre un code à 6 chiffres).
+const APPAREIL = "podcast-matin-appareil";
+const jetonAppareil = { lire() { try { return localStorage.getItem(APPAREIL) || ""; } catch (e) { return ""; } },
+  ecrire(v) { try { if (v) localStorage.setItem(APPAREIL, v); else localStorage.removeItem(APPAREIL); } catch (e) { /* stockage refusé */ } } };
 const S = { d: null, ecran: "accueil", integree: null, fiche: null, mois: 0, occupe: false,
             reglage: null, episode: null, texte: null, discussion: [], charge: 0, choisi: null, jourVue: { rubriques: "", deroule: "" }, jourDernier: {}, moisEpisodes: null, aPreparer: [], nouveau: { nom: "", voix: "Kore" } };
 const ecranEl = document.getElementById("ecran");
@@ -456,10 +471,11 @@ async function demander(action, extra = {}, options = {}) {
   try {
     const r = await fetch("/app/api", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Telegram-Init-Data": (tg && tg.initData) || "" },
+      headers: { "Content-Type": "application/json", "X-Telegram-Init-Data": (tg && tg.initData) || "", ...(tg ? {} : { "X-Appareil": jetonAppareil.lire() }) },
       body: JSON.stringify({ action, ...extra }),
     });
     const j = await r.json().catch(() => ({ ok: false, erreur: `Le bot ne répond pas (erreur ${r.status}).` }));
+    if (j.appareil === "inconnu") { jetonAppareil.ecrire(""); setTimeout(vueConnexionAppareil, 0); }
     if (j.donnees) { S.d = j.donnees; S.charge = Date.now(); }
     if (!j.ok && !options.discret) { annoncer(j.erreur || "Impossible pour l'instant.", true); vibrer("error"); }
     return j;
@@ -861,7 +877,7 @@ async function demarrerVocal() {
   try {
     V.flux = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
   } catch (e) {
-    return annoncer("Micro refusé : autorise-le pour Telegram dans les réglages du téléphone.", true);
+    return annoncer("Micro refusé : autorise-le dans les réglages du téléphone (pour Telegram ou ton navigateur).", true);
   }
   const Contexte = window.AudioContext || window.webkitAudioContext;
   V.contexte = new Contexte();
@@ -1682,10 +1698,21 @@ function vueReglage() {
           <p class="aide"><b>Apple Podcasts</b> : Bibliothèque › ⋯ › Ajouter une émission par URL. <b>AntennaPod</b> : + › Ajouter un podcast par son adresse RSS. Garde cette adresse pour toi : qui l'a peut écouter tes épisodes.</p>`
           : `<button type="button" class="bouton plein" data-action="creer-flux">Créer mon flux privé</button>`}
       </section>
+      <section class="carte" aria-labelledby="t-hors"><h2 id="t-hors">Hors de Telegram</h2>
+        <p class="aide">Ouvre ton podcast dans le navigateur de n'importe quel appareil, à l'adresse <b style="word-break:break-all">${h(d.adresse_app)}</b>, puis entre un code. Tu peux ensuite l'ajouter à l'écran d'accueil comme une vraie application.</p>
+        ${d.code_appareil ? `<div class="code-geant" aria-label="Code ${h(d.code_appareil.code.split("").join(" "))}">${h(d.code_appareil.code)}</div>
+          <p class="aide" style="text-align:center">Valable jusqu'à ${h(new Date(d.code_appareil.expire).toLocaleTimeString("fr-CH", { hour: "2-digit", minute: "2-digit" }))}, pour un seul appareil.</p>`
+          : `<button type="button" class="bouton gris" data-action="code-appareil">Afficher un code</button>`}
+        ${d.appareils.length ? `<span class="etiquette" style="font-size:13px;color:var(--doux)">Appareils connectés</span>
+          <div class="bloc" style="background:var(--carte-2)">${d.appareils.map((a) => `<div class="reglage"><span>${h(a.nom)}<br><span class="aide">Vu le ${h(dateLongue(String(a.vu_le).slice(0, 10)))}</span></span>
+            <button type="button" class="lien" style="color:var(--rouge)" data-appareil-retirer="${h(a.id)}">Retirer</button></div>`).join("")}</div>` : ""}
+      </section>
       <section class="carte"><h2>Sur ton écran d'accueil</h2>
-        <p class="aide">Ajoute une icône sur ton téléphone pour ouvrir le podcast directement, sans passer par la conversation.</p>
-        ${tg && tg.addToHomeScreen && recent("8.0") ? `<button type="button" class="bouton plein" data-action="ecran-accueil">Ajouter à l'écran d'accueil</button>`
-          : `<p class="aide">Ta version de Telegram ne le permet pas encore : mets-la à jour.</p>`}
+        ${tg ? `<p class="aide">Ajoute une icône sur ton téléphone pour ouvrir le podcast directement, sans passer par la conversation.</p>
+          ${tg.addToHomeScreen && recent("8.0") ? `<button type="button" class="bouton plein" data-action="ecran-accueil">Ajouter à l'écran d'accueil</button>`
+            : `<p class="aide">Ta version de Telegram ne le permet pas encore : mets-la à jour.</p>`}`
+          : `<p class="aide"><b>iPhone</b> (Safari) : bouton Partager › « Sur l'écran d'accueil ».<br><b>Android</b> (Chrome) : menu ⋮ › « Installer l'application » ou « Ajouter à l'écran d'accueil ».</p>
+          <button type="button" class="bouton gris" data-action="deconnecter-appareil">Déconnecter cet appareil</button>`}
       </section>
       <section class="carte"><h2>À propos</h2><p class="aide">Version ${h(d.version)}. Tout changement fait ici s'annule avec « Annuler » sur l'accueil, ou /annuler dans la conversation.</p>
         <button type="button" class="bouton gris" data-action="recharger">Recharger les données</button></section>`,
@@ -1967,6 +1994,7 @@ document.addEventListener("click", (ev) => {
     return changer("cle", { nom: ds.testerCle, valeur });
   }
   if (ds.cleRetirer) return confirmer("Retirer cette clé de l'application ? Le secret GitHub, s'il existe, prendra le relais.", () => changer("cle", { nom: ds.cleRetirer, valeur: "" }));
+  if (ds.appareilRetirer) return confirmer("Retirer cet appareil ? Il devra entrer un nouveau code.", () => changer("appareil_retirer", { id: ds.appareilRetirer }));
   if (ds.agendaRetirer) return confirmer("Retirer cet agenda ?", () => changer("agenda_retirer", { id: ds.agendaRetirer }));
   if (ds.bienvenue) return bienvenueSuivante(Number(ds.bienvenue));
   if (ds.bienvenueWeekend !== undefined) { B.weekendActif = !B.weekendActif; vibrer("choix"); return dessiner(); }
@@ -2086,6 +2114,9 @@ document.addEventListener("click", (ev) => {
     }
     case "bienvenue-generer": return changer("generer", {}, () => {});
     case "creer-flux": return changer("flux", {});
+    case "code-appareil": return changer("appareil_code", {});
+    case "connecter-appareil": return connecterAppareil();
+    case "deconnecter-appareil": return confirmer("Déconnecter cet appareil ? Il faudra un nouveau code pour le rouvrir.", () => { jetonAppareil.ecrire(""); vueConnexionAppareil(); });
     case "renouveler-flux": return confirmer("Changer l'adresse du flux ? L'ancienne ne marchera plus : il faudra ajouter la nouvelle dans ton appli de podcasts.", () => changer("flux", { renouveler: true }));
     case "copier-flux": {
       const champ = document.getElementById("adresse-flux");
@@ -2145,6 +2176,7 @@ document.addEventListener("change", (ev) => {
 });
 document.addEventListener("keydown", (ev) => {
   if ((ev.key === "Enter" || ev.key === ",") && ev.target.dataset && ev.target.dataset.bulle) { if (ajouterBulle(ev.target) || ev.key === "Enter") ev.preventDefault(); return; }
+  if (ev.key === "Enter" && ev.target.id === "code-appareil") { ev.preventDefault(); return connecterAppareil(); }
   if (ev.key === "Enter" && !ev.shiftKey && ev.target.id === "demande") { ev.preventDefault(); const v = ev.target.value; ev.target.value = ""; envoyerDemande(v); }
 });
 // Après une longue absence, les données (et les liens audio) se rafraîchissent.
@@ -2155,12 +2187,47 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // ─────────────────────────────── démarrage ──────────────────────────────
-async function demarrer() {
-  if (!tg || !tg.initData) {
-    ecranEl.innerHTML = `<div class="chargement"><h1 style="margin-bottom:12px">Podcast Matin</h1>
-      Cette application s'ouvre depuis ton bot Telegram : touche le bouton <b>Application</b> à gauche du champ de saisie.</div>`;
-    return;
+// Hors de Telegram, sans jeton : on demande le code affiché dans l'application.
+function vueConnexionAppareil() {
+  navEl.classList.add("cache");
+  miniEl.classList.add("cache");
+  ecranEl.innerHTML = `<div class="connexion">
+    <span class="icone-app" aria-hidden="true">${icone("aube", 40, 1.6)}</span>
+    <h1>Podcast Matin</h1>
+    <p class="aide" style="font-size:15px;color:var(--doux-2)">Pour ouvrir ton podcast sur cet appareil, entre le code à 6 chiffres affiché dans l'application, dans Telegram : <b>Réglages › Application › Hors de Telegram</b>.</p>
+    <input id="code-appareil" class="saisie" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" aria-label="Code à 6 chiffres" style="font-size:28px;letter-spacing:.3em;text-align:center">
+    <button type="button" class="bouton plein" data-action="connecter-appareil">Ouvrir le podcast</button>
+  </div>`;
+  const champ = document.getElementById("code-appareil");
+  if (champ) champ.focus();
+}
+
+function nomAppareil() {
+  const ua = navigator.userAgent;
+  const systeme = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android" : /Mac/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : /Linux/.test(ua) ? "Linux" : "Appareil";
+  const navigateur = /Edg\//.test(ua) ? "Edge" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "";
+  const installe = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
+  return `${systeme}${navigateur ? ` · ${navigateur}` : ""}${installe ? " (écran d'accueil)" : ""}`;
+}
+
+async function connecterAppareil() {
+  const champ = document.getElementById("code-appareil");
+  const code = champ ? champ.value.replace(/\D/g, "") : "";
+  if (code.length !== 6) return annoncer("Le code a 6 chiffres.", true);
+  try {
+    const r = await fetch("/app/connexion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, nom: nomAppareil() }) });
+    const j = await r.json();
+    if (!j.ok) return annoncer(j.erreur || "Connexion impossible.", true);
+    jetonAppareil.ecrire(j.jeton);
+    annoncer("Cet appareil est connecté.");
+    demarrer();
+  } catch (e) {
+    annoncer("Pas de connexion au bot. Vérifie ton réseau et réessaie.", true);
   }
+}
+
+async function demarrer() {
+  if (!tg && !jetonAppareil.lire()) return vueConnexionAppareil();
   const j = await demander("etat", {}, { toujours: true });
   if (!j.ok || !S.d) {
     ecranEl.innerHTML = `<div class="chargement"><h1 style="margin-bottom:12px">Oups</h1>${h(j.erreur || "Le bot ne répond pas.")}<br><br>

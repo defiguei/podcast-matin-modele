@@ -16,7 +16,7 @@ import {
   nouvelleSession, prochaineEtape, ecranAssistant, ecranModifier, schemaFiche, consigneFiche, fusionnerFiche,
   regleDepuisFiche, schemaQuestions, consigneQuestions, detailFiche, LIBELLES,
 } from "./assistant.js";
-import { Telegram, GitHub, demanderGemini, maintenantLocal, instantLocal, echapper as e, base64, secretPartage, definirFuseau } from "./services.js";
+import { Telegram, GitHub, demanderGemini, maintenantLocal, instantLocal, echapper as e, base64, secretPartage, definirFuseau, empreinte } from "./services.js";
 import { CLES, testerCle, lireAgenda, identifiantAgenda, resumeConnexions } from "./connexions.js";
 import { fluxRss, chapitresJson, episodeDeCle, jetonValide, nouveauJeton } from "./flux.js";
 import { donneesApp, champsDepuisFormulaire, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, nettoyerEquipe, telechargerFeries } from "./miniapp.js";
@@ -94,6 +94,8 @@ export class Etat extends DurableObject {
       }
       if (url.pathname === "/api/config") return Response.json(await this.enFile(() => this.exporterConfig()));
       if (url.pathname === "/flux") return await this.enFile(() => this.servirFlux(url.searchParams));
+      if (url.pathname === "/appareil/connexion") { const corps = await requete.json().catch(() => ({})); return Response.json(await this.enFile(() => this.connecterAppareil(corps))); }
+      if (url.pathname === "/appareil/verifier") return Response.json(await this.enFile(() => this.verifierAppareil(url.searchParams.get("e") || "")));
       if (url.pathname === "/api/evenement") {
         const evenement = await requete.json();
         return Response.json(await this.enFile(() => this.recevoirEvenement(evenement)));
@@ -1519,7 +1521,11 @@ export class Etat extends DurableObject {
     const donnees = async () => ({ ...donneesApp(config, etat, ctx, VERSION, await this.liensAudio(etat)), connexions: resumeConnexions(this.cles, etat),
       // Premier lancement : rien de personnel encore réglé.
       bienvenue: !etat.bienvenue_faite && !config.voix.prenom && !config.actus.ville && !config.regles.length,
-      flux: this.adresseFlux(etat) });
+      flux: this.adresseFlux(etat),
+      adresse_app: `${etat.adresse || this.env.ADRESSE || ""}/app`,
+      appareils: (etat.appareils || []).map((a) => ({ id: a.id, nom: a.nom, cree_le: a.cree_le, vu_le: a.vu_le })),
+      code_appareil: etat.code_appareil && etat.code_appareil.expire > Date.now() && etat.code_appareil.essais < 5
+        ? { code: etat.code_appareil.code, expire: etat.code_appareil.expire } : null });
     const reponse = async (extra = {}) => ({ ok: true, ...extra, donnees: await donnees() });
     const refus = async (message) => ({ ok: false, erreur: message, donnees: await donnees() });
     const relire = async () => { config = await this.lireConfig(); etat = await this.lireEtat(); };
@@ -1735,6 +1741,19 @@ export class Etat extends DurableObject {
           await this.gh.lancer("agendas.yml", {}).catch(() => {});
           return reponse({ message: `${lu.message} Il servira dès le prochain épisode.` });
         }
+        case "appareil_code": {
+          const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
+          etat.code_appareil = { code, expire: Date.now() + 10 * 60 * 1000, essais: 0 };
+          await this.ecrireEtat(etat);
+          return reponse({ message: "Code valable 10 minutes." });
+        }
+        case "appareil_retirer": {
+          const avant = (etat.appareils || []).length;
+          etat.appareils = (etat.appareils || []).filter((a) => a.id !== demande.id);
+          if (etat.appareils.length === avant) return refus("Appareil inconnu.");
+          await this.ecrireEtat(etat);
+          return reponse({ message: "Appareil retiré : il devra entrer un nouveau code." });
+        }
         case "flux": {
           if (!etat.flux_jeton || demande.renouveler) etat.flux_jeton = nouveauJeton();
           await this.ecrireEtat(etat);
@@ -1862,6 +1881,44 @@ export class Etat extends DurableObject {
     nettoyerPlanning(config.planning, ctx.aujourdHui);
     await this.enregistrer(config, etat, ancienne, libelle);
     return reponse({ id, message: libelle });
+  }
+
+  // ─────────────────────── appareils hors de Telegram ─────────────────────────
+  // Un code à 6 chiffres (10 minutes, 5 essais), affiché dans l'application ouverte
+  // dans Telegram, donne à un autre appareil son propre jeton, révocable.
+
+  async connecterAppareil(corps) {
+    const etat = await this.lireEtat();
+    const code = String(corps.code || "").replace(/\D/g, "");
+    const attendu = etat.code_appareil;
+    if (!attendu || attendu.expire < Date.now() || attendu.essais >= 5) {
+      return { ok: false, erreur: "Pas de code valable : affiche-en un nouveau dans l'application, dans Telegram (Réglages › Application)." };
+    }
+    if (code !== attendu.code) {
+      attendu.essais = (attendu.essais || 0) + 1;
+      await this.ecrireEtat(etat);
+      return { ok: false, erreur: attendu.essais >= 5 ? "Trop d'essais : affiche un nouveau code." : "Code incorrect." };
+    }
+    const jeton = [...crypto.getRandomValues(new Uint8Array(32))].map((o) => o.toString(16).padStart(2, "0")).join("");
+    const ctx = this.contexte();
+    const appareil = { id: jeton.slice(0, 8), nom: String(corps.nom || "Appareil").replace(/[<>]/g, "").slice(0, 40),
+                       empreinte: await empreinte(`appareil:${jeton}`, 64), cree_le: ctx.maintenantIso, vu_le: ctx.maintenantIso };
+    etat.appareils = [...(etat.appareils || []), appareil].slice(-8);
+    etat.code_appareil = null;
+    await this.ecrireEtat(etat);
+    return { ok: true, jeton };
+  }
+
+  async verifierAppareil(empreinteRecue) {
+    const etat = await this.lireEtat();
+    const appareil = (etat.appareils || []).find((a) => a.empreinte === empreinteRecue);
+    if (!appareil) return { ok: false };
+    const ctx = this.contexte();
+    if (String(appareil.vu_le || "").slice(0, 10) !== ctx.aujourdHui) {
+      appareil.vu_le = ctx.maintenantIso;
+      await this.ecrireEtat(etat);
+    }
+    return { ok: true, id: appareil.id };
   }
 
   // ───────────────────────── flux privé du podcast ────────────────────────────

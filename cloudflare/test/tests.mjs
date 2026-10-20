@@ -1242,6 +1242,36 @@ await scenario("Flux privé du podcast", async () => {
   verifier(r.ok && r.donnees.flux !== adresse && (await obtenir(`${BOT}/flux/${jeton}.xml`)).statut === 404, "nouvelle adresse : l'ancienne ne marche plus");
 });
 
+await scenario("Hors de Telegram : appareils, manifeste, icônes", async () => {
+  const manifeste = JSON.parse((await obtenir(`${BOT}/app/manifest.json`)).texte);
+  verifier(manifeste.start_url === "/app" && manifeste.icons.length === 3, "manifeste de l'application", manifeste);
+  const image = await fetch(`${BOT}/app/icone-512.png`);
+  const octets = new Uint8Array(await image.arrayBuffer());
+  verifier(image.headers.get("content-type") === "image/png" && octets[1] === 0x50 && octets[2] === 0x4e, "icône PNG servie");
+  const connexion = (code) => envoyerJson(`${BOT}/app/connexion`, { code, nom: "iPhone · Safari" }).then((r) => r.json());
+  verifier((await connexion("123456")).ok === false, "sans code affiché : refus");
+  let r = await app("appareil_code");
+  const code = r.donnees.code_appareil?.code;
+  verifier(r.ok && /^\d{6}$/.test(code || ""), "code affiché dans l'application", r.donnees.code_appareil);
+  const faux = code === "000000" ? "111111" : "000000";
+  verifier((await connexion(faux)).ok === false, "mauvais code refusé");
+  const ok = await connexion(code);
+  verifier(ok.ok && /^[0-9a-f]{64}$/.test(ok.jeton), "bon code : jeton donné à l'appareil");
+  verifier((await connexion(code)).ok === false, "un code ne sert qu'une fois");
+  const parAppareil = async (jeton) => { const rep = await envoyerJson(`${BOT}/app/api`, { action: "etat" }, { "X-Appareil": jeton }); return { statut: rep.status, ...(await rep.json()) }; };
+  r = await parAppareil(ok.jeton);
+  verifier(r.statut === 200 && r.ok && r.donnees.appareils.some((a) => a.nom === "iPhone · Safari") && !JSON.stringify(r.donnees).includes(ok.jeton), "l'appareil ouvre l'application (jeton jamais renvoyé)");
+  verifier((await parAppareil("f".repeat(64))).statut === 401, "jeton inconnu refusé");
+  r = await app("appareil_retirer", { id: r.donnees.appareils[0].id });
+  const apres = await parAppareil(ok.jeton);
+  verifier(r.ok && apres.statut === 401 && apres.appareil === "inconnu", "appareil retiré : refusé ensuite");
+  // Cinq erreurs : le code ne vaut plus rien.
+  r = await app("appareil_code");
+  const code2 = r.donnees.code_appareil.code, faux2 = code2 === "000000" ? "111111" : "000000";
+  for (let i = 0; i < 5; i++) await connexion(faux2);
+  verifier((await connexion(code2)).ok === false, "cinq erreurs : code bloqué");
+});
+
 await scenario("Pays : réglage et reprise des anciennes installations", async () => {
   // Choisir la France : fuseau, devise, médias par défaut et jours fériés suivent.
   const avant = (await etat()).config;
