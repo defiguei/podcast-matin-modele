@@ -53,6 +53,7 @@ import recurring_ical_events
 import requests
 import x_wr_timezone
 
+import pays as pays_auditeur
 import regles as moteur
 from liaison import Bot, config_de_secours
 from pochette import creer_pochette
@@ -133,7 +134,7 @@ INSTRUCTIONS_RUBRIQUES = {
                            "plus fouillé par sujet demandé (contexte, enjeux, ce qui va suivre), en t'appuyant "
                            "sur les articles fournis."),
     "actualites": ("Les actualités : choisis les {n} sujets les plus importants ou les plus intéressants pour "
-                   "l'auditeur (Suisse et Suisse romande d'abord s'il y en a, puis l'international). Pour chaque "
+                   "l'auditeur ({d_abord} d'abord s'il y en a, puis l'international). Pour chaque "
                    "sujet : de quoi il s'agit et pourquoi ça compte, en 2 à 5 répliques, avec des transitions naturelles."),
     "cloture": "Clôture (2 ou 3 répliques) : rappel du premier rendez-vous du jour s'il y en a un, puis le mot de la fin.",
 }
@@ -321,7 +322,7 @@ def telecharger(url: str, delai: int = 30, essais: int = 3) -> bytes:
             reponse = requests.get(
                 url, timeout=delai,
                 headers={"User-Agent": NAVIGATEUR, "Accept": "*/*",
-                         "Accept-Language": "fr-CH,fr;q=0.9"})
+                         "Accept-Language": pays_auditeur.profil()["accept_language"]})
             reponse.raise_for_status()
             return reponse.content
         except requests.RequestException as erreur:
@@ -1467,7 +1468,8 @@ def consigne_systeme(effectifs: dict, rubriques: list[tuple[str, str]] | None = 
     for numero, (cle_rubrique, titre) in enumerate(rubriques, 1):
         if cle_rubrique in INSTRUCTIONS_RUBRIQUES:
             texte = INSTRUCTIONS_RUBRIQUES[cle_rubrique].format(
-                n=effectifs["nombre_sujets"], ville=effectifs.get("ville_habituelle") or "la ville de l'auditeur")
+                n=effectifs["nombre_sujets"], ville=effectifs.get("ville_habituelle") or "la ville de l'auditeur",
+                d_abord=pays_auditeur.profil()["d_abord"])
         else:
             regle = collectes[cle_rubrique].regle
             longueur = moteur.LONGUEURS.get((regle.get("rubrique") or {}).get("longueur"), "courte (2 à 4 répliques)")
@@ -2349,6 +2351,15 @@ def main(arguments: list[str] | None = None) -> int:
             if export:
                 journal("Bot injoignable : réglages de sa sauvegarde quotidienne (preferences.json).")
         config_bot = (export or {}).get("config")
+        if config_bot and config_bot.get("pays") in pays_auditeur.PROFILS:
+            # Le pays choisi dans l'application : fuseau, actualités, jours fériés, devise.
+            # (Un bot d'avant ce réglage n'envoie pas de pays : reglages.toml garde la main.)
+            pays_auditeur.definir_depuis_config(config_bot)
+            profil = pays_auditeur.profil()
+            reglages.update({"fuseau_horaire": profil["fuseau"], "pays_actus": profil["actus_pays"],
+                             "langue_actus": profil["actus_langue"], "flux": profil["flux"]})
+            maintenant = heure_actuelle(ZoneInfo(reglages["fuseau_horaire"]))
+            aujourd_hui = maintenant.date().isoformat()
         if export and not export.get("secours") and reglages.get("modeles_rapides"):
             bot.evenement({"type": "modeles", "rapides": reglages["modeles_rapides"]})   # le bot suit la liste à jour
 

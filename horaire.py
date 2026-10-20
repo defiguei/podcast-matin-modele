@@ -26,6 +26,8 @@ import urllib.request
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import pays
+
 JOURS = ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"]
 MARGE_FILET = 75   # minutes après l'heure prévue avant que GitHub ne prenne le relais
 
@@ -73,24 +75,8 @@ def doit_tourner(evenement: str, programmation: str, heure_locale: str, fuseau: 
 
 # ─────────────────────── planning du bot (copie de config.js) ───────────────────────
 
-def _paques(annee: int) -> dt.date:
-    a, b, c = annee % 19, annee // 100, annee % 100
-    d, e = b // 4, b % 4
-    f = (b + 8) // 25
-    g = (b - f + 1) // 3
-    h = (19 * a + b - d - g + 15) % 30
-    i, k = c // 4, c % 4
-    l = (32 + 2 * e + 2 * i - h - k) % 7
-    m = (a + 11 * h + 22 * l) // 451
-    return dt.date(annee, (h + l - 7 * m + 114) // 31, (h + l - 7 * m + 114) % 31 + 1)
-
-
 def feries_vaud(annee: int) -> set[dt.date]:
-    p = _paques(annee)
-    septembre = dt.date(annee, 9, 1)
-    jeune = septembre + dt.timedelta(days=(6 - septembre.weekday()) % 7 + 15)
-    return {dt.date(annee, 1, 1), dt.date(annee, 1, 2), p - dt.timedelta(days=2), p + dt.timedelta(days=1),
-            p + dt.timedelta(days=39), p + dt.timedelta(days=50), dt.date(annee, 8, 1), jeune, dt.date(annee, 12, 25)}
+    return {d for d, _ in pays.feries_calcules(annee, "CH-VD")}
 
 
 def heure_prevue(planning: dict, jour: dt.date) -> str | None:
@@ -103,9 +89,11 @@ def heure_prevue(planning: dict, jour: dt.date) -> str | None:
         if str(pause.get("du", "")) <= iso <= str(pause.get("au", "")):
             return None
     jours = planning.get("jours") or {}
-    # Le bot fournit la liste des fériés du pays choisi ; sinon, ceux du canton de Vaud.
-    liste = (planning.get("feries_cache") or {}).get(str(jour.year)) if planning.get("feries_region", "CH-VD") != "CH-VD" else None
-    ferie = iso in {d for d, _ in liste} if liste else jour in feries_vaud(jour.year)
+    # Vaud et la France sont calculés ; pour les autres, le bot fournit la liste téléchargée.
+    region = planning.get("feries_region") or "CH-VD"
+    calcules = pays.feries_calcules(jour.year, region)
+    liste = calcules or [(dt.date.fromisoformat(d), nom) for d, nom in (planning.get("feries_cache") or {}).get(str(jour.year)) or []]
+    ferie = jour in {d for d, _ in liste}
     if planning.get("feries", "normal") != "normal" and ferie:
         return None if planning.get("feries") == "aucun" else jours.get("dim")
     return jours.get(JOURS[jour.weekday()])
@@ -193,6 +181,9 @@ def main() -> int:
     else:
         export = lire_bot(os.environ.get("BOT_URL", ""), os.environ.get("TELEGRAM_BOT_TOKEN", ""))
         secours = None if export else lire_secours(racine / "preferences.json")
+        config = (export or {}).get("config") or secours or {}
+        if config.get("pays") in pays.PROFILS:      # le pays choisi dans l'application donne le fuseau
+            fuseau = pays.profil(config["pays"])["fuseau"]
         if export or secours:
             mode, explication = decider_filet(dt.datetime.now(dt.timezone.utc), fuseau, export, secours,
                                               date_dernier_episode(racine / "memoire.json"))

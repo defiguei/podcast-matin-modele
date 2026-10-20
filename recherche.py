@@ -15,6 +15,7 @@ import os
 import re
 from typing import Any
 
+import pays
 import podcast as p
 import regles as moteur
 from sources import Sources, cle, lien_itineraire
@@ -49,13 +50,14 @@ def schema_idees() -> dict:
 def consigne_idees(ville: str, exclues: list[str], tutoiement: bool) -> str:
     deja = f"\nNe repropose pas : {', '.join(exclues)}." if exclues else ""
     adresse = "Tutoie" if tutoiement else "Vouvoie"
-    return f"""Tu organises des sorties et des activités pour un habitant de Suisse romande (ville : {ville or "inconnue"}). {adresse} l'auditeur.
+    profil = pays.profil()
+    return f"""Tu organises des sorties et des activités pour {profil['habitant']} (ville : {ville or "inconnue"}). {adresse} l'auditeur.
 À partir UNIQUEMENT des informations fournies (recherche web, lieux OpenStreetMap, Wikivoyage, météo, horaires de train), propose 3 à 5 idées concrètes qui respectent la fiche : budget, âges, transport, envies, éléments à inclure ou à exclure.
 Pour chaque idée :
 - titre : court et précis (le nom du lieu ou de l'activité) ;
 - resume : deux phrases concrètes ;
 - pourquoi : pourquoi elle convient à cette demande ;
-- prix : seulement si une source le donne (ex. « 12 CHF adulte, gratuit jusqu'à 6 ans »), sinon « prix à vérifier » ; dans_le_budget : true si c'est compatible avec le budget ;
+- prix : seulement si une source le donne (ex. « 12 {profil['devise']} adulte, gratuit jusqu'à 6 ans »), sinon « prix à vérifier » ; dans_le_budget : true si c'est compatible avec le budget ;
 - duree : durée conseillée ; horaires : seulement si une source les donne ;
 - lieu : le nom précis du lieu, pour le situer sur une carte ; adresse : si elle est connue ;
 - lien : l'adresse web d'une source fournie qui parle de cette idée (jamais une adresse inventée), source : le nom du site ;

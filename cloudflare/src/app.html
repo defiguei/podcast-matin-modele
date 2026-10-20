@@ -989,8 +989,8 @@ function ouvrirFiche(id, modele = null) {
       sources: r ? [...r.sources] : modele === "recherche" ? ["web", "lieux"] : [],
       fiche: r ? { ...vide, ...r.fiche } : { ...vide },
       transport: r ? r.transport : "",
-      budget: r ? { max: r.budget.max ?? "", unite: r.budget.unite || "personne", devise: r.budget.devise || "CHF", transport_inclus: Boolean(r.budget.transport_inclus) }
-                : { max: "", unite: "personne", devise: "CHF", transport_inclus: false },
+      budget: r ? { max: r.budget.max ?? "", unite: r.budget.unite || "personne", devise: r.budget.devise || S.d.devise || "CHF", transport_inclus: Boolean(r.budget.transport_inclus) }
+                : { max: "", unite: "personne", devise: S.d.devise || "CHF", transport_inclus: false },
       inclure: r ? [...r.inclure] : [], exclure: r ? [...r.exclure] : [],
       condition: r && r.condition ? { ...r.condition } : null,
       prioritaire: r ? r.importance === "prioritaire" : false,

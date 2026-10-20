@@ -9,7 +9,7 @@ et l'épisode continue. Aucune clé n'est journalisée.
   - OpenStreetMap (Overpass, Nominatim) : lieux, adresses (sans clé)
   - Wikivoyage, Wikipédia : présentation d'un lieu, photos (sans clé)
   - Tavily : recherche web (clé gratuite, secret TAVILY_API_KEY)
-  - calendrier des saints (donnees/saints.json) et jours fériés vaudois
+  - calendrier des saints (donnees/saints.json) et jours fériés du pays choisi
 """
 
 from __future__ import annotations
@@ -25,6 +25,8 @@ from typing import Any
 from urllib.parse import quote, urlencode
 
 import requests
+
+import pays
 
 RACINE = Path(__file__).resolve().parent
 AGENT = "podcast-matin/3.0 (podcast personnel ; https://github.com/TON-COMPTE/podcast-matin)"
@@ -127,18 +129,18 @@ class Sources:
 
     # ── géocodage ──
     def geocoder(self, nom: str) -> dict | None:
-        """Ville ou lieu → {nom, lat, lon, pays, region}. Suisse d'abord."""
+        """Ville ou lieu → {nom, lat, lon, pays, region}. Le pays de l'auditeur d'abord."""
         nom = re.sub(r"^(autour|près|pres|vers|du côté)\s+(de|d'|du|des)\s*", "", str(nom or "").strip(), flags=re.I)
         if not nom:
             return None
         return self._memo(f"geo:{cle(nom)}", self._geocoder, nom)
 
     def _geocoder(self, nom: str) -> dict | None:
-        for pays in ("CH", ""):
+        for code_pays in (pays.code(), ""):
             try:
                 parametres = {"name": nom, "count": 1, "language": "fr", "format": "json"}
-                if pays:
-                    parametres["country_code"] = pays
+                if code_pays:
+                    parametres["country_code"] = code_pays
                 donnees = self._json("GET", URL_GEOCODAGE, params=parametres)
                 resultats = donnees.get("results") or []
                 if resultats:
@@ -153,7 +155,7 @@ class Sources:
             return {"nom": nom, "lat": lieu["lat"], "lon": lieu["lon"], "pays": "", "region": ""}
         return None
 
-    def nominatim_chercher(self, requete: str, pays: str = "ch") -> dict | None:
+    def nominatim_chercher(self, requete: str, code_pays: str = "") -> dict | None:
         """Adresse ou nom de lieu précis → coordonnées (1 requête par seconde au plus)."""
         if not requete.strip():
             return None
@@ -164,7 +166,7 @@ class Sources:
             self.dernier_nominatim = time.monotonic()
             try:
                 resultats = self._json("GET", f"{URL_NOMINATIM}/search", params={
-                    "q": requete, "format": "jsonv2", "limit": 1, "countrycodes": pays,
+                    "q": requete, "format": "jsonv2", "limit": 1, "countrycodes": (code_pays or pays.code()).lower(),
                     "accept-language": "fr", "addressdetails": 1})
             except Exception as erreur:
                 journal(f"Nominatim indisponible : {type(erreur).__name__}")
@@ -181,7 +183,7 @@ class Sources:
         def prevoir() -> dict | None:
             try:
                 donnees = self._json("GET", URL_METEO, params={
-                    "latitude": round(lat, 3), "longitude": round(lon, 3), "timezone": "Europe/Zurich",
+                    "latitude": round(lat, 3), "longitude": round(lon, 3), "timezone": "auto",
                     "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max",
                     "forecast_days": 16})
             except Exception as erreur:
@@ -461,46 +463,9 @@ def saints_du_jour(jour: dt.date, chemin: Path | None = None) -> list[str]:
     return list((donnees.get("jours") or {}).get(jour.strftime("%m-%d"), []))
 
 
-def feries_vaud(debut: dt.date, jours: int = 7) -> list[tuple[dt.date, str]]:
-    """Jours fériés du canton de Vaud entre debut et debut + jours."""
-    fin = debut + dt.timedelta(days=jours)
-    try:
-        import holidays  # bibliothèque « holidays »
-        try:
-            calendrier = holidays.country_holidays("CH", subdiv="VD", years={debut.year, fin.year}, language="fr")
-        except (NotImplementedError, TypeError, ValueError):
-            calendrier = holidays.country_holidays("CH", subdiv="VD", years={debut.year, fin.year})
-        trouves = [(d, str(nom)) for d, nom in calendrier.items() if debut <= d <= fin]
-    except Exception:
-        trouves = [(d, nom) for d, nom in _feries_calcules(debut.year) + _feries_calcules(fin.year) if debut <= d <= fin]
-    # Le 2 janvier (Saint-Berchtold) et le Lundi du Jeûne sont fériés dans le canton.
-    return sorted(set(trouves))
-
-
-def _paques(annee: int) -> dt.date:
-    a, b, c = annee % 19, annee // 100, annee % 100
-    d, e = b // 4, b % 4
-    f = (b + 8) // 25
-    g = (b - f + 1) // 3
-    h = (19 * a + b - d - g + 15) % 30
-    i, k = c // 4, c % 4
-    l = (32 + 2 * e + 2 * i - h - k) % 7
-    m = (a + 11 * h + 22 * l) // 451
-    mois = (h + l - 7 * m + 114) // 31
-    jour = (h + l - 7 * m + 114) % 31 + 1
-    return dt.date(annee, mois, jour)
-
-
-def _feries_calcules(annee: int) -> list[tuple[dt.date, str]]:
-    p = _paques(annee)
-    septembre = dt.date(annee, 9, 1)
-    premier_dimanche = septembre + dt.timedelta(days=(6 - septembre.weekday()) % 7)
-    jeune = premier_dimanche + dt.timedelta(days=15)
-    return [(dt.date(annee, 1, 1), "Nouvel An"), (dt.date(annee, 1, 2), "Saint-Berchtold"),
-            (p - dt.timedelta(days=2), "Vendredi saint"), (p + dt.timedelta(days=1), "Lundi de Pâques"),
-            (p + dt.timedelta(days=39), "Ascension"), (p + dt.timedelta(days=50), "Lundi de Pentecôte"),
-            (dt.date(annee, 8, 1), "Fête nationale"), (jeune, "Lundi du Jeûne fédéral"),
-            (dt.date(annee, 12, 25), "Noël")]
+def feries(debut: dt.date, jours: int = 7) -> list[tuple[dt.date, str]]:
+    """Jours fériés de la région choisie dans l'application, entre debut et debut + jours."""
+    return pays.feries(debut, jours)
 
 
 def lien_itineraire(depart: str, arrivee: str, transport: str = "") -> str:

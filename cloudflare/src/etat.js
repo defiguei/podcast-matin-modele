@@ -8,7 +8,7 @@ import {
   nettoyerPlanning, prochainEpisode, etatRegle, modifierRegle, supprimerRegle, nouvelleRegle, deplacerRubrique,
   nomRubrique, decrirePeriode, ajouterJours, dateCourte, heureParlee, normaliserTexte, nettoyerListe, TONS, CITER, VOIX_CONSEILLEES,
   placerRubrique, FLUX_DEFAUT, NOMS_JOURS, heureValide, modifierChamp, CHAMPS_RUBRIQUE, TRANSPORTS, analyserPeriode,
-  VOIX, animateursDuJour, equipeComplete, LONGUEUR_CONSIGNE,
+  VOIX, animateursDuJour, equipeComplete, LONGUEUR_CONSIGNE, PAYS, profilPays, fluxActus, FERIES_CALCULES,
 } from "./config.js";
 import { consigneComprehension, contexteComprehension, schemaOperations, appliquerOperations, resumerJours } from "./comprendre.js";
 import { ecran, ficheRegle, clavierRegle, tableauDeBord, clavierTableau, clavierEpisode, clavierAvisNegatif, aide, CLAVIER_FIXE, COMMANDES } from "./ui.js";
@@ -16,7 +16,7 @@ import {
   nouvelleSession, prochaineEtape, ecranAssistant, ecranModifier, schemaFiche, consigneFiche, fusionnerFiche,
   regleDepuisFiche, schemaQuestions, consigneQuestions, detailFiche, LIBELLES,
 } from "./assistant.js";
-import { Telegram, GitHub, demanderGemini, maintenantLocal, instantLocal, echapper as e, base64, secretPartage } from "./services.js";
+import { Telegram, GitHub, demanderGemini, maintenantLocal, instantLocal, echapper as e, base64, secretPartage, definirFuseau } from "./services.js";
 import { donneesApp, champsDepuisFormulaire, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, nettoyerEquipe, telechargerFeries } from "./miniapp.js";
 
 export const VERSION = "2026-10-20.2";
@@ -36,6 +36,11 @@ export class Etat extends DurableObject {
     super(ctx, env);
     this.env = env;
     this.file = Promise.resolve();
+    // L'heure locale dépend du pays choisi : connue avant toute demande.
+    ctx.blockConcurrencyWhile(async () => {
+      const config = await ctx.storage.get("config");
+      definirFuseau(profilPays(config).fuseau);
+    });
   }
 
   // Une seule opération à la fois : deux messages rapprochés ne se marchent pas dessus.
@@ -131,7 +136,30 @@ export class Etat extends DurableObject {
       });
       await this.ctx.storage.put("config", config);
     }
-    return completerConfig(config);
+    if (!config.pays) {
+      // Version d'avant le réglage « pays » : on le déduit une fois pour toutes.
+      config = { ...config, ...(await this.devinerPays(config)) };
+      await this.ctx.storage.put("config", config);
+    }
+    const complete = completerConfig(config);
+    definirFuseau(profilPays(complete).fuseau);
+    return complete;
+  }
+
+  // Pays d'une installation d'avant le réglage : d'après reglages.toml (la « version
+  // France » y mettait Europe/Paris), sinon d'après les jours fériés choisis.
+  async devinerPays(config) {
+    let toml = "";
+    try { toml = (await this.gh.lire("reglages.toml"))?.texte || ""; } catch { /* GitHub injoignable : on se contente des fériés */ }
+    const fuseau = /^fuseau_horaire\s*=\s*"([^"]+)"/m.exec(toml)?.[1] || "";
+    const parFuseau = Object.entries(PAYS).find(([, p]) => p.fuseau === fuseau)?.[0];
+    const region = config.planning?.feries_region || "CH-VD";
+    const pays = parFuseau || (PAYS[region] ? region : "CH");
+    const planning = { ...(config.planning || {}) };
+    // La « version France » calculait les fériés français sous le nom « Vaud ».
+    if (pays !== "CH" && region === "CH-VD") { planning.feries_region = PAYS[pays].feries; planning.feries_cache = {}; }
+    console.log(`Pays déduit : ${pays}`);
+    return { pays, planning };
   }
 
   async lireEtat() {
@@ -164,6 +192,7 @@ export class Etat extends DurableObject {
       etat.annulations = [...(etat.annulations || []), { libelle: libelle.slice(0, 60), config: ancienne, quand: Date.now() }].slice(-15);
     }
     await this.ctx.storage.put("config", config);
+    definirFuseau(profilPays(config).fuseau);
     await this.ecrireEtat(etat);
     await this.majTableau(config, etat).catch(() => {});
     await this.planifierReveil(config, etat).catch((erreur) => console.log("Réveil :", erreur.message));
@@ -456,7 +485,7 @@ export class Etat extends DurableObject {
         const montant = Number(String(texte).replace(",", ".").replace(/[^\d.]/g, ""));
         if (!Number.isFinite(montant)) throw new Error("montant non reconnu");
         modifierRegle(config, cible, { recherche: { fiche: { budget: { max: montant } } } }, ctx.aujourdHui);
-        changement = `Budget de ${cible} : ${montant} CHF`;
+        changement = `Budget de ${cible} : ${montant} ${profilPays(config).devise}`;
       } else {
         const indices = { pexc: "exception ou changement de planning", ppause: "pause du podcast (dates)", rpf: `période de la rubrique ${cible}`,
                           dadd: "nouvelle rubrique à ajouter au déroulé (crée une règle avec rubrique)", rn: "nouvelle rubrique (crée une règle avec rubrique)", autre: "avis sur l'épisode du jour", sujets: "sujets qui l'intéressent moins (à éviter)" };
@@ -625,7 +654,7 @@ export class Etat extends DurableObject {
         return this.demanderSaisie(etat, "aca", null, "Quel sujet développer dans le prochain épisode ?", "la réforme des retraites", "acreuser", messageId);
       case "ac": libelle = regler(config, "actus.citer_sources", a1); ecranSuivant = "actus"; break;
       case "asr": {
-        const flux = [...(config.actus.flux || FLUX_DEFAUT)];
+        const flux = [...(fluxActus(config))];
         const [retire] = flux.splice(Number(a1), 1);
         config.actus.flux = flux;
         libelle = `Source retirée : ${retire?.nom}`; ecranSuivant = "sources"; break;
@@ -727,7 +756,7 @@ export class Etat extends DurableObject {
       case "rb": {
         const max = a2 === "aucun" ? null : Number(a2);
         modifierRegle(config, a1, { recherche: { fiche: { budget: { max } } } }, ctx.aujourdHui);
-        libelle = `Budget de ${a1} : ${max === null ? "sans limite" : max === 0 ? "gratuit" : `${max} CHF`}`; ecranSuivant = `rbudget:${a1}`; break;
+        libelle = `Budget de ${a1} : ${max === null ? "sans limite" : max === 0 ? "gratuit" : `${max} ${profilPays(config).devise}`}`; ecranSuivant = `rbudget:${a1}`; break;
       }
       case "rbu": case "rbt": {
         const actuel = config.regles.find((x) => x.id === a1)?.recherche?.fiche?.budget || {};
@@ -736,7 +765,7 @@ export class Etat extends DurableObject {
         libelle = `Budget de ${a1} modifié`; ecranSuivant = `rbudget:${a1}`; break;
       }
       case "rbm": await this.tg.repondreBouton(q.id);
-        return this.demanderSaisie(etat, "rbm", a1, `Quel budget maximum pour ${a1}, en CHF ?`, "35", `rbudget:${a1}`, messageId);
+        return this.demanderSaisie(etat, "rbm", a1, `Quel budget maximum pour ${a1}, en ${profilPays(config).devise} ?`, "35", `rbudget:${a1}`, messageId);
       case "rx": {
         const selection = new Set(etat.selection || []);
         if (selection.has(a1)) selection.delete(a1); else selection.add(a1);
@@ -1034,7 +1063,7 @@ export class Etat extends DurableObject {
     if (/^https?:\/\//i.test(valeur)) candidats.push({ nom: "", url: valeur });
     else {
       try {
-        const r = await this.gemini("Donne les adresses de flux RSS les plus probables pour ce média (francophone, souvent suisse). Si tu ne sais pas, donne l'adresse de son site.",
+        const r = await this.gemini(`Donne les adresses de flux RSS les plus probables pour ce média (francophone, souvent ${{ CH: "suisse", FR: "français", BE: "belge" }[config.pays] || "suisse"}). Si tu ne sais pas, donne l'adresse de son site.`,
           `Média : ${valeur}`, { type: "object", properties: { nom: { type: "string" }, urls: { type: "array", items: { type: "string" }, maxItems: 4 } }, required: ["urls"] });
         for (const url of r.urls || []) candidats.push({ nom: r.nom || valeur, url });
       } catch { /* on tente quand même une recherche simple */ }
@@ -1042,7 +1071,7 @@ export class Etat extends DurableObject {
     for (const candidat of candidats) {
       const flux = await trouverFlux(candidat.url);
       if (flux) {
-        const liste = [...(config.actus.flux || FLUX_DEFAUT)];
+        const liste = [...(fluxActus(config))];
         if (!liste.some((f) => f.url === flux.url)) liste.push({ nom: candidat.nom || flux.titre || valeur, url: flux.url });
         config.actus.flux = liste;
         return `Source ajoutée : ${candidat.nom || flux.titre || valeur}`;
@@ -1057,11 +1086,11 @@ export class Etat extends DurableObject {
     const ctx = this.contexte();
     const config = await this.lireConfig();
     const etat = await this.lireEtat();
-    const session = nouvelleSession(texteInitial);
+    const session = nouvelleSession(texteInitial, profilPays(config).devise);
     if (texteInitial && texteInitial.trim().length > 3) {
       await this.tg.ecrit();
       try {
-        fusionnerFiche(session.fiche, await this.gemini(consigneFiche(ctx.aujourdHui), texteInitial, schemaFiche()), texteInitial);
+        fusionnerFiche(session.fiche, await this.gemini(consigneFiche(ctx.aujourdHui, profilPays(config)), texteInitial, schemaFiche()), texteInitial);
       } catch (erreur) { console.log("Fiche :", erreur.message); }
     }
     session.etape = prochaineEtape(session);
@@ -1100,7 +1129,7 @@ export class Etat extends DurableObject {
     } else if (etape === "resume") {
       await this.tg.ecrit();
       try {
-        fusionnerFiche(f, await this.gemini(consigneFiche(ctx.aujourdHui), `(Précision ajoutée à la recherche) ${texte}`, schemaFiche()), texte);
+        fusionnerFiche(f, await this.gemini(consigneFiche(ctx.aujourdHui, profilPays(config)), `(Précision ajoutée à la recherche) ${texte}`, schemaFiche()), texte);
       } catch {
         f.inclure = nettoyerListe([...(f.inclure || []), texte], 8);
       }
@@ -1112,7 +1141,7 @@ export class Etat extends DurableObject {
       await this.tg.ecrit();
       try {
         const indice = { quoi: "type d'activité", avec_qui: "avec qui (et âges)", ou: "lieu", quand: "date", transport: "transport", envies: "envies, inclure/exclure" }[etape] || "";
-        fusionnerFiche(f, await this.gemini(consigneFiche(ctx.aujourdHui), `${indice ? `(Réponse à la question : ${indice}) ` : ""}${texte}`, schemaFiche()), texte);
+        fusionnerFiche(f, await this.gemini(consigneFiche(ctx.aujourdHui, profilPays(config)), `${indice ? `(Réponse à la question : ${indice}) ` : ""}${texte}`, schemaFiche()), texte);
         if (etape === "envies") f.envies_vues = true;
         if (etape === "quand" && !f.date && !f.quand) f.quand = texte.slice(0, 80);
         if (etape === "ou" && !f.ou) f.ou = texte.slice(0, 120);
@@ -1307,10 +1336,10 @@ export class Etat extends DurableObject {
       await this.ecrireEtat(etat);
       await this.sauvegarder(config).catch((erreur) => console.log("Sauvegarde :", erreur.message));
     }
-    // Jours fériés hors Vaud : on garde l'année en cours et la suivante.
+    // Jours fériés téléchargés (hors Vaud et France) : on garde l'année en cours et la suivante.
     const region = config.planning.feries_region || "CH-VD";
     const annee = Number(m.date.slice(0, 4));
-    if (region !== "CH-VD" && (!config.planning.feries_cache?.[annee + 1]) && etat.feries_essai !== m.date) {
+    if (!FERIES_CALCULES.includes(region) && (!config.planning.feries_cache?.[annee + 1]) && etat.feries_essai !== m.date) {
       etat.feries_essai = m.date;
       await this.ecrireEtat(etat);
       try {
@@ -1490,7 +1519,7 @@ export class Etat extends DurableObject {
         case "rubrique": {
           const existante = demande.id ? config.regles.find((r) => r.id === demande.id) : null;
           if (demande.id && !existante) return refus("Cette rubrique n'existe plus.");
-          const champs = champsDepuisFormulaire(demande.formulaire || {}, existante, ctx.aujourdHui);
+          const champs = champsDepuisFormulaire(demande.formulaire || {}, existante, ctx.aujourdHui, profilPays(config).devise);
           if (existante) {
             modifierRegle(config, existante.id, champs, ctx.aujourdHui);
             id = existante.id;
@@ -1589,7 +1618,7 @@ export class Etat extends DurableObject {
         }
         case "feries": {
           libelle = regler(config, "planning.feries_region", demande.region);
-          if (config.planning.feries_region !== "CH-VD") {
+          if (!FERIES_CALCULES.includes(config.planning.feries_region)) {
             const annee = Number(ctx.aujourdHui.slice(0, 4));
             try {
               config.planning.feries_cache = {
@@ -1624,7 +1653,7 @@ export class Etat extends DurableObject {
           break;
         }
         case "retirer_source": {
-          const flux = [...(config.actus.flux || FLUX_DEFAUT)];
+          const flux = [...(fluxActus(config))];
           const [retire] = flux.splice(Number(demande.index), 1);
           if (!retire) return refus("Cette source n'est plus dans la liste.");
           if (!flux.length) return refus("Garde au moins une source.");
@@ -1768,7 +1797,7 @@ export class Etat extends DurableObject {
       format: "bot-v2", version: VERSION, config, aujourdhui: ctx.aujourdHui,
       heure_prevue_aujourdhui: heurePrevue(config.planning, ctx.aujourdHui),
       prochain: prochainEpisode(config.planning, ctx.maintenant),
-      flux_defaut: FLUX_DEFAUT,
+      flux_defaut: profilPays(config).flux,
       episode_envoye_aujourdhui: Boolean(etat.declenchements[ctx.aujourdHui]?.envoye),
       episode_lance_aujourdhui: Boolean(etat.declenchements[ctx.aujourdHui]?.lance),
       agendas: etat.agendas || [],

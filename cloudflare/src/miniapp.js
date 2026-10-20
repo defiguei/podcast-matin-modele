@@ -8,7 +8,7 @@
 import {
   JOURS, NOMS_JOURS, COURTS_JOURS, LONGUEURS, SOURCES, RUBRIQUES, etatRegle, prochainPassage, decrirePeriode,
   heurePrevue, prochainEpisode, ajouterJours, dateCourte, nomRubrique, dateOuNull, nettoyerListe,
-  VOIX, VOIX_CONSEILLEES, VITESSES, TONS, CITER, TRANSPORTS, FLUX_DEFAUT, DELAIS_RATTRAPAGE,
+  VOIX, VOIX_CONSEILLEES, VITESSES, TONS, CITER, TRANSPORTS, fluxActus, profilPays, PAYS, DELAIS_RATTRAPAGE,
   DEVISES, REGIONS_FERIES, MODES_VOIX, estFerie, nomFerie, animateursDuJour, equipeComplete, normaliserTexte,
 } from "./config.js";
 
@@ -26,7 +26,7 @@ export const REGLAGES_APP = [
   "agenda.jours", "agenda.horizon", "agenda.notes", "agenda.deplacements", "agenda.jours_deplacements", "agenda.max_deplacements",
   "actus.locale_articles", "actus.ville", "actus.fraicheur_heures", "actus.citer_sources",
   "planning.rattrapage", "planning.delai_rattrapage", "planning.feries", "planning.avance_minutes",
-  "planning.feries_region", "voix.solo", "voix.mode",
+  "planning.feries_region", "voix.solo", "voix.mode", "pays",
 ];
 
 // ───────────────────────────── liens audio ──────────────────────────────────
@@ -138,6 +138,7 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
   }
   return {
     version, aujourdhui: aujourdHui, heure: ctx.maintenant.heure,
+    pays: config.pays, devise: profilPays(config).devise,
     prochain: prochain ? { ...prochain, texte: dateCourte(prochain.date) } : null,
     sautes: config.planning.exceptions.filter((e) => e.heure === null && e.date >= aujourdHui)
       .map((e) => ({ date: e.date, texte: dateCourte(e.date) })),
@@ -167,7 +168,7 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
               du_prochain: animateursDuJour(config, prochain?.date || aujourdHui) },
       actus: { ville: config.actus.ville, sujets_preferes: config.actus.sujets_preferes, sujets_a_eviter: config.actus.sujets_a_eviter,
                fraicheur_heures: config.actus.fraicheur_heures, citer_sources: config.actus.citer_sources,
-               locale_articles: config.actus.locale_articles, flux: config.actus.flux || FLUX_DEFAUT, flux_defaut: !config.actus.flux },
+               locale_articles: config.actus.locale_articles, flux: fluxActus(config), flux_defaut: !config.actus.flux },
       agenda: config.agenda, agendas: etat.agendas || [], agendas_vus: etat.agendas_vus || null,
       consignes: config.consignes, a_approfondir: config.a_approfondir.map((a) => a.sujet),
       echantillons: liens.voix, temps_echantillons: etat.temps_echantillons || {},
@@ -186,7 +187,8 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
     listes: { sources: SOURCES, longueurs: LONGUEURS, jours: JOURS.map((j) => [j, COURTS_JOURS[j], NOMS_JOURS[j]]),
               voix: VOIX.map(([nom, description, genre]) => ({ nom, description, genre, conseillee: VOIX_CONSEILLEES.includes(nom) })),
               vitesses: VITESSES, tons: TONS, citer: CITER, transports: Object.fromEntries(Object.entries(TRANSPORTS).filter(([k]) => k !== "peu_importe")),
-              delais: DELAIS_RATTRAPAGE, devises: DEVISES, regions: REGIONS_FERIES, modes_voix: MODES_VOIX },
+              delais: DELAIS_RATTRAPAGE, devises: DEVISES, regions: REGIONS_FERIES, modes_voix: MODES_VOIX,
+              pays: Object.entries(PAYS).map(([code, p]) => [code, p.nom]) },
   };
 }
 
@@ -195,7 +197,7 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
 const texte = (v, max) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
 
 // Traduit le formulaire de la fiche en champs pour nouvelleRegle / modifierRegle.
-export function champsDepuisFormulaire(f, ancienne, aujourdHui) {
+export function champsDepuisFormulaire(f, ancienne, aujourdHui, devise = "CHF") {
   const titre = texte(f.titre, 50);
   const consigne = texte(f.consigne, 400);
   if (!titre) throw new Error("Donne un titre à la rubrique.");
@@ -223,8 +225,8 @@ export function champsDepuisFormulaire(f, ancienne, aujourdHui) {
   const fiche = Object.fromEntries(CHAMPS_FICHE.map((c) => [c, texte(f.fiche?.[c], c === "avec_qui" ? 80 : c === "ages" ? 40 : 120)]));
   fiche.transport = TRANSPORTS[f.transport] && f.transport !== "peu_importe" ? f.transport : "";
   const max = f.budget?.max === "" || f.budget?.max == null ? null : Number(String(f.budget.max).replace(",", "."));
-  if (max !== null && (!Number.isFinite(max) || max < 0 || max > 100000)) throw new Error("Budget : un nombre en CHF, s'il te plaît.");
-  fiche.budget = { max, unite: f.budget?.unite === "total" ? "total" : "personne", devise: DEVISES.includes(f.budget?.devise) ? f.budget.devise : "CHF",
+  if (max !== null && (!Number.isFinite(max) || max < 0 || max > 100000)) throw new Error("Budget : écris un nombre.");
+  fiche.budget = { max, unite: f.budget?.unite === "total" ? "total" : "personne", devise: DEVISES.includes(f.budget?.devise) ? f.budget.devise : devise,
                    transport_inclus: fiche.transport === "aucun" ? false : Boolean(f.budget?.transport_inclus) };
   fiche.inclure = nettoyerListe(Array.isArray(f.inclure) ? f.inclure : String(f.inclure || "").split(/[,;\n]/), 8);
   fiche.exclure = nettoyerListe(Array.isArray(f.exclure) ? f.exclure : String(f.exclure || "").split(/[,;\n]/), 8);

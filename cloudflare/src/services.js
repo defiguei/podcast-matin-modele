@@ -1,18 +1,27 @@
-// Accès aux services extérieurs : Telegram, GitHub, Gemini, et l'heure suisse.
+// Accès aux services extérieurs : Telegram, GitHub, Gemini, et l'heure locale.
 // Les adresses de base sont réglables (TELEGRAM_API, GITHUB_API, GEMINI_API)
 // pour pouvoir tout tester en local contre de faux services.
 
+// Fuseau du pays choisi dans l'application (un bot = un auditeur) ; Suisse par défaut.
 export const FUSEAU = "Europe/Zurich";
+let fuseauActuel = FUSEAU;
+export function definirFuseau(fuseau) {
+  try {
+    new Intl.DateTimeFormat("en-CA", { timeZone: fuseau });
+    fuseauActuel = fuseau;
+  } catch { /* fuseau inconnu : on garde le précédent */ }
+}
+export function fuseau() { return fuseauActuel; }
 
 export function maintenantLocal(date = new Date()) {
   const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
-    timeZone: FUSEAU, year: "numeric", month: "2-digit", day: "2-digit",
+    timeZone: fuseauActuel, year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hourCycle: "h23",
   }).formatToParts(date).map((x) => [x.type, x.value]));
   return { date: `${p.year}-${p.month}-${p.day}`, heure: `${p.hour}:${p.minute}`, iso: `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}` };
 }
 
-// Instant (millisecondes) correspondant à une date et une heure suisses.
+// Instant (millisecondes) correspondant à une date et une heure locales.
 export function instantLocal(dateIso, heure) {
   const [a, m, j] = dateIso.split("-").map(Number);
   const [h, mn] = heure.split(":").map(Number);

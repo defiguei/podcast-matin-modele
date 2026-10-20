@@ -1108,8 +1108,8 @@ await scenario("Application : animateurs (équipe, jours, tirage, une voix), fé
   await vider();
   r = await app("feries", { region: "FR" });
   ({ config: exp } = await etat());
-  verifier(r.ok && exp.planning.feries_region === "FR" && exp.planning.feries_cache["2026"]?.some(([d]) => d === "2026-11-11")
-    && r.donnees.planning.calendrier["2026-11-11"].ferie && !r.donnees.planning.calendrier["2026-11-11"].ferie_nom?.includes("canton"), "fériés français", exp.planning);
+  verifier(r.ok && exp.planning.feries_region === "FR" && !Object.keys(exp.planning.feries_cache).length
+    && r.donnees.planning.calendrier["2026-11-11"].ferie && r.donnees.planning.calendrier["2026-11-11"].ferie_nom === "Armistice 1918", "fériés français (calculés, sans téléchargement)", exp.planning);
   r = await app("feries", { region: "CH-NE" });
   ({ config: exp } = await etat());
   verifier(exp.planning.feries_cache["2027"]?.some(([d]) => d === "2027-03-01"), "fériés neuchâtelois (cantonal compris)", exp.planning.feries_cache);
@@ -1140,6 +1140,36 @@ await scenario("Application : animateurs (équipe, jours, tirage, une voix), fé
   verifier(r.ok && regle.recherche.fiche.transport === "aucun" && regle.recherche.fiche.budget.devise === "EUR" && regle.recherche.fiche.budget.transport_inclus === false
     && regle.recherche.fiche.inclure.join() === "coopératif,rapide", "pas de transport, budget en euros, éléments à inclure", regle.recherche.fiche);
   await app("supprimer", { id: r.id });
+});
+
+await scenario("Pays : réglage et reprise des anciennes installations", async () => {
+  // Choisir la France : fuseau, devise, médias par défaut et jours fériés suivent.
+  const avant = (await etat()).config;
+  await envoyerJson(`${BOT}/test/etat`, { config: { ...avant, actus: { ...avant.actus, flux: null } } });
+  let r = await app("regler", { chemin: "pays", valeur: "FR" });
+  let { config } = await etat();
+  verifier(r.ok && config.pays === "FR" && config.planning.feries_region === "FR", "pays France : les fériés suivent", config.planning);
+  verifier(r.donnees.devise === "EUR" && r.donnees.reglages.actus.flux.some((f) => f.nom === "franceinfo") && r.donnees.listes.pays.some(([c]) => c === "BE"),
+    "devise, médias par défaut et liste des pays", { devise: r.donnees.devise, flux: r.donnees.reglages.actus.flux });
+  const exp = await (await fetch(`${BOT}/api/config`, { headers: { "X-Podcast-Secret": SECRET } })).json();
+  verifier(exp.config.pays === "FR" && exp.flux_defaut.some((f) => f.nom === "franceinfo"), "GitHub reçoit le pays", exp.flux_defaut);
+  verifier((await app("regler", { chemin: "pays", valeur: "XX" })).ok === false, "pays inconnu refusé");
+  // Une installation « version France » d'avant le réglage : le pays est déduit de reglages.toml.
+  await envoyerJson(`${FAUX}/control/fichier`, { chemin: "reglages.toml", texte: 'fuseau_horaire = "Europe/Paris"\npays_actus = "FR"\n' });
+  const ancienne = { ...config, planning: { ...config.planning, feries_region: "CH-VD" } };
+  delete ancienne.pays;
+  await envoyerJson(`${BOT}/test/etat`, { config: ancienne });
+  r = await app("etat");
+  ({ config } = await etat());
+  verifier(config.pays === "FR" && config.planning.feries_region === "FR" && r.donnees.devise === "EUR", "ancienne version France : pays et fériés repris", { pays: config.pays, region: config.planning.feries_region });
+  // Sans indice : la Suisse, réglages inchangés.
+  await envoyerJson(`${FAUX}/control/fichier`, { chemin: "reglages.toml", texte: 'fuseau_horaire = "Europe/Zurich"\n' });
+  const suisse = { ...config, planning: { ...config.planning, feries_region: "CH-VD" } };
+  delete suisse.pays;
+  await envoyerJson(`${BOT}/test/etat`, { config: suisse });
+  await app("etat");
+  ({ config } = await etat());
+  verifier(config.pays === "CH" && config.planning.feries_region === "CH-VD", "ancienne version suisse : rien ne change", config.pays);
 });
 
 console.log(`\n${reussis} vérifications réussies, ${rates} ratées.`);

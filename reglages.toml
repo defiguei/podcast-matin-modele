@@ -3,11 +3,12 @@
 #  Modifie ce fichier directement sur GitHub (icône crayon ✏️),
 #  puis « Commit changes ». Le prochain épisode en tiendra compte.
 #  ⚠️ Aucune clé secrète ici : elles sont dans Settings → Secrets.
-#  (L'heure d'envoi se règle dans .github/workflows/podcast-du-matin.yml)
+#  (L'heure d'envoi se règle dans l'application, Planning.)
 #
-#  💬 Le plus simple : écris à ton bot Telegram (« parle plus lentement »,
-#  « le sport ne m'intéresse pas »…). Ce que tu lui dis est gardé dans
-#  memoire.json et l'emporte sur les valeurs ci-dessous.
+#  📱 Tout se règle dans l'application du podcast (pays, fuseau, actus,
+#  voix, durée…) : ce qu'elle enregistre l'emporte sur les valeurs
+#  ci-dessous, qui ne servent que tant que le bot n'est pas installé.
+#  Ce fichier t'appartient : une mise à jour du code ne le remplace pas.
 # ──────────────────────────────────────────────────────────────
 
 fuseau_horaire = "Europe/Zurich"

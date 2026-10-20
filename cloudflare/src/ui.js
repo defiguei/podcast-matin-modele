@@ -5,7 +5,7 @@
 import {
   JOURS, NOMS_JOURS, COURTS_JOURS, VITESSES, TONS, CITER, RUBRIQUES, VOIX, VOIX_CONSEILLEES, SOURCES, TRANSPORTS,
   LONGUEURS, LIBELLES_ETATS, etatRegle, prochainPassage, decrirePeriode, nomRubrique, heureParlee, dateCourte, prochainEpisode,
-  heurePrevue, FLUX_DEFAUT, ECRAN_INTEGREE, DELAIS_RATTRAPAGE,
+  heurePrevue, fluxActus, profilPays, PAYS, ECRAN_INTEGREE, DELAIS_RATTRAPAGE,
 } from "./config.js";
 import { echapper as e } from "./services.js";
 
@@ -13,7 +13,7 @@ const b = (texte, donnees) => ({ text: texte, callback_data: donnees });
 const retour = (vers = "m:accueil", texte = "◀ Retour") => [b(texte, vers)];
 const coche = (vrai) => (vrai ? "✅" : "▫️");
 const h = (heure) => (heure ? heureParlee(heure) : "—");
-const chf = (n) => `${String(n).replace(".", ",")} CHF`;
+const chf = (n, devise = "CHF") => `${String(n).replace(".", ",")} ${devise}`;
 // Une rubrique qui cherche des activités ou des lieux (budget, résultats, sondage…).
 export const regleDeRecherche = (r) => Boolean(r.recherche && (r.recherche.fiche?.quoi || r.recherche.fiche?.ou
   || r.recherche.sources.some((s) => ["web", "lieux", "wikivoyage", "transports"].includes(s))));
@@ -72,7 +72,7 @@ const ECRANS = {
     const texte = [
       "📅 <b>Planning</b>", lignes.join(" · "), "",
       exceptions.length || pauses.length ? ["<b>Exceptions</b>", ...exceptions, ...pauses].join("\n") : "Aucune exception.",
-      "", `Jours fériés vaudois : ${{ normal: "horaire habituel", dimanche: "horaire du dimanche", aucun: "pas d'épisode" }[p.feries]}`,
+      "", `Jours fériés : ${{ normal: "horaire habituel", dimanche: "horaire du dimanche", aucun: "pas d'épisode" }[p.feries]}`,
       `Rattrapage si l'envoi rate : ${p.rattrapage ? `oui, ${libelleDelai(p.delai_rattrapage)} après l'heure prévue` : "désactivé"}`,
       `Préparation : ${p.avance_minutes ? `lancée ${p.avance_minutes} min avant, pour que l'épisode arrive à l'heure` : "lancée à l'heure pile (l'épisode arrive 3 à 5 min après)"}`,
       "", "Appuie sur un jour pour changer son heure.",
@@ -271,7 +271,7 @@ const ECRANS = {
 
   actus(config) {
     const a = config.actus;
-    const flux = a.flux || FLUX_DEFAUT;
+    const flux = fluxActus(config);
     const texte = [
       "📰 <b>Actualités</b>",
       `Thèmes préférés : ${e(a.sujets_preferes.join(", ")) || "—"}`,
@@ -291,7 +291,7 @@ const ECRANS = {
   },
 
   sources(config) {
-    const flux = config.actus.flux || FLUX_DEFAUT;
+    const flux = fluxActus(config);
     const texte = `📡 <b>Sources d'actualités</b>${config.actus.flux ? "" : " (par défaut)"}\n${flux.map((f, i) => `${i + 1}. ${e(f.nom)}`).join("\n") || "Aucune source : seules les actus locales et tes thèmes seront cherchés."}\n\nAjoute un média par son nom (« 24 heures ») ou l'adresse de son flux RSS.`;
     const clavier = flux.map((f, i) => [b(`✕ ${f.nom}`.slice(0, 40), `a:asr:${i}`)]);
     clavier.push([b("➕ Ajouter une source", "a:asa")]);
@@ -422,7 +422,7 @@ const ECRANS = {
     const f = r.recherche?.fiche || {};
     const v = (x) => (x === undefined || x === null || x === "" || (Array.isArray(x) && !x.length) ? "—" : e(Array.isArray(x) ? x.join(", ") : String(x)));
     const budget = f.budget?.max === null || f.budget?.max === undefined ? "- (aucun critère)"
-      : f.budget.max === 0 ? "gratuit" : `${chf(f.budget.max)} ${f.budget.unite === "total" ? "pour le groupe" : "par personne"}${f.budget.transport_inclus ? ", transport compris" : ""}`;
+      : f.budget.max === 0 ? "gratuit" : `${chf(f.budget.max, f.budget.devise)} ${f.budget.unite === "total" ? "pour le groupe" : "par personne"}${f.budget.transport_inclus ? ", transport compris" : ""}`;
     const texte = [`🔎 <b>Recherche de ${r.id} — ${e(r.titre)}</b>`,
       `Quoi : ${v(f.quoi)}`, `Avec qui : ${v(f.avec_qui)} · Âges : ${v(f.ages)}`,
       `Où : ${v(f.ou)} · Rayon : ${f.rayon_km ? `${f.rayon_km} km` : "—"}`, `Quand : ${v(f.quand)}`,
@@ -449,8 +449,8 @@ const ECRANS = {
     const actives = new Set(r.recherche?.sources || []);
     const aide = {
       web: "recherche sur internet (Tavily, avec quota)", actus: "articles de presse récents", meteo: "prévisions Open-Meteo",
-      transports: "horaires de trains CFF", lieux: "lieux et points d'intérêt autour d'un endroit", wikivoyage: "guides de voyage",
-      saints: "calendrier des saints du jour (exact)", fetes: "fêtes nationales et journées internationales du jour (exact)", feries: "jours fériés vaudois",
+      transports: "horaires et retards de trains (CFF, SNCB, SNCF)", lieux: "lieux et points d'intérêt autour d'un endroit", wikivoyage: "guides de voyage",
+      saints: "calendrier des saints du jour (exact)", fetes: "fêtes nationales et journées internationales du jour (exact)", feries: "jours fériés de ta région",
     };
     const texte = [`📡 <b>Sources de ${r.id}</b>`, "Où je vais chercher pour cette rubrique :",
       ...Object.keys(SOURCES).map((s) => `${actives.has(s) ? "✅" : "▫️"} ${SOURCES[s]} — ${aide[s] || ""}`)].join("\n");
@@ -465,7 +465,7 @@ const ECRANS = {
     const r = config.regles.find((x) => x.id === id);
     if (!r) return ECRANS.regle(config, etat, ctx, id);
     const budget = r.recherche?.fiche?.budget || { max: null, unite: "personne", transport_inclus: false };
-    const texte = `💰 <b>Budget de ${r.id}</b>\n${budget.max === null ? "- Aucun critère de budget" : budget.max === 0 ? "Gratuit uniquement" : `${chf(budget.max)} maximum`}` +
+    const texte = `💰 <b>Budget de ${r.id}</b>\n${budget.max === null ? "- Aucun critère de budget" : budget.max === 0 ? "Gratuit uniquement" : `${chf(budget.max, budget.devise)} maximum`}` +
       `${budget.max ? ` ${budget.unite === "total" ? "pour le groupe" : "par personne"}, transport ${budget.transport_inclus ? "compris" : "non compris"}` : ""}`;
     const clavier = [
       [b("Gratuit", `a:rb:${id}:0`), b("≤ 20", `a:rb:${id}:20`), b("≤ 50", `a:rb:${id}:50`), b("≤ 100", `a:rb:${id}:100`)],
@@ -513,7 +513,7 @@ export function ficheRegle(r, config, ctx) {
     const details = [f.quoi && `Quoi : ${f.quoi}`, f.avec_qui && `Avec : ${f.avec_qui}${f.ages ? ` (${f.ages})` : ""}`,
       f.ou && `Où : ${f.ou}${f.rayon_km ? ` (${f.rayon_km} km)` : ""}`, f.quand && `Quand : ${f.quand}`,
       f.transport && `Transport : ${TRANSPORTS[f.transport]}`,
-      f.budget?.max !== null && f.budget?.max !== undefined && `Budget : ${f.budget.max === 0 ? "gratuit" : `${chf(f.budget.max)} ${f.budget.unite === "total" ? "pour le groupe" : "par personne"}`}${f.budget.transport_inclus ? ", transport compris" : ""}`,
+      f.budget?.max !== null && f.budget?.max !== undefined && `Budget : ${f.budget.max === 0 ? "gratuit" : `${chf(f.budget.max, f.budget.devise)} ${f.budget.unite === "total" ? "pour le groupe" : "par personne"}`}${f.budget.transport_inclus ? ", transport compris" : ""}`,
       f.inclure?.length && `Inclure : ${f.inclure.join(", ")}`, f.exclure?.length && `Exclure : ${f.exclure.join(", ")}`,
       f.attendu && `Attendu : ${f.attendu}`].filter(Boolean);
     if (details.length) lignes.push("", ...details.map(e));

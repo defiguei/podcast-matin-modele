@@ -51,6 +51,7 @@ const serveur = http.createServer(async (req, res) => {
   if (p === "/control/gemini") { fileGemini.push(...(Array.isArray(corps) ? corps : [corps])); return json(res, 200, { file: fileGemini.length }); }
   if (p === "/control/gemini-panne") { geminiEnPanne = Boolean(corps?.panne); return json(res, 200, { ok: true }); }
   if (p === "/control/fichiers") return json(res, 200, fichiers);
+  if (p === "/control/fichier") { fichiers[corps.chemin] = corps.texte; return json(res, 200, { ok: true }); }
 
   // ── Telegram ──
   let m = /^\/tg\/bot([^/]+)\/(\w+)$/.exec(p);

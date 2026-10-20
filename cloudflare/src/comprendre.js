@@ -5,7 +5,7 @@ import {
   JOURS, NOMS_JOURS, REGLAGES, RUBRIQUES, SOURCES, TRANSPORTS, LONGUEURS, VOIX, VITESSES, TONS, CITER,
   regler, nouvelleRegle, modifierRegle, supprimerRegle, heureValide, dateOuNull, placerRubriqueApres,
   nettoyerListe, LONGUEUR_CONSIGNE, normaliserTexte, etatRegle, decrirePeriode, nomRubrique, ajouterJours, jourDeSemaine,
-  heureParlee, dateCourte, nettoyerPlanning, FLUX_DEFAUT,
+  heureParlee, dateCourte, nettoyerPlanning, fluxActus, profilPays, PAYS,
 } from "./config.js";
 import { GRATUIT } from "./assistant.js";
 
@@ -88,7 +88,7 @@ OPÉRATIONS (champ « action ») :
 - supprimer_regle / pause_regle / reactiver_regle : id. Les rubriques sont toujours numérotées R1, R2… dans l'ordre (une suppression renumérote les suivantes).
 - deplacer_rubrique : rubrique (clé ou id de rubrique) ; apres = clé ou id après lequel la placer ("debut" pour la mettre en premier).
 - activer_rubrique / desactiver_rubrique : rubrique.
-- ajouter_source : valeur = nom du média ou adresse de son flux RSS. retirer_source : valeur = nom de la source (sources par défaut : ${FLUX_DEFAUT.map((f) => f.nom).join(", ")}).
+- ajouter_source : valeur = nom du média ou adresse de son flux RSS. retirer_source : valeur = nom de la source (sources par défaut : ${fluxActus({ ...config, actus: {} }).map((f) => f.nom).join(", ")}).
 - nouvel_episode : l'auditeur veut un nouvel épisode tout de suite. ids = règles à traiter spécialement (facultatif).
 - resultats : lancer tout de suite la recherche d'une ou plusieurs règles. ids, format = "ecrit" ou "audio".
 - assistant : l'auditeur veut organiser une activité ou une sortie mais il manque des informations (qui, où, quand, transport, budget…). valeur = son message résumé. N'utilise PAS nouvelle_regle dans ce cas.
@@ -293,7 +293,7 @@ function appliquerUne(config, op, ctx) {
       return { action: { type: "ajouter_source", valeur: String(op.valeur || "").trim() } };
     case "retirer_source": {
       const nom = normaliserTexte(op.valeur);
-      const flux = config.actus.flux || FLUX_DEFAUT;
+      const flux = fluxActus(config);
       const restants = flux.filter((f) => !normaliserTexte(f.nom).includes(nom) || !nom);
       if (restants.length === flux.length) throw new Error("source introuvable");
       config.actus.flux = restants;

@@ -12,8 +12,8 @@ const QUOI = { culture: "🎭 Culture", nature: "🥾 Nature, rando", enfants: "
 const AVEC = { seul: "Seul", couple: "En couple", amis: "Entre amis", famille: "En famille", enfants: "Avec des enfants" };
 const ENVIES = { meteo: "☀️ Tenir compte de la météo", culture: "🎭 Actu culturelle", gratuit: "🆓 Plutôt gratuit", interieur: "🏠 À l'intérieur", exterieur: "🌳 En plein air", accessible: "♿ Accessible" };
 
-export function nouvelleSession(texteInitial = "") {
-  return { fiche: { budget: { max: null, unite: "personne", transport_inclus: false }, envies: [] }, etape: "quoi", texte: texteInitial, questions: [], cree: Date.now() };
+export function nouvelleSession(texteInitial = "", devise = "CHF") {
+  return { fiche: { budget: { max: null, unite: "personne", transport_inclus: false, devise }, envies: [] }, etape: "quoi", texte: texteInitial, questions: [], cree: Date.now() };
 }
 
 export function schemaFiche() {
@@ -29,14 +29,14 @@ export function schemaFiche() {
   };
 }
 
-export function consigneFiche(aujourdHui) {
-  return `Tu prépares une recherche d'activité ou de sortie pour l'auditeur d'un podcast, en Suisse romande. Aujourd'hui : ${NOMS_JOURS[jourDeSemaine(aujourdHui)]} ${aujourdHui}.
+export function consigneFiche(aujourdHui, profil = { ou: "en Suisse romande", devise: "CHF" }) {
+  return `Tu prépares une recherche d'activité ou de sortie pour l'auditeur d'un podcast, ${profil.ou}. Aujourd'hui : ${NOMS_JOURS[jourDeSemaine(aujourdHui)]} ${aujourdHui}.
 Extrais de son message ce qu'il a dit, et laisse vide ce qu'il n'a pas dit (n'invente rien) :
-quoi (type d'activité), avec_qui, ages (des enfants), ou (ville, région, « autour de X », « entre X et Y »), quand_date (AAAA-MM-JJ si un jour est donné), quand (en mots), transport (${Object.keys(TRANSPORTS).join(", ")}), budget_max (CHF), budget_unite (personne ou total), inclure, exclure, attendu (ce qu'il attend : 3 idées, un itinéraire…).`;
+quoi (type d'activité), avec_qui, ages (des enfants), ou (ville, région, « autour de X », « entre X et Y »), quand_date (AAAA-MM-JJ si un jour est donné), quand (en mots), transport (${Object.keys(TRANSPORTS).join(", ")}), budget_max (${profil.devise}), budget_unite (personne ou total), inclure, exclure, attendu (ce qu'il attend : 3 idées, un itinéraire…).`;
 }
 
 // Gemini remplit parfois 0 quand un nombre n'est pas dit : « gratuit » doit être explicite.
-export const GRATUIT = /gratuit|gratis|sans frais|0\s*(?:chf|fr|francs?)\b|rien d[ée]penser|pas d['’]argent/i;
+export const GRATUIT = /gratuit|gratis|sans frais|(?<!\d)0\s*(?:chf|fr|francs?|€|eur|euros?)(?![a-z])|rien d[ée]penser|pas d['’]argent/i;
 
 export function fusionnerFiche(fiche, extrait, texte = "") {
   for (const cle of ["quoi", "avec_qui", "ages", "ou", "quand", "attendu"]) if (extrait[cle]) fiche[cle] = String(extrait[cle]).slice(0, 120);
@@ -85,7 +85,7 @@ export function ecranAssistant(session, ctx) {
       return { texte: `${entete}<b>Comment te déplaces-tu ?</b>`, clavier: grille(TRANSPORTS, "s:tr", 3) };
     case "budget":
       return { texte: `${entete}<b>Budget maximum ?</b> (ou écris un montant)`, clavier: [
-        [b("Gratuit", "s:bu:0"), b("≤ 20 CHF", "s:bu:20"), b("≤ 50 CHF", "s:bu:50"), b("≤ 100 CHF", "s:bu:100")],
+        [b("Gratuit", "s:bu:0"), ...[20, 50, 100].map((n) => b(`≤ ${n} ${session.fiche.budget.devise || "CHF"}`, `s:bu:${n}`))],
         [b("Peu importe", "s:bu:aucun")],
         [b(session.fiche.budget.unite === "total" ? "✅ Pour le groupe" : "✅ Par personne", "s:buu"),
          b(`${session.fiche.budget.transport_inclus ? "✅" : "▫️"} Transport compris`, "s:but")],
@@ -135,7 +135,7 @@ export function ecranModifier() {
 
 export function detailFiche(f) {
   const budget = f.budget?.max === null || f.budget?.max === undefined ? "sans limite"
-    : f.budget.max === 0 ? "gratuit" : `${f.budget.max} CHF max ${f.budget.unite === "total" ? "pour le groupe" : "par personne"}${f.budget.transport_inclus ? ", transport compris" : ""}`;
+    : f.budget.max === 0 ? "gratuit" : `${f.budget.max} ${f.budget.devise || "CHF"} max ${f.budget.unite === "total" ? "pour le groupe" : "par personne"}${f.budget.transport_inclus ? ", transport compris" : ""}`;
   return [
     `• Quoi : ${e(f.quoi || "—")}`,
     `• Avec : ${e(f.avec_qui || "—")}${f.ages ? ` (${e(f.ages)})` : ""}`,
@@ -174,7 +174,7 @@ export function regleDepuisFiche(f, mode, aujourdHui) {
   const titre = `${f.quoi || "Sortie"}${f.ou ? ` — ${f.ou}` : ""}`.slice(0, 50);
   const consigne = `Proposer des idées pour : ${f.quoi || "une activité"}${f.avec_qui ? `, ${f.avec_qui}` : ""}${f.ages ? ` (${f.ages})` : ""}` +
     `${f.ou ? `, ${f.ou}` : ""}${f.date ? `, le ${dateCourte(f.date)}` : f.quand ? `, ${f.quand}` : ""}${f.transport ? `, en ${TRANSPORTS[f.transport].replace(/^\S+ /, "").toLowerCase()}` : ""}` +
-    `${f.budget.max !== null && f.budget.max !== undefined ? `, budget ${f.budget.max === 0 ? "gratuit" : `${f.budget.max} CHF max ${f.budget.unite === "total" ? "pour le groupe" : "par personne"}`}` : ""}.`;
+    `${f.budget.max !== null && f.budget.max !== undefined ? `, budget ${f.budget.max === 0 ? "gratuit" : `${f.budget.max} ${f.budget.devise || "CHF"} max ${f.budget.unite === "total" ? "pour le groupe" : "par personne"}`}` : ""}.`;
   const periode = mode === "regle"
     ? (f.date ? { type: "dates", debut: ajouterJours(f.date, -3) < aujourdHui ? aujourdHui : ajouterJours(f.date, -3), fin: f.date } : { type: "une_fois" })
     : { type: "ponctuelle" };

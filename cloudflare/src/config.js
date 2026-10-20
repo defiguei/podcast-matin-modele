@@ -1,6 +1,19 @@
 // Modèle de configuration du podcast : valeurs par défaut, validation des
-// réglages, règles (création, état, période), planning et jours fériés vaudois.
+// réglages, règles (création, état, période), planning et jours fériés.
 // Tout ce qui est modifiable depuis Telegram passe par ce fichier.
+
+// Profils des pays (fuseau, actualités, devise, jours fériés) : même fichier que pour GitHub.
+import PROFILS_PAYS from "../../donnees/pays.json" with { type: "json" };
+
+export const PAYS = PROFILS_PAYS;
+export const PAYS_DEFAUT = "CH";
+export function profilPays(config) {
+  return PAYS[config?.pays] || PAYS[PAYS_DEFAUT];
+}
+// Médias par défaut : ceux du pays choisi (tant que la liste n'a pas été modifiée).
+export function fluxActus(config) {
+  return config?.actus?.flux || profilPays(config).flux;
+}
 
 export const JOURS = ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"];
 export const NOMS_JOURS = { lun: "lundi", mar: "mardi", mer: "mercredi", jeu: "jeudi", ven: "vendredi", sam: "samedi", dim: "dimanche" };
@@ -54,15 +67,12 @@ export const VOIX = [
 ];
 export const VOIX_CONSEILLEES = ["Aoede", "Kore", "Leda", "Sulafat", "Puck", "Charon", "Fenrir", "Achird"];
 
-export const FLUX_DEFAUT = [
-  { nom: "Google Actualités – Suisse", url: "https://news.google.com/rss?hl=fr&gl=CH&ceid=CH:fr" },
-  { nom: "RTS Info", url: "https://www.rts.ch/info/?format=rss/news" },
-  { nom: "Le Monde", url: "https://www.lemonde.fr/rss/une.xml" },
-];
+export const FLUX_DEFAUT = PAYS[PAYS_DEFAUT].flux;
 
 export function configParDefaut() {
   return {
     version: 1,
+    pays: PAYS_DEFAUT,
     planning: {
       jours: Object.fromEntries(JOURS.map((j) => [j, "07:30"])),
       exceptions: [],   // [{ date: "2026-10-20", heure: "05:30" | null }]
@@ -131,6 +141,7 @@ const voixValide = (v) => {
 };
 
 export const REGLAGES = {
+  "pays": { nom: "Pays", valider: (v) => { const c = String(v || "").toUpperCase(); if (!PAYS[c]) throw new Error("pays non proposé"); return c; } },
   "format.duree_minutes": { nom: "Durée (min)", valider: decimal(2, 12) },
   "format.nombre_sujets": { nom: "Nombre de sujets", valider: entier(1, 8) },
   "format.ton": { nom: "Ton", valider: parmi(Object.keys(TONS)) },
@@ -179,7 +190,13 @@ export function regler(config, chemin, valeurBrute) {
   const definition = REGLAGES[chemin];
   if (!definition) throw new Error(`réglage inconnu : ${chemin}`);
   const valeur = definition.valider(valeurBrute);
+  const ancienPays = config.pays;
   ecrireChemin(config, chemin, valeur);
+  // Changer de pays : les jours fériés suivent, s'ils étaient ceux de l'ancien pays.
+  if (chemin === "pays" && ancienPays !== valeur && (config.planning.feries_region || "CH-VD") === profilPays({ pays: ancienPays }).feries) {
+    config.planning.feries_region = profilPays(config).feries;
+    config.planning.feries_cache = {};
+  }
   if (chemin === "actus.sujets_a_eviter") {
     const exclus = new Set(valeur.map(normaliserTexte));
     config.actus.sujets_preferes = config.actus.sujets_preferes.filter((s) => !exclus.has(normaliserTexte(s)));
@@ -193,6 +210,7 @@ export function afficherValeur(chemin, valeur) {
   if (chemin === "format.ton") return TONS[valeur] || valeur;
   if (chemin === "voix.mode") return MODES_VOIX[valeur] || valeur;
   if (chemin === "planning.feries_region") return (REGIONS_FERIES.find(([c]) => c === valeur) || [, valeur])[1];
+  if (chemin === "pays") return PAYS[valeur]?.nom || valeur;
   if (chemin === "actus.citer_sources") return CITER[valeur] || valeur;
   if (valeur === "" || valeur == null) return "—";
   return String(valeur);
@@ -541,9 +559,13 @@ export function estFerie(planning, dateIso) {
   return Boolean(nomFerie(planning, dateIso));
 }
 
+// Régions dont les fériés sont calculés ici ; les autres sont téléchargés (Nager.Date).
+export const FERIES_CALCULES = ["CH-VD", "FR"];
+
 export function nomFerie(planning, dateIso) {
   const region = planning?.feries_region || "CH-VD";
   if (region === "CH-VD") return estFerieVaud(dateIso) ? "férié" : null;
+  if (region === "FR") return feriesFrance(Number(dateIso.slice(0, 4))).get(dateIso) || null;
   const liste = planning.feries_cache?.[dateIso.slice(0, 4)] || [];
   return (liste.find(([d]) => d === dateIso) || [])[1] || null;
 }
@@ -591,6 +613,15 @@ export function feriesVaud(annee) {
   const jeune = `${annee}-09-${String(premierDimanche + 14 + 1).padStart(2, "0")}`;
   return new Set([`${annee}-01-01`, `${annee}-01-02`, decale(-2), decale(1), decale(39), decale(50),
                   `${annee}-08-01`, jeune, `${annee}-12-25`]);
+}
+
+// Jours fériés de France (métropole).
+export function feriesFrance(annee) {
+  const paques = datePaques(annee);
+  const decale = (n) => ajouterJours(paques, n);
+  return new Map([[`${annee}-01-01`, "Jour de l'an"], [decale(1), "Lundi de Pâques"], [`${annee}-05-01`, "Fête du Travail"],
+    [`${annee}-05-08`, "Victoire 1945"], [decale(39), "Ascension"], [decale(50), "Lundi de Pentecôte"], [`${annee}-07-14`, "Fête nationale"],
+    [`${annee}-08-15`, "Assomption"], [`${annee}-11-01`, "Toussaint"], [`${annee}-11-11`, "Armistice 1918"], [`${annee}-12-25`, "Noël"]]);
 }
 
 function datePaques(annee) {
@@ -650,6 +681,7 @@ export function cloner(objet) {
 export function completerConfig(config) {
   const base = configParDefaut();
   const resultat = { ...base, ...(config || {}) };
+  if (!PAYS[resultat.pays]) resultat.pays = PAYS_DEFAUT;
   for (const cle of ["planning", "format", "voix", "agenda", "actus"]) resultat[cle] = { ...base[cle], ...(config?.[cle] || {}) };
   for (const cle of ["equipe", "tirage"]) if (!Array.isArray(resultat.voix[cle])) resultat.voix[cle] = [];
   if (!resultat.voix.jours || typeof resultat.voix.jours !== "object") resultat.voix.jours = {};

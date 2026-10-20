@@ -15,7 +15,8 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 import trains
-from sources import (CATEGORIES_OSM, Sources, cle, distance_km, feries_vaud, journal, lien_itineraire,
+import pays
+from sources import (CATEGORIES_OSM, Sources, cle, distance_km, feries, journal, lien_itineraire,
                      saints_du_jour)
 
 JOURS_CODES = ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"]
@@ -125,12 +126,13 @@ def schema_plan() -> dict:
 
 
 def consigne_plan(jour: dt.date, ville: str) -> str:
-    return f"""Tu prépares les règles du podcast du matin d'un auditeur qui vit en Suisse romande (ville : {ville or "inconnue"}). Aujourd'hui : {date_longue(jour)}.
+    profil = pays.profil()
+    return f"""Tu prépares les règles du podcast du matin d'un auditeur qui vit {profil['ou']} (ville : {ville or "inconnue"}). Aujourd'hui : {date_longue(jour)}.
 Pour chaque règle fournie, renvoie :
 - applique : pour une règle AVEC condition d'agenda, true seulement si un événement de l'agenda fourni remplit la condition au bon moment : « jour_meme » = l'événement a lieu aujourd'hui ; « veille » = il a lieu demain ; « jours_avant N » = il a lieu dans 1 à N jours. Pour une règle sans condition : true.
 - evenement : l'événement concerné (titre et date), s'il y en a un.
 - date_cible : la date visée (AAAA-MM-JJ) : date de la sortie ou de l'événement ; vide si aucune.
-- pour une règle de recherche (sortie, activité, idée) : requetes = 2 ou 3 recherches web courtes et efficaces en français, avec le lieu et la période (ex. « activités enfants Yverdon vacances octobre 2026 », « randonnée facile Jura vaudois ») ; lieux = villes ou lieux précis à situer sur une carte, le plus important d'abord (pour « entre X et Y », donne X et Y) ; categories = types de lieux utiles ; rayon_km = rayon de recherche autour du lieu (3 à 30).
+- pour une règle de recherche (sortie, activité, idée) : requetes = 2 ou 3 recherches web courtes et efficaces en français, avec le lieu et la période (ex. « activités enfants {profil['exemple_ville']} vacances octobre 2026 », « {profil['exemple_rando']} ») ; lieux = villes ou lieux précis à situer sur une carte, le plus important d'abord (pour « entre X et Y », donne X et Y) ; categories = types de lieux utiles ; rayon_km = rayon de recherche autour du lieu (3 à 30).
 - pour une règle qui surveille un train précis (retard, ponctualité, suppression d'un train à une heure donnée) : train = gare de départ (de), gare d'arrivée (a), heure de départ prévue (heure, HH:MM) et pays du réseau (pays : CH, FR ou BE). Laisse train vide pour toute autre règle.
 N'invente aucun événement : appuie-toi seulement sur l'agenda fourni."""
 
@@ -223,12 +225,13 @@ def planifier(regles: list[dict], agenda: list[str], jour: dt.date, ville: str,
         # Train : la consigne lue mot à mot prime ; le modèle complète (pays, tournures libres).
         propose = element.get("train") or {}
         if isinstance(propose, dict):
-            pays = str(propose.get("pays") or "").upper()
+            reseau = str(propose.get("pays") or "").upper()
+            reseau = reseau if reseau in ("CH", "FR", "BE") else ""
             if plan.get("train"):
-                plan["train"] = {**plan["train"], "pays": pays if pays in ("CH", "FR", "BE") else ""}
+                plan["train"] = {**plan["train"], "pays": reseau}
             elif propose.get("de") and propose.get("a") and trains.heure_valide(propose.get("heure", "")):
                 plan["train"] = {"de": str(propose["de"]).strip()[:60], "a": str(propose["a"]).strip()[:60],
-                                 "heure": trains.heure_valide(propose["heure"]), "pays": pays if pays in ("CH", "FR", "BE") else ""}
+                                 "heure": trains.heure_valide(propose["heure"]), "pays": reseau}
     # Une règle sans condition s'applique toujours, même si le modèle hésite.
     for r in regles:
         if not r.get("condition"):
@@ -323,9 +326,9 @@ def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: s
         collecte.liens.append((f"Wikipédia : {jour.day} {MOIS[jour.month - 1]}",
                                f"https://fr.wikipedia.org/wiki/{jour.day}_{MOIS[jour.month - 1]}"))
     if "feries" in noms_sources:
-        feries = feries_vaud(jour, 14)
-        lignes.append("Jours fériés vaudois des deux prochaines semaines : "
-                      + ("; ".join(f"{date_longue(d)} : {nom}" for d, nom in feries) if feries else "aucun"))
+        feries_proches = feries(jour, 14)
+        lignes.append("Jours fériés des deux prochaines semaines : "
+                      + ("; ".join(f"{date_longue(d)} : {nom}" for d, nom in feries_proches) if feries_proches else "aucun"))
 
     # Lieu principal (ou milieu de deux lieux).
     geographique = bool(fiche.get("ou") or fiche.get("quoi") or fiche.get("lat") is not None
@@ -381,7 +384,7 @@ def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: s
         if ("transports" in noms_sources or transport in ("train", "peu_importe")) and transport != "voiture":
             collecte.trajets = sources.trajets(ville, destination, collecte.date_cible, "09:00")
             if collecte.trajets:
-                lignes.append(f"Train (horaires CFF, prix non fournis) : {Sources.trajets_en_mots(collecte.trajets)}")
+                lignes.append(f"Train (horaires, prix non fournis) : {Sources.trajets_en_mots(collecte.trajets)}")
         if transport == "voiture":
             point_ville = sources.geocoder(ville)
             if point_ville and point_destination:

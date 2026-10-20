@@ -1,0 +1,59 @@
+{
+  "CH": {
+    "nom": "Suisse",
+    "fuseau": "Europe/Zurich",
+    "devise": "CHF",
+    "feries": "CH-VD",
+    "actus_langue": "fr",
+    "actus_pays": "CH",
+    "accept_language": "fr-CH,fr;q=0.9",
+    "ou": "en Suisse romande",
+    "habitant": "un habitant de Suisse romande",
+    "d_abord": "la Suisse et la Suisse romande",
+    "exemple_ville": "Lausanne",
+    "exemple_rando": "randonnée facile Jura vaudois",
+    "flux": [
+      { "nom": "Google Actualités – Suisse", "url": "https://news.google.com/rss?hl=fr&gl=CH&ceid=CH:fr" },
+      { "nom": "RTS Info", "url": "https://www.rts.ch/info/?format=rss/news" },
+      { "nom": "Le Monde", "url": "https://www.lemonde.fr/rss/une.xml" }
+    ]
+  },
+  "FR": {
+    "nom": "France",
+    "fuseau": "Europe/Paris",
+    "devise": "EUR",
+    "feries": "FR",
+    "actus_langue": "fr",
+    "actus_pays": "FR",
+    "accept_language": "fr-FR,fr;q=0.9",
+    "ou": "en France",
+    "habitant": "un habitant de France",
+    "d_abord": "la France",
+    "exemple_ville": "Lyon",
+    "exemple_rando": "randonnée facile Vercors",
+    "flux": [
+      { "nom": "Google Actualités – France", "url": "https://news.google.com/rss?hl=fr&gl=FR&ceid=FR:fr" },
+      { "nom": "franceinfo", "url": "https://www.francetvinfo.fr/titres.rss" },
+      { "nom": "Le Monde", "url": "https://www.lemonde.fr/rss/une.xml" }
+    ]
+  },
+  "BE": {
+    "nom": "Belgique",
+    "fuseau": "Europe/Brussels",
+    "devise": "EUR",
+    "feries": "BE",
+    "actus_langue": "fr",
+    "actus_pays": "BE",
+    "accept_language": "fr-BE,fr;q=0.9",
+    "ou": "en Belgique francophone",
+    "habitant": "un habitant de Belgique francophone",
+    "d_abord": "la Belgique",
+    "exemple_ville": "Namur",
+    "exemple_rando": "randonnée facile Ardennes",
+    "flux": [
+      { "nom": "Google Actualités – Belgique", "url": "https://news.google.com/rss?hl=fr&gl=BE&ceid=BE:fr" },
+      { "nom": "RTBF Info", "url": "https://rss.rtbf.be/article/rss/highlight_rtbf_info.xml?source=internal" },
+      { "nom": "Le Monde", "url": "https://www.lemonde.fr/rss/une.xml" }
+    ]
+  }
+}
