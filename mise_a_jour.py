@@ -8,7 +8,8 @@ dans ton bot Cloudflare, qui les garde. Le reste est recopié depuis le modèle,
 avec ton dépôt et l'adresse de ton bot à la place des repères du modèle.
 
 Variables : MODELE (ex. « auteur/podcast-matin-modele »), VERSION, ADRESSE
-(adresse du bot), TELEGRAM_BOT_TOKEN, GITHUB_REPOSITORY, GH_TOKEN.
+(adresse du bot), TELEGRAM_BOT_TOKEN, GITHUB_REPOSITORY, GH_TOKEN, et
+BOT_GITHUB_TOKEN (facultatif : jeton avec la permission « Workflows »).
 """
 
 from __future__ import annotations
@@ -34,8 +35,13 @@ def journal(message: str) -> None:
     print(message, flush=True)
 
 
-def git(*args: str, cwd: Path = RACINE, verifier: bool = True) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", *args], cwd=cwd, text=True, capture_output=True, check=verifier)
+def git(*args: str, cwd: Path | None = None, verifier: bool = True) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", *args], cwd=cwd or RACINE, text=True, capture_output=True, check=verifier)
+
+
+def relancer_deploiement() -> None:
+    """Un envoi fait avec le jeton du workflow ne relance rien tout seul : on déploie le bot."""
+    subprocess.run(["gh", "workflow", "run", "deployer-bot.yml", "--ref", "main"], cwd=RACINE, check=False)
 
 
 def fichiers(dossier: Path) -> set[str]:
@@ -74,19 +80,30 @@ def copier(modele: Path, cible: Path, depot: str, hote: str, sans_workflows: boo
     return changes, supprimes
 
 
-def jeton_du_bot(adresse: str) -> str:
-    """Le jeton GitHub du bot (permission « Workflows ») : nécessaire pour mettre à jour
-    les fichiers d'automatisation ; donné seulement pendant une mise à jour demandée."""
-    import requests
-    from liaison import secret_partage
-    jeton_tg = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-    if not jeton_tg or not adresse:
-        return ""
+def adresse_actuelle(racine: Path) -> str:
+    """L'adresse du bot déjà inscrite dans ce dépôt (wrangler.toml), faute de mieux."""
     try:
-        r = requests.get(f"{adresse.rstrip('/')}/api/maj", headers={"X-Podcast-Secret": secret_partage(jeton_tg)}, timeout=20)
-        jeton = (r.json() or {}).get("jeton", "") if r.status_code == 200 else ""
-    except Exception:
-        jeton = ""
+        texte = (racine / "cloudflare" / "wrangler.toml").read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    trouve = re.search(r'^ADRESSE\s*=\s*"(https://[^"]+)"', texte, re.M)
+    return trouve.group(1) if trouve and REPERE_HOTE not in trouve.group(1) else ""
+
+
+def jeton_du_bot(adresse: str) -> str:
+    """Un jeton GitHub avec la permission « Workflows », nécessaire pour mettre à jour
+    les fichiers d'automatisation : le secret GitHub BOT_GITHUB_TOKEN s'il existe,
+    sinon celui du bot, qu'il ne donne que pendant une mise à jour demandée."""
+    jeton = os.environ.get("BOT_GITHUB_TOKEN", "").strip()
+    jeton_tg = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+    if not jeton and jeton_tg and adresse:
+        try:
+            import requests
+            from liaison import secret_partage
+            r = requests.get(f"{adresse.rstrip('/')}/api/maj", headers={"X-Podcast-Secret": secret_partage(jeton_tg)}, timeout=20)
+            jeton = (r.json() or {}).get("jeton", "") if r.status_code == 200 else ""
+        except Exception:
+            jeton = ""   # ancien bot, ou bot injoignable
     if jeton and os.environ.get("GITHUB_ACTIONS"):
         print(f"::add-mask::{jeton}", flush=True)
     return jeton
@@ -108,6 +125,8 @@ def main() -> int:
     if not re.fullmatch(r"[\w.-]+/[\w.-]+", modele_nom) or not depot:
         journal("::error::Modèle ou dépôt inconnu.")
         return 1
+    if not adresse:
+        adresse = adresse_actuelle(RACINE)
     hote = urlparse(adresse).netloc or REPERE_HOTE
     with tempfile.TemporaryDirectory() as dossier:
         modele = Path(dossier) / "modele"
@@ -143,16 +162,15 @@ def main() -> int:
             git("add", "-A")
             if git("diff", "--cached", "--quiet", verifier=False).returncode == 0:
                 prevenir_bot(adresse, {"type": "maj", "ok": False, "version": version,
-                                       "message": "Seuls les fichiers d'automatisation ont changé : donne la permission « Workflows » au jeton GitHub du bot."})
+                                       "message": "Seuls les fichiers d'automatisation ont changé : il faut un jeton GitHub avec la permission « Workflows » (docs/MISE-A-JOUR.md)."})
                 return 1
             git("commit", "-q", "-m", f"Mise à jour depuis le modèle (version {version})")
             git("push", "origin", "HEAD:main")
             workflows_ignores = workflows_changes
-            # Un envoi fait avec le jeton du workflow ne relance rien tout seul : on déploie le bot.
-            subprocess.run(["gh", "workflow", "run", "deployer-bot.yml", "--ref", "main"], cwd=RACINE, check=False)
+            relancer_deploiement()
         message = f"{len(changes)} fichier(s) mis à jour."
         if workflows_ignores:
-            message += " Fichiers d'automatisation non mis à jour : ajoute la permission « Workflows » au jeton GitHub du bot."
+            message += " Fichiers d'automatisation non mis à jour : il faut un jeton GitHub avec la permission « Workflows » (docs/MISE-A-JOUR.md)."
         prevenir_bot(adresse, {"type": "maj", "ok": True, "version": version, "message": message, "workflows": not workflows_ignores})
         journal(message)
     return 0

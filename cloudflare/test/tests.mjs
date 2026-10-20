@@ -1321,5 +1321,19 @@ await scenario("Pays : réglage et reprise des anciennes installations", async (
   verifier(config.pays === "CH" && config.planning.feries_region === "CH-VD", "ancienne version suisse : rien ne change", config.pays);
 });
 
+await scenario("Déploiement : secrets transmis au bot", async () => {
+  const { aTransmettre, nomsExistants } = await import("../secrets.mjs");
+  verifier(JSON.stringify(nomsExistants('▲ avertissement\n[{"name":"TELEGRAM_BOT_TOKEN","type":"secret_text"},{"name":"GITHUB_TOKEN","type":"secret_text"}]'))
+    === '["TELEGRAM_BOT_TOKEN","GITHUB_TOKEN"]', "liste des secrets lue malgré les avertissements");
+  verifier(nomsExistants("erreur").length === 0, "liste illisible : vide");
+  const env = { TELEGRAM_BOT_TOKEN: "1:A", TELEGRAM_CHAT_ID: " 42 ", GEMINI_API_KEY: "", BOT_GITHUB_TOKEN: "github_pat_x" };
+  const envoi = aTransmettre(["TELEGRAM_BOT_TOKEN", "GITHUB_TOKEN"], env);
+  verifier(!("TELEGRAM_BOT_TOKEN" in envoi) && envoi.TELEGRAM_CHAT_ID === "42" && !("GEMINI_API_KEY" in envoi),
+    "seuls les secrets absents du bot sont transmis", envoi);
+  verifier(envoi.GITHUB_TOKEN === "github_pat_x", "BOT_GITHUB_TOKEN devient le jeton GitHub du bot");
+  verifier(Object.keys(aTransmettre(["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "GITHUB_TOKEN"], { TELEGRAM_BOT_TOKEN: "1:A", TELEGRAM_CHAT_ID: "42" })).length === 0,
+    "rien à transmettre quand le bot a déjà tout");
+});
+
 console.log(`\n${reussis} vérifications réussies, ${rates} ratées.`);
 if (rates) { console.log(echecs.map((x) => ` - ${x}`).join("\n")); process.exit(1); }

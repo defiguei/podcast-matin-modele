@@ -992,6 +992,83 @@ with tempfile.TemporaryDirectory() as dossier:
     changes2, _ = mise_a_jour.copier(modele, copie, "alice/podcast-matin", "podcast.alice.workers.dev", sans_workflows=True)
     verifier(changes2 == [] and not (copie / ".github" / "workflows" / "a.yml").exists(), "sans la permission Workflows : automatisation laissée de côté")
 
+# Mise à jour de bout en bout, sur des dépôts locaux (clone, envoi, repli sans « Workflows »).
+import subprocess as sp
+def initialiser(chemin: Path, fichiers: dict[str, str]) -> None:
+    for nom, texte in fichiers.items():
+        (chemin / nom).parent.mkdir(parents=True, exist_ok=True)
+        (chemin / nom).write_text(texte, encoding="utf-8")
+    for commande in (["init", "-q", "-b", "main"], ["add", "-A"], ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "départ"]):
+        sp.run(["git", *commande], cwd=chemin, check=True, capture_output=True)
+
+def essai_maj(jeton_github: str) -> tuple[Path, list[dict], list[str]]:
+    dossier = Path(tempfile.mkdtemp())
+    modele, origine, travail = dossier / "modele", dossier / "origine.git", dossier / "travail"
+    modele.mkdir()
+    initialiser(modele, {
+        "version.json": json.dumps({"version": "2099-01-01.1", "supprimes": ["vieux.py", ".github/workflows/retours.yml"]}),
+        "podcast.py": "DEPOT = 'TON-COMPTE/podcast-matin'\n",
+        "cloudflare/wrangler.toml": 'ADRESSE = "https://podcast.TON-SOUS-DOMAINE.workers.dev"\n',
+        "reglages.toml": "fuseau_horaire = \"Europe/Zurich\"\n",
+        ".github/workflows/nouveau.yml": "name: Nouveau\n",
+    })
+    sp.run(["git", "init", "-q", "--bare", "-b", "main", str(origine)], check=True)
+    travail.mkdir()
+    initialiser(travail, {
+        "podcast.py": "ancien = True\n", "vieux.py": "x = 1\n", "memoire.json": '{"a": 1}\n',
+        "reglages.toml": "fuseau_horaire = \"Europe/Paris\"\n",
+        "cloudflare/wrangler.toml": 'ADRESSE = "https://podcast.alice.workers.dev"\n',
+        ".github/workflows/retours.yml": "name: Messages\n",
+    })
+    sp.run(["git", "remote", "add", "origin", str(origine)], cwd=travail, check=True)
+    sp.run(["git", "push", "-q", "origin", "main"], cwd=travail, check=True, capture_output=True)
+    evenements, relances = [], []
+    git_real = mise_a_jour.git
+    def git_simule(*args, cwd=None, verifier=True):
+        args = list(args)
+        if "clone" in args:
+            args[args.index("https://github.com/auteur/modele.git")] = str(modele)
+        if "push" in args and any("x-access-token" in a for a in args):
+            if "x-access-token:bon@" not in " ".join(args):   # jeton sans « Workflows » : refusé
+                return sp.CompletedProcess(args, 1, "", "refusing to allow ... workflow")
+            args = [a if "x-access-token" not in a else str(origine) for a in args]
+        return git_real(*args, cwd=cwd, verifier=verifier)
+    anciens = (mise_a_jour.RACINE, mise_a_jour.git, mise_a_jour.prevenir_bot, mise_a_jour.relancer_deploiement)
+    mise_a_jour.RACINE, mise_a_jour.git = travail, git_simule
+    mise_a_jour.prevenir_bot = lambda adresse, ev: evenements.append(ev)
+    mise_a_jour.relancer_deploiement = lambda: relances.append("deployer-bot")
+    ancien_env = dict(os.environ)
+    os.environ.update({"MODELE": "auteur/modele", "GITHUB_REPOSITORY": "alice/podcast-matin", "ADRESSE": "",
+                       "VERSION": "", "TELEGRAM_BOT_TOKEN": "", "BOT_GITHUB_TOKEN": jeton_github})
+    try:
+        code = mise_a_jour.main()
+    finally:
+        mise_a_jour.RACINE, mise_a_jour.git, mise_a_jour.prevenir_bot, mise_a_jour.relancer_deploiement = anciens
+        os.environ.clear(); os.environ.update(ancien_env)
+    verifier(code == 0, f"mise à jour (jeton {jeton_github or 'absent'}) : code 0")
+    resultat = dossier / "resultat"
+    sp.run(["git", "clone", "-q", str(origine), str(resultat)], check=True, capture_output=True)
+    return resultat, evenements, relances
+
+resultat, evenements, relances = essai_maj("bon")
+verifier((resultat / ".github/workflows/nouveau.yml").exists() and not (resultat / ".github/workflows/retours.yml").exists(),
+         "mise à jour avec « Workflows » : automatisation remplacée")
+verifier("alice/podcast-matin" in (resultat / "podcast.py").read_text() and "podcast.alice.workers.dev" in (resultat / "cloudflare/wrangler.toml").read_text(),
+         "mise à jour : adresse du bot reprise de l'ancien wrangler.toml")
+verifier('"a": 1' in (resultat / "memoire.json").read_text() and "Paris" in (resultat / "reglages.toml").read_text() and not (resultat / "vieux.py").exists(),
+         "mise à jour : fichiers personnels gardés, anciens fichiers retirés")
+verifier(evenements and evenements[-1].get("ok") and evenements[-1].get("workflows") and evenements[-1].get("version") == "2099-01-01.1" and not relances,
+         f"mise à jour : bot prévenu, déploiement lancé par l'envoi lui-même {evenements}")
+resultat, evenements, relances = essai_maj("")
+verifier(not (resultat / ".github/workflows/nouveau.yml").exists() and (resultat / ".github/workflows/retours.yml").exists()
+         and "alice/podcast-matin" in (resultat / "podcast.py").read_text(),
+         "mise à jour sans jeton « Workflows » : code à jour, automatisation laissée")
+verifier(relances == ["deployer-bot"] and evenements and evenements[-1].get("ok") and evenements[-1].get("workflows") is False
+         and "Workflows" in evenements[-1].get("message", ""), f"sans jeton : bot redéployé et prévenu de la permission manquante {evenements}")
+resultat, evenements, relances = essai_maj("mauvais")
+verifier(not (resultat / ".github/workflows/nouveau.yml").exists() and relances == ["deployer-bot"] and evenements[-1].get("workflows") is False,
+         "jeton refusé : repli sans les fichiers d'automatisation")
+
 print("\nRÉSULTAT :", "tout est vert ✅" if not echecs else f"{len(echecs)} échec(s) ❌")
 for e in echecs:
     print("  -", e)

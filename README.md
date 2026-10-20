@@ -1,181 +1,109 @@
 # 🎙️ Podcast du matin
 
-Chaque matin, un épisode audio personnel arrive sur ton téléphone, dans Telegram. Deux animateurs parlent de ton agenda, des actualités qui t'intéressent, et de tout ce que tu leur as demandé : le saint du jour, des idées de sortie pour samedi, une rando par beau temps…
+Chaque matin, un épisode audio rien que pour toi : deux animateurs te parlent de ton agenda, des nouvelles qui t'intéressent et de tout ce que tu leur as demandé (la fête du jour, la météo, ton train, une idée de sortie pour samedi…).
 
-- **Tout se règle dans Telegram**, en écrivant, en dictant ou avec des boutons : l'heure de chaque jour, la durée, les voix, l'ordre des rubriques, les sources, tes rubriques.
-- **Des rubriques**, comme « le vendredi, propose une sortie entre amis à Lausanne, 30 CHF max » ou « la veille d'un match, rappelle-moi le sac de foot ».
-- **Un assistant de recherche** te pose les bonnes questions (quoi, avec qui, où, quand, transport, budget), puis te répond dans le podcast, par écrit avec photos et carte, ou en mini-podcast.
+- **Tout se règle dans une application** : l'heure de chaque jour, la durée, les voix, les rubriques, les clés et tes agendas. Elle s'ouvre dans Telegram, ou dans le navigateur de n'importe quel appareil.
+- **Tu écoutes où tu veux** : dans l'application, dans Telegram, ou dans ton appli de podcasts (Apple Podcasts, AntennaPod…) grâce à un flux privé.
+- **Gratuit, rien chez toi** : ton ordinateur n'a pas besoin d'être allumé (offres gratuites de Cloudflare, GitHub, Gemini, Tavily et Telegram).
+- **Suisse, France ou Belgique** : le pays règle l'heure, les jours fériés, la devise et les médias.
+- **Mises à jour en un bouton**, sans toucher à tes réglages.
 
-Ton ordinateur et ton NAS n'ont pas besoin d'être allumés, et aucune IA ne tourne chez toi. **Coût : 0 CHF** (offres gratuites de Cloudflare, GitHub, Gemini, Tavily et Telegram).
-
----
-
-## Ton bot 💬
-
-En bas de la conversation, quatre boutons restent toujours là : **🎙️ Podcast**, **⚙️ Réglages**, **📌 Rubriques** et **🔎 Recherche**. Le bouton **Application**, à gauche du champ de saisie, ouvre l'application du podcast (voir plus bas). Les commandes s'affichent en tapant « / » (`/menu`, `/podcast`, `/rubriques`, `/recherche`, `/planning`, `/reglages`, `/annuler`, `/aide`). Un **tableau de bord** épinglé en haut de la conversation résume tout, et se met à jour tout seul.
-
-Tu peux aussi simplement écrire, ou envoyer un vocal :
-
-| Tu dis | Effet |
-|---|---|
-| « 6 h 45 en semaine, 9 h le samedi, rien le dimanche » | Horaire jour par jour |
-| « Demain exceptionnellement à 5 h 30 », « pas d'épisode du 20 au 27 » | Exception, pause |
-| « Des épisodes de 4 minutes, un peu plus lentement » | Durée, vitesse |
-| « Plus d'humour », « vouvoie-moi », « appelle-moi Daniel » | Ton, tutoiement, prénom |
-| « Mets les actus avant l'agenda », « supprime la clôture » | Déroulé de l'épisode |
-| « Le sport ne m'intéresse pas », « ajoute 24 heures comme source » | Thèmes, sources d'actus |
-| « Chaque jour, dis-moi le saint du jour entre l'agenda et les news » | Nouvelle rubrique (voir plus bas) |
-| « Creuse le deuxième sujet demain » | Approfondissement au prochain épisode |
-| « Refais le podcast » | Nouvel épisode tout de suite (6 par jour au plus) |
-
-Chaque changement est confirmé avec un bouton **↩️ Annuler**.
-
-**Sous chaque épisode** : 👍 👎, *Plus court*, *Plus long*, *Moins vite*, *Plus vite*, *🔎 Sujet 1, 2, 3* (à creuser demain), *📝 Texte* (la transcription), *🔁 Refaire*. Après un 👎, le bot demande ce qui n'allait pas et s'adapte. Une réaction 👍 ou 👎 posée sur l'épisode compte aussi. La légende donne les **chapitres** (0:00 Ouverture · 0:25 Agenda…), et la pochette change chaque jour.
-
-**⚙️ Réglages** ouvre des menus qui se modifient sur place : 📅 Planning (heure par jour, exceptions, pauses, jours fériés vaudois, 🔁 rattrapage avec délai réglable de 30 min à 2 h ou désactivé, préparation en avance), 🎙️ Format, 🗣️ Voix (30 voix, extraits audio pour choisir), 🧩 Déroulé (la liste de tes rubriques par leur nom : touche-en une pour régler ses paramètres, ⬆ ⬇ ⏸), 🗓️ Agenda (dont 📚 la liste de tes agendas, à cocher), 📰 Actus (ville, thèmes, sources RSS, âge des nouvelles, citer les sources à l'oral ou par écrit), ✍️ Consignes (une phrase transmise telle quelle à l'IA pour tous les épisodes ; modifiable).
-
-**Partage ta position** (📎 → Position) : elle devient ta ville, ou le point de départ d'une recherche.
+> **Installer :** [docs/INSTALLATION.md](docs/INSTALLATION.md) · **Mettre à jour une ancienne installation :** [docs/MISE-A-JOUR.md](docs/MISE-A-JOUR.md)
 
 ---
 
 ## L'application 📱
 
-Tout le podcast se règle dans une application qui s'ouvre **dans Telegram**, sur Android comme sur iPhone, sans rien installer : touche **Application** à gauche du champ de saisie, ou **🎧 Ouvrir dans l'application** sous l'épisode du matin. Dans **Réglages › Application**, tu peux aussi ajouter une icône sur l'écran d'accueil de ton téléphone. L'application est servie gratuitement par le même Cloudflare que le bot, et seul ton compte Telegram peut l'ouvrir (Telegram signe chaque ouverture, le bot vérifie la signature).
+Dans Telegram, touche **Application** à gauche du champ de saisie (ou **🎧 Ouvrir dans l'application** sous l'épisode). Au premier lancement, cinq petites étapes te guident : qui tu es, l'heure, ton agenda, la clé Gemini.
 
-- **Accueil** : prochain épisode (*Générer maintenant*, *Sauter*), lecteur de l'épisode avec chapitres cliquables, 👍 👎, idées trouvées par tes recherches, les 7 prochains jours, et **« Demande-moi quelque chose »** pour tout régler en une phrase, écrite ou dite au micro.
-- **Épisodes** : une miniature par épisode, faite de photos libres de Wikipédia qui illustrent les sujets du jour ; les dates dans l'ordre chronologique ; un calendrier de tous les épisodes (deux mois d'historique). Pour chacun : lecteur, chapitres, sources rangées par section, avis, *Plus court*, *Plus long*, *Moins vite*, *Plus vite*, sujets à creuser, texte complet.
-- **Rubriques** : actives, à venir, en pause ; une fiche complète par rubrique (y compris budget, transport, à inclure ou exclure) ; **recherches ponctuelles** de sorties ou d'activités, lancées par écrit ou en mini-podcast.
-- **Déroulé** : glisser-déposer et pause de chaque passage.
-- **Planning** : heure et activation de chaque jour, jours fériés, rattrapage, exceptions, pauses, calendrier.
-- **Réglages** : format, voix (avec extraits à écouter), actualités, sources, agenda et agendas lus, consignes, sujets à creuser.
+| Onglet | Ce qu'on y trouve |
+|---|---|
+| **Accueil** | Le prochain épisode (*Générer maintenant*, *Sauter*), le lecteur avec ses chapitres, 👍 👎, les idées trouvées, et **« Demande-moi quelque chose »** pour tout régler en une phrase, écrite ou dite. |
+| **Épisode** | **Ton épisode, dans l'ordre** : chaque passage (agenda, actualités, actu locale, déplacements, à creuser, et tes rubriques) avec sa fiche. Glisser pour réordonner, pause, et le bouton **+** pour ajouter une rubrique. |
+| **Idées** | Les recherches ponctuelles : « une sortie avec les enfants samedi, en train, moins de 20 € » ; les résultats arrivent par écrit (photos, prix, carte) ou en mini-podcast. |
+| **Planning** | Heure et activation de chaque jour, jours fériés, rattrapage, exceptions, pauses, calendrier. |
+| **Réglages** | **Moi** (prénom, ville, pays) · **Voix** · **Durée et style** (ton, consignes) · **Connexions** (clés et agendas) · **Application** (flux privé, autres appareils, version). |
 
-Chaque changement s'annule depuis l'accueil (*Annuler*) ou avec `/annuler`. La conversation reste calme : l'épisode du matin y arrive, avec un bouton vers l'application. Tu peux toujours y écrire si tu préfères.
+Chaque changement s'annule depuis l'accueil (*Annuler*). Tu peux toujours écrire ou dicter au bot dans Telegram si tu préfères : il comprend « 6 h 45 en semaine, rien le dimanche », « plus d'humour », « refais le podcast »…
+
+### Les rubriques
+
+Une rubrique est un passage de ton épisode. **Toutes se règlent de la même façon**, par leur fiche, qu'elles soient fournies (Agenda, Actualités, Actu locale, Mes déplacements, À creuser) ou ajoutées par toi. Le catalogue du bouton **+** propose :
+
+- **Fête du prénom**, **Journée du jour**, **Météo** ;
+- **Rappel selon l'agenda** : « la veille d'un match, rappelle-moi de préparer mon sac » ;
+- **Mon train** : retard ou suppression de ton train habituel (CFF, SNCF, SNCB) ;
+- **Actu d'un pays ou d'un thème** : « l'actualité du Portugal », « les nouvelles du vélo » ;
+- **Idée de sortie** : quoi, avec qui, où, quand, transport, budget ; présentée dans tes épisodes ;
+- ou **une rubrique libre**, décrite en une phrase.
+
+L'application choisit les sources utiles à chaque rubrique (tu peux les changer dans la fiche), et règle sa place et sa longueur. Les **consignes de style** (Réglages › Durée et style) servent au ton général : « plus d'humour le vendredi ». Une consigne qui parle d'un rendez-vous est repérée, et l'application propose d'en faire un rappel selon l'agenda, plus fiable.
+
+### Les connexions
+
+**Réglages › Connexions** reçoit tes clés : chacune est testée avant d'être enregistrée, gardée par ton bot et jamais réaffichée en entier.
+
+| Clé | À quoi elle sert | Coût |
+|---|---|---|
+| **Gemini** (obligatoire) | Écrit et dit l'épisode | Gratuit ([aistudio.google.com/apikey](https://aistudio.google.com/apikey)) |
+| **Tavily** | Cherche sur internet pour les idées de sortie | Gratuit, 1 000 recherches par mois ([app.tavily.com](https://app.tavily.com)) |
+| **SNCF** | Seulement pour suivre un train en France | Gratuit ([numerique.sncf.com/startup/api](https://numerique.sncf.com/startup/api/)) |
+
+Tes **agendas** (Google, Outlook…) s'ajoutent au même endroit, ou depuis la fiche Agenda, avec leur adresse secrète iCal. Une clé déjà rangée en secret GitHub continue de marcher : celle de l'application passe avant.
+
+### Hors de Telegram
+
+- **Flux privé** (Réglages › Application) : une adresse secrète à coller dans ton appli de podcasts. Les épisodes s'y téléchargent la nuit, avec chapitres et pochette.
+- **Autres appareils** : ouvre l'adresse de ton bot (`https://podcast.TON-SOUS-DOMAINE.workers.dev/app`) dans n'importe quel navigateur et entre le code affiché par *Afficher un code*. L'application peut ensuite s'ajouter à l'écran d'accueil.
+
+Telegram reste nécessaire pour l'installation et pour recevoir les épisodes : c'est lui qui les stocke.
 
 ---
 
-## Les rubriques 📌
-
-Une rubrique est un passage de ton épisode, avec ses propres paramètres. Elles sont numérotées R1, R2… dans l'ordre : quand tu en supprimes une, les suivantes remontent. Les rubriques intégrées (🏠 Actu locale, 🧳 Déplacements et sorties, 🔎 À creuser) se règlent aussi depuis le Déroulé. Une rubrique a :
-
-- une **consigne** (« dis-moi le saint du jour ») ;
-- une **période** : toujours, certains jours, entre deux dates, une seule fois, ou « ponctuelle » (une recherche hors podcast) ;
-- parfois une **condition d'agenda** : « la veille d'un match », « 3 jours avant un voyage » ;
-- une **place** dans le déroulé (après quelle rubrique) et une longueur (une phrase, courte, développée) ;
-- pour les sorties, une **fiche de recherche** : quoi, avec qui (âges), où (« autour de Morges », « entre Yverdon et Neuchâtel »), quand, transport (voiture, train, vélo, à pied), **budget maximum** (par personne ou pour le groupe, transport compris ou non), à inclure ou exclure ;
-- ses **sources** (voir plus bas) et une importance (⭐ prioritaire).
-
-Exemples :
-
-- « Chaque jour, le saint du jour après l'agenda » → source : calendrier des saints, une phrase.
-- « Samedi, une sortie avec les enfants (6 et 9 ans) autour d'Yverdon, en train, moins de 20 CHF par personne » → recherche web, météo du samedi, trains CFF, lieux à proximité ; présentée dans les épisodes des 3 jours avant.
-- « Une rando dans le Jura vaudois par beau temps » → météo, sommets, points de vue, Wikivoyage.
-- « L'actu culturelle de Lausanne, sans tenir compte de la météo » → recherche web, actualités.
-- « La veille d'un match de foot, rappelle-moi de préparer mon sac » → l'agenda est vérifié chaque matin.
-
-Dans **📌 Rubriques**, chaque rubrique a sa fiche : ✏️ titre et consigne, 📅 période, ⏰ condition d'agenda, 🧩 place et longueur, 🔎 recherche (quoi, avec qui, âges, où, rayon, quand, 🚗 transport, 💰 budget, à inclure/exclure, résultat attendu, recherches web, 📡 sources), ⭐ importance, ⏸ pause, 🗑 supprimer, et **📝 Résultats écrits** ou **🎧 Mini-podcast** tout de suite. Coche plusieurs rubriques (☐) pour les traiter ensemble.
-
-### L'assistant de recherche 🔎
-
-« Je veux organiser un truc samedi avec des amis » : l'assistant complète la fiche avec toi, une question à la fois (avec des boutons, ou en écrivant), puis te montre un résumé. Tu choisis ensuite :
-
-- **🔍 Approfondir** : quelques questions de plus (durée, niveau de marche, intérieur…) ;
-- **✅ Enregistrer** : les idées viendront dans tes podcasts des jours précédents ;
-- **📝 Résultats écrits** : 3 à 5 idées, chacune avec photo, prix, horaires, accès, lien, lieu sur la carte et bouton 🗺️ Itinéraire, puis un **sondage** « Laquelle te tente ? » et un bouton **📋 Copier pour mes amis** ;
-- **🎧 Mini-podcast** : les mêmes idées racontées par les deux voix.
-
-Après un vote au sondage, tu peux demander plus de détails, en parler au prochain épisode, ou garder l'idée dans la rubrique.
-
-### Les sources
+## Les sources
 
 | Source | Ce qu'elle apporte | Clé |
 |---|---|---|
-| Recherche web (Tavily) | Événements, prix, horaires, programmes | Gratuite (1 000 recherches par mois) : secret `TAVILY_API_KEY` |
+| Recherche web (Tavily) | Événements, prix, horaires, programmes | Tavily |
 | Open-Meteo | Météo jusqu'à 15 jours | Aucune |
-| transport.opendata.ch | Horaires des trains suisses (pas les prix) | Aucune |
-| OpenStreetMap | Musées, grottes, aires de jeux, piscines, points de vue… autour d'un lieu | Aucune |
+| CFF, SNCB, SNCF | Trains en temps réel | SNCF seulement |
+| OpenStreetMap | Musées, piscines, aires de jeux, points de vue… autour d'un lieu | Aucune |
 | Wikivoyage, Wikipédia | Présentation d'un lieu, photos | Aucune |
-| Calendrier des saints | Saints et fêtes du jour (data.gouv.fr) | Aucune |
-| Fêtes du jour | Fêtes nationales et journées internationales (Wikipédia) | Aucune |
-| Jours fériés vaudois | Calculés | Aucune |
-| Actualités | Google Actualités et tes flux RSS | Aucune |
+| Calendrier des saints, fêtes du jour | Prénoms fêtés, journées internationales | Aucune |
+| Jours fériés | Calculés (Vaud, France) ou téléchargés (autres cantons, Belgique) | Aucune |
+| Actualités | Google Actualités et les médias de ton pays, plus tes flux RSS | Aucune |
 
 Les faits précis (prix, horaires, dates) viennent des sources. Quand une information manque, les animateurs le disent plutôt que de l'inventer.
 
 ---
 
-> **Partager ou installer pour quelqu'un d'autre ?** Voir [docs/PARTAGER.md](docs/PARTAGER.md) (préparer une copie propre) et [docs/INSTALLATION.md](docs/INSTALLATION.md) (comptes à créer et clés à récupérer).
-
 ## Comment ça marche
 
-- **Le bot** (dossier `cloudflare/`) tourne gratuitement chez Cloudflare. Il répond tout de suite, garde tes réglages et tes rubriques, et **lance chaque épisode à l'heure prévue**. Il sauvegarde tout chaque nuit dans `preferences.json`.
-- **GitHub fabrique les épisodes** (`podcast.py`) : il lit tes réglages auprès du bot, ton agenda, les actus et les sources de tes rubriques, fait écrire le dialogue par Gemini, le met en voix et te l'envoie.
-- **Gemini** comprend tes messages (modèles « Lite », quotas larges) et écrit les épisodes (modèles « Flash », avec repli sur les « Lite » si besoin).
-- **Filet de sécurité** : si l'épisode n'est pas parti une heure après l'heure prévue, le bot relance un essai ; si le bot lui-même était en panne, GitHub prépare l'épisode à partir de la sauvegarde.
-
----
-
-## Passer à la version 3 (une seule fois, ≈ 10 minutes)
-
-Le bot actuel continue de marcher pendant ce temps : rien ne casse si tu le fais plus tard.
-
-1. **Jeton Cloudflare.** Sur dash.cloudflare.com : ta photo → *Profile* → *API Tokens* → *Create Token* → modèle **Edit Cloudflare Workers** → *Use template*. Dans *Account Resources*, choisis ton compte ; dans *Zone Resources*, *All zones*. → *Continue to summary* → *Create Token*. Copie le jeton (il n'est affiché qu'une fois).
-2. **Identifiant de compte Cloudflare.** Page d'accueil du tableau de bord → *Workers & Pages* : l'**Account ID** est affiché à droite. Copie-le.
-3. **Secrets GitHub** : dans ton dépôt, *Settings* → *Secrets and variables* → *Actions* → *New repository secret*. Crée :
-   - `CLOUDFLARE_API_TOKEN` : le jeton de l'étape 1 ;
-   - `CLOUDFLARE_ACCOUNT_ID` : l'identifiant de l'étape 2 ;
-   - `TAVILY_API_KEY` : ta clé Tavily (app.tavily.com).
-4. **Déploiement** : onglet *Actions* → *Déployer le bot* → *Run workflow*. Il teste le bot, le met en ligne, puis l'active. Ton bot t'envoie alors « 🎉 Nouvelle version », avec le clavier et le tableau de bord.
-
-Les secrets du bot lui-même (jetons Telegram, GitHub, clé Gemini) restent dans Cloudflare : le déploiement ne les touche pas. Ensuite, chaque changement du dossier `cloudflare/` est déployé tout seul.
-
----
-
-## Mise en place depuis zéro
-
-Il te faut un compte GitHub, un compte Cloudflare, ta clé API Gemini ([aistudio.google.com/apikey](https://aistudio.google.com/apikey)), une clé Tavily (facultative) et l'app Telegram.
-
-1. **Bot Telegram** : dans Telegram, **@BotFather** → `/newbot` → un nom, puis un identifiant qui finit par `bot`. Garde le **jeton**. Ouvre ton bot et appuie sur **Démarrer**.
-2. **Lien secret de ton agenda** (il ne va que dans les secrets) :
-   - **Google Agenda** (navigateur, version ordinateur) : ⚙️ Paramètres → ton agenda → *Intégrer l'agenda* → **adresse secrète au format iCal**.
-   - **Outlook / Microsoft 365** : ⚙️ Paramètres → Calendrier → Calendriers partagés → *Publier un calendrier* → « Peut afficher tous les détails » → **lien ICS**.
-   - Plusieurs agendas : mets plusieurs liens, séparés par un espace.
-3. **Dépôt GitHub** privé `podcast-matin` avec les fichiers du projet.
-4. **Secrets GitHub** (*Settings* → *Secrets and variables* → *Actions*) : `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`, `CALENDAR_ICS_URL`, `TAVILY_API_KEY`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`. Le secret `TELEGRAM_CHAT_ID` vient à l'étape 6.
-5. **Worker Cloudflare** : *Workers & Pages* → *Create* → nom **podcast**. Dans ses *Settings* → *Variables and Secrets*, ajoute en type *Secret* : `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `GEMINI_API_KEY`, et `GITHUB_TOKEN` (*Fine-grained token* limité à `podcast-matin`, permissions *Actions* et *Contents* en *Read and write*).
-6. **Premier essai** : onglet *Actions* → *Podcast du matin* → *Run workflow*. Le bot t'envoie ton identifiant de conversation : ajoute-le comme `TELEGRAM_CHAT_ID` (dans GitHub et dans Cloudflare).
-7. **Déploiement du bot** : *Actions* → *Déployer le bot* → *Run workflow*.
-
-Si ton Worker n'a pas l'adresse `podcast.TON-SOUS-DOMAINE.workers.dev`, mets la bonne dans `cloudflare/wrangler.toml` (`ADRESSE`) et dans une variable GitHub `BOT_URL`.
-
----
+- **Le bot** (dossier `cloudflare/`) tourne gratuitement chez Cloudflare. Il sert l'application, garde tes réglages, tes rubriques et tes clés, et **lance chaque épisode à l'heure prévue**. Il sauvegarde tout chaque nuit dans `preferences.json`.
+- **GitHub fabrique les épisodes** (`podcast.py`) : il demande tes réglages au bot, lit ton agenda, les actus et les sources de tes rubriques, fait écrire le dialogue par Gemini, le met en voix et l'envoie.
+- **Filet de sécurité** : si l'épisode n'est pas parti à l'heure, le bot relance un essai ; si le bot lui-même était en panne, GitHub prépare l'épisode à partir de la sauvegarde.
+- **Deux dépôts** : le **modèle** (`podcast-matin-modele`, public) porte le code commun ; chaque personne a son dépôt privé `podcast-matin`, qui se met à jour depuis le modèle avec le bouton **Mettre à jour** (Réglages › Application). `memoire.json`, `preferences.json` et `reglages.toml` ne sont jamais touchés.
 
 ## Bon à savoir
 
-- **Gratuité.**
-  - GitHub : environ 4 minutes par épisode, plus quelques secondes pour chaque filet de sécurité ; largement dans les 2 000 minutes offertes par mois.
-  - Gemini : 1 à 3 requêtes « Flash » et 1 à 3 requêtes de voix par épisode. Chaque modèle a son propre quota (souvent 10 à 20 par jour) : quand l'un est épuisé, le suivant prend le relais. La liste des modèles se met à jour toute seule au début de chaque épisode, d'après ceux que Google ouvre à ta clé. Limite : 6 épisodes ou mini-podcasts à la demande par jour, pour garder celui du matin. Les quotas repartent chaque jour à 9 h (heure suisse).
-  - Tavily : 1 crédit par recherche, 1 000 par mois ; le bot limite les recherches à 15 par jour.
-  - Cloudflare : le bot reste très loin des limites gratuites.
-- **Confidentialité.**
-  - Tes clés et ton lien d'agenda ne sont que dans les secrets GitHub et Cloudflare : jamais dans le dépôt, les journaux ni les messages à Gemini.
-  - Pour écrire l'épisode, Google reçoit le titre, l'heure et le lieu de tes rendez-vous (et les notes, sauf si tu les désactives dans 🗓️ Agenda) ; Tavily reçoit les recherches de tes rubriques. Depuis la Suisse, Google n'utilise pas ces contenus pour améliorer ses produits, et le script lui demande de ne pas conserver les requêtes.
-  - Le bot ignore toute autre personne que toi.
-- **Conditions d'utilisation.** Google destine officiellement l'API aux développeurs ; pour un usage personnel comme celui-ci, c'est une zone grise.
-- **Idées de sortie.** Prix et horaires viennent des sites trouvés ; quand ils manquent, c'est écrit « à vérifier ». Vérifie avant d'y aller.
+- **Gratuité.** GitHub : environ 4 minutes par épisode, loin des 2 000 minutes offertes par mois. Gemini : quelques requêtes par épisode, avec un modèle de secours quand un quota du jour est épuisé (6 épisodes à la demande par jour au plus, pour garder celui du matin). Tavily : 15 recherches par jour au plus.
+- **Confidentialité.** Tes clés et tes agendas restent chez ton bot (ou dans les secrets GitHub) : jamais dans le dépôt, les journaux ni les messages à Gemini. Pour écrire l'épisode, Google reçoit le titre, l'heure et le lieu de tes rendez-vous ; Tavily reçoit les recherches de tes rubriques. Le bot ignore toute autre personne que toi, et l'application ne s'ouvre qu'avec ton compte Telegram ou un appareil que tu as autorisé.
+- **Conditions d'utilisation.** Google destine officiellement l'API Gemini aux développeurs ; pour un usage personnel comme celui-ci, c'est une zone grise.
+- **Idées de sortie.** Prix et horaires viennent des sites trouvés ; quand ils manquent, c'est écrit « à vérifier ».
 
 ## Dépannage
 
 | Message ou souci | Que faire |
 |---|---|
-| ⏳ « raté pour l'instant, nouvel essai à … » | Rien : un rattrapage est prévu. Souvent une surcharge passagère de Gemini. |
-| ⚠️ « Aucun modèle Gemini n'a répondu » | Surcharge ou quota du jour épuisé : vérifie [aistudio.google.com/rate-limit](https://aistudio.google.com/rate-limit). |
-| « La clé Gemini est refusée » | Recopie le secret `GEMINI_API_KEY` (sans espace). |
-| « agenda 1 inaccessible » | Le lien iCal a changé : recopie-le dans `CALENDAR_ICS_URL`. |
-| « Recherche web : non configurée » | Ajoute le secret `TAVILY_API_KEY`. |
+| ⏳ « raté pour l'instant, nouvel essai à … » | Rien : un rattrapage est prévu (souvent une surcharge passagère de Gemini). |
+| « La clé Gemini manque » ou « est refusée » | Réglages › Connexions : colle la clé et touche *Tester*. |
+| « agenda inaccessible » | L'adresse iCal a changé : retire l'agenda et ajoute la nouvelle adresse. |
+| « Recherche web : non configurée » | Ajoute la clé Tavily dans Réglages › Connexions. |
 | Le bot ne répond plus | Ouvre `https://podcast.TON-SOUS-DOMAINE.workers.dev/installer` dans ton navigateur. |
-| *Déployer le bot* en orange | Il manque `CLOUDFLARE_API_TOKEN` ou `CLOUDFLARE_ACCOUNT_ID`. |
+| *Déployer le bot* en orange | Il manque `CLOUDFLARE_API_TOKEN` ou `CLOUDFLARE_ACCOUNT_ID` (secrets GitHub). |
+| La mise à jour n'a pas touché aux fichiers d'automatisation | Le jeton GitHub n'a pas la permission *Workflows* : voir [docs/MISE-A-JOUR.md](docs/MISE-A-JOUR.md). |
 
-Le détail d'une exécution : onglet *Actions* → l'exécution → étape *Préparer et envoyer le podcast*.
+Le détail d'une exécution : onglet *Actions* de ton dépôt → l'exécution → ses étapes.
 
 ---
 
@@ -183,16 +111,17 @@ Le détail d'une exécution : onglet *Actions* → l'exécution → étape *Pré
 
 | Fichier | Rôle |
 |---|---|
-| `cloudflare/src/` | Le bot : état et planning (`etat.js`), menus (`ui.js`), compréhension des messages (`comprendre.js`), assistant (`assistant.js`), modèle de réglages et de rubriques (`config.js`) |
+| `cloudflare/src/` | Le bot : état et planning (`etat.js`), application (`app.html`, `miniapp.js`), clés et agendas (`connexions.js`), flux privé (`flux.js`), réglages et rubriques (`config.js`), compréhension des messages (`comprendre.js`) |
 | `podcast.py` | Fabrication de l'épisode : agenda, actus, script, voix, envoi |
-| `regles.py`, `sources.py` | Rubriques du jour et sources gratuites |
+| `regles.py`, `sources.py`, `trains.py` | Rubriques du jour, sources gratuites, trains |
+| `pays.py`, `donnees/pays.json` | Profils Suisse, France, Belgique |
 | `recherche.py` | Résultats de recherche, mini-podcast, extraits de voix |
 | `horaire.py` | Filet de sécurité des déclenchements GitHub |
-| `reglages.toml` | Partie technique : modèles Gemini, débit du MP3… |
-| `memoire.json` | Débit réel de la voix, dernier épisode |
-| `preferences.json` | Sauvegarde quotidienne des réglages du bot |
+| `mise_a_jour.py`, `version.json` | Mise à jour depuis le modèle |
+| `reglages.toml` | Partie technique : modèles Gemini, débit du MP3… (l'application a le dernier mot) |
+| `memoire.json`, `preferences.json` | Débit réel de la voix, dernier épisode ; sauvegarde quotidienne des réglages |
 
-**Tests** (aucun service réel n'est appelé) : `python tests/test_podcast.py`, `python tests/test_regles.py`, et dans `cloudflare/` : `npm ci && npm test` (bot de bout en bout, avec de faux Telegram, Gemini et GitHub). Ils tournent aussi sur GitHub à chaque changement.
+**Tests** (aucun service réel n'est appelé) : `python tests/test_podcast.py`, `python tests/test_regles.py`, et dans `cloudflare/` : `npm ci && npm test` (bot de bout en bout, avec de faux Telegram, Gemini et GitHub). Ils tournent aussi sur GitHub à chaque changement. `node test/apercu.mjs` (dans `cloudflare/`) ouvre un aperçu local de l'application.
 
 **Essai sans rien envoyer** :
 
@@ -202,3 +131,5 @@ GEMINI_API_KEY=ta_clé CALENDAR_ICS_URL=ton_lien python podcast.py --sans-envoi
 ```
 
 Le MP3, le texte, les chapitres et la pochette sont écrits dans `sortie/`.
+
+**Publier une nouvelle version du modèle** : changer `VERSION` et `NOUVEAUTES` dans `cloudflare/src/etat.js`, et la même version dans `version.json` (avec ses nouveautés, et les fichiers à supprimer chez chacun dans `supprimes`). Les bots la proposent dans les 24 heures.

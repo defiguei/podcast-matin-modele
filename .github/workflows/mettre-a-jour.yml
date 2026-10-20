@@ -1,24 +1,29 @@
 name: Mettre à jour
-run-name: Mise à jour depuis le modèle (${{ inputs.version }})
+run-name: Mise à jour depuis le modèle${{ inputs.version && format(' ({0})', inputs.version) || '' }}
 
-# Lancé par le bouton « Mettre à jour » de l'application : recopie le code du
-# modèle dans ce dépôt, sans toucher à memoire.json, preferences.json ni
-# reglages.toml (tes réglages vivent dans ton bot). Le bot redémarre ensuite.
+# Recopie le code du modèle dans ce dépôt, sans toucher à memoire.json,
+# preferences.json ni reglages.toml (tes réglages vivent dans ton bot).
+# Lancé par le bouton « Mettre à jour » de l'application, ou à la main
+# (onglet Actions → Mettre à jour → Run workflow, sans rien remplir) :
+# c'est ainsi que se fait la toute première mise à jour (docs/MISE-A-JOUR.md).
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version proposée par le modèle (remplie par le bot)"
-        required: true
+        description: "Version proposée (remplie par le bot ; vide = la dernière)"
+        required: false
+        default: ""
         type: string
       modele:
-        description: "Dépôt modèle, ex. auteur/podcast-matin-modele (rempli par le bot)"
-        required: true
+        description: "Dépôt modèle (vide = defiguei/podcast-matin-modele)"
+        required: false
+        default: ""
         type: string
       adresse:
-        description: "Adresse de ton bot (remplie par le bot)"
-        required: true
+        description: "Adresse de ton bot (vide = variable BOT_URL)"
+        required: false
+        default: ""
         type: string
 
 permissions:
@@ -29,6 +34,9 @@ concurrency:
   group: mettre-a-jour
   cancel-in-progress: false
 
+env:
+  MODELE: ${{ inputs.modele || 'defiguei/podcast-matin-modele' }}
+
 jobs:
   maj:
     runs-on: ubuntu-24.04
@@ -37,16 +45,20 @@ jobs:
       - name: Récupérer le code
         uses: actions/checkout@v6
 
-      - name: Installer requests
+      - name: Préparer l'outil de mise à jour
         run: |
+          # Toujours la version du modèle : un dépôt ancien n'a pas encore ce fichier.
+          curl -fsSL "https://raw.githubusercontent.com/${MODELE}/main/mise_a_jour.py" -o mise_a_jour.py \
+            || test -f mise_a_jour.py \
+            || { echo "::error::Le modèle ${MODELE} n'est pas accessible : il doit être public."; exit 1; }
           python3 -m venv /tmp/venv
           /tmp/venv/bin/pip install --quiet --disable-pip-version-check requests
 
       - name: Recopier le modèle
         env:
-          MODELE: ${{ inputs.modele }}
           VERSION: ${{ inputs.version }}
-          ADRESSE: ${{ inputs.adresse }}
+          ADRESSE: ${{ inputs.adresse || vars.BOT_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
           GH_TOKEN: ${{ github.token }}
         run: /tmp/venv/bin/python mise_a_jour.py

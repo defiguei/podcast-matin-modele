@@ -1,104 +1,85 @@
 # Installer son Podcast du matin
 
-Un podcast quotidien à deux voix, fabriqué chaque matin à partir de ton agenda et de l'actualité, livré sur Telegram, **gratuit** et sans ordinateur allumé. Compte 45 minutes à 1 heure la première fois.
+Un podcast quotidien à deux voix, fabriqué chaque matin à partir de ton agenda et de l'actualité, **gratuit** et sans ordinateur allumé. Compte 30 à 45 minutes la première fois. Les clés des services (Gemini, Tavily) et tes agendas se règlent ensuite dans l'application : ici, il ne s'agit que de mettre le bot en ligne.
 
-## Ce qu'il te faut : 6 comptes ou clés
+## Ce qu'il te faut
 
-| # | Quoi | À quoi ça sert | Coût | Obligatoire |
-|---|------|----------------|------|-------------|
-| 1 | Compte **GitHub** | Héberge le code et fabrique les épisodes | Gratuit | Oui |
-| 2 | Compte **Cloudflare** | Héberge le bot Telegram | Gratuit | Oui |
-| 3 | Clé **Gemini** (Google AI Studio) | Écrit le dialogue et fait les voix | Gratuit | Oui |
-| 4 | **Telegram** + un bot créé avec @BotFather | Reçoit les épisodes et se règle depuis ton téléphone | Gratuit | Oui |
-| 5 | **Lien secret de ton agenda** (Google ou Outlook) | Lit ton agenda | Gratuit | Oui |
-| 6 | Clé **Tavily** | Recherche sur internet pour les rubriques | Gratuit (1 000 recherches/mois) | Non, mais conseillé |
+| Quoi | À quoi ça sert | Coût |
+|------|----------------|------|
+| Un compte **GitHub** | Héberge le code et fabrique les épisodes | Gratuit |
+| Un compte **Cloudflare** | Héberge le bot et l'application | Gratuit, sans carte bancaire |
+| **Telegram** et un bot créé avec @BotFather | Ouvre l'application et reçoit les épisodes | Gratuit |
+| Une clé **Gemini** (Google AI Studio) | Écrit et dit l'épisode ; elle se colle dans l'application | Gratuit |
 
-Ouvre un fichier texte et note chaque valeur au fur et à mesure : ce sont des secrets, ne les publie nulle part et ne les envoie à personne.
+Ouvre un fichier texte et note chaque valeur au fur et à mesure : ce sont des secrets, ne les publie nulle part.
 
 ---
 
-## Étape 1 · Créer les comptes et récupérer les clés
+## Étape 1 · Ton dépôt GitHub
 
-### 1. GitHub
-Crée un compte sur github.com. Crée ensuite ton dépôt **privé** `podcast-matin` à partir du modèle (bouton **Use this template**) ou en y glissant les fichiers reçus.
+Crée un compte sur github.com, puis ouvre le modèle [github.com/defiguei/podcast-matin-modele](https://github.com/defiguei/podcast-matin-modele) → bouton vert **Use this template** → *Create a new repository*. Nom : `podcast-matin`, visibilité **Private** → *Create repository*.
 
-### 2. Cloudflare
-Crée un compte sur dash.cloudflare.com (pas besoin de carte bancaire ni de nom de domaine). Récupère deux valeurs :
-- **Account ID** : *Workers & Pages* → à droite de la page d'accueil. Copie-le.
+## Étape 2 · Les valeurs à récupérer
+
+### Cloudflare (2 valeurs)
+Crée un compte sur dash.cloudflare.com.
+- **Account ID** : *Workers & Pages* → à droite de la page. Copie-le.
 - **Jeton d'API** : ta photo → *My Profile* → *API Tokens* → *Create Token* → modèle **Edit Cloudflare Workers** → *Use template*. *Account Resources* : ton compte ; *Zone Resources* : *All zones* → *Continue to summary* → *Create Token*. Copie le jeton tout de suite (il n'est montré qu'une fois).
-- Ouvre *Workers & Pages* : si Cloudflare te demande de choisir un **sous-domaine** `xxx.workers.dev`, choisis-le et note-le. Ton bot sera à l'adresse `https://podcast.XXX.workers.dev`.
+- Dans *Workers & Pages*, si Cloudflare te demande un **sous-domaine** `xxx.workers.dev`, choisis-le et note-le : ton bot sera à l'adresse `https://podcast.xxx.workers.dev`.
 
-### 3. Clé Gemini
-Va sur aistudio.google.com/apikey, connecte-toi avec un compte Google, *Create API key*, copie la clé. Le quota gratuit suffit (quelques requêtes par jour).
+### Telegram (2 valeurs)
+- Dans Telegram, cherche **@BotFather** → `/newbot` → un nom, puis un identifiant qui finit par `bot` (ex. `alice_podcast_bot`). BotFather donne un **jeton** (`123456:ABC…`) : copie-le. Ouvre ton nouveau bot et appuie sur **Démarrer**.
+- Cherche **@userinfobot** → **Démarrer** : il répond avec ton **Id** (un nombre, ex. `123456789`). C'est ton identifiant de conversation.
 
-### 4. Bot Telegram
-Dans Telegram, cherche **@BotFather** → `/newbot` → un nom, puis un identifiant qui finit par `bot` (ex. `alice_podcast_bot`). BotFather te donne un **jeton** (`123456:ABC…`) : copie-le. Ouvre ensuite ton nouveau bot et appuie sur **Démarrer**.
+### Un jeton GitHub pour le bot (1 valeur)
+Le bot lance les épisodes sur GitHub et y installe les mises à jour. Sur GitHub : ta photo → *Settings* → *Developer settings* → *Personal access tokens* → *Fine-grained tokens* → *Generate new token*.
+- *Expiration* : la plus longue possible (ou *No expiration*) ;
+- *Repository access* : **Only select repositories** → `podcast-matin` ;
+- *Permissions* → *Repository permissions* : **Actions**, **Contents** et **Workflows** en *Read and write*.
 
-### 5. Lien secret de ton agenda
-- **Google Agenda** (navigateur, version ordinateur) : ⚙️ Paramètres → clique sur ton agenda → *Intégrer l'agenda* → copie l'**adresse secrète au format iCal**.
-- **Outlook / Microsoft 365** : ⚙️ Paramètres → Calendrier → Calendriers partagés → *Publier un calendrier* → « Peut afficher tous les détails » → copie le **lien ICS**. (Certaines entreprises bloquent cette publication : demande alors à ton service informatique, ou utilise seulement ton agenda personnel.)
-- Plusieurs agendas : mets les liens à la suite, séparés par un espace. Ce lien donne accès à ton agenda : garde-le secret.
+*Generate token*, puis copie-le.
 
-### 6. Clé Tavily (facultative)
-Crée un compte sur app.tavily.com, copie la clé (`tvly-…`). Sans elle, le podcast marche, mais les rubriques qui cherchent sur internet (idées de sortie, fêtes du jour par recherche…) seront pauvres.
+## Étape 3 · Ranger les secrets dans GitHub
 
-### Un jeton GitHub pour le bot (7e valeur)
-Le bot doit pouvoir lancer les épisodes sur GitHub. Sur GitHub : ta photo → *Settings* → *Developer settings* → *Personal access tokens* → *Fine-grained tokens* → *Generate new token*. *Repository access* : **Only select repositories** → `podcast-matin`. *Permissions* → *Repository permissions* : **Actions** et **Contents** en *Read and write*. Copie le jeton.
-
----
-
-## Étape 2 · Configurer GitHub
-
-Dans ton dépôt : *Settings* → *Secrets and variables* → *Actions*.
+Dans ton dépôt `podcast-matin` : *Settings* → *Secrets and variables* → *Actions*.
 
 **Onglet Secrets → New repository secret**, un par ligne :
 
 | Nom exact | Valeur |
 |---|---|
-| `GEMINI_API_KEY` | clé Gemini |
 | `TELEGRAM_BOT_TOKEN` | jeton de @BotFather |
-| `CALENDAR_ICS_URL` | lien(s) d'agenda |
-| `TAVILY_API_KEY` | clé Tavily (laisse vide si tu n'en as pas) |
-| `SNCF_API_KEY` | clé gratuite de l'API SNCF, seulement pour suivre un train en France ([numerique.sncf.com/startup/api](https://numerique.sncf.com/startup/api/)) ; la Suisse et la Belgique n'en ont pas besoin |
+| `TELEGRAM_CHAT_ID` | ton Id donné par @userinfobot |
+| `BOT_GITHUB_TOKEN` | le jeton GitHub du bot |
 | `CLOUDFLARE_API_TOKEN` | jeton Cloudflare |
 | `CLOUDFLARE_ACCOUNT_ID` | Account ID Cloudflare |
 
-(`TELEGRAM_CHAT_ID` s'ajoute à l'étape 4.)
+**Onglet Variables → New repository variable :** `BOT_URL` = `https://podcast.xxx.workers.dev` (avec ton sous-domaine).
 
-**Onglet Variables → New repository variable :** `BOT_URL` = `https://podcast.XXX.workers.dev` (avec ton sous-domaine).
+C'est tout : rien à taper chez Cloudflare, rien à modifier dans les fichiers. Le déploiement transmet ces secrets au bot, avec le nom de ton dépôt et son adresse.
 
-Rien à modifier dans les fichiers : le nom de ton dépôt et l'adresse du bot sont transmis automatiquement au déploiement.
+## Étape 4 · Mettre le bot en ligne
 
-## Étape 3 · Mettre le bot en ligne
+Onglet **Actions** → *Déployer le bot* → *Run workflow*. Les tests tournent, le bot est mis en ligne et reçoit ses secrets, puis il s'active : ton bot t'écrit dans Telegram. Si le message est orange, il manque `CLOUDFLARE_API_TOKEN` ou `CLOUDFLARE_ACCOUNT_ID`.
 
-1. Onglet **Actions** → *Déployer le bot* → *Run workflow*. Les tests tournent, puis le bot est mis en ligne (le Worker `podcast` est créé chez Cloudflare). Si le message est orange, il manque `CLOUDFLARE_API_TOKEN` ou `CLOUDFLARE_ACCOUNT_ID`.
-2. Dans Cloudflare : *Workers & Pages* → **podcast** → *Settings* → *Variables and Secrets* → ajoute, en type **Secret** :
-   - `TELEGRAM_BOT_TOKEN` : jeton de @BotFather ;
-   - `GEMINI_API_KEY` : clé Gemini ;
-   - `GITHUB_TOKEN` : le jeton GitHub du bot ;
-   - `TELEGRAM_CHAT_ID` : à l'étape 4.
+## Étape 5 · L'application
 
-## Étape 4 · Premier essai
+Dans la conversation avec ton bot, touche **Application** (à gauche du champ de saisie). Le premier lancement te guide en cinq étapes : ton prénom, ta ville et ton pays, l'heure de l'épisode, ton agenda (adresse secrète iCal de Google Agenda ou d'Outlook), et ta **clé Gemini** ([aistudio.google.com/apikey](https://aistudio.google.com/apikey) → *Create API key*). Touche enfin **Générer mon premier épisode**.
 
-1. Dans Telegram, cherche le bot **@userinfobot**, appuie sur **Démarrer** : il répond avec ton **Id** (un nombre, par exemple `123456789`). C'est ton identifiant de conversation.
-2. Ajoute ce nombre comme secret `TELEGRAM_CHAT_ID`, **dans GitHub** (*Settings* → *Secrets and variables* → *Actions*) **et dans Cloudflare** (*Workers & Pages* → **podcast** → *Settings* → *Variables and Secrets* → type **Secret**).
-3. Relance *Déployer le bot*, puis *Podcast du matin*. Tu reçois ton premier épisode et le clavier de réglages.
+Ensuite, tout se règle dans l'application : rubriques (onglet Épisode), horaires (Planning), voix, style, clés (Réglages › Connexions). La clé **Tavily** (facultative, gratuite sur app.tavily.com) améliore les idées de sortie.
 
-## Étape 5 · Régler à ton goût (depuis Telegram)
+> Facultatif : range aussi ta clé Gemini en secret GitHub `GEMINI_API_KEY`. Si le bot était un jour injoignable, le filet de sécurité de GitHub pourrait quand même fabriquer l'épisode.
 
-Tout se règle en écrivant à ton bot ou avec ses boutons : heure d'envoi par jour, durée, voix, prénom, ville, sujets préférés ou à éviter, agendas à lire, **rubriques** (le saint du jour, une idée de sortie, un sujet suivi…), consignes. Tape `/aide`.
-
-Pour une autre région que la Suisse romande, modifie dans `reglages.toml` (✏️ sur GitHub) : `fuseau_horaire`, `pays_actus`, `langue_actus`.
+---
 
 ## En cas de souci
 
 | Souci | Que faire |
 |---|---|
-| Pas d'épisode | Actions → l'exécution en rouge → lis le message en haut. |
-| « La clé Gemini est refusée » | Recopie `GEMINI_API_KEY` sans espace. |
-| « agenda inaccessible » | Le lien a changé : recopie-le dans `CALENDAR_ICS_URL`. |
-| Le bot ne répond plus | Ouvre `https://podcast.XXX.workers.dev/installer` dans ton navigateur. |
-| « Recherche web : non configurée » | Ajoute `TAVILY_API_KEY`. |
-| « temps réel SNCF non configuré » (journal) | Ajoute `SNCF_API_KEY` pour les trains en France. |
+| Pas de message du bot après le déploiement | Ouvre `https://podcast.xxx.workers.dev/installer` dans ton navigateur. |
+| *Déployer le bot* signale un secret manquant | Ajoute le secret nommé (étape 3), puis relance *Déployer le bot*. |
+| Pas d'épisode | Onglet *Actions* → l'exécution en rouge → lis le message en haut. |
+| « La clé Gemini manque » ou « est refusée » | Réglages › Connexions : colle la clé, touche *Tester*. |
+| « agenda inaccessible » | L'adresse iCal a changé : retire l'agenda et ajoute la nouvelle. |
+| Une mise à jour ne touche pas aux fichiers d'automatisation | Le jeton GitHub du bot n'a pas la permission *Workflows* : voir [MISE-A-JOUR.md](MISE-A-JOUR.md). |
 
-**Confidentialité :** Google reçoit le titre, l'heure et le lieu de tes rendez-vous pour écrire l'épisode ; Tavily reçoit les recherches de tes rubriques. Tes clés ne sont que dans les secrets GitHub et Cloudflare, jamais dans le code. Garde ton dépôt **privé**.
+**Confidentialité :** Google reçoit le titre, l'heure et le lieu de tes rendez-vous pour écrire l'épisode ; Tavily reçoit les recherches de tes rubriques. Tes clés restent chez ton bot et dans les secrets GitHub, jamais dans le code. Garde ton dépôt **privé**.

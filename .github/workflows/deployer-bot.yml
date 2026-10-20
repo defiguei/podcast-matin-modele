@@ -4,8 +4,9 @@ name: Déployer le bot
 # à chaque changement, après ses tests. Secrets GitHub nécessaires :
 #   CLOUDFLARE_API_TOKEN  (modèle « Edit Cloudflare Workers »)
 #   CLOUDFLARE_ACCOUNT_ID (identifiant de ton compte Cloudflare)
-# Les secrets du bot lui-même (jetons Telegram, GitHub, Gemini) restent dans
-# Cloudflare : ce déploiement ne les touche pas.
+# Le bot reçoit ensuite les secrets GitHub qu'il n'a pas encore
+# (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, GEMINI_API_KEY) et BOT_GITHUB_TOKEN
+# comme jeton GitHub : une valeur déjà réglée chez Cloudflare n'est jamais remplacée.
 
 on:
   push:
@@ -41,7 +42,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "::warning::Bot non déployé : ajoute les secrets CLOUDFLARE_API_TOKEN et CLOUDFLARE_ACCOUNT_ID (README, « Passer à la version 3 »), puis relance ce workflow. En attendant, l'ancien bot et l'épisode de 7 h 30 continuent comme avant."
+            echo "::warning::Bot non déployé : ajoute les secrets CLOUDFLARE_API_TOKEN et CLOUDFLARE_ACCOUNT_ID (docs/INSTALLATION.md), puis relance ce workflow."
             echo "pret=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -94,6 +95,17 @@ jobs:
             echo "::error title=Mise en ligne refusée::$erreur"
             exit "$code"
           fi
+
+      - name: Transmettre les secrets au bot
+        if: steps.secrets.outputs.pret == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
+        run: node secrets.mjs
 
       - name: Activer la nouvelle version
         if: steps.secrets.outputs.pret == 'true'
