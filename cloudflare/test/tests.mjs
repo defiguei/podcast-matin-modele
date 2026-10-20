@@ -740,7 +740,7 @@ await scenario("Rubriques intégrées : déroulé, actu locale, déplacements, �
   let liste = await attendre((l) => tg(l, "editMessageText").length >= 1);
   const corps = tg(liste, "editMessageText")[0].corps;
   const b = boutons(corps);
-  verifier(corps.text.includes("Actu locale") && corps.text.includes("Déplacements et sorties") && corps.text.includes("À creuser"), "déroulé : noms des rubriques", corps.text);
+  verifier(corps.text.includes("Actu locale") && corps.text.includes("Mes déplacements") && corps.text.includes("À creuser"), "déroulé : noms des rubriques", corps.text);
   verifier(b.includes("m:actulocale") && b.includes("m:deplacements") && b.includes("m:acreuser") && b.some((x) => /^m:regle:R\d+$/.test(x)), "chaque rubrique ouvre son écran", b);
   for (const ecran of ["actulocale", "deplacements", "acreuser", "agenda", "rattrapage"]) {
     await vider(); await bouton(`m:${ecran}`);
@@ -1140,6 +1140,33 @@ await scenario("Application : animateurs (équipe, jours, tirage, une voix), fé
   verifier(r.ok && regle.recherche.fiche.transport === "aucun" && regle.recherche.fiche.budget.devise === "EUR" && regle.recherche.fiche.budget.transport_inclus === false
     && regle.recherche.fiche.inclure.join() === "coopératif,rapide", "pas de transport, budget en euros, éléments à inclure", regle.recherche.fiche);
   await app("supprimer", { id: r.id });
+});
+
+await scenario("Rubriques : sources choisies par l'application, place, pause", async () => {
+  let r = await app("rubrique", { formulaire: { titre: "Fête du prénom", consigne: "Dis-moi quels prénoms on fête aujourd'hui.", longueur: "phrase",
+    periode: { type: "toujours" }, sources_auto: true, place: "ouverture" } });
+  let regle = (await etat()).config.regles.find((x) => x.id === r.id);
+  let { config } = await etat();
+  verifier(r.ok && regle.recherche.sources.join() === "saints" && regle.recherche.sources_auto, "fête du prénom : calendrier des saints choisi", regle.recherche);
+  verifier(config.deroule[config.deroule.findIndex((x) => x.cle === "ouverture") + 1]?.cle === r.id, "placée après l'ouverture", config.deroule.map((x) => x.cle));
+  const prenom = r.id;
+  r = await app("rubrique", { formulaire: { titre: "Rappel piscine", consigne: "Rappelle-moi de prendre mon maillot.", longueur: "phrase",
+    periode: { type: "toujours" }, sources_auto: true, place: "agenda", condition: { texte: "piscine", moment: "veille" } } });
+  regle = (await etat()).config.regles.find((x) => x.id === r.id);
+  verifier(r.ok && !regle.recherche && regle.condition.texte === "piscine", "rappel selon l'agenda : aucune source", regle);
+  r = await app("rubrique", { formulaire: { titre: "Météo", consigne: "La météo du jour : pluie, températures.", longueur: "phrase",
+    periode: { type: "toujours" }, sources_auto: true } });
+  regle = (await etat()).config.regles.find((x) => x.id === r.id);
+  verifier(regle.recherche.sources.join() === "meteo", "météo : source météo", regle.recherche.sources);
+  // Un seul interrupteur : la rubrique et son passage se mettent en pause ensemble.
+  r = await app("etat_rubrique", { id: prenom, active: false });
+  ({ config } = await etat());
+  verifier(r.ok && config.regles.find((x) => x.id === prenom).etat === "pause" && config.deroule.find((x) => x.cle === prenom).actif === false, "pause d'une rubrique et de son passage");
+  r = await app("etat_rubrique", { id: prenom, active: true });
+  ({ config } = await etat());
+  verifier(config.regles.find((x) => x.id === prenom).etat === "active" && config.deroule.find((x) => x.cle === prenom).actif === true, "reprise d'une rubrique");
+  verifier((await app("etat_rubrique", { id: "R99", active: true })).ok === false, "rubrique inconnue refusée");
+  for (const id of [...config.regles].reverse().slice(0, 3).map((x) => x.id)) await app("supprimer", { id });
 });
 
 await scenario("Pays : réglage et reprise des anciennes installations", async () => {

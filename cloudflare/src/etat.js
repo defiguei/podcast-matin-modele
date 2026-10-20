@@ -1538,6 +1538,16 @@ export class Etat extends DurableObject {
           libelle = `Rubrique « ${regle.titre} » supprimée`;
           break;
         }
+        case "etat_rubrique": {
+          const regle = config.regles.find((r) => r.id === demande.id);
+          if (!regle) return refus("Cette rubrique n'existe plus.");
+          modifierRegle(config, regle.id, { etat: demande.active ? "active" : "pause" }, ctx.aujourdHui);
+          // Un seul interrupteur dans « Ton épisode » : son passage suit.
+          const passage = config.deroule.find((el) => el.cle === regle.id);
+          if (passage) passage.actif = Boolean(demande.active);
+          libelle = `${regle.titre} : ${demande.active ? "active" : "en pause"}`;
+          break;
+        }
         case "deroule": {
           const deroule = nouvelOrdre(config, demande.ordre, demande.actifs);
           if (!deroule) return refus("Le déroulé a changé entre-temps : je l'ai rechargé.");

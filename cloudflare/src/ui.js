@@ -193,13 +193,13 @@ const ECRANS = {
       `Jours couverts : ${a.jours}`,
       `Agenda vide → prochain événement cherché jusqu'à ${a.horizon} jours`,
       `Notes des événements : ${a.notes ? "lues" : "ignorées"}`,
-      `Déplacements et sorties : ${a.deplacements ? `repérés jusqu'à ${a.jours_deplacements} jours` : "désactivé"} (voir la rubrique « Déplacements »)`,
+      `Mes déplacements : ${a.deplacements ? `repérés jusqu'à ${a.jours_deplacements} jours` : "désactivé"} (voir la rubrique « Mes déplacements »)`,
     ].join("\n");
     const clavier = [
       [b(`📚 Mes agendas${connus.length ? ` (${actifs}/${connus.length})` : ""}`, "m:agendas")],
       [b("−", "a:gj:-"), b(`📆 ${a.jours} jours`, "a:noop"), b("+", "a:gj:+")],
       [b("−", "a:gh:-"), b(`🔭 ${a.horizon} jours`, "a:noop"), b("+", "a:gh:+")],
-      [b(`${coche(a.notes)} Notes`, "a:gn"), b("🧳 Déplacements et sorties", "m:deplacements")],
+      [b(`${coche(a.notes)} Notes`, "a:gn"), b("🧳 Mes déplacements", "m:deplacements")],
       retour(),
     ];
     return { texte, clavier };
@@ -222,7 +222,7 @@ const ECRANS = {
   deplacements(config) {
     const a = config.agenda;
     const texte = [
-      "🧳 <b>Déplacements et sorties</b>",
+      "🧳 <b>Mes déplacements</b>",
       "Je repère dans ton agenda les voyages, rencontres et sorties dans un lieu précis, puis je présente pour chacun : quand, deux ou trois idées sur place, et les actus locales utiles.",
       "", `Repérage : ${a.deplacements ? "activé" : "désactivé"}`,
       `Horizon : ${a.jours_deplacements} jours · Lieux présentés au plus : ${a.max_deplacements}`,
@@ -519,7 +519,6 @@ export function ficheRegle(r, config, ctx) {
     if (details.length) lignes.push("", ...details.map(e));
     lignes.push(`Sources : ${r.recherche.sources.map((s) => SOURCES[s]).join(", ")}`);
     if (r.recherche.requetes.length) lignes.push(`Recherches : ${e(r.recherche.requetes.join(" · "))}`);
-    if (r.periode.type !== "ponctuelle" && f.quand) lignes.push(`Présentée ${r.presentation.jours_avant ? `à partir de ${r.presentation.jours_avant} jour${r.presentation.jours_avant > 1 ? "s" : ""} avant` : "le jour même"}`);
   }
   if (r.derniere_application) lignes.push("", `Dernière application : ${dateCourte(r.derniere_application)}`);
   return lignes.join("\n");

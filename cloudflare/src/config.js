@@ -45,7 +45,7 @@ export const MODES_VOIX = { fixe: "Toujours les mêmes", jours: "Selon le jour",
 // Rubriques intégrées du déroulé. Les rubriques créées par l'auditeur (« R1 », « R2 »…)
 // s'ajoutent à celles-ci. « approfondissements » garde sa clé pour les anciennes sauvegardes.
 export const RUBRIQUES = {
-  ouverture: "Ouverture", agenda: "Agenda", deplacements: "Déplacements et sorties",
+  ouverture: "Ouverture", agenda: "Agenda", deplacements: "Mes déplacements",
   actu_locale: "Actu locale", approfondissements: "À creuser", actualites: "Actualités", cloture: "Clôture",
 };
 // Écran de réglage de chaque rubrique intégrée (null : pas d'écran propre).
@@ -249,8 +249,9 @@ export function normaliserRegle(r) {
       inclure: nettoyerListe(fiche.inclure, 8), exclure: nettoyerListe(fiche.exclure, 8),
       attendu: texteCourt(120)(fiche.attendu),
     },
-    sources: nettoyerListe(r.recherche.sources, 8).filter((s) => SOURCES[s]),
+    sources: nettoyerListe(r.recherche.sources, 9).filter((s) => SOURCES[s]),
     requetes: nettoyerListe(r.recherche.requetes, 6),
+    sources_auto: Boolean(r.recherche.sources_auto),
   } : null;
   if (recherche && !recherche.sources.length) recherche.sources = ["web"];
   const condition = r.condition && r.condition.texte ? {
@@ -272,6 +273,24 @@ export function normaliserRegle(r) {
     cree_le: r.cree_le || null, modifie_le: r.modifie_le || null, origine: r.origine || "",
     derniere_application: r.derniere_application || null, servie: Boolean(r.servie),
   };
+}
+
+// Sources choisies d'après le sujet de la rubrique (« Choisies par l'application »).
+// Un simple rappel selon l'agenda n'a besoin d'aucune source.
+export function sourcesAuto({ titre = "", consigne = "", fiche = {}, condition = null } = {}) {
+  const t = normaliserTexte(`${titre} ${consigne} ${fiche.quoi || ""} ${fiche.attendu || ""}`);
+  const sources = new Set();
+  if (/prenom|saint|fete du jour|fete des/.test(t)) sources.add("saints");
+  if (/journee (mondiale|internationale|nationale|du)|fete (inter)?nationale|fete internationale|on celebre/.test(t)) sources.add("fetes");
+  if (/meteo|temps qu.il|pluie|soleil|neige|temperature|parapluie|s.habiller/.test(t)) sources.add("meteo");
+  if (/\btrains?\b|retard|\bcff\b|sncf|sncb|\bgare\b|correspondance/.test(t)) sources.add("transports");
+  if (/\bactus?\b|actualite|nouvelles|\bnews\b|presse|\binfos?\b/.test(t)) sources.add("actus");
+  if (/ferie/.test(t)) sources.add("feries");
+  const sortie = fiche.quoi || fiche.ou || /sortie|activite|visite|rando|balade|musee|resto|restaurant|week-?end|spectacle|concert|exposition|que faire|idee/.test(t);
+  if (sortie) ["web", "lieux", "meteo", "wikivoyage"].forEach((s) => sources.add(s));
+  const rappel = condition && /rappelle|pense a|n.oublie|prepare|prendre|mentionne/.test(t);
+  if (!sources.size && !rappel) sources.add("web");
+  return [...sources];
 }
 
 // Met à jour une règle existante avec les champs fournis (fusion profonde légère).

@@ -9,7 +9,7 @@ import {
   JOURS, NOMS_JOURS, COURTS_JOURS, LONGUEURS, SOURCES, RUBRIQUES, etatRegle, prochainPassage, decrirePeriode,
   heurePrevue, prochainEpisode, ajouterJours, dateCourte, nomRubrique, dateOuNull, nettoyerListe,
   VOIX, VOIX_CONSEILLEES, VITESSES, TONS, CITER, TRANSPORTS, fluxActus, profilPays, PAYS, DELAIS_RATTRAPAGE,
-  DEVISES, REGIONS_FERIES, MODES_VOIX, estFerie, nomFerie, animateursDuJour, equipeComplete, normaliserTexte,
+  DEVISES, REGIONS_FERIES, MODES_VOIX, sourcesAuto, estFerie, nomFerie, animateursDuJour, equipeComplete, normaliserTexte,
 } from "./config.js";
 
 const DUREE_VALIDITE = 24 * 3600;      // une ouverture reste valable 24 h
@@ -107,6 +107,7 @@ function regleVisible(r, aujourdHui) {
     fiche: Object.fromEntries(CHAMPS_FICHE.map((c) => [c, fiche[c] || ""])),
     transport: fiche.transport || "", budget: fiche.budget || { max: null, unite: "personne", transport_inclus: false },
     inclure: fiche.inclure || [], exclure: fiche.exclure || [], recherche: Boolean(r.recherche),
+    sources_auto: Boolean(r.recherche?.sources_auto), place: r.rubrique?.apres || null,
     derniere_application: r.derniere_application, servie: Boolean(r.servie), id_condition: Boolean(r.condition),
   };
 }
@@ -219,9 +220,11 @@ export function champsDepuisFormulaire(f, ancienne, aujourdHui, devise = "CHF") 
 
   const longueur = Object.keys(LONGUEURS).includes(f.longueur) ? f.longueur : null;
   const rubrique = longueur && type !== "ponctuelle"
-    ? { titre, apres: ancienne?.rubrique?.apres || "actualites", longueur } : null;
+    ? { titre, apres: ancienne?.rubrique?.apres || (RUBRIQUES[f.place] || /^R\d+$/.test(f.place || "") ? f.place : "actualites"), longueur } : null;
 
-  const sources = nettoyerListe(f.sources, 9).filter((s) => SOURCES[s]);
+  const auto = Boolean(f.sources_auto);
+  const sources = auto ? sourcesAuto({ titre, consigne, fiche: f.fiche || {}, condition: f.condition && f.condition.texte ? f.condition : null })
+    : nettoyerListe(f.sources, 9).filter((s) => SOURCES[s]);
   const fiche = Object.fromEntries(CHAMPS_FICHE.map((c) => [c, texte(f.fiche?.[c], c === "avec_qui" ? 80 : c === "ages" ? 40 : 120)]));
   fiche.transport = TRANSPORTS[f.transport] && f.transport !== "peu_importe" ? f.transport : "";
   const max = f.budget?.max === "" || f.budget?.max == null ? null : Number(String(f.budget.max).replace(",", "."));
@@ -232,7 +235,7 @@ export function champsDepuisFormulaire(f, ancienne, aujourdHui, devise = "CHF") 
   fiche.exclure = nettoyerListe(Array.isArray(f.exclure) ? f.exclure : String(f.exclure || "").split(/[,;\n]/), 8);
   const avecFiche = CHAMPS_FICHE.some((c) => fiche[c]) || fiche.transport || fiche.budget.max !== null || fiche.inclure.length || fiche.exclure.length;
   const recherche = sources.length || avecFiche || type === "ponctuelle"
-    ? { sources: sources.length ? sources : ["web"], fiche } : null;
+    ? { sources: sources.length ? sources : ["web"], fiche, sources_auto: auto } : null;
 
   const c = f.condition;
   const condition = c && texte(c.texte, 120) ? {

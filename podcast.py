@@ -121,7 +121,7 @@ INSTRUCTIONS_RUBRIQUES = {
                "oublier), puis un aperçu des jours suivants en mettant en avant ce qui demande d'anticiper. Si rien "
                "n'est prévu dans les prochains jours mais qu'un prochain événement est indiqué, fais-en un petit "
                "sujet : quand c'est, et une idée utile pour s'y préparer."),
-    "deplacements": ("Les déplacements et sorties, seulement si la section DÉPLACEMENTS est fournie : pour chacun, "
+    "deplacements": ("Ses déplacements (voyages et sorties repérés dans son agenda), seulement si la section DÉPLACEMENTS est fournie : pour chacun, "
                      "rappelle quand c'est, propose deux ou trois idées d'activités, de visites ou de culture sur "
                      "place (ou autour du lieu de la sortie), puis les actus locales utiles. Pour les idées, "
                      "appuie-toi sur tes connaissances générales (lieux emblématiques, quartiers, musées, "

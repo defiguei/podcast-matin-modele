@@ -24,7 +24,7 @@ JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"
 MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août",
         "septembre", "octobre", "novembre", "décembre"]
 RUBRIQUES = {
-    "ouverture": "Ouverture", "agenda": "Agenda", "deplacements": "Déplacements et sorties",
+    "ouverture": "Ouverture", "agenda": "Agenda", "deplacements": "Mes déplacements",
     "actu_locale": "Actu locale", "approfondissements": "À creuser", "actualites": "Actualités", "cloture": "Clôture",
 }
 LONGUEURS = {"phrase": "une seule phrase", "courte": "courte (2 à 4 répliques)",
