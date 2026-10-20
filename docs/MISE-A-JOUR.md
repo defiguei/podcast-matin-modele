@@ -73,4 +73,4 @@ Relancer *Mettre à jour* ne fait jamais de mal : quand tout est déjà à jour,
 2. Mettre la même version dans `version.json`, avec ses nouveautés (affichées dans l'application) et, dans `supprimes`, les fichiers à retirer chez chacun.
 3. Envoyer sur `main` : les tests vérifient que les deux versions concordent. Les bots la proposent dans les 24 heures.
 
-Le modèle doit rester **public** : les dépôts privés de chacun y lisent `version.json` et le code. Les fichiers contiennent des repères (`TON-COMPTE/podcast-matin`, `podcast.TON-SOUS-DOMAINE.workers.dev`) que la mise à jour remplace par le dépôt et l'adresse du bot de chacun.
+Le modèle doit rester **public** : les dépôts privés de chacun y lisent `version.json` et le code. Les fichiers contiennent deux repères, le nom de dépôt type et l'adresse type du bot (voir `mise_a_jour.py`), que la mise à jour remplace par le dépôt et l'adresse du bot de chacun. Ils ne doivent apparaître que sous leur forme exacte : un test le vérifie.

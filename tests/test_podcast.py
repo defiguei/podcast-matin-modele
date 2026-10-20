@@ -973,7 +973,7 @@ with tempfile.TemporaryDirectory() as dossier:
     for base in (modele, copie):
         (base / ".github" / "workflows").mkdir(parents=True)
     (modele / "version.json").write_text(json.dumps({"version": "9", "supprimes": ["vieux.py", "memoire.json"]}), encoding="utf-8")
-    (modele / "podcast.py").write_text("DEPOT = 'TON-COMPTE/podcast-matin' ; BOT = 'https://podcast.TON-SOUS-DOMAINE.workers.dev'\n", encoding="utf-8")
+    (modele / "podcast.py").write_text(f"DEPOT = '{mise_a_jour.REPERE_DEPOT}' ; BOT = 'https://{mise_a_jour.REPERE_HOTE}'\n", encoding="utf-8")
     (modele / "memoire.json").write_text("{}\n", encoding="utf-8")
     (modele / "reglages.toml").write_text("fuseau_horaire = \"Europe/Zurich\"\n", encoding="utf-8")
     (modele / ".github" / "workflows" / "a.yml").write_text("name: A\n", encoding="utf-8")
@@ -992,6 +992,21 @@ with tempfile.TemporaryDirectory() as dossier:
     changes2, _ = mise_a_jour.copier(modele, copie, "alice/podcast-matin", "podcast.alice.workers.dev", sans_workflows=True)
     verifier(changes2 == [] and not (copie / ".github" / "workflows" / "a.yml").exists(), "sans la permission Workflows : automatisation laissée de côté")
 
+# Les repères n'apparaissent que sous leur forme exacte : chez chacun, il n'en reste aucun
+# (une forme échappée, comme dans une expression régulière, échapperait au remplacement).
+with tempfile.TemporaryDirectory() as dossier:
+    copie = Path(dossier) / "copie"
+    copie.mkdir()
+    ignores = {"node_modules", ".git", ".wrangler", "__pycache__", "sortie", ".venv"}
+    with tempfile.TemporaryDirectory() as source_propre:
+        propre = Path(source_propre) / "modele"
+        shutil.copytree(PROJET, propre, ignore=lambda d, noms: [n for n in noms if n in ignores])
+        mise_a_jour.copier(propre, copie, "alice/podcast-matin", "podcast.alice.workers.dev")
+    restes = [str(f.relative_to(copie)) for f in copie.rglob("*") if f.is_file() and f.suffix in mise_a_jour.TEXTE
+              and f.name != "mise_a_jour.py"   # il garde les repères, écrits en deux morceaux
+              and ("TON-" "COMPTE" in f.read_text(encoding="utf-8", errors="replace") or "TON-" "SOUS-DOMAINE" in f.read_text(encoding="utf-8", errors="replace"))]
+    verifier(not restes, f"mise à jour : aucun repère du modèle ne reste chez chacun {restes}")
+
 # Mise à jour de bout en bout, sur des dépôts locaux (clone, envoi, repli sans « Workflows »).
 import subprocess as sp
 def initialiser(chemin: Path, fichiers: dict[str, str]) -> None:
@@ -1007,8 +1022,8 @@ def essai_maj(jeton_github: str) -> tuple[Path, list[dict], list[str]]:
     modele.mkdir()
     initialiser(modele, {
         "version.json": json.dumps({"version": "2099-01-01.1", "supprimes": ["vieux.py", ".github/workflows/retours.yml"]}),
-        "podcast.py": "DEPOT = 'TON-COMPTE/podcast-matin'\n",
-        "cloudflare/wrangler.toml": 'ADRESSE = "https://podcast.TON-SOUS-DOMAINE.workers.dev"\n',
+        "podcast.py": f"DEPOT = '{mise_a_jour.REPERE_DEPOT}'\n",
+        "cloudflare/wrangler.toml": f'ADRESSE = "https://{mise_a_jour.REPERE_HOTE}"\n',
         "reglages.toml": "fuseau_horaire = \"Europe/Zurich\"\n",
         ".github/workflows/nouveau.yml": "name: Nouveau\n",
     })

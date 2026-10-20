@@ -113,8 +113,8 @@ const serveur = http.createServer(async (req, res) => {
     return json(res, 200, { steps: [{ type: "model_output", content: [{ type: "text", text: JSON.stringify(reponse) }] }] });
   }
 
-  // ── GitHub ──
-  m = /^\/gh\/repos\/TON-COMPTE\/podcast-matin\/contents\/(.+)$/.exec(p);
+  // ── GitHub ── (tout dépôt : chez chacun, la mise à jour remplace le nom du dépôt modèle)
+  m = /^\/gh\/repos\/[^/]+\/[^/]+\/contents\/(.+)$/.exec(p);
   if (m) {
     const chemin = decodeURIComponent(m[1]);
     if (req.method === "GET") {
@@ -128,7 +128,7 @@ const serveur = http.createServer(async (req, res) => {
       return json(res, 200, { content: { sha: "nouveau" } });
     }
   }
-  m = /^\/gh\/repos\/TON-COMPTE\/podcast-matin\/actions\/workflows\/([^/]+)\/dispatches$/.exec(p);
+  m = /^\/gh\/repos\/[^/]+\/[^/]+\/actions\/workflows\/([^/]+)\/dispatches$/.exec(p);
   if (m) {
     appels.push({ service: "github", methode: "lancer", workflow: m[1], entrees: corps.inputs, ref: corps.ref });
     res.writeHead(204);

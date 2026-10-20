@@ -26,8 +26,9 @@ from urllib.parse import urlparse
 
 RACINE = Path(__file__).resolve().parent
 PERSONNELS = {"memoire.json", "preferences.json", "reglages.toml"}
-REPERE_DEPOT = "TON-COMPTE/podcast-matin"
-REPERE_HOTE = "podcast.TON-SOUS-DOMAINE.workers.dev"
+# Écrits en deux morceaux : la mise à jour ne doit pas les remplacer ici même.
+REPERE_DEPOT = "TON-COMPTE" "/podcast-matin"
+REPERE_HOTE = "podcast.TON-SOUS-DOMAINE" ".workers.dev"
 TEXTE = {".py", ".js", ".mjs", ".toml", ".yml", ".yaml", ".md", ".json", ".txt", ".html", ".gitignore"}
 
 
