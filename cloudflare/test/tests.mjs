@@ -22,7 +22,14 @@ const obtenir = async (url, options) => { const r = await fetch(url, options); r
 const envoyerJson = (url, corps, entetes = {}) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json", ...entetes }, body: JSON.stringify(corps) });
 
 async function appels() { return (await fetch(`${FAUX}/control/appels`)).json(); }
-async function vider() { await fetch(`${FAUX}/control/vider`, { method: "POST" }); }
+// Attend que le bot ait fini les messages déjà envoyés avant de vider le journal :
+// sinon la fin d'une action (toast, écran) tombe dans l'étape suivante et la
+// fait conclure trop tôt (machines lentes, comme sur GitHub).
+async function vider() {
+  const fin = Date.now() + (process.env.GITHUB_ACTIONS ? 20000 : 8000);
+  while (Date.now() < fin && (await etat()).fini < updateId - 1) await attente(50);
+  await fetch(`${FAUX}/control/vider`, { method: "POST" });
+}
 async function gemini(...reponses) { await envoyerJson(`${FAUX}/control/gemini`, reponses); }
 async function etat() { return (await fetch(`${BOT}/test/etat`)).json(); }
 async function horloge(iso, tic = false) { return (await fetch(`${BOT}/test/horloge?iso=${iso}${tic ? "&tic=1" : ""}`)).json(); }
@@ -120,7 +127,8 @@ await scenario("Menus et navigation", async () => {
 
 await scenario("Boutons du planning et annulation", async () => {
   await bouton("a:ph:sam:0900");
-  let liste = await attendre((l) => tg(l, "editMessageText").length >= 1);
+  // Le tableau de bord est modifié avant le toast : attendre le toast lui-même.
+  let liste = await attendre((l) => tg(l, "answerCallbackQuery").length >= 1);
   let { config, etat: e } = await etat();
   verifier(config.planning.jours.sam === "09:00", "samedi à 9 h", config.planning.jours);
   verifier(toast(liste).includes("sam"), "toast de confirmation", toast(liste));
@@ -1280,7 +1288,10 @@ await scenario("Mises à jour depuis le modèle", async () => {
   r = await app("mettre_a_jour");
   const lance = lancements(await appels()).find((a) => a.workflow === "mettre-a-jour.yml");
   verifier(r.ok && lance?.entrees?.version === "2099-01-01.1" && lance.entrees.modele === "auteur/modele" && lance.entrees.adresse, "mise à jour lancée", lance);
-  verifier((await appels()).some((a) => a.methode === "ecrire" && a.chemin === "preferences.json"), "réglages sauvegardés avant la mise à jour");
+  // Sauvegarde relue, et réécrite si elle avait changé (identique : rien à écrire).
+  const sauvegarde = JSON.parse((await (await fetch(`${FAUX}/control/fichiers`)).json())["preferences.json"] || "{}");
+  verifier((await appels()).some((a) => a.service === "github" && a.chemin === "preferences.json")
+    && JSON.stringify(sauvegarde.config) === JSON.stringify((await etat()).config), "réglages sauvegardés avant la mise à jour");
   verifier((await app("mettre_a_jour")).ok === false, "pas deux mises à jour à la fois");
   const jeton = JSON.parse((await obtenir(`${BOT}/api/maj`, { headers: { "X-Podcast-Secret": SECRET } })).texte);
   verifier(jeton.jeton === "gh-test", "jeton donné au workflow pendant la mise à jour");
@@ -1289,6 +1300,23 @@ await scenario("Mises à jour depuis le modèle", async () => {
   r = await app("etat");
   verifier(r.donnees.maj_etat?.etat === "fait" && r.donnees.maj_etat.message.includes("12"), "fin de mise à jour signalée", r.donnees.maj_etat);
   verifier((await obtenir(`${BOT}/api/maj`, { headers: { "X-Podcast-Secret": SECRET } })).statut === 403, "jeton refusé une fois la mise à jour finie");
+});
+
+await scenario("Après le déploiement : nouveautés, ou présentation pour qui vient d'avant", async () => {
+  // Le bot nouvellement déployé s'active (/installer) et écrit selon la version d'où il vient.
+  const installer = async (versionAvant) => {
+    await envoyerJson(`${BOT}/test/etat`, { etat: { ...(await etat()).etat, version_installee: versionAvant } });
+    await vider();
+    await obtenir(`${BOT}/installer`);
+    return tg(await appels(), "sendMessage").map((a) => a.corps.text);
+  };
+  let textes = await installer("2026-10-21.1");
+  verifier(textes.length === 1 && textes[0].includes("à jour") && !textes[0].includes("tout se règle"), "depuis l'application : juste les nouveautés", textes);
+  verifier((await etat()).etat.version_installee !== "2026-10-21.1", "nouvelle version notée");
+  textes = await installer("2026-10-13.2");
+  verifier(textes.some((t) => t.includes("tout se règle dans l'application")), "depuis la version « conversation » : présentation de l'application", textes);
+  textes = await installer((await etat()).etat.version_installee);
+  verifier(textes.length === 0, "même version : aucun message", textes);
 });
 
 await scenario("Pays : réglage et reprise des anciennes installations", async () => {

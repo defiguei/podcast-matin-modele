@@ -97,16 +97,23 @@ def jeton_du_bot(adresse: str) -> str:
     sinon celui du bot, qu'il ne donne que pendant une mise à jour demandée."""
     jeton = os.environ.get("BOT_GITHUB_TOKEN", "").strip()
     jeton_tg = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-    if not jeton and jeton_tg and adresse:
+    if jeton:
+        source = "secret GitHub BOT_GITHUB_TOKEN"
+    elif not (jeton_tg and adresse):
+        source = "aucun (ni secret BOT_GITHUB_TOKEN, ni bot à qui le demander)"
+    else:
         try:
             import requests
             from liaison import secret_partage
             r = requests.get(f"{adresse.rstrip('/')}/api/maj", headers={"X-Podcast-Secret": secret_partage(jeton_tg)}, timeout=20)
             jeton = (r.json() or {}).get("jeton", "") if r.status_code == 200 else ""
-        except Exception:
-            jeton = ""   # ancien bot, ou bot injoignable
+            source = "donné par le bot" if jeton else f"refusé par le bot (HTTP {r.status_code})"
+        except Exception as erreur:   # ancien bot, ou bot injoignable
+            jeton, source = "", f"bot injoignable ({type(erreur).__name__})"
     if jeton and os.environ.get("GITHUB_ACTIONS"):
         print(f"::add-mask::{jeton}", flush=True)
+    # Visible dans le résumé de l'exécution : d'où vient le jeton (jamais sa valeur).
+    journal(f"::notice title=Jeton GitHub::{source}.")
     return jeton
 
 
@@ -173,7 +180,7 @@ def main() -> int:
         if workflows_ignores:
             message += " Fichiers d'automatisation non mis à jour : il faut un jeton GitHub avec la permission « Workflows » (docs/MISE-A-JOUR.md)."
         prevenir_bot(adresse, {"type": "maj", "ok": True, "version": version, "message": message, "workflows": not workflows_ignores})
-        journal(message)
+        journal(f"::notice title=Mise à jour {version}::{message}")
     return 0
 
 

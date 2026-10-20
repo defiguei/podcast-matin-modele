@@ -58,6 +58,8 @@ const serveur = http.createServer(async (req, res) => {
   if (m) {
     const methode = m[2];
     appels.push({ service: "telegram", methode, corps });
+    // FAUX_LENTEUR=200 npm test : Telegram répond en 200 ms, comme une machine lente.
+    if (process.env.FAUX_LENTEUR) await new Promise((ok) => setTimeout(ok, Number(process.env.FAUX_LENTEUR)));
     if (methode === "getFile") return json(res, 200, { ok: true, result: { file_path: "voix/vocal.ogg" } });
     if (methode === "forwardMessage") {
       const legende = "🎙️ Épisode\n\n🔗 Sources\n1. rts.ch Grève au Portugal\n2. 24heures.ch Budget vaudois";

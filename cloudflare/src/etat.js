@@ -21,13 +21,22 @@ import { CLES, testerCle, lireAgenda, identifiantAgenda, resumeConnexions } from
 import { fluxRss, chapitresJson, episodeDeCle, jetonValide, nouveauJeton } from "./flux.js";
 import { donneesApp, champsDepuisFormulaire, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, nettoyerEquipe, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-21.1";
+export const VERSION = "2026-10-21.2";
 const MAX_REFAITS = 6;
 const LONGUEURS_VALIDES = ["phrase", "courte", "developpee"];
 const MAX_RECHERCHES = 15;
 const MAX_EPISODES = 60;      // historique gardé pour l'application (calendrier des épisodes)
 
-const NOUVEAUTES = `📱 <b>Nouvelle version de ton podcast : tout se règle dans l'application.</b>
+// Message envoyé après une mise à jour : les nouveautés de cette version…
+const NOUVEAUTES = `✅ <b>Ton podcast est à jour</b> (version ${VERSION}).
+
+• Déploiement plus fiable : les vérifications automatiques ne ratent plus au hasard.
+• Rien ne change dans tes épisodes ni dans tes réglages.`;
+
+// … ou, pour qui arrive d'avant l'application (installation neuve, ancienne version
+// réglée par la conversation), sa présentation.
+const VERSION_APPLICATION = "2026-10-21.1";
+const PRESENTATION = `📱 <b>Nouvelle version de ton podcast : tout se règle dans l'application.</b>
 
 • <b>Épisode</b> : toutes tes rubriques dans l'ordre, chacune avec sa fiche ; « + » ajoute une fête du prénom, la météo, un rappel selon l'agenda, une idée de sortie…
 • <b>Idées</b> : tes recherches de sorties, à part.
@@ -72,7 +81,9 @@ export class Etat extends DurableObject {
         const miseAJour = await requete.json();
         // Réponse immédiate ; le traitement continue (dans l'ordre d'arrivée).
         const travail = this.enFile(() => this.traiterMiseAJour(miseAJour))
-          .catch((erreur) => console.log("Mise à jour :", erreur.stack || erreur));
+          .catch((erreur) => console.log("Mise à jour :", erreur.stack || erreur))
+          // Pour les tests : dernier message entièrement traité (voir /test/etat).
+          .finally(() => { this.fini = Math.max(this.fini || 0, Number(miseAJour.update_id) || 0); });
         if (this.ctx.waitUntil) this.ctx.waitUntil(travail);
         return new Response("ok");
       }
@@ -95,7 +106,7 @@ export class Etat extends DurableObject {
           if (corps.effacer) await this.ctx.storage.deleteAll();
           if (corps.oublier_config) await this.ctx.storage.delete("config");
         }
-        return Response.json({ config: await this.ctx.storage.get("config"), etat: await this.ctx.storage.get("etat"), reveil: await this.ctx.storage.getAlarm() });
+        return Response.json({ config: await this.ctx.storage.get("config"), etat: await this.ctx.storage.get("etat"), reveil: await this.ctx.storage.getAlarm(), fini: this.fini || 0 });
       }
       if (url.pathname === "/app/fichier") {
         return Response.json({ file_id: await this.fichierAudio(url.searchParams.get("cle") || "") });
@@ -1440,14 +1451,18 @@ export class Etat extends DurableObject {
     await this.tg.appeler("setChatMenuButton", { chat_id: this.env.TELEGRAM_CHAT_ID,
       menu_button: app ? { type: "web_app", text: "Application", web_app: { url: app } } : { type: "commands" } });
     if (r.ok && etat.version_installee !== VERSION) {
+      const avant = etat.version_installee;
       etat.version_installee = VERSION;
       etat.adresse = adresse;
       await this.ecrireEtat(etat);
       const config = await this.lireConfig();
       await this.sauvegarder(config).catch(() => {});
-      if (app) {
+      if (avant && !plusRecente(VERSION_APPLICATION, avant)) {
+        // Déjà sur l'application : juste les nouveautés.
+        await this.tg.envoyer(NOUVEAUTES, { reply_markup: this.clavierAccueil({ adresse }) });
+      } else if (app) {
         // Tout passe par l'application : plus de clavier fixe ni de tableau épinglé.
-        await this.tg.envoyer(NOUVEAUTES, { reply_markup: { remove_keyboard: true } });
+        await this.tg.envoyer(PRESENTATION, { reply_markup: { remove_keyboard: true } });
         await this.tg.envoyer("Touche ce bouton, ou <b>Application</b> à gauche du champ de saisie :", { reply_markup: this.clavierAccueil({ adresse }) });
         const frais = await this.lireEtat();
         if (frais.tableau_id) {
@@ -1457,7 +1472,7 @@ export class Etat extends DurableObject {
           await this.ecrireEtat(frais);
         }
       } else {
-        await this.tg.envoyer(NOUVEAUTES, { reply_markup: CLAVIER_FIXE });
+        await this.tg.envoyer(PRESENTATION, { reply_markup: CLAVIER_FIXE });
         await this.epinglerTableau(config, await this.lireEtat(), true);
       }
     } else if (forcer) {
