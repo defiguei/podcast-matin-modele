@@ -867,6 +867,26 @@ def lire_actualites(reglages: dict, maintenant: dt.datetime
     return articles, problemes
 
 
+def lire_flux_specialise(flux: dict, maintenant: dt.datetime, vus: set[str] | None = None,
+                         titres: list[str] | None = None, jours: int = 7, maximum: int = 6) -> list[Article]:
+    """Articles récents (7 jours) d'un flux spécialisé, sans ceux déjà racontés."""
+    url = str(flux.get("url") or "")
+    nom = str(flux.get("nom") or "")
+    if not url.startswith("http"):
+        return []
+    seuil = maintenant.astimezone(dt.timezone.utc) - dt.timedelta(days=jours)
+    try:
+        articles = lire_flux(telecharger(url, 20, essais=2), nom, maximum * 2, seuil)
+    except Exception as erreur:
+        journal(f"Flux spécialisé « {nom or masquer(url)} » ignoré : {erreur}")
+        return []
+    gardes = garder_nouveaux(articles, set() if vus is None else vus, maximum)
+    if titres is not None:
+        titres.extend(a.titre for a in gardes)
+    journal(f"Flux spécialisé « {nom or masquer(url)} » : {len(gardes)} article(s).")
+    return gardes
+
+
 def chercher_actus(requete: str, reglages: dict, maintenant: dt.datetime,
                    maximum: int, jours: int) -> list[Article]:
     """Recherche Google Actualités (flux RSS public) sur un sujet ou un lieu."""
@@ -2256,6 +2276,11 @@ def preparer_regles(effectifs: dict, cle: str, maintenant: dt.datetime, evenemen
         titres_actus.extend(a.titre for a in trouves)
         return [f"{a.source} — {a.titre}" + (f" : {a.resume}" if a.resume else "") for a in trouves]
 
+    def flux_specialise(flux: dict) -> list[str]:
+        """Un flux spécialisé (Réglages › Sources) coché dans la fiche : ses articles récents."""
+        return [f"{a.titre}" + (f" : {a.resume}" if a.resume else "") + (f" ({a.lien})" if a.lien else "")
+                for a in lire_flux_specialise(flux, maintenant, vus, titres_actus)]
+
     collectes = {}
     for regle in candidates:
         plan = plans.get(regle["id"]) or {}
@@ -2263,7 +2288,8 @@ def preparer_regles(effectifs: dict, cle: str, maintenant: dt.datetime, evenemen
             journal(f"Rubrique {regle['id']} : condition non remplie aujourd'hui.")
             continue
         try:
-            collectes[regle["id"]] = moteur.collecter(regle, plan, sources, jour, effectifs["ville_habituelle"], actus)
+            collectes[regle["id"]] = moteur.collecter(regle, plan, sources, jour, effectifs["ville_habituelle"], actus,
+                                                      config=config, lire_flux=flux_specialise, agenda=agenda)
             journal(f"Rubrique {regle['id']} appliquée ({regle.get('titre', '')}).")
         except Exception as erreur:          # une règle en panne ne bloque pas l'épisode
             journal(f"Rubrique {regle['id']} : collecte impossible ({type(erreur).__name__} : {erreur}).")

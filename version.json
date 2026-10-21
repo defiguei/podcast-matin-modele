@@ -1,9 +1,12 @@
 {
-  "version": "2026-10-22.2",
+  "version": "2026-10-22.3",
   "date": "2026-10-22",
-  "titre": "Rubriques à la voix : la consigne n'est plus obligatoire",
+  "titre": "Des sources explicites, et le test des clés",
   "nouveautes": [
-    "Une rubrique demandée à la voix ou à l'écrit est créée même si seul le titre a été compris : la consigne reprend tes mots."
+    "Réglages › Sources : d'où viennent les informations, catégorie par catégorie (où ça cherche, quelles rubriques s'en servent). Une recherche peut être retirée.",
+    "Tes médias se gèrent là, et tu peux ajouter des flux spécialisés (un magazine, un blog…) qu'une rubrique choisit.",
+    "Chaque rubrique dit « Où elle cherche » : un modèle en propose, une rubrique libre demande d'en choisir au moins une. Rien d'autre n'est lu.",
+    "Connexions : « Tester » vérifie aussi une clé déjà enregistrée (modèles Gemini disponibles, crédits Tavily restants, horaires SNCF)."
   ],
   "supprimes": [
     "cloudflare/worker.js",

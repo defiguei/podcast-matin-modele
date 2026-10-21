@@ -11,6 +11,7 @@ import {
   VOIX, VOIX_CONSEILLEES, VITESSES, TONS, CITER, TRANSPORTS, fluxActus, profilPays, PAYS, DELAIS_RATTRAPAGE,
   DEVISES, REGIONS_FERIES, MODES_VOIX, sourcesAuto, estFerie, nomFerie, animateursDuJour, placesDuJour, normaliserTexte,
   jourDeSemaine, MODELES_RUBRIQUES, catalogueRubriques, nouvelleRegle, modifierRegle,
+  INFOS_SOURCES, sourceConnue, sourcesUtilisables, nomSource,
 } from "./config.js";
 
 const DUREE_VALIDITE = 24 * 3600;      // une ouverture reste valable 24 h
@@ -133,8 +134,20 @@ function regleVisible(r, aujourdHui) {
     fiche: Object.fromEntries(CHAMPS_FICHE.map((c) => [c, fiche[c] || ""])),
     transport: fiche.transport || "", budget: fiche.budget || { max: null, unite: "personne", transport_inclus: false },
     inclure: fiche.inclure || [], exclure: fiche.exclure || [], recherche: Boolean(r.recherche),
-    sources_auto: Boolean(r.recherche?.sources_auto), place: r.rubrique?.apres || null,
+    place: r.rubrique?.apres || null,
     derniere_application: r.derniere_application, servie: Boolean(r.servie), id_condition: Boolean(r.condition),
+  };
+}
+
+// Réglages › Sources : chaque catégorie, où elle cherche et qui l'utilise ; les médias et
+// les flux spécialisés.
+function sourcesVisibles(config) {
+  const coupees = config.sources?.coupees || [];
+  const qui = (s) => config.regles.filter((r) => (r.recherche?.sources || []).includes(s)).map((r) => ({ id: r.id, titre: r.titre }));
+  return {
+    categories: Object.entries(SOURCES).map(([cle, nom]) => ({ cle, nom, ...INFOS_SOURCES[cle], coupee: coupees.includes(cle), rubriques: qui(cle) })),
+    flux: (config.sources?.flux || []).map((f) => ({ ...f, cle: `flux:${f.id}`, rubriques: qui(`flux:${f.id}`) })),
+    medias: fluxActus(config), medias_defaut: !config.actus.flux,
   };
 }
 
@@ -220,6 +233,7 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
       agenda: config.agenda, agendas: etat.agendas || [], agendas_vus: etat.agendas_vus || null,
       consignes: config.consignes, a_approfondir: config.a_approfondir.map((a) => a.sujet),
       livraison: config.livraison || { telegram: true },
+      sources: sourcesVisibles(config),
       echantillons: liens.voix, temps_echantillons: etat.temps_echantillons || {},
     },
     regles: config.regles.map((r) => regleVisible(r, aujourdHui)),
@@ -253,7 +267,7 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
 const texte = (v, max) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
 
 // Traduit le formulaire de la fiche en champs pour nouvelleRegle / modifierRegle.
-export function champsDepuisFormulaire(f, ancienne, aujourdHui, devise = "CHF") {
+export function champsDepuisFormulaire(f, ancienne, aujourdHui, devise = "CHF", config = null) {
   const titre = texte(f.titre, 50);
   const consigne = texte(f.consigne, 400);
   if (!titre) throw new Error("Donne un titre à la rubrique.");
@@ -277,9 +291,14 @@ export function champsDepuisFormulaire(f, ancienne, aujourdHui, devise = "CHF") 
   const rubrique = longueur && type !== "ponctuelle"
     ? { titre, apres: ancienne?.rubrique?.apres || (RUBRIQUES[f.place] || /^R\d+$/.test(f.place || "") ? f.place : "actualites"), longueur } : null;
 
-  const auto = Boolean(f.sources_auto);
-  const sources = auto ? sourcesAuto({ titre, consigne, fiche: f.fiche || {}, condition: f.condition && f.condition.texte ? f.condition : null })
-    : nettoyerListe(f.sources, 9).filter((s) => SOURCES[s]);
+  // Où elle cherche : toujours explicite. Les anciens formulaires « choisies par l'application »
+  // (sources_auto) reçoivent les sources proposées d'après le sujet.
+  const sources = f.sources_auto && !(f.sources || []).length
+    ? sourcesAuto({ titre, consigne, fiche: f.fiche || {}, condition: f.condition && f.condition.texte ? f.condition : null }, config)
+    : nettoyerListe(f.sources, 15).filter(sourceConnue);
+  if (!sourcesUtilisables(sources, config).length) {
+    throw new Error("Choisis au moins une source dans « Où elle cherche » : c'est là que la rubrique trouve son contenu.");
+  }
   const fiche = Object.fromEntries(CHAMPS_FICHE.map((c) => [c, texte(f.fiche?.[c], c === "avec_qui" ? 80 : c === "ages" ? 40 : 120)]));
   fiche.transport = TRANSPORTS[f.transport] && f.transport !== "peu_importe" ? f.transport : "";
   const max = f.budget?.max === "" || f.budget?.max == null ? null : Number(String(f.budget.max).replace(",", "."));
@@ -288,10 +307,7 @@ export function champsDepuisFormulaire(f, ancienne, aujourdHui, devise = "CHF") 
                    transport_inclus: fiche.transport === "aucun" ? false : Boolean(f.budget?.transport_inclus) };
   fiche.inclure = nettoyerListe(Array.isArray(f.inclure) ? f.inclure : String(f.inclure || "").split(/[,;\n]/), 8);
   fiche.exclure = nettoyerListe(Array.isArray(f.exclure) ? f.exclure : String(f.exclure || "").split(/[,;\n]/), 8);
-  // « Pas de transport » est le choix par défaut d'une nouvelle rubrique : seul, il ne fait pas une recherche.
-  const avecFiche = CHAMPS_FICHE.some((c) => fiche[c]) || (fiche.transport && fiche.transport !== "aucun") || fiche.budget.max !== null || fiche.inclure.length || fiche.exclure.length;
-  const recherche = sources.length || avecFiche || type === "ponctuelle"
-    ? { sources: sources.length ? sources : ["web"], fiche, sources_auto: auto } : null;
+  const recherche = { sources, fiche };
 
   const c = f.condition;
   const condition = c && texte(c.texte, 120) ? {
@@ -326,7 +342,7 @@ export function formulaireNeuf(config, idModele = "libre", ponctuelle = false) {
     longueur: ponctuelle ? "aucune" : base.longueur || "courte",
     periode: ponctuelle ? { type: "ponctuelle", debut: "", fin: "", jours: [] }
       : { type: "toujours", debut: "", fin: "", jours: [], ...(base.periode || {}) },
-    sources_auto: true, sources: ponctuelle ? ["web", "lieux"] : [],
+    sources: sourcesUtilisables(ponctuelle ? ["web", "lieux"] : modele.sources || [], config),
     fiche: Object.fromEntries(CHAMPS_FICHE.map((c) => [c, ""])),
     transport: "aucun", budget: { max: "", unite: "personne", devise: profilPays(config).devise, transport_inclus: false },
     inclure: [], exclure: [], condition: base.condition ? { ...base.condition } : null,
@@ -342,7 +358,7 @@ export function formulaireDepuisRegle(r, devise = "CHF") {
     titre: r.titre, consigne: r.consigne,
     longueur: r.rubrique?.longueur || "aucune",
     periode: { type: r.periode.type, debut: r.periode.debut || "", fin: r.periode.fin || "", jours: [...(r.periode.jours || [])] },
-    sources_auto: Boolean(r.recherche?.sources_auto), sources: [...(r.recherche?.sources || [])],
+    sources: [...(r.recherche?.sources || [])],
     fiche: Object.fromEntries(CHAMPS_FICHE.map((c) => [c, fiche[c] || ""])),
     transport: fiche.transport || "",
     budget: { max: budget.max ?? "", unite: budget.unite || "personne", devise: budget.devise || devise, transport_inclus: Boolean(budget.transport_inclus) },
@@ -356,7 +372,7 @@ export function formulaireDepuisRegle(r, devise = "CHF") {
 // Crée ou modifie une rubrique à partir du formulaire : le chemin unique (fiche de
 // l'application, demande écrite ou vocale).
 export function enregistrerRubrique(config, formulaire, existante, aujourdHui, origine = "application") {
-  const champs = champsDepuisFormulaire(formulaire, existante, aujourdHui, profilPays(config).devise);
+  const champs = champsDepuisFormulaire(formulaire, existante, aujourdHui, profilPays(config).devise, config);
   if (existante) return modifierRegle(config, existante.id, champs, aujourdHui);
   return nouvelleRegle(config, champs, aujourdHui, origine);
 }

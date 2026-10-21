@@ -290,13 +290,26 @@ def fiche_en_mots(fiche: dict) -> str:
     return " ; ".join(morceaux)
 
 
+def sources_lues(regle: dict, config: dict | None = None) -> set[str]:
+    """Les sources cochées dans la fiche de la rubrique, sans celles retirées dans Réglages ›
+    Sources (catégories coupées, flux spécialisés supprimés). Rien d'autre n'est lu."""
+    reglages = (config or {}).get("sources") or {}
+    coupees = set(reglages.get("coupees") or [])
+    flux = {f"flux:{f.get('id')}" for f in reglages.get("flux") or [] if isinstance(f, dict)}
+    cochees = set(((regle.get("recherche") or {}).get("sources")) or [])
+    return {s for s in cochees if (s in flux if s.startswith("flux:") else s not in coupees)}
+
+
 def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: str,
-              chercher_actus: Callable[[str], list[str]] | None = None, profondeur: int = 1) -> Collecte:
-    """Va chercher les informations dont la règle a besoin et prépare sa section."""
+              chercher_actus: Callable[[str], list[str]] | None = None, profondeur: int = 1,
+              config: dict | None = None, lire_flux: Callable[[dict], list[str]] | None = None,
+              agenda: list[str] | None = None) -> Collecte:
+    """Va chercher les informations dont la règle a besoin et prépare sa section.
+    Seules les sources cochées dans sa fiche sont lues (sources_lues)."""
     r = regle
     recherche = r.get("recherche") or {}
     fiche = recherche.get("fiche") or {}
-    noms_sources = set(recherche.get("sources") or [])
+    noms_sources = sources_lues(r, config)
     collecte = Collecte(regle=r, plan=plan)
     collecte.date_cible = date_iso(plan.get("date_cible")) or jour
     lignes = [f"RÈGLE {r['id']} — « {(r.get('rubrique') or {}).get('titre') or r.get('titre', '')} »",
@@ -308,13 +321,6 @@ def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: s
     if collecte.date_cible != jour:
         ecart = (collecte.date_cible - jour).days
         lignes.append(f"Date visée : {date_longue(collecte.date_cible)} (dans {ecart} jour{'s' if abs(ecart) > 1 else ''})")
-
-    # Sources exactes déduites du sujet quand l'auditeur n'a coché que la recherche web.
-    texte_sujet = cle(f"{r.get('titre', '')} {r.get('consigne', '')}")
-    if re.search(r"prenom|saint|fete du jour|fete des prenoms", texte_sujet):
-        noms_sources.add("saints")
-    if re.search(r"fete (inter)?nationale|fete internationale|journee (mondiale|internationale|nationale)|fete du jour", texte_sujet):
-        noms_sources.add("fetes")
 
     if "saints" in noms_sources:
         saints = saints_du_jour(jour)
@@ -361,7 +367,7 @@ def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: s
                 lignes.append(f"Météo prévue ({point_ville['nom']}) : {Sources.meteo_en_mots(collecte.meteo)}")
 
     # Train précis : état en temps réel (retard, suppression, voie, correspondances).
-    suivi = plan.get("train")
+    suivi = plan.get("train") if "transports" in noms_sources else None
     if suivi:
         etat, problemes = trains.etat_train(sources, suivi["de"], suivi["a"], jour, suivi["heure"],
                                             suivi.get("pays", ""), f"{r.get('titre', '')} {r.get('consigne', '')}")
@@ -381,7 +387,7 @@ def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: s
     transport = fiche.get("transport", "")
     if destination and ville and cle(destination) != cle(ville) and transport != "aucun" and not suivi:
         collecte.itineraire = lien_itineraire(ville, destination, transport)
-        if ("transports" in noms_sources or transport in ("train", "peu_importe")) and transport != "voiture":
+        if "transports" in noms_sources and transport != "voiture":
             collecte.trajets = sources.trajets(ville, destination, collecte.date_cible, "09:00")
             if collecte.trajets:
                 lignes.append(f"Train (horaires, prix non fournis) : {Sources.trajets_en_mots(collecte.trajets)}")
@@ -450,6 +456,17 @@ def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: s
         if actus:
             lignes.append("Actualités liées :")
             lignes += [f"  - {a}" for a in actus[:5]]
+
+    # Flux spécialisés choisis dans la fiche (Réglages › Sources).
+    for flux in ((config or {}).get("sources") or {}).get("flux") or []:
+        if f"flux:{flux.get('id')}" in noms_sources and lire_flux:
+            articles = lire_flux(flux)
+            lignes.append(f"Flux « {flux.get('nom', '?')} » : " + ("" if articles else "rien de récent"))
+            lignes += [f"  - {a}" for a in articles[:6]]
+
+    if "agenda" in noms_sources and agenda is not None:
+        lignes.append("Agenda des prochains jours : " + ("" if agenda else "rien de prévu"))
+        lignes += [f"  - {e}" for e in agenda[:15]]
 
     lignes.append("N'utilise que ces informations pour les faits (lieux, prix, horaires, dates) ; "
                   "si une information manque, dis-le ou reste général.")

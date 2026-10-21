@@ -9,6 +9,7 @@ import {
   nomRubrique, decrirePeriode, ajouterJours, dateCourte, heureParlee, normaliserTexte, nettoyerListe, TONS, CITER, VOIX_CONSEILLEES,
   placerRubrique, FLUX_DEFAUT, NOMS_JOURS, heureValide, modifierChamp, CHAMPS_RUBRIQUE, TRANSPORTS, analyserPeriode,
   VOIX, animateursDuJour, renommerVoix, activerVoix, choisirVoixJour, LONGUEUR_CONSIGNE, PAYS, profilPays, fluxActus, FERIES_CALCULES,
+  SOURCES, MAX_FLUX_SPECIALISES,
 } from "./config.js";
 import { consigneComprehension, contexteComprehension, schemaOperations, appliquerOperations, resumerJours, messageCompris } from "./comprendre.js";
 import { ecran, ficheRegle, clavierRegle, tableauDeBord, clavierTableau, clavierEpisode, clavierAvisNegatif, aide, CLAVIER_FIXE, COMMANDES } from "./ui.js";
@@ -23,7 +24,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-22.2";
+export const VERSION = "2026-10-22.3";
 const MAX_REFAITS = 6;
 const LONGUEURS_VALIDES = ["phrase", "courte", "developpee"];
 const MAX_RECHERCHES = 15;
@@ -34,10 +35,10 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 // Message envoyé après une mise à jour : les nouveautés de cette version…
 const NOUVEAUTES = `✅ <b>Ton podcast est à jour</b> (version ${VERSION}).
 
-• Toutes les voix sont des animateurs possibles, sous leur nom : donne-leur un prénom dans Réglages › Voix.
-• Chaque voix s'active ou se coupe ; « Au hasard » tire parmi celles que tu utilises.
-• Selon le jour : une liste par place pour choisir qui présente chaque jour.
-• « Autres animateurs » disparaît : leurs prénoms passent à leurs voix.`;
+• Réglages › Sources : d'où viennent les informations, catégorie par catégorie (où ça cherche, quelles rubriques s'en servent). Une recherche peut être retirée.
+• Tes médias se gèrent là, et tu peux ajouter des flux spécialisés (un magazine, un blog…) qu'une rubrique choisit.
+• Chaque rubrique dit « Où elle cherche » : un modèle en propose, une rubrique libre demande d'en choisir au moins une. Rien d'autre n'est lu.
+• Connexions : « Tester » vérifie aussi une clé déjà enregistrée (modèles Gemini disponibles, crédits Tavily restants, horaires SNCF).`;
 
 // … ou, pour qui arrive d'avant l'application (installation neuve, ancienne version
 // réglée par la conversation), sa présentation.
@@ -1204,6 +1205,26 @@ export class Etat extends DurableObject {
   // ───────────────────────────────── sources ─────────────────────────────────
 
   async ajouterSource(config, valeur) {
+    const trouve = await this.trouverMedia(config, valeur);
+    const liste = [...(fluxActus(config))];
+    if (!liste.some((f) => f.url === trouve.url)) liste.push(trouve);
+    config.actus.flux = liste;
+    return `Source ajoutée : ${trouve.nom}`;
+  }
+
+  // Flux spécialisé (Réglages › Sources) : une rubrique peut le choisir dans « Où elle cherche ».
+  async ajouterFluxSpecialise(config, valeur) {
+    const liste = config.sources.flux;
+    if (liste.length >= MAX_FLUX_SPECIALISES) throw new Error(`${MAX_FLUX_SPECIALISES} flux spécialisés au plus : retires-en un d'abord.`);
+    const trouve = await this.trouverMedia(config, valeur);
+    if (liste.some((f) => f.url === trouve.url)) throw new Error(`« ${trouve.nom} » est déjà dans tes flux spécialisés.`);
+    const id = await empreinte(`flux:${trouve.url}`, 8);
+    liste.push({ id, nom: trouve.nom.slice(0, 60), url: trouve.url });
+    return `Flux spécialisé ajouté : ${trouve.nom}`;
+  }
+
+  // Le flux RSS d'un média ou d'un site, d'après son nom (Gemini propose des adresses) ou son adresse.
+  async trouverMedia(config, valeur) {
     const candidats = [];
     if (/^https?:\/\//i.test(valeur)) candidats.push({ nom: "", url: valeur });
     else {
@@ -1215,12 +1236,7 @@ export class Etat extends DurableObject {
     }
     for (const candidat of candidats) {
       const flux = await trouverFlux(candidat.url);
-      if (flux) {
-        const liste = [...(fluxActus(config))];
-        if (!liste.some((f) => f.url === flux.url)) liste.push({ nom: candidat.nom || flux.titre || valeur, url: flux.url });
-        config.actus.flux = liste;
-        return `Source ajoutée : ${candidat.nom || flux.titre || valeur}`;
-      }
+      if (flux) return { nom: candidat.nom || flux.titre || valeur, url: flux.url };
     }
     throw new Error(`je n'ai pas trouvé de flux RSS pour « ${valeur} ». Envoie-moi l'adresse du flux si tu l'as.`);
   }
@@ -1830,7 +1846,7 @@ export class Etat extends DurableObject {
     let etat = await this.lireEtat();
     this.modelesLegers = etat.modeles_legers;
     const ancienne = cloner(config);
-    const donnees = async () => ({ ...donneesApp(config, etat, ctx, VERSION, await this.liensAudio(etat)), connexions: resumeConnexions(this.cles, etat),
+    const donnees = async () => ({ ...donneesApp(config, etat, ctx, VERSION, await this.liensAudio(etat)), connexions: resumeConnexions(this.cles, etat, this.maintenant()),
       telegram: telegramActif(this.env),
       notifications: { cle: (await this.clesVapid()).publique,
         abonnements: (etat.abonnements || []).map((a) => ({ id: a.id, nom: a.nom, cree_le: a.cree_le, erreur: a.erreur || null, fin: a.endpoint.slice(-16) })) },
@@ -2004,6 +2020,31 @@ export class Etat extends DurableObject {
           config.actus.flux = null;
           libelle = "Sources par défaut";
           break;
+        // ── Réglages › Sources : catégories et flux spécialisés ──
+        case "source_coupee": {
+          const cle = String(demande.cle || "");
+          if (!SOURCES[cle]) return refus("Source inconnue.");
+          const coupees = new Set(config.sources.coupees);
+          if (demande.coupee) coupees.add(cle); else coupees.delete(cle);
+          config.sources.coupees = [...coupees];
+          libelle = `${SOURCES[cle]} : ${demande.coupee ? "retirée, aucune rubrique ne la lit" : "de nouveau utilisable"}`;
+          break;
+        }
+        case "flux_ajouter": {
+          const valeur = String(demande.valeur || "").trim().slice(0, 300);
+          if (!valeur) return refus("Donne le nom du site ou l'adresse de son flux RSS.");
+          try { libelle = await this.ajouterFluxSpecialise(config, valeur); } catch (erreur) { return refus(`Désolé, ${erreur.message}`); }
+          break;
+        }
+        case "flux_retirer": {
+          const flux = config.sources.flux.find((f) => f.id === demande.id);
+          if (!flux) return refus("Ce flux n'est plus dans la liste.");
+          config.sources.flux = config.sources.flux.filter((f) => f.id !== flux.id);
+          // Les rubriques qui le lisaient ne le gardent pas.
+          for (const r of config.regles) if (r.recherche) r.recherche.sources = r.recherche.sources.filter((x) => x !== `flux:${flux.id}`);
+          libelle = `Flux spécialisé retiré : ${flux.nom}`;
+          break;
+        }
         case "agenda": {
           const connus = new Set((etat.agendas || []).map((x) => x.id));
           if (!connus.has(demande.id)) return refus("Agenda inconnu : relis la liste.");
@@ -2020,9 +2061,12 @@ export class Etat extends DurableObject {
           if (!CLES[nom]) return refus("Clé inconnue.");
           const valeur = String(demande.valeur || "").trim();
           const cles = { ...this.cles };
+          etat.tests_cles = { ...(etat.tests_cles || {}) };
           if (!valeur) {
             delete cles[nom]; delete cles[`${nom}_teste`];
+            delete etat.tests_cles[nom];
             await this.ecrireCles(cles);
+            await this.ecrireEtat(etat);
             return reponse({ message: `Clé ${CLES[nom].nom} retirée de l'application.` });
           }
           if (/\s/.test(valeur) || valeur.length > 300) return refus("Colle seulement la clé, sans espace ni retour à la ligne.");
@@ -2030,8 +2074,34 @@ export class Etat extends DurableObject {
           if (!test.ok) return refus(test.message);
           cles[nom] = valeur;
           cles[`${nom}_teste`] = ctx.maintenantIso;
+          etat.tests_cles[nom] = { ok: true, message: test.message, quand: ctx.maintenantIso, ou: "app" };
           await this.ecrireCles(cles);
+          await this.ecrireEtat(etat);
           return reponse({ message: `${test.message} Clé enregistrée.` });
+        }
+        // Tester une clé déjà enregistrée, sans la recoller. Dans l'application : le bot la
+        // teste tout de suite. Dans GitHub : le bot ne la voit pas, une courte exécution
+        // GitHub (tester-cles.yml) la teste et renvoie le résultat (événement « cles »).
+        case "cle_tester": {
+          const nom = String(demande.nom || "");
+          if (!CLES[nom]) return refus("Clé inconnue.");
+          etat.tests_cles = { ...(etat.tests_cles || {}) };
+          if (this.cles[nom]) {
+            const test = await testerCle(this.env, nom, this.cles[nom]);
+            etat.tests_cles[nom] = { ok: test.ok, message: test.message, quand: ctx.maintenantIso, ou: "app" };
+            if (test.ok) await this.ecrireCles({ ...this.cles, [`${nom}_teste`]: ctx.maintenantIso });
+            await this.ecrireEtat(etat);
+            return test.ok ? reponse({ message: test.message }) : refus(test.message);
+          }
+          if (Array.isArray(etat.secrets_github) && !etat.secrets_github.includes(CLES[nom].variable)) {
+            return refus(`Aucune clé ${CLES[nom].nom} à tester : colle-la d'abord dans le champ.`);
+          }
+          try { await this.gh.lancer("tester-cles.yml", { cles: nom }); } catch (erreur) {
+            return refus(`Le test ne peut pas partir sur GitHub (${erreur.message}). Lance « Mettre à jour » si la version de ton dépôt est ancienne.`);
+          }
+          etat.tests_cles[nom] = { ...(etat.tests_cles[nom] || {}), en_cours: true, lance_ms: this.maintenant() };
+          await this.ecrireEtat(etat);
+          return reponse({ message: `Ta clé ${CLES[nom].nom} est dans GitHub : test lancé là-bas, résultat dans une minute environ.`, attendre_test: true });
         }
         case "agenda_ajouter": {
           const url = String(demande.url || "").trim();
@@ -2424,6 +2494,16 @@ export class Etat extends DurableObject {
     if (ev.type === "maj") {
       etat.maj_etat = { etat: ev.ok ? "fait" : "erreur", depuis: Date.now(), version: String(ev.version || "").slice(0, 20),
                         message: String(ev.message || "").slice(0, 300) };
+      await this.ecrireEtat(etat);
+      return { ok: true };
+    }
+    if (ev.type === "cles") {
+      // Résultat de tester-cles.yml : les clés rangées dans GitHub, testées là-bas (jamais leurs valeurs).
+      etat.tests_cles = { ...(etat.tests_cles || {}) };
+      for (const [nom, r] of Object.entries(ev.resultats || {})) {
+        if (!CLES[nom] || !r || typeof r !== "object") continue;
+        etat.tests_cles[nom] = { ok: Boolean(r.ok), message: String(r.message || "").slice(0, 300), quand: ctx.maintenantIso, ou: "github" };
+      }
       await this.ecrireEtat(etat);
       return { ok: true };
     }

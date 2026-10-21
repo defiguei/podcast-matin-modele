@@ -22,10 +22,48 @@ export const VITESSES = ["très lente", "lente", "normale", "rapide", "très rap
 export const TONS = { naturel: "Naturel", serieux: "Sérieux", detendu: "Détendu", humour: "Avec humour" };
 export const CITER = { non: "Non", oral: "À l'oral", ecrit: "Dans le message", les_deux: "Les deux" };
 export const LONGUEURS = { phrase: "une phrase", courte: "courte", developpee: "développée" };
+// Où une rubrique va chercher son contenu. Chaque catégorie dit ce qu'elle apporte et où
+// elle cherche (Réglages › Sources) ; une rubrique en coche au moins une. Les flux
+// spécialisés de l'auditeur s'y ajoutent sous la forme « flux:<id> ».
 export const SOURCES = {
-  web: "Recherche web (Tavily)", actus: "Actualités", meteo: "Météo", transports: "Trains (CFF, SNCB, SNCF)",
-  lieux: "Lieux (OpenStreetMap)", wikivoyage: "Wikivoyage", saints: "Saints du jour", fetes: "Fêtes du jour", feries: "Jours fériés",
+  actus: "Google Actualités", web: "Recherche web", meteo: "Météo", transports: "Trains",
+  lieux: "Lieux", wikivoyage: "Guides de voyage", saints: "Saints du jour", fetes: "Journées et fêtes",
+  feries: "Jours fériés", agenda: "Agendas",
 };
+export const INFOS_SOURCES = {
+  actus: { apporte: "Les articles récents sur le sujet de la rubrique, tous médias confondus.", ou: "Google Actualités (news.google.com)",
+           aussi: "Actu locale, À creuser, Mes déplacements, thèmes préférés des Actualités" },
+  web: { apporte: "Des pages web sur le sujet : adresses, horaires, prix, activités.", ou: "Tavily (recherche sur internet)", cle_api: "tavily" },
+  meteo: { apporte: "La météo prévue le jour visé, chez toi ou au lieu de la rubrique.", ou: "Open-Meteo (open-meteo.com)" },
+  transports: { apporte: "Horaires, retards et suppressions de trains.", ou: "CFF et search.ch (Suisse), iRail (Belgique), SNCF (France)", cle_api: "sncf" },
+  lieux: { apporte: "Musées, parcs, points de vue… autour d'un lieu.", ou: "OpenStreetMap et Wikipédia" },
+  wikivoyage: { apporte: "Ce qu'il faut savoir d'une ville ou d'une région à visiter.", ou: "Wikivoyage (fr.wikivoyage.org)" },
+  saints: { apporte: "Les prénoms fêtés aujourd'hui.", ou: "Calendrier des saints intégré au podcast" },
+  fetes: { apporte: "Les journées mondiales et fêtes nationales du jour.", ou: "Wikipédia (« Ce jour-là »)" },
+  feries: { apporte: "Les jours fériés des deux semaines à venir.", ou: "Calendrier de ta région (Planning › Jours fériés)", aussi: "Planning (horaire des jours fériés)" },
+  agenda: { apporte: "Les événements de tes agendas : un rappel selon l'agenda s'en sert.", ou: "Tes liens iCal (fiche Agenda)", aussi: "Agenda, Mes déplacements" },
+};
+export const MAX_FLUX_SPECIALISES = 15;
+const FLUX_ID = /^flux:[0-9a-z]{4,16}$/;
+
+// Une source qu'une rubrique peut cocher : une catégorie, ou un flux spécialisé.
+export function sourceConnue(s) {
+  return Boolean(SOURCES[s]) || FLUX_ID.test(String(s));
+}
+
+// Les sources d'une rubrique réellement lues : sans les catégories coupées ni les flux retirés.
+export function sourcesUtilisables(sources, config) {
+  const coupees = new Set(config?.sources?.coupees || []);
+  const flux = new Set((config?.sources?.flux || []).map((f) => `flux:${f.id}`));
+  return (sources || []).filter((s) => SOURCES[s] ? !coupees.has(s) : flux.has(s));
+}
+
+// Nom lisible d'une source (catégorie ou flux spécialisé).
+export function nomSource(s, config) {
+  if (SOURCES[s]) return SOURCES[s];
+  const flux = (config?.sources?.flux || []).find((f) => `flux:${f.id}` === s);
+  return flux ? flux.nom : "flux retiré";
+}
 export const TRANSPORTS = { voiture: "🚗 Voiture", train: "🚆 Train", velo: "🚲 Vélo", pied: "🚶 À pied", peu_importe: "Peu importe", aucun: "Pas de transport" };
 export const DEVISES = ["CHF", "EUR", "USD", "GBP"];
 // Jours fériés : cantons suisses (code ISO de Nager.Date) et pays voisins ou fréquents.
@@ -56,29 +94,30 @@ export const ECRAN_INTEGREE = {
 // Gemini choisit quand on demande une rubrique à la voix. Le formulaire de départ est celui
 // de la fiche de l'application ; « pret » : titre et consigne utilisables tels quels.
 export const MODELES_RUBRIQUES = [
-  { id: "prenom", famille: "jour", titre: "Fête du prénom", texte: "Les prénoms fêtés aujourd'hui (calendrier des saints)", pret: true,
+  { id: "prenom", sources: ["saints"], famille: "jour", titre: "Fête du prénom", texte: "Les prénoms fêtés aujourd'hui (calendrier des saints)", pret: true,
     formulaire: () => ({ place: "ouverture", titre: "Fête du prénom", consigne: "Dis-moi quels prénoms on fête aujourd'hui (un ou deux).", longueur: "phrase" }) },
-  { id: "journee", famille: "jour", titre: "Journée du jour", texte: "La journée mondiale ou la fête nationale célébrée aujourd'hui", pret: true,
+  { id: "journee", sources: ["fetes"], famille: "jour", titre: "Journée du jour", texte: "La journée mondiale ou la fête nationale célébrée aujourd'hui", pret: true,
     formulaire: () => ({ place: "ouverture", titre: "Journée du jour", consigne: "Dis-moi quelle journée mondiale, internationale ou fête nationale on célèbre aujourd'hui.", longueur: "phrase" }) },
-  { id: "meteo", famille: "jour", titre: "Météo", texte: "Le temps du jour chez toi, et comment t'habiller", pret: true,
+  { id: "meteo", sources: ["meteo"], famille: "jour", titre: "Météo", texte: "Le temps du jour chez toi, et comment t'habiller", pret: true,
     formulaire: (ville) => ({ place: "ouverture", titre: "Météo", consigne: `La météo du jour${ville ? ` à ${ville}` : ""} : températures, risque de pluie, et un conseil pour s'habiller.`, longueur: "phrase" }) },
-  { id: "rappel", famille: "agenda", titre: "Rappel selon l'agenda", texte: "« La veille d'un match, rappelle-moi de préparer mon sac »",
+  { id: "rappel", sources: ["agenda"], famille: "agenda", titre: "Rappel selon l'agenda", texte: "« La veille d'un match, rappelle-moi de préparer mon sac »",
     formulaire: () => ({ place: "agenda", titre: "Rappel", consigne: "Rappelle-moi de ", longueur: "phrase", condition: { texte: "", moment: "veille", n: 1 } }) },
-  { id: "train", famille: "sortie", titre: "Mon train", texte: "Retard ou suppression de ton train habituel (Suisse, France, Belgique)",
+  { id: "train", sources: ["transports"], famille: "sortie", titre: "Mon train", texte: "Retard ou suppression de ton train habituel (Suisse, France, Belgique)",
     formulaire: (ville) => ({ place: "agenda", titre: "Mon train", consigne: `Retard du train de ${ville || "…"} vers … à …h…`, longueur: "phrase",
                               periode: { type: "jours", jours: ["lun", "mar", "mer", "jeu", "ven"] } }) },
-  { id: "actu", famille: "info", titre: "Actu d'un pays ou d'un thème", texte: "« L'actualité du Portugal », « les nouvelles du vélo »",
+  { id: "actu", sources: ["actus"], famille: "info", titre: "Actu d'un pays ou d'un thème", texte: "« L'actualité du Portugal », « les nouvelles du vélo »",
     formulaire: () => ({ place: "actualites", titre: "Actu de ", consigne: "Les nouvelles importantes sur ", longueur: "courte" }) },
-  { id: "sortie", famille: "sortie", titre: "Idée de sortie", texte: "Une sortie proposée dans tes épisodes, selon tes critères (lieu, budget, transport)", recherche: true, pret: true,
+  { id: "sortie", sources: ["web", "lieux", "meteo", "wikivoyage"], famille: "sortie", titre: "Idée de sortie", texte: "Une sortie proposée dans tes épisodes, selon tes critères (lieu, budget, transport)", recherche: true, pret: true,
     formulaire: () => ({ place: "deplacements", titre: "Sortie du week-end", consigne: "Propose une idée de sortie pour le week-end.", longueur: "courte",
                          periode: { type: "jours", jours: ["jeu", "ven"] } }) },
-  { id: "libre", famille: "info", titre: "Rubrique libre", texte: "Tu écris la consigne, l'application choisit où chercher",
+  { id: "libre", sources: [], famille: "info", titre: "Rubrique libre", texte: "Tu écris la consigne et tu choisis où elle cherche",
     formulaire: () => ({ place: "actualites", titre: "", consigne: "", longueur: "courte" }) },
 ];
 
-// Le catalogue tel que l'application le reçoit (formulaire déjà rempli pour ta ville).
+// Le catalogue tel que l'application le reçoit (formulaire déjà rempli pour ta ville ;
+// sources par défaut du modèle, sans les catégories coupées).
 export function catalogueRubriques(config) {
-  return MODELES_RUBRIQUES.map(({ formulaire, ...m }) => ({ ...m, f: formulaire(config?.actus?.ville || "") }));
+  return MODELES_RUBRIQUES.map(({ formulaire, ...m }) => ({ ...m, sources: sourcesUtilisables(m.sources, config), f: formulaire(config?.actus?.ville || "") }));
 }
 
 export const DELAIS_RATTRAPAGE = [30, 45, 60, 90, 120];
@@ -134,6 +173,9 @@ export function configParDefaut() {
     // Où arrive l'épisode : toujours dans l'application, le flux et les notifications ;
     // dans Telegram aussi, sauf si on le coupe.
     livraison: { telegram: true },
+    // Réglages › Sources : catégories coupées (aucune rubrique ne les lit) et flux RSS
+    // spécialisés qu'une rubrique peut choisir ([{ id, nom, url }]).
+    sources: { coupees: [], flux: [] },
     consignes: [],
     a_approfondir: [],
     regles: [],
@@ -286,11 +328,9 @@ export function normaliserRegle(r) {
       inclure: nettoyerListe(fiche.inclure, 8), exclure: nettoyerListe(fiche.exclure, 8),
       attendu: texteCourt(120)(fiche.attendu),
     },
-    sources: nettoyerListe(r.recherche.sources, 9).filter((s) => SOURCES[s]),
+    sources: nettoyerListe(r.recherche.sources, 15).filter(sourceConnue),
     requetes: nettoyerListe(r.recherche.requetes, 6),
-    sources_auto: Boolean(r.recherche.sources_auto),
   } : null;
-  if (recherche && !recherche.sources.length) recherche.sources = ["web"];
   const condition = r.condition && r.condition.texte ? {
     texte: texteCourt(120)(r.condition.texte),
     moment: ["jour_meme", "veille", "jours_avant"].includes(r.condition.moment) ? r.condition.moment : "jour_meme",
@@ -312,9 +352,9 @@ export function normaliserRegle(r) {
   };
 }
 
-// Sources choisies d'après le sujet de la rubrique (« Choisies par l'application »).
-// Un simple rappel selon l'agenda n'a besoin d'aucune source.
-export function sourcesAuto({ titre = "", consigne = "", fiche = {}, condition = null } = {}) {
+// Sources proposées d'après le sujet d'une rubrique demandée à la voix sans source précise
+// (elles sont ensuite cochées dans sa fiche, bien visibles). Un rappel lit l'agenda.
+export function sourcesAuto({ titre = "", consigne = "", fiche = {}, condition = null } = {}, config = null) {
   const t = normaliserTexte(`${titre} ${consigne} ${fiche.quoi || ""} ${fiche.attendu || ""}`);
   const sources = new Set();
   if (/prenom|saint|fete du jour|fete des/.test(t)) sources.add("saints");
@@ -325,9 +365,9 @@ export function sourcesAuto({ titre = "", consigne = "", fiche = {}, condition =
   if (/ferie/.test(t)) sources.add("feries");
   const sortie = fiche.quoi || fiche.ou || /sortie|activite|visite|rando|balade|musee|resto|restaurant|week-?end|spectacle|concert|exposition|que faire|idee/.test(t);
   if (sortie) ["web", "lieux", "meteo", "wikivoyage"].forEach((s) => sources.add(s));
-  const rappel = condition && /rappelle|pense a|n.oublie|prepare|prendre|mentionne/.test(t);
-  if (!sources.size && !rappel) sources.add("web");
-  return [...sources];
+  if (condition) sources.add("agenda");
+  if (!sources.size) sources.add("web");
+  return sourcesUtilisables([...sources], config);
 }
 
 // Met à jour une règle existante avec les champs fournis (fusion profonde légère).
@@ -893,6 +933,35 @@ export function cloner(objet) {
   return JSON.parse(JSON.stringify(objet));
 }
 
+function completerSources(sources) {
+  const vus = new Set();
+  return {
+    coupees: nettoyerListe(sources?.coupees, 20).filter((s) => SOURCES[s]),
+    flux: (Array.isArray(sources?.flux) ? sources.flux : [])
+      .filter((f) => f && /^[0-9a-z]{4,16}$/.test(f.id) && /^https?:\/\//i.test(f.url || "") && !vus.has(f.id) && vus.add(f.id))
+      .slice(0, MAX_FLUX_SPECIALISES)
+      .map((f) => ({ id: f.id, nom: String(f.nom || f.url).replace(/\s+/g, " ").trim().slice(0, 60), url: String(f.url).slice(0, 300) })),
+  };
+}
+
+// Avant Réglages › Sources (2026-10-22) : des sources « choisies par l'application » et,
+// à la fabrication, saints et fêtes ajoutés d'après le titre. On les rend explicites une
+// fois, pour que la fiche montre exactement ce que la rubrique lit.
+function migrerSources(regles, anciennes) {
+  regles.forEach((r, i) => {
+    if (r.periode.type === "ponctuelle") return;
+    const sources = new Set(r.recherche?.sources || []);
+    const sujet = normaliserTexte(`${r.titre} ${r.consigne}`);
+    if (/prenom|saint|fete du jour|fete des prenoms/.test(sujet)) sources.add("saints");
+    if (/fete (inter)?nationale|fete internationale|journee (mondiale|internationale|nationale)|fete du jour/.test(sujet)) sources.add("fetes");
+    if (/\btrains?\b|retard|\bcff\b|sncf|sncb|\bgare\b/.test(sujet) || ["train", "peu_importe"].includes(r.recherche?.fiche?.transport)) sources.add("transports");
+    if (r.condition) sources.add("agenda");
+    if (!sources.size && !anciennes[i]?.recherche) return;    // rien à rendre visible
+    r.recherche = r.recherche || { fiche: normaliserRegle({ recherche: {} }).recherche.fiche, sources: [], requetes: [] };
+    r.recherche.sources = [...sources].slice(0, 15);
+  });
+}
+
 // Complète une configuration lue (anciennes versions, champs manquants).
 export function completerConfig(config) {
   const base = configParDefaut();
@@ -905,7 +974,9 @@ export function completerConfig(config) {
   for (const cle of Object.keys(RUBRIQUES)) {
     if (!resultat.deroule.some((r) => r.cle === cle)) placerRubrique(resultat, cle, cle === "actu_locale" ? "deplacements" : "agenda");
   }
+  resultat.sources = completerSources(config?.sources);
   resultat.regles = (resultat.regles || []).map(normaliserRegle);
+  if (!config?.sources) migrerSources(resultat.regles, config?.regles || []);
   renumeroter(resultat);
   resultat.deroule = resultat.deroule.filter((r) => RUBRIQUES[r.cle] || resultat.regles.some((x) => x.id === r.cle && x.rubrique));
   for (const r of resultat.regles) if (r.rubrique) placerRubrique(resultat, r.id, r.rubrique.apres);

@@ -3,7 +3,7 @@
 // pour agir, « e:… » pour les boutons sous l'épisode, « s:… » pour l'assistant.
 
 import {
-  JOURS, NOMS_JOURS, COURTS_JOURS, VITESSES, TONS, CITER, RUBRIQUES, VOIX, VOIX_CONSEILLEES, SOURCES, TRANSPORTS,
+  JOURS, NOMS_JOURS, COURTS_JOURS, VITESSES, TONS, CITER, RUBRIQUES, VOIX, VOIX_CONSEILLEES, SOURCES, TRANSPORTS, INFOS_SOURCES, nomSource,
   LONGUEURS, LIBELLES_ETATS, etatRegle, prochainPassage, decrirePeriode, nomRubrique, heureParlee, dateCourte, prochainEpisode,
   heurePrevue, fluxActus, profilPays, PAYS, ECRAN_INTEGREE, DELAIS_RATTRAPAGE, nomVoix,
 } from "./config.js";
@@ -430,7 +430,7 @@ const ECRANS = {
       `Transport : ${f.transport ? TRANSPORTS[f.transport] : "- (aucun critère)"} · Budget : ${budget}`,
       `À inclure : ${v(f.inclure)}`, `À exclure : ${v(f.exclure)}`, `Résultat attendu : ${v(f.attendu)}`,
       `Recherches web : ${v(r.recherche?.requetes)}`,
-      `Sources : ${r.recherche?.sources?.length ? r.recherche.sources.map((s) => SOURCES[s]).join(", ") : "—"}`,
+      `Sources : ${r.recherche?.sources?.length ? r.recherche.sources.map((s) => nomSource(s, config)).join(", ") : "—"}`,
       "", "Touche un champ pour le modifier (écris « - » pour le vider)."].join("\n");
     const champ = (nom, cle) => b(`✏️ ${nom}`, `a:rf:${id}:${cle}`);
     const clavier = [
@@ -448,14 +448,11 @@ const ECRANS = {
     const r = config.regles.find((x) => x.id === id);
     if (!r) return ECRANS.regle(config, etat, ctx, id);
     const actives = new Set(r.recherche?.sources || []);
-    const aide = {
-      web: "recherche sur internet (Tavily, avec quota)", actus: "articles de presse récents", meteo: "prévisions Open-Meteo",
-      transports: "horaires et retards de trains (CFF, SNCB, SNCF)", lieux: "lieux et points d'intérêt autour d'un endroit", wikivoyage: "guides de voyage",
-      saints: "calendrier des saints du jour (exact)", fetes: "fêtes nationales et journées internationales du jour (exact)", feries: "jours fériés de ta région",
-    };
-    const texte = [`📡 <b>Sources de ${r.id}</b>`, "Où je vais chercher pour cette rubrique :",
-      ...Object.keys(SOURCES).map((s) => `${actives.has(s) ? "✅" : "▫️"} ${SOURCES[s]} — ${aide[s] || ""}`)].join("\n");
-    const boutons = Object.keys(SOURCES).map((s) => b(`${actives.has(s) ? "✅" : "▫️"} ${SOURCES[s]}`.slice(0, 28), `a:rs:${id}:${s}`));
+    // Les catégories de Réglages › Sources (sans celles retirées) ; les flux spécialisés se cochent dans l'application.
+    const proposees = Object.keys(SOURCES).filter((s) => !(config.sources?.coupees || []).includes(s));
+    const texte = [`📡 <b>Sources de ${r.id}</b>`, "Où je vais chercher pour cette rubrique (rien d'autre n'est lu) :",
+      ...proposees.map((s) => `${actives.has(s) ? "✅" : "▫️"} ${SOURCES[s]} — ${INFOS_SOURCES[s].ou}`)].join("\n");
+    const boutons = proposees.map((s) => b(`${actives.has(s) ? "✅" : "▫️"} ${SOURCES[s]}`.slice(0, 28), `a:rs:${id}:${s}`));
     const clavier = [];
     for (let k = 0; k < boutons.length; k += 2) clavier.push(boutons.slice(k, k + 2));
     clavier.push(retour(`m:rrech:${id}`, "◀ Recherche"));
@@ -518,7 +515,7 @@ export function ficheRegle(r, config, ctx) {
       f.inclure?.length && `Inclure : ${f.inclure.join(", ")}`, f.exclure?.length && `Exclure : ${f.exclure.join(", ")}`,
       f.attendu && `Attendu : ${f.attendu}`].filter(Boolean);
     if (details.length) lignes.push("", ...details.map(e));
-    lignes.push(`Sources : ${r.recherche.sources.map((s) => SOURCES[s]).join(", ")}`);
+    lignes.push(`Sources : ${r.recherche.sources.map((s) => nomSource(s, config)).join(", ")}`);
     if (r.recherche.requetes.length) lignes.push(`Recherches : ${e(r.recherche.requetes.join(" · "))}`);
   }
   if (r.derniere_application) lignes.push("", `Dernière application : ${dateCourte(r.derniere_application)}`);

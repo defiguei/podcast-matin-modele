@@ -107,6 +107,13 @@ h2 { margin: 0; font-family: var(--titre); font-weight: 700; font-size: 18px; }
 .section-fiche > h2 { font-size: 15px; letter-spacing: .02em; color: var(--doux-2); }
 .suggestion { display: flex; flex-direction: column; gap: 2px; background: var(--aube-fond); border-radius: 12px; padding: 10px 12px; font-size: 13px; color: var(--aube-clair); }
 .suggestion .lien { align-self: flex-start; min-height: 36px; padding: 0; }
+.alerte { background: #2E1D1C; color: var(--rouge); border-radius: 12px; padding: 10px 12px; font-size: 14px; font-weight: 600; line-height: 1.4; }
+.carte.retiree h2, .carte.retiree > p:not(.alerte) { opacity: .55; }
+.test-cle { font-size: 13px; line-height: 1.45; border-radius: 12px; padding: 8px 10px; background: var(--carte-2); color: var(--doux-2); }
+.test-cle.ok { background: var(--vert-fond); color: var(--vert); }
+.test-cle.ko { background: #2E1D1C; color: var(--rouge); }
+.ou-cherche { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--doux-2); line-height: 1.4; }
+.ou-cherche b { color: var(--texte); font-weight: 600; }
 
 .badge.manque { color: var(--rouge); background: #2E1D1C; }
 .badge.neutre { color: var(--doux-2); background: var(--carte-2); }
@@ -1282,6 +1289,7 @@ function ouvrirFiche(id, modele = null, origine = null) {
     id: r ? r.id : null, modifie: Boolean(!r && m.depuisConsigne !== undefined),
     origine: origine || (ponctuelle ? "idees" : r ? "programme" : "catalogue"),
     depuisConsigne: m.depuisConsigne,
+    modeleNom: m.titre || "",
     // Détails de recherche montrés seulement s'ils servent (un suivi de train n'en a pas besoin).
     recherche: Boolean(r && r.recherche && (Object.values(r.fiche).some(Boolean) || r.budget.max !== null || r.inclure.length || r.exclure.length))
       || Boolean(m.recherche) || ponctuelle,
@@ -1290,8 +1298,7 @@ function ouvrirFiche(id, modele = null, origine = null) {
       longueur: r ? (r.longueur || "aucune") : ponctuelle ? "aucune" : base.longueur || "courte",
       periode: r ? { type: r.periode.type, debut: r.periode.debut || "", fin: r.periode.fin || "", jours: [...(r.periode.jours || [])] }
                  : { type: ponctuelle ? "ponctuelle" : "toujours", debut: "", fin: "", jours: [], ...(base.periode || {}) },
-      sources_auto: r ? Boolean(r.sources_auto) : true,
-      sources: r ? [...r.sources] : ponctuelle ? ["web", "lieux"] : [],
+      sources: r ? [...r.sources] : ponctuelle ? ["web", "lieux"] : sourcesProposables([...(m.sources || [])]),
       fiche: r ? { ...vide, ...r.fiche } : { ...vide },
       transport: r ? r.transport : "aucun",
       budget: r ? { max: r.budget.max ?? "", unite: r.budget.unite || "personne", devise: r.budget.devise || S.d.devise || "CHF", transport_inclus: Boolean(r.budget.transport_inclus) }
@@ -1336,7 +1343,6 @@ function vueFiche() {
   const segments = [["aucune", "Glissée"], ["phrase", "Une phrase"], ["courte", "Courte"], ["developpee", "Développée"]];
   const avant = r && r.place ? (S.d.deroule.find((x) => x.cle === r.place) || {}).nom : null;
   const libelleBouton = F.id ? "Enregistrer" : ponctuelle ? "Créer et chercher" : "Ajouter à mon épisode";
-  const nomsSources = (liste) => liste.map((s) => (S.d.listes.sources[s] || s).replace(/ \(.*\)/, "")).join(", ");
   return `
   <div class="entete-fiche">
     <button type="button" class="icone" data-action="retour" aria-label="Retour">${icone("retour", 22, 2)}</button>
@@ -1377,19 +1383,95 @@ function vueFiche() {
     <p class="aide">${f.longueur === "aucune" ? "Glissée : pas de moment à elle, les animateurs placent l'information là où c'est naturel."
       : `Un moment à elle, avec son chapitre${avant ? `, après « ${h(avant)} »` : ""}. L'ordre se change dans « Ton épisode ».`}</p>
   </section>`}
-  <section class="section-fiche" aria-labelledby="s-sources"><h2 id="s-sources">Ce qu'elle lit</h2>
-    <div class="bloc">${interrupteur("Sources choisies par l'application", f.sources_auto, 'data-bascule="sources_auto"')}</div>
-    ${f.sources_auto ? `<p class="aide">${r && r.sources_auto && r.sources.length ? `En ce moment : ${h(nomsSources(r.sources))}. ` : ""}Choisies d'après le titre et la consigne à chaque enregistrement (saints, journées, météo, trains, actualités, recherche web…).</p>`
-      : `<div class="puces-choix" role="group" aria-labelledby="s-sources">
-      ${Object.entries(S.d.listes.sources).map(([cle, nom]) => `<button type="button" data-source="${cle}" aria-pressed="${f.sources.includes(cle)}">${h(nom.replace(/ \(.*\)/, ""))}</button>`).join("")}
-    </div>`}
-  </section>
+  ${blocOuCherche(F, f, r)}
   <div class="bloc">
     ${ponctuelle ? "" : interrupteur("Prioritaire", f.prioritaire, 'data-bascule="prioritaire"')}
     ${interrupteur("Active", f.active, 'data-bascule="active"')}
   </div>
   ${ponctuelle && F.id ? `<button type="button" class="bouton gris" data-action="garder">Mettre cette idée dans mes épisodes</button>` : ""}
   <div class="barre"><button type="button" class="bouton plein" data-action="enregistrer">${libelleBouton}</button></div>`;
+}
+
+// ─────────────────────────────── sources ────────────────────────────────
+// Une source : catégorie de recherche (« meteo ») ou flux spécialisé (« flux:ab12cd34 »).
+function infoSource(cle) {
+  const s = S.d.reglages.sources;
+  if (cle.startsWith("flux:")) {
+    const f = s.flux.find((x) => x.cle === cle);
+    return f ? { cle, nom: f.nom, ou: f.url.replace(/^https?:\/\/(www\.)?/, "").split("/")[0], flux: true } : { cle, nom: "Flux retiré", ou: "", retiree: true };
+  }
+  const c = s.categories.find((x) => x.cle === cle);
+  return c ? { ...c, retiree: c.coupee } : { cle, nom: cle, ou: "", retiree: true };
+}
+// Les sources qu'une rubrique lira vraiment (sans celles retirées dans Réglages › Sources).
+const sourcesActives = (liste) => liste.filter((cle) => !infoSource(cle).retiree);
+const sourcesProposables = (liste) => sourcesActives(liste);
+
+// Fiche d'une rubrique : où elle cherche, coché explicitement (au moins une source).
+function blocOuCherche(F, f, r) {
+  const s = S.d.reglages.sources;
+  const actives = sourcesActives(f.sources);
+  const proposees = [...s.categories.filter((c) => !c.coupee).map((c) => c.cle), ...s.flux.map((x) => x.cle)];
+  const retireesCochees = f.sources.filter((cle) => !proposees.includes(cle));
+  const modele = !F.id && S.fiche.modeleNom && f.sources.length ? `Proposées par le modèle « ${h(S.fiche.modeleNom)} » : ajoutes-en ou retires-en si besoin.` : "";
+  return `<section class="section-fiche" aria-labelledby="s-sources"><h2 id="s-sources">Où elle cherche</h2>
+    ${actives.length ? "" : `<div class="alerte">Choisis au moins une source : c'est là que la rubrique trouvera son contenu (Google Actualités, recherche web, météo…).</div>`}
+    <div class="puces-choix" role="group" aria-labelledby="s-sources">
+      ${proposees.map((cle) => `<button type="button" data-source="${h(cle)}" aria-pressed="${f.sources.includes(cle)}">${cle.startsWith("flux:") ? "Flux · " : ""}${h(infoSource(cle).nom)}</button>`).join("")}
+      ${retireesCochees.map((cle) => `<button type="button" data-source="${h(cle)}" aria-pressed="true" class="grise" aria-label="${h(infoSource(cle).nom)}, retirée : touche pour la décocher">${h(infoSource(cle).nom)} (retirée)</button>`).join("")}
+    </div>
+    ${actives.length ? `<div class="ou-cherche">${actives.map((cle) => { const i = infoSource(cle); return `<span><b>${h(i.nom)}</b> · ${h(i.ou)}</span>`; }).join("")}</div>` : ""}
+    <p class="aide">${modele} ${retireesCochees.length ? "Une source retirée dans Réglages › Sources n'est pas lue. " : ""}Rien d'autre n'est lu : sans source, les animateurs n'ont que leurs connaissances. Médias, flux spécialisés et catégories se gèrent dans Réglages › Sources.</p>
+  </section>`;
+}
+
+// Réglages › Sources : d'où viennent les informations, organisées par catégorie.
+function utilisePar(x) {
+  const noms = x.rubriques.map((r) => `${r.id} ${r.titre}`);
+  if (x.aussi) noms.push(x.aussi);
+  return noms.length ? noms.join(" · ") : "aucune rubrique pour l'instant";
+}
+
+function cleDeSource(nom) {
+  const k = S.d.connexions.cles[nom];
+  if (!k) return "";
+  const presente = k.source === "app" || k.source === "github";
+  return `<div class="entre"><span class="aide">Clé ${h(k.nom)} : ${presente ? "enregistrée" : k.source === "absente" ? "manquante, rien n'est cherché" : "à vérifier"}</span>
+    <button type="button" class="lien" data-reglage="connexions">${presente ? "Tester" : "Ajouter"}</button></div>`;
+}
+
+function vueSources() {
+  const s = S.d.reglages.sources;
+  const ligne = (nom, url, attribut) => `<div class="reglage"><span>${h(nom || url)}<br><span class="aide" style="word-break:break-all">${h(url)}</span></span>
+    <button type="button" class="icone" ${attribut} aria-label="Retirer ${h(nom || url)}">${icone("croix", 18, 2)}</button></div>`;
+  return `<p class="aide" style="font-size:14px;color:var(--doux-2)">D'où viennent les informations de tes épisodes. Chaque rubrique coche dans sa fiche les sources où elle cherche, et rien d'autre n'est lu.</p>
+  <section class="carte" aria-labelledby="t-medias">
+    <div class="entre"><h2 id="t-medias">Tes médias</h2><span class="badge neutre">${s.medias.length}</span></div>
+    <p class="aide">Les flux RSS lus chaque matin pour la rubrique Actualités${s.medias_defaut ? " (ceux proposés pour ton pays)" : ""}.</p>
+    <div class="bloc" style="background:var(--carte-2)">${s.medias.map((f, i) => ligne(f.nom, f.url, `data-retirer-source="${i}"`)).join("")}</div>
+    <div class="ajout"><input class="saisie" maxlength="300" placeholder="Nom du média ou adresse de son flux" data-nouveau="source" aria-label="Ajouter un média">
+      <button type="button" class="bouton gris" data-action="ajouter-source">Ajouter</button></div>
+    ${s.medias_defaut ? "" : `<button type="button" class="lien" data-action="sources-defaut" style="align-self:flex-start">Revenir aux médias proposés pour ton pays</button>`}
+  </section>
+  <section class="carte" aria-labelledby="t-flux">
+    <div class="entre"><h2 id="t-flux">Tes flux spécialisés</h2><span class="badge neutre">${s.flux.length}</span></div>
+    <p class="aide">Des sites précis (un magazine, un blog, un labo…) qu'une rubrique peut choisir dans « Où elle cherche ». Ils ne se mêlent pas à tes Actualités.</p>
+    ${s.flux.length ? `<div class="bloc" style="background:var(--carte-2)">${s.flux.map((f) => `<div class="reglage"><span>${h(f.nom)}<br><span class="aide" style="word-break:break-all">${h(f.url)}</span><br><span class="aide">Lu par : ${h(utilisePar(f))}</span></span>
+      <button type="button" class="icone" data-flux-retirer="${h(f.id)}" aria-label="Retirer ${h(f.nom)}">${icone("croix", 18, 2)}</button></div>`).join("")}</div>` : ""}
+    <div class="ajout"><input class="saisie" maxlength="300" placeholder="Nom du site ou adresse de son flux" data-nouveau="flux" aria-label="Ajouter un flux spécialisé">
+      <button type="button" class="bouton gris" data-action="flux-ajouter">Ajouter</button></div>
+    <p class="aide">Avec un nom, je cherche son flux RSS : ça prend quelques secondes.</p>
+  </section>
+  <h2 style="margin:10px 0 0">Recherches</h2>
+  <p class="aide" style="margin-top:-4px">Ce que tes rubriques peuvent cocher. Une recherche retirée n'est plus proposée ni lue.</p>
+  ${s.categories.map((c) => `<section class="carte${c.coupee ? " retiree" : ""}" aria-labelledby="t-src-${c.cle}">
+    <h2 id="t-src-${c.cle}">${h(c.nom)}</h2>
+    <p style="margin:0;line-height:1.45">${h(c.apporte)}</p>
+    <div class="ou-cherche"><span><b>Où</b> · ${h(c.ou)}</span><span><b>Lue par</b> · ${h(utilisePar(c))}</span></div>
+    ${c.cle_api ? cleDeSource(c.cle_api) : ""}
+    ${c.coupee && c.aussi ? `<p class="aide">Retirée de tes rubriques ; ${h(c.aussi)} continuent de s'en servir (elles se règlent dans Ton épisode).</p>` : ""}
+    <div class="bloc" style="background:var(--carte-2)">${interrupteur("Utilisable par mes rubriques", !c.coupee, `data-source-utilisable="${c.cle}"`)}</div>
+  </section>`).join("")}`;
 }
 
 // Liste en bulles : chaque élément est une bulle ; Entrée ou virgule ajoute la saisie.
@@ -1418,6 +1500,11 @@ function saisirChamp(el) {
   const valeur = el.type === "number" && a !== "budget" ? Number(el.value) : el.value;
   if (b) f[a][b] = valeur; else f[a] = valeur;
   S.fiche.modifie = true;
+  // Horaires de train : seulement si « Trains » est coché, ce qui se voit dans « Où elle cherche ».
+  if (a === "transport" && valeur === "train" && !f.sources.includes("transports") && !infoSource("transports").retiree) {
+    f.sources.push("transports");
+    annoncer("« Trains » ajouté à Où elle cherche, pour les horaires.");
+  }
   if (el.tagName === "SELECT") dessiner();
 }
 
@@ -1426,6 +1513,12 @@ async function enregistrerFiche() {
   // Une saisie en cours dans les bulles compte aussi.
   document.querySelectorAll("[data-bulle]").forEach((el) => { if (el.value.trim()) { const l = F.f[el.dataset.bulle]; el.value.split(",").map((x) => x.trim()).filter(Boolean).forEach((m) => { if (!l.includes(m)) l.push(m); }); } });
   const nouvelleRecherche = !F.id && F.f.periode.type === "ponctuelle";
+  if (!sourcesActives(F.f.sources).length) {
+    annoncer("Choisis au moins une source dans « Où elle cherche ».", true);
+    const bloc = document.getElementById("s-sources");
+    if (bloc) bloc.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
   const bouton = document.querySelector('[data-action="enregistrer"]');
   if (bouton) bouton.disabled = true;
   const j = await demander("rubrique", { id: F.id, formulaire: F.f });
@@ -1793,6 +1886,10 @@ const SECTIONS = [
   ["moi", "Moi", "moi", (r) => [r.voix.prenom || "prénom ?", r.actus.ville || "ville ?", nomPays()].filter(Boolean).join(" · ")],
   ["voix", "Voix", "voix", (r) => `${r.voix.animateurs.map((a) => a.nom).join(" & ")} · vitesse ${r.voix.vitesse}`],
   ["style", "Durée et style", "format", (r) => `${nombre(r.format.duree_minutes)} min · ${(S.d.listes.tons[r.format.ton] || "").toLowerCase()} · ${r.consignes.length ? `${r.consignes.length} consigne${r.consignes.length > 1 ? "s" : ""}` : "aucune consigne"}`],
+  ["sources", "Sources", "sources", () => {
+    const s = S.d.reglages.sources, coupees = s.categories.filter((c) => c.coupee).length;
+    return `${s.medias.length} médias · ${s.flux.length} flux spécialisé${s.flux.length > 1 ? "s" : ""} · ${s.categories.length - coupees} recherches${coupees ? ` (${coupees} retirée${coupees > 1 ? "s" : ""})` : ""}`;
+  }],
   ["connexions", "Connexions", "cle", () => {
     const c = S.d.connexions, k = c.cles;
     const etat = (x) => x.source === "app" || x.source === "github" ? "✓" : x.source === "absente" ? "—" : "?";
@@ -1846,6 +1943,7 @@ function vueReglage() {
       </section>
       <p class="aide">Ta ville sert à l'actu locale, à la météo, aux trains et à repérer tes déplacements. Le pays règle le fuseau horaire, la devise, les jours fériés et les médias proposés par défaut.</p>`,
     voix: () => vueVoix(),
+    sources: () => vueSources(),
     connexions: () => vueConnexions(),
     style: () => `<section class="bloc">
         <div class="reglage"><span>Durée visée</span>${pas("format.duree_minutes", r.format.duree_minutes, 2, 12, 0.5, " min")}</div>
@@ -1971,12 +2069,40 @@ function etatCle(k) {
   return `<span class="badge neutre">Vérifiée au prochain épisode</span>`;
 }
 
+// Dernier test d'une clé : ce qu'il a appris (modèles, recherches restantes…), ou en cours.
+function testCle(k) {
+  const t = k.test;
+  if (!t) return "";
+  if (t.en_cours) return `<p class="test-cle" role="status">⏳ Test en cours sur GitHub (ta clé y est rangée) : le résultat arrive dans une minute environ.</p>`;
+  const quand = t.quand ? ` <span style="opacity:.75">· ${h(dateLongue(t.quand.slice(0, 10)))} à ${h(t.quand.slice(11, 16))}${t.ou === "github" ? ", testée sur GitHub" : ""}</span>` : "";
+  return `<p class="test-cle ${t.ok ? "ok" : t.ok === false || t.perdu ? "ko" : ""}" role="status">${t.ok ? "✓" : "✗"} ${h(t.message)}${quand}</p>`;
+}
+
+// Suivi d'un test lancé sur GitHub : on redemande l'état jusqu'au résultat (3 minutes au plus).
+let suiviTests = null;
+const clesEnTest = () => Object.values((S.d && S.d.connexions && S.d.connexions.cles) || {}).filter((k) => k.test && k.test.en_cours).map((k) => k.nom);
+function suivreTestsCles(essai = 0, attendues = clesEnTest()) {
+  clearTimeout(suiviTests);
+  suiviTests = setTimeout(async () => {
+    const j = await demander("etat", {}, { discret: true });
+    if (j.occupe) return suivreTestsCles(essai, attendues);
+    const toujours = clesEnTest();
+    if (S.ecran === "reglage" && S.reglage === "connexions") dessiner();
+    Object.values(S.d.connexions.cles).filter((k) => attendues.includes(k.nom) && !toujours.includes(k.nom) && k.test)
+      .forEach((k) => annoncer(`${k.nom} : ${k.test.message}`, !k.test.ok));
+    if (toujours.length && essai < 22) suivreTestsCles(essai + 1, toujours);
+  }, 8000);
+}
+
 function carteCle(nom, k, compacte = false) {
+  const enregistree = k.source === "app" || k.source === "github" || k.source === "inconnue";
   return `<section class="carte" aria-labelledby="t-cle-${nom}">
     <div class="entre"><h2 id="t-cle-${nom}">${h(k.nom)}${k.obligatoire ? "" : ' <span class="aide" style="font-weight:400">facultatif</span>'}</h2>${etatCle(k)}</div>
-    ${compacte ? "" : `<p class="aide">${h(k.role)}${k.teste ? ` Testée le ${h(dateLongue(k.teste.slice(0, 10)))}.` : ""}</p>`}
-    <div class="ajout"><input class="saisie" type="password" autocomplete="off" spellcheck="false" maxlength="300" placeholder="${k.source === "app" ? "Nouvelle clé" : "Colle ta clé ici"}" data-nouveau="cle-${nom}" aria-label="Clé ${h(k.nom)}">
+    ${compacte ? "" : `<p class="aide">${h(k.role)}</p>`}
+    ${testCle(k)}
+    <div class="ajout"><input class="saisie" type="password" autocomplete="off" spellcheck="false" maxlength="300" placeholder="${k.source === "absente" ? "Colle ta clé ici" : "Nouvelle clé"}" data-nouveau="cle-${nom}" aria-label="Clé ${h(k.nom)}">
       <button type="button" class="bouton gris" data-tester-cle="${nom}">Tester</button></div>
+    ${enregistree && !compacte ? `<p class="aide" style="margin-top:-4px">Laisse le champ vide pour tester la clé déjà enregistrée${k.source === "github" ? " (rangée dans GitHub : le test y passe, une minute environ)" : ""}.</p>` : ""}
     <div class="entre"><button type="button" class="lien" data-lien="${h(k.lien)}">Où la trouver ?</button>
       ${k.source === "app" ? `<button type="button" class="lien" style="color:var(--rouge)" data-cle-retirer="${nom}">Retirer</button>` : ""}</div>
   </section>`;
@@ -1984,7 +2110,7 @@ function carteCle(nom, k, compacte = false) {
 
 function vueConnexions() {
   const c = S.d.connexions;
-  return `<p class="aide" style="font-size:14px;color:var(--doux-2)">Tes clés restent chez ton bot : jamais affichées en entier, jamais dans le code. Chacune est testée avant d'être enregistrée, et l'emporte sur le secret GitHub du même nom.</p>
+  return `<p class="aide" style="font-size:14px;color:var(--doux-2)">Tes clés restent chez ton bot : jamais affichées en entier, jamais dans le code. Chacune est testée avant d'être enregistrée, et l'emporte sur le secret GitHub du même nom. « Tester » avec le champ vide vérifie celle déjà enregistrée.</p>
     ${Object.entries(c.cles).map(([nom, k]) => carteCle(nom, k)).join("")}
     <section class="carte"><div class="entre"><h2>Agendas</h2><button type="button" class="lien" data-integree="agenda">Gérer</button></div>
       <p class="aide">${c.agendas.length ? `${c.agendas.length} ajouté${c.agendas.length > 1 ? "s" : ""} dans l'application` : "Aucun ajouté dans l'application"}${c.agendas_github ? " · d'autres viennent du secret GitHub" : ""}.</p></section>
@@ -2115,12 +2241,9 @@ const CORPS_INTEGREES = {
       </section>
       <div class="champ"><span class="etiquette">Thèmes préférés</span>${etiquettes("actus.sujets_preferes", r.actus.sujets_preferes, "Ex. vélo, économie")}</div>
       <div class="champ"><span class="etiquette">Thèmes à éviter</span>${etiquettes("actus.sujets_a_eviter", r.actus.sujets_a_eviter, "Ex. sport, people")}</div>
-      <span class="etiquette" style="font-size:13px;color:var(--doux)">Médias lus${r.actus.flux_defaut ? " (ceux proposés pour ton pays)" : ""}</span>
-      <div class="bloc">${r.actus.flux.map((f, i) => `<div class="reglage"><span>${h(f.nom || f.url)}<br><span class="aide" style="word-break:break-all">${h(f.url)}</span></span>
-        <button type="button" class="icone" data-retirer-source="${i}" aria-label="Retirer ${h(f.nom)}">${icone("croix", 18, 2)}</button></div>`).join("")}</div>
-      <div class="champ"><label for="n-source">Ajouter un média</label><div class="ajout"><input id="n-source" class="saisie" maxlength="300" placeholder="Son nom ou l'adresse de son flux RSS" data-nouveau="source">
-        <button type="button" class="bouton gris" data-action="ajouter-source">Ajouter</button></div><p class="aide">Avec un nom (« 24 heures »), je cherche son flux RSS : ça prend quelques secondes.</p></div>
-      ${r.actus.flux_defaut ? "" : `<button type="button" class="bouton pointille" data-action="sources-defaut">Revenir aux médias proposés pour ton pays</button>`}`;
+      <section class="bloc"><div class="reglage"><span>Tes médias<br><span class="aide">${h(r.actus.flux.map((f) => f.nom || f.url).join(", "))}</span></span>
+        <button type="button" class="lien" data-reglage="sources">Gérer</button></div></section>
+      <p class="aide">Les flux RSS de tes médias, plus une recherche Google Actualités sur tes thèmes préférés. Médias et autres sources se gèrent dans Réglages › Sources.</p>`;
   },
 };
 
@@ -2182,12 +2305,28 @@ document.addEventListener("click", (ev) => {
     return changer("deroule", { ordre: S.d.deroule.map((x) => x.cle), actifs: { [ds.actifIntegree]: el.getAttribute("aria-checked") !== "true" } });
   }
   if (ds.ouvrir) return ouvrirFiche(ds.ouvrir);
+  if (ds.sourceUtilisable) {
+    const c = S.d.reglages.sources.categories.find((x) => x.cle === ds.sourceUtilisable);
+    if (!c) return;
+    if (!c.coupee && c.rubriques.length) {
+      return confirmer(`Retirer « ${c.nom} » ? ${c.rubriques.map((r) => r.id).join(", ")} ne la liront plus.`, () => changer("source_coupee", { cle: c.cle, coupee: true }));
+    }
+    return changer("source_coupee", { cle: c.cle, coupee: !c.coupee });
+  }
+  if (ds.fluxRetirer) {
+    const f = S.d.reglages.sources.flux.find((x) => x.id === ds.fluxRetirer);
+    return confirmer(`Retirer le flux « ${f ? f.nom : ""} » ?${f && f.rubriques.length ? ` ${f.rubriques.map((r) => r.id).join(", ")} ne le liront plus.` : ""}`, () => changer("flux_retirer", { id: ds.fluxRetirer }));
+  }
   if (ds.testerCle) {
+    // Une clé collée : testée puis enregistrée. Champ vide : la clé déjà enregistrée est testée
+    // (par le bot si elle est dans l'application, par une courte exécution GitHub sinon).
     const champ = document.querySelector(`[data-nouveau="cle-${ds.testerCle}"]`);
     const valeur = champ ? champ.value.trim() : "";
-    if (!valeur) return annoncer("Colle d'abord la clé.", true);
-    annoncer("Je teste la clé…");
-    return changer("cle", { nom: ds.testerCle, valeur });
+    const k = S.d.connexions.cles[ds.testerCle] || {};
+    if (valeur) { annoncer("Je teste la clé…"); return changer("cle", { nom: ds.testerCle, valeur }); }
+    if (k.source === "absente") return annoncer("Colle d'abord la clé.", true);
+    annoncer("Je teste ta clé…");
+    return changer("cle_tester", { nom: ds.testerCle }, (j) => { dessiner(); if (j.attendre_test) suivreTestsCles(); });
   }
   if (ds.cleRetirer) return confirmer("Retirer cette clé de l'application ? Le secret GitHub, s'il existe, prendra le relais.", () => changer("cle", { nom: ds.cleRetirer, valeur: "" }));
   if (ds.notifRetirer) return confirmer("Ne plus prévenir cet appareil ?", () => {
@@ -2291,7 +2430,13 @@ document.addEventListener("click", (ev) => {
       annoncer("Je cherche le flux RSS…");
       return changer("source", { valeur: champ.value.trim() });
     }
-    case "sources-defaut": return confirmer("Revenir aux sources par défaut ?", () => changer("sources_defaut"));
+    case "sources-defaut": return confirmer("Revenir aux médias proposés pour ton pays ?", () => changer("sources_defaut"));
+    case "flux-ajouter": {
+      const champ = document.querySelector('[data-nouveau="flux"]');
+      if (!champ || !champ.value.trim()) return annoncer("Écris le nom du site ou l'adresse de son flux RSS.", true);
+      annoncer("Je cherche le flux RSS…");
+      return changer("flux_ajouter", { valeur: champ.value.trim() });
+    }
     case "ajouter-creuser": {
       const champ = document.querySelector('[data-nouveau="creuser"]');
       return changer("creuser", { sujet: champ ? champ.value : "" });
@@ -2526,6 +2671,7 @@ async function demarrer() {
   if (parametres.toString() && history.replaceState) history.replaceState(null, "", "/app");
   dessiner();
   if (!tg) lireNotifs().then(() => { if (S.ecran === "reglage") dessiner(); });
+  if (clesEnTest().length) suivreTestsCles();     // un test de clé lancé sur GitHub avant de fermer
 }
 
 if (tg) {

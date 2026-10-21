@@ -15,6 +15,7 @@ import {
   nettoyerListe, LONGUEUR_CONSIGNE, normaliserTexte, etatRegle, decrirePeriode, nomRubrique, jourDeSemaine,
   heureParlee, dateCourte, nettoyerPlanning, fluxActus, profilPays, MODELES_RUBRIQUES,
   nomVoix, voixActive, trouverVoix, renommerVoix, activerVoix, choisirVoixJour,
+  INFOS_SOURCES, sourcesAuto, sourcesUtilisables, nomSource,
 } from "./config.js";
 import { formulaireNeuf, formulaireDepuisRegle, enregistrerRubrique, PERIODES } from "./miniapp.js";
 import { GRATUIT } from "./assistant.js";
@@ -145,7 +146,7 @@ Le modèle règle déjà la place, la longueur et les sources : ne remplis que c
 - periode_type : toujours | dates (debut/fin) | jours (jours = codes) | une_fois (prochain épisode) | ponctuelle (recherche hors podcast, résultats à part)
 - condition_texte : si la rubrique dépend de l'agenda (« un match de foot ») ; condition_moment : jour_meme | veille | jours_avant (+ condition_n)
 - place : clé ou id après lequel elle passe (seulement si l'auditeur le dit) ; longueur : ${LONGUEURS_FORMULAIRE.join(" | ")} (aucune = glissée dans l'épisode, sans passage à elle)
-- sources parmi ${Object.keys(SOURCES).join(", ")} : seulement si l'auditeur cite une source précise, sinon laisse vide (l'application choisit)
+- sources : où la rubrique cherche son contenu, au moins une, d'après le sujet (le modèle en a déjà par défaut : n'en donne que si l'auditeur en cite ou si le sujet en demande d'autres). Choix : ${Object.keys(SOURCES).filter((s) => !(config.sources?.coupees || []).includes(s)).map((s) => `${s} (${SOURCES[s]} : ${INFOS_SOURCES[s].apporte.replace(/\.$/, "")})`).join(" ; ")}
 - requetes : recherches web utiles (courtes)
 - pour une activité ou une sortie : quoi, avec_qui, ages, ou, quand, transport, budget_max, budget_unite (personne | total), budget_transport_inclus, inclure, exclure, attendu, jours_avant (combien de jours avant en parler)
 - importance : normale | prioritaire
@@ -205,9 +206,10 @@ export function completerFormulaire(f, r = {}, texte = "") {
   }
   if (LONGUEURS_FORMULAIRE.includes(longueur)) f.longueur = longueur;
   else if ((rempli(place) || rempli(r.rubrique_titre)) && f.longueur === "aucune") f.longueur = "courte";   // une place dite = un passage
-  // Sources : seulement si l'auditeur en cite ; sinon l'application les choisit.
+  // Sources : celles que Gemini donne remplacent (modification) ; une nouvelle rubrique les
+  // ajoute à celles de son modèle (nouvelleRubrique).
   const sources = (Array.isArray(r.sources) ? r.sources : []).filter((s) => SOURCES[s]);
-  if (sources.length) { f.sources = sources; f.sources_auto = false; }
+  if (sources.length) f.sources = sources;
   // Détails d'une sortie ou d'une recherche.
   for (const cle of ["quoi", "avec_qui", "ages", "ou", "quand", "attendu"]) if (rempli(r[cle])) f.fiche[cle] = String(r[cle]).trim();
   if (TRANSPORTS[r.transport] && r.transport !== "peu_importe") f.transport = r.transport;        // « peu importe » = aucun critère
@@ -234,7 +236,9 @@ function nouvelleRubrique(config, r = {}, ctx) {
   const modele = MODELES_RUBRIQUES.find((m) => m.id === r.modele) || MODELES_RUBRIQUES.find((m) => m.id === "libre");
   const f = formulaireNeuf(config, modele.id, r.periode_type === "ponctuelle");
   if (!modele.pret) { f.titre = ""; f.consigne = ""; }     // titre et consigne du modèle à compléter : c'est à l'auditeur de les dire
+  const parDefaut = [...f.sources];
   completerFormulaire(f, r, ctx.message);
+  f.sources = [...new Set([...parDefaut, ...f.sources])];
   // Gemini oublie parfois la consigne (il ne donne que le titre) : on reprend alors les mots de l'auditeur
   // plutôt que de refuser la rubrique.
   if (!rempli(f.consigne) && rempli(ctx.message) && ctx.message !== "(vocal)") {
@@ -243,8 +247,18 @@ function nouvelleRubrique(config, r = {}, ctx) {
   }
   if (!rempli(f.consigne)) throw new Error("je n'ai pas compris ce que la rubrique doit dire");
   if (!rempli(f.titre)) f.titre = titreDepuisConsigne(f.consigne);
+  // Où elle cherche : le modèle ou Gemini l'ont dit ; sinon d'après le sujet. Toujours affiché.
+  if (!sourcesUtilisables(f.sources, config).length) {
+    f.sources = sourcesAuto({ titre: f.titre, consigne: f.consigne, fiche: f.fiche, condition: f.condition && f.condition.texte ? f.condition : null }, config);
+  }
   const regle = enregistrerRubrique(config, f, null, ctx.aujourdHui, ctx.message);
   return regle;
+}
+
+// « cherche dans : Google Actualités, Recherche web »
+export function sourcesEnMots(config, regle) {
+  const noms = sourcesUtilisables(regle.recherche?.sources || [], config).map((s) => nomSource(s, config));
+  return noms.length ? `cherche dans : ${noms.join(", ")}` : "aucune source";
 }
 
 // Où passe une rubrique, en mots.
@@ -393,7 +407,7 @@ function appliquerUne(config, op, ctx) {
     }
     case "nouvelle_regle": {
       const regle = nouvelleRubrique(config, op.regle || {}, ctx);
-      return { changement: `Rubrique ${regle.id} créée : ${regle.titre} (${decrirePlace(config, regle)})`, regle };
+      return { changement: `Rubrique ${regle.id} créée : ${regle.titre} (${decrirePlace(config, regle)} ; ${sourcesEnMots(config, regle)})`, regle };
     }
     case "modifier_regle": {
       const id = identifiantRegle(op.id);
@@ -403,6 +417,10 @@ function appliquerUne(config, op, ctx) {
       const avant = JSON.stringify(f);
       completerFormulaire(f, op.regle || {}, ctx.message);
       if (JSON.stringify(f) === avant) throw new Error(`je n'ai pas compris quoi changer dans ${id}`);
+      // Une ancienne rubrique sans source : on lui en propose d'après son sujet (visibles dans sa fiche).
+      if (!sourcesUtilisables(f.sources, config).length) {
+        f.sources = sourcesAuto({ titre: f.titre, consigne: f.consigne, fiche: f.fiche, condition: f.condition && f.condition.texte ? f.condition : null }, config);
+      }
       const nouvellePlace = existante.rubrique && f.place !== existante.rubrique.apres ? f.place : null;
       if (nouvellePlace && !config.deroule.some((el) => el.cle === nouvellePlace)) throw new Error(`place « ${nouvellePlace} » inconnue`);
       const regle = enregistrerRubrique(config, f, existante, ctx.aujourdHui);

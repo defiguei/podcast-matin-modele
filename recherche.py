@@ -292,7 +292,7 @@ def lancer(identifiants: list[str], format_: str, effectifs: dict, cle_gemini: s
     jour = maintenant.date()
     ville = effectifs["ville_habituelle"]
     agenda: list[str] = []
-    if any(r.get("condition") for r in regles):
+    if any(r.get("condition") or "agenda" in ((r.get("recherche") or {}).get("sources") or []) for r in regles):
         urls = p.separer_urls(os.environ.get("CALENDAR_ICS_URL", ""))
         if urls:
             evenements, _ = p.lire_agendas(urls, effectifs, maintenant, 31)
@@ -312,9 +312,15 @@ def lancer(identifiants: list[str], format_: str, effectifs: dict, cle_gemini: s
     traitees = []
     for regle in regles[:3]:
         plan = plans[regle["id"]]
+        # Seules les sources cochées dans sa fiche (recherche web et lieux par défaut).
         regle_large = {**regle, "recherche": {**(regle.get("recherche") or {"fiche": {}, "requetes": []}),
-                                              "sources": sorted(set((regle.get("recherche") or {}).get("sources") or ["web"]) | {"web", "lieux"})}}
-        collecte = moteur.collecter(regle_large, plan, sources, jour, ville, actus, profondeur=2)
+                                              "sources": (regle.get("recherche") or {}).get("sources") or ["web", "lieux"]}}
+
+        def flux_specialise(flux: dict) -> list[str]:
+            return [a.titre + (f" : {a.resume}" if a.resume else "") for a in p.lire_flux_specialise(flux, maintenant, jours=14)]
+
+        collecte = moteur.collecter(regle_large, plan, sources, jour, ville, actus, profondeur=2,
+                                    config=config, lire_flux=flux_specialise, agenda=agenda)
         traitees.append((regle, collecte, trouver_idees(collecte, effectifs, cle_gemini, exclues)))
     if sources.credits_tavily:
         p.journal(f"Recherche web : {sources.credits_tavily} crédit(s) Tavily.")

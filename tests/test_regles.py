@@ -548,12 +548,31 @@ class SourcesFetes(FaussesSources):
 def rubrique(titre, consigne, sources_):
     return {"id": "R9", "titre": titre, "consigne": consigne, "etat": "active", "importance": "normale",
             "recherche": {"fiche": {}, "sources": sources_, "requetes": []}}
-r_prenom = rubrique("Fête du prénom", "Trouver les prénoms de la fête d'aujourd'hui", ["web"])
+# Seules les sources cochées sont lues (depuis Réglages › Sources : plus d'ajout d'après le titre).
+r_prenom = rubrique("Fête du prénom", "Trouver les prénoms de la fête d'aujourd'hui", ["saints"])
 cp = moteur.collecter(r_prenom, moteur.plan_par_defaut(r_prenom, "Yverdon-les-Bains"), SourcesFetes(), jeudi, "Yverdon-les-Bains")
-verifier(f"Saints et fêtes du jour (calendrier des saints) : {', '.join(saints)}" in cp.texte, "fête du prénom : source exacte des saints ajoutée")
-r_intl = rubrique("Fête internationale", "Fête internationale", ["web"])
+verifier(f"Saints et fêtes du jour (calendrier des saints) : {', '.join(saints)}" in cp.texte, "fête du prénom : calendrier des saints coché, lu")
+r_web = rubrique("Fête du prénom", "Trouver les prénoms de la fête d'aujourd'hui", ["web"])
+cw = moteur.collecter(r_web, moteur.plan_par_defaut(r_web, "Yverdon-les-Bains"), SourcesFetes(), jeudi, "Yverdon-les-Bains")
+verifier("calendrier des saints" not in cw.texte and "[W1]" in cw.texte, "recherche web seule cochée : pas de saints ajoutés en douce")
+r_intl = rubrique("Fête internationale", "Fête internationale", ["web", "fetes"])
 ci = moteur.collecter(r_intl, moteur.plan_par_defaut(r_intl, "Yverdon-les-Bains"), SourcesFetes(), jeudi, "Yverdon-les-Bains")
-verifier("journée mondiale du lavage des mains" in ci.texte and "[W1]" in ci.texte, "fête internationale : source exacte + recherche web même sans requête")
+verifier("journée mondiale du lavage des mains" in ci.texte and "[W1]" in ci.texte, "fête internationale : journées cochées + recherche web même sans requête")
+# Catégorie retirée dans Réglages › Sources : jamais lue, même cochée.
+config_coupee = {"sources": {"coupees": ["web"], "flux": []}}
+cc = moteur.collecter(r_intl, moteur.plan_par_defaut(r_intl, "Yverdon-les-Bains"), SourcesFetes(), jeudi, "Yverdon-les-Bains", config=config_coupee)
+verifier("journée mondiale du lavage des mains" in cc.texte and "[W1]" not in cc.texte, "recherche web retirée : pas lue")
+verifier(moteur.sources_lues({"recherche": {"sources": ["web", "flux:abcd1234", "flux:retire1"]}},
+                             {"sources": {"coupees": ["web"], "flux": [{"id": "abcd1234", "nom": "Optique", "url": "https://x/rss"}]}}) == {"flux:abcd1234"},
+         "sources lues : sans catégorie retirée ni flux supprimé")
+# Flux spécialisé et agenda cochés.
+lus_flux = []
+r_flux = rubrique("Tech optique", "Les nouveautés de l'optique", ["flux:abcd1234", "agenda"])
+cf = moteur.collecter(r_flux, moteur.plan_par_defaut(r_flux, "Yverdon-les-Bains"), SourcesFetes(), jeudi, "Yverdon-les-Bains",
+                      config={"sources": {"coupees": [], "flux": [{"id": "abcd1234", "nom": "Optique.ch", "url": "https://x/rss"}]}},
+                      lire_flux=lambda f: lus_flux.append(f["nom"]) or ["Un laser record (https://x/1)"], agenda=["jeu. 22 : réunion"])
+verifier(lus_flux == ["Optique.ch"] and "Flux « Optique.ch »" in cf.texte and "Un laser record" in cf.texte and "réunion" in cf.texte
+         and "[W1]" not in cf.texte, "flux spécialisé et agenda cochés : lus, rien d'autre")
 verifier(not ci.itineraire and not ci.lieux and not ci.point, "pas d'itinéraire ni de lieux pour une rubrique sans lieu")
 r_pt = rubrique("Actualité Portugal", "Cherche l'actualité à propos du Portugal", ["actus"])
 sujets_actus = []

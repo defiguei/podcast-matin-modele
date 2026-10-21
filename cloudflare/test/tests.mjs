@@ -1,5 +1,8 @@
 // Tests de bout en bout du bot (wrangler dev + faux services).
 import { createHash, createHmac, createECDH, createDecipheriv, createPublicKey, hkdfSync, randomBytes, verify } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { MODELES_PODCAST } from "../src/connexions.js";
 
 const BOT = "http://127.0.0.1:8799";
 const FAUX = "http://127.0.0.1:8790";
@@ -57,6 +60,7 @@ const dernierTexte = (liste) => tg(liste, "sendMessage").at(-1)?.corps?.text || 
 const toast = (liste) => tg(liste, "answerCallbackQuery").at(-1)?.corps?.text || "";
 const boutons = (corps) => (corps?.reply_markup?.inline_keyboard || []).flat().map((b) => b.callback_data || b.text);
 const lancements = (liste) => liste.filter((a) => a.service === "github" && a.methode === "lancer");
+const appelsTavilySearch = (liste) => liste.filter((a) => a.service === "tavily" && a.methode !== "usage").length;
 
 async function scenario(nom, fonction) {
   console.log(`▶ ${nom}`);
@@ -302,7 +306,7 @@ await scenario("Compréhension : réponses maladroites de Gemini, confirmation, 
   let config = (await etat()).config;
   const meteo = config.regles.find((r) => r.titre === "Météo");
   const cles = config.deroule.map((x) => x.cle);
-  verifier(meteo && meteo.recherche.sources_auto && meteo.recherche.sources.includes("meteo") && meteo.rubrique?.longueur === "phrase"
+  verifier(meteo && meteo.recherche.sources.join() === "meteo" && meteo.rubrique?.longueur === "phrase"
     && cles.indexOf(meteo.id) === cles.indexOf("ouverture") + 1, "rubrique du catalogue : sources, longueur et place du modèle", { meteo, cles });
   verifier(dernierTexte(liste).includes("après Ouverture") || tg(liste, "sendMessage").some((a) => a.corps.text.includes("après Ouverture")), "place annoncée");
   // Modifier sans rien de compris : erreur, pas de « modifiée ».
@@ -974,9 +978,11 @@ await scenario("Application : créer, modifier, supprimer une rubrique", async (
   verifier(place === config.deroule.findIndex((x) => x.cle === "actualites") + 1, "placée après les actualités", config.deroule);
   verifier(r.donnees.regles.find((x) => x.id === id)?.famille === "jour", "rangée dans la famille « Le jour »");
   r = await app("rubrique", { id, formulaire: { titre: "Météo", consigne: "La météo", longueur: "aucune", periode: { type: "toujours" }, sources: [], active: false } });
+  verifier(r.ok === false && r.erreur.includes("au moins une source"), "sans source : refusée (où chercher doit être choisi)", r.erreur);
+  r = await app("rubrique", { id, formulaire: { titre: "Météo", consigne: "La météo", longueur: "aucune", periode: { type: "toujours" }, sources: ["meteo", "flux:inconnu1"], active: false } });
   ({ config } = await etat());
   regle = config.regles.find((x) => x.id === id);
-  verifier(r.ok && regle.titre === "Météo" && regle.rubrique === null && regle.recherche === null && regle.etat === "pause" && !config.deroule.some((x) => x.cle === id), "modifiée : sans passage, sans source, en pause", regle);
+  verifier(r.ok && regle.titre === "Météo" && regle.rubrique === null && regle.recherche.sources.join() === "meteo,flux:inconnu1" && regle.etat === "pause" && !config.deroule.some((x) => x.cle === id), "modifiée : sans passage, en pause", regle);
   verifier((await etat()).etat.annulations.at(-1)?.libelle?.includes("modifiée"), "le changement peut être annulé avec /annuler", (await etat()).etat.annulations.at(-1)?.libelle);
   r = await app("rubrique", { id: "R99", formulaire: { titre: "a", consigne: "b" } });
   verifier(r.ok === false, "rubrique inconnue refusée");
@@ -985,7 +991,7 @@ await scenario("Application : créer, modifier, supprimer une rubrique", async (
 });
 
 await scenario("Application : déroulé et place des rubriques", async () => {
-  let r = await app("rubrique", { formulaire: { titre: "Citation", consigne: "Une citation", longueur: "phrase", periode: { type: "toujours" } } });
+  let r = await app("rubrique", { formulaire: { titre: "Citation", consigne: "Une citation", longueur: "phrase", periode: { type: "toujours" }, sources: ["web"] } });
   const id = r.id;
   let ordre = r.donnees.deroule.map((x) => x.cle);
   const nouveau = [ordre[0], id, ...ordre.slice(1).filter((c) => c !== id)];
@@ -996,7 +1002,7 @@ await scenario("Application : déroulé et place des rubriques", async () => {
   verifier(config.regles.find((x) => x.id === id).rubrique.apres === nouveau[0], "la rubrique retient sa nouvelle place");
   r = await app("deroule", { ordre: nouveau.slice(1) });
   verifier(r.ok === false && r.erreur.includes("changé"), "ordre incomplet refusé", r);
-  r = await app("rubrique", { id, formulaire: { titre: "Citation du jour", consigne: "Une citation", longueur: "courte", periode: { type: "toujours" } } });
+  r = await app("rubrique", { id, formulaire: { titre: "Citation du jour", consigne: "Une citation", longueur: "courte", periode: { type: "toujours" }, sources: ["web"] } });
   ({ config } = await etat());
   verifier(config.deroule.findIndex((x) => x.cle === id) === 1, "modifier une rubrique ne la déplace pas", config.deroule.map((x) => x.cle));
   await cliquer(`a:rlg:${id}:developpee`);
@@ -1122,7 +1128,7 @@ await scenario("Application : demande libre, recherche, résultats", async () =>
   r = await app("parler", { texte: "bonjour" });
   verifier(r.ok === false && r.erreur.includes("Gemini"), "Gemini en panne : message clair");
   await envoyerJson(`${FAUX}/control/gemini-panne`, { panne: false });
-  r = await app("rubrique", { formulaire: { titre: "Sortie samedi", consigne: "Une activité en famille", periode: { type: "ponctuelle" },
+  r = await app("rubrique", { formulaire: { titre: "Sortie samedi", consigne: "Une activité en famille", periode: { type: "ponctuelle" }, sources: ["web", "lieux"],
     fiche: { quoi: "activité en famille", ou: "Yverdon" }, transport: "train", budget: { max: "20", unite: "personne" }, inclure: "piscine, musée" } });
   const id = r.id;
   let regle = (await etat()).config.regles.find((x) => x.id === id);
@@ -1213,7 +1219,7 @@ await scenario("Application : demande vocale comprise, confirmation, historique,
   await gemini({ entendu: "", operations: [{ action: "nouvelle_regle", regle: { modele: "actu", titre: "Actu vélo", consigne: "Les nouvelles importantes du vélo." } }], reponse: "" });
   r = await app("parler", { texte: "les nouvelles du vélo" });
   const velo = r.donnees.regles.find((x) => x.titre === "Actu vélo");
-  verifier(r.ok && velo && velo.sources_auto && velo.sources.includes("actus") && velo.place === "actualites" && r.ouvrir?.id === velo.id, "rubrique du catalogue créée et ouverte", velo);
+  verifier(r.ok && velo && velo.sources.join() === "actus" && velo.place === "actualites" && r.ouvrir?.id === velo.id, "rubrique du catalogue créée et ouverte", velo);
   await envoyerJson(`${BOT}/test/etat`, { config: sauvegarde });
 });
 
@@ -1355,7 +1361,7 @@ await scenario("Application : voix (prénoms, voix utilisées, jours, tirage, un
   r = await app("etat");
   verifier(r.donnees.agenda_apercu.map((x) => x.titre).join() === "Dentiste" && r.donnees.agenda_lu, "aperçu de l'agenda (agenda ignoré masqué)", r.donnees.agenda_apercu);
   // Rubrique : pas de transport, budget en euros.
-  r = await app("rubrique", { formulaire: { titre: "Soirée jeux", consigne: "Idées de jeux", periode: { type: "ponctuelle" }, fiche: { quoi: "jeux de société" },
+  r = await app("rubrique", { formulaire: { titre: "Soirée jeux", consigne: "Idées de jeux", periode: { type: "ponctuelle" }, sources: ["web"], fiche: { quoi: "jeux de société" },
     transport: "aucun", budget: { max: "30", devise: "EUR", transport_inclus: true }, inclure: ["coopératif", "rapide"] } });
   const regle = (await etat()).config.regles.find((x) => x.id === r.id);
   verifier(r.ok && regle.recherche.fiche.transport === "aucun" && regle.recherche.fiche.budget.devise === "EUR" && regle.recherche.fiche.budget.transport_inclus === false
@@ -1363,18 +1369,18 @@ await scenario("Application : voix (prénoms, voix utilisées, jours, tirage, un
   await app("supprimer", { id: r.id });
 });
 
-await scenario("Rubriques : sources choisies par l'application, place, pause", async () => {
+await scenario("Rubriques : anciens formulaires « sources choisies par l'application », place, pause", async () => {
   let r = await app("rubrique", { formulaire: { titre: "Fête du prénom", consigne: "Dis-moi quels prénoms on fête aujourd'hui.", longueur: "phrase",
     periode: { type: "toujours" }, sources_auto: true, place: "ouverture" } });
   let regle = (await etat()).config.regles.find((x) => x.id === r.id);
   let { config } = await etat();
-  verifier(r.ok && regle.recherche.sources.join() === "saints" && regle.recherche.sources_auto, "fête du prénom : calendrier des saints choisi", regle.recherche);
+  verifier(r.ok && regle.recherche.sources.join() === "saints" && !("sources_auto" in regle.recherche), "fête du prénom : calendrier des saints choisi, rendu explicite", regle.recherche);
   verifier(config.deroule[config.deroule.findIndex((x) => x.cle === "ouverture") + 1]?.cle === r.id, "placée après l'ouverture", config.deroule.map((x) => x.cle));
   const prenom = r.id;
   r = await app("rubrique", { formulaire: { titre: "Rappel piscine", consigne: "Rappelle-moi de prendre mon maillot.", longueur: "phrase",
     periode: { type: "toujours" }, sources_auto: true, place: "agenda", condition: { texte: "piscine", moment: "veille" } } });
   regle = (await etat()).config.regles.find((x) => x.id === r.id);
-  verifier(r.ok && !regle.recherche && regle.condition.texte === "piscine", "rappel selon l'agenda : aucune source", regle);
+  verifier(r.ok && regle.recherche.sources.join() === "agenda" && regle.condition.texte === "piscine", "rappel selon l'agenda : lit l'agenda", regle);
   r = await app("rubrique", { formulaire: { titre: "Météo", consigne: "La météo du jour : pluie, températures.", longueur: "phrase",
     periode: { type: "toujours" }, sources_auto: true } });
   regle = (await etat()).config.regles.find((x) => x.id === r.id);
@@ -1401,8 +1407,9 @@ await scenario("Connexions : clés et agendas saisis dans l'application", async 
   r = await app("cle", { nom: "gemini", valeur: "bonne-cle" });
   verifier(r.ok && r.donnees.connexions.cles.gemini.source === "app" && r.donnees.connexions.cles.gemini.fin === "-cle" && !JSON.stringify(r.donnees).includes("bonne-cle"),
     "clé Gemini testée, enregistrée, jamais renvoyée en entier", r.donnees.connexions.cles.gemini);
+  await vider();
   r = await app("cle", { nom: "tavily", valeur: "tvly-bonne" });
-  verifier(r.ok && r.message.includes("Tavily"), "clé Tavily", r.message);
+  verifier(r.ok && r.message.includes("encore 812 crédits sur 1\u202f000") && !appelsTavilySearch(await appels()), "clé Tavily : crédits restants, sans consommer de recherche", r.message);
   verifier((await app("cle", { nom: "inconnue", valeur: "x" })).ok === false, "clé inconnue refusée");
   // Agendas : un lien iCal lu, nommé et identifié comme le fait GitHub.
   verifier((await app("agenda_ajouter", { url: `${FAUX}/ics/pas-un-agenda` })).ok === false, "une page qui n'est pas un agenda est refusée");
@@ -1433,6 +1440,104 @@ await scenario("Connexions : clés et agendas saisis dans l'application", async 
   verifier(r.donnees.bienvenue === true, "premier lancement proposé à une installation neuve");
   r = await app("bienvenue_fin");
   verifier(r.ok && r.donnees.bienvenue === false, "premier lancement terminé");
+  await envoyerJson(`${BOT}/test/etat`, { config: sauve });
+});
+
+await scenario("Connexions : tester une clé déjà enregistrée (application ou GitHub)", async () => {
+  // Les modèles annoncés par le test de la clé Gemini sont bien ceux du podcast.
+  const podcast = readFileSync(new URL("../../podcast.py", import.meta.url), "utf8");
+  const liste = (cle) => JSON.parse((new RegExp(`"${cle}": (\\[[^\\]]*\\])`).exec(podcast) || [, "[]"])[1]);
+  verifier(JSON.stringify(liste("modeles_texte")) === JSON.stringify(MODELES_PODCAST.texte) && JSON.stringify(liste("modeles_voix")) === JSON.stringify(MODELES_PODCAST.voix),
+    "modèles du test Gemini = ceux de podcast.py", { texte: liste("modeles_texte"), voix: liste("modeles_voix") });
+  // Gemini dans l'application : le bot la teste et liste les modèles.
+  await app("cle", { nom: "gemini", valeur: "bonne-cle" });
+  await app("cle", { nom: "tavily", valeur: "tvly-bonne" });
+  let r = await app("cle_tester", { nom: "gemini" });
+  verifier(r.ok && r.message.includes("4 modèles Gemini disponibles") && r.message.includes("gemini-3.8-flash ✓") && r.message.includes("gemini-3.8-flash-lite-tts ✗"),
+    "Gemini : modèles du podcast vérifiés", r.message);
+  verifier(r.donnees.connexions.cles.gemini.test?.ok && r.donnees.connexions.cles.gemini.test.ou === "app", "résultat gardé pour la carte", r.donnees.connexions.cles.gemini.test);
+  // Tavily dans l'application : crédits restants, sans recherche consommée.
+  await vider();
+  r = await app("cle_tester", { nom: "tavily" });
+  verifier(r.ok && r.message.includes("encore 812 crédits") && r.message.includes("Researcher") && !appelsTavilySearch(await appels()), "Tavily : crédits restants", r.message);
+  // SNCF rangée dans GitHub : le bot ne la voit pas, il lance tester-cles.yml.
+  await envoyerJson(`${BOT}/api/evenement`, { type: "secrets", presents: ["GEMINI_API_KEY", "SNCF_API_KEY"] }, { "X-Podcast-Secret": SECRET });
+  await vider();
+  r = await app("cle_tester", { nom: "sncf" });
+  verifier(r.ok && r.attendre_test && r.donnees.connexions.cles.sncf.test?.en_cours, "SNCF dans GitHub : test lancé là-bas", r.donnees?.connexions?.cles?.sncf);
+  verifier(lancements(await appels()).some((a) => a.workflow === "tester-cles.yml" && a.entrees?.cles === "sncf"), "tester-cles.yml lancé pour la SNCF", lancements(await appels()));
+  // Le workflow teste (même code que le bot) et renvoie le résultat ; la clé n'est jamais écrite.
+  const sortie = execFileSync("node", ["tester-cles.mjs"], { encoding: "utf8",
+    env: { ...process.env, CLES: "sncf", SNCF_API_KEY: "sncf-bonne", SNCF_API: `${FAUX}/sncf`, BOT_URL: BOT, TELEGRAM_BOT_TOKEN: "123:TEST", GITHUB_STEP_SUMMARY: "" } });
+  verifier(!sortie.includes("sncf-bonne") && sortie.includes("15 décembre 2026"), "tester-cles.mjs : résultat sans la clé", sortie);
+  r = await app("etat");
+  const sncf = r.donnees.connexions.cles.sncf.test;
+  verifier(sncf?.ok && sncf.message.includes("15 décembre 2026") && sncf.ou === "github" && !sncf.en_cours, "résultat GitHub affiché sur la carte", sncf);
+  // Clé absente partout : rien à tester.
+  await envoyerJson(`${BOT}/api/evenement`, { type: "secrets", presents: ["GEMINI_API_KEY"] }, { "X-Podcast-Secret": SECRET });
+  r = await app("cle_tester", { nom: "sncf" });
+  verifier(r.ok === false && r.erreur.includes("Aucune clé SNCF"), "clé absente : rien à tester", r.erreur);
+  await app("cle", { nom: "gemini", valeur: "" });
+  await app("cle", { nom: "tavily", valeur: "" });
+});
+
+await scenario("Réglages › Sources : catégories, flux spécialisés, choix explicite", async () => {
+  let r = await app("etat");
+  const s = r.donnees.reglages.sources;
+  const meteo = s.categories.find((c) => c.cle === "meteo");
+  verifier(meteo?.ou.includes("Open-Meteo") && meteo.apporte && s.categories.find((c) => c.cle === "web")?.cle_api === "tavily" && s.medias.length > 0,
+    "chaque catégorie dit où elle cherche ; médias listés", s.categories.map((c) => [c.cle, c.ou]));
+  verifier(r.donnees.modeles.find((m) => m.id === "meteo")?.sources.join() === "meteo" && r.donnees.modeles.find((m) => m.id === "libre")?.sources.length === 0
+    && r.donnees.modeles.find((m) => m.id === "rappel")?.sources.join() === "agenda", "modèles : sources par défaut ; rubrique libre : à choisir", r.donnees.modeles.map((m) => [m.id, m.sources]));
+  r = await app("rubrique", { formulaire: { titre: "Temps du jour", consigne: "La météo", longueur: "phrase", periode: { type: "toujours" }, sources: ["meteo"] } });
+  const id = r.id;
+  verifier(r.ok && r.donnees.reglages.sources.categories.find((c) => c.cle === "meteo").rubriques.some((x) => x.id === id), "« lue par » la rubrique", r.donnees.reglages.sources.categories.find((c) => c.cle === "meteo"));
+  // Retirer une catégorie : plus proposée, plus lue, et une rubrique ne peut plus la choisir seule.
+  r = await app("source_coupee", { cle: "meteo", coupee: true });
+  verifier(r.ok && (await etat()).config.sources.coupees.includes("meteo") && r.donnees.modeles.find((m) => m.id === "meteo").sources.length === 0, "météo retirée", r.message);
+  r = await app("rubrique", { formulaire: { titre: "Autre météo", consigne: "La météo", periode: { type: "toujours" }, sources: ["meteo"] } });
+  verifier(r.ok === false && r.erreur.includes("au moins une source"), "source retirée : ne compte pas", r.erreur);
+  const exp = await (await fetch(`${BOT}/api/config`, { headers: { "X-Podcast-Secret": SECRET } })).json();
+  verifier(exp.config.sources.coupees.includes("meteo"), "GitHub sait qu'elle est retirée", exp.config.sources);
+  r = await app("source_coupee", { cle: "meteo", coupee: false });
+  verifier(r.ok && !(await etat()).config.sources.coupees.length, "météo de nouveau utilisable");
+  verifier((await app("source_coupee", { cle: "inconnue", coupee: true })).ok === false, "catégorie inconnue refusée");
+  // Flux spécialisé : trouvé d'après la page du site, choisi par une rubrique, retiré.
+  r = await app("flux_ajouter", { valeur: `${FAUX}/site/page.html` });
+  let flux = (await etat()).config.sources.flux;
+  verifier(r.ok && flux.length === 1 && flux[0].url.endsWith("/rss/flux.xml") && /^[0-9a-f]{8}$/.test(flux[0].id), "flux spécialisé ajouté", flux);
+  verifier((await app("flux_ajouter", { valeur: `${FAUX}/rss/flux.xml` })).ok === false, "même flux pas deux fois");
+  r = await app("rubrique", { formulaire: { titre: "Tech optique", consigne: "Les nouveautés de l'optique", periode: { type: "toujours" }, sources: [`flux:${flux[0].id}`] } });
+  const optique = r.id;
+  verifier(r.ok && r.donnees.reglages.sources.flux[0].rubriques.some((x) => x.id === optique), "rubrique qui lit le flux spécialisé", r.erreur || r.donnees.reglages.sources.flux);
+  r = await app("flux_retirer", { id: flux[0].id });
+  const regle = (await etat()).config.regles.find((x) => x.id === optique);
+  verifier(r.ok && !(await etat()).config.sources.flux.length && !regle.recherche.sources.length, "flux retiré : les rubriques ne le gardent pas", regle.recherche);
+  await app("supprimer", { id: optique });
+  await app("supprimer", { id });
+  // À la voix : une rubrique libre reçoit des sources, et la réponse les dit.
+  await vider();
+  await gemini({ operations: [{ action: "nouvelle_regle", regle: { modele: "libre", titre: "Tech en Suisse", consigne: "Les actualités des nouvelles technologies en Suisse." } }], reponse: "" });
+  r = await app("parler", { texte: "ajoute une rubrique sur les nouvelles technologies en Suisse" });
+  const tech = (await etat()).config.regles.find((x) => x.titre === "Tech en Suisse");
+  verifier(r.ok && tech?.recherche.sources.join() === "actus" && JSON.stringify(r).includes("cherche dans : Google Actualités"), "à la voix : sources choisies et annoncées", { sources: tech?.recherche, message: r.message });
+  if (tech) await app("supprimer", { id: tech.id });
+});
+
+await scenario("Sources : reprise des anciennes rubriques (choisies par l'application)", async () => {
+  const sauve = (await etat()).config;
+  const ancienne = JSON.parse(JSON.stringify(sauve));
+  delete ancienne.sources;
+  ancienne.regles = [
+    { id: "R1", titre: "Fête du prénom", consigne: "Les prénoms du jour", periode: { type: "toujours" }, recherche: { fiche: {}, sources: ["web"], sources_auto: true } },
+    { id: "R2", titre: "Rappel", consigne: "Pense à ton sac", periode: { type: "toujours" }, condition: { texte: "piscine", moment: "veille", n: 1 } },
+    { id: "R3", titre: "Mon train", consigne: "Retard du train de 7h31 vers Lausanne", periode: { type: "toujours" }, recherche: { fiche: {}, sources: ["web"] } },
+  ];
+  await envoyerJson(`${BOT}/test/etat`, { config: ancienne });
+  const r = await app("etat");
+  const sources = Object.fromEntries(r.donnees.regles.map((x) => [x.titre, x.sources.join()]));
+  verifier(sources["Fête du prénom"] === "web,saints" && sources.Rappel === "agenda" && sources["Mon train"] === "web,transports",
+    "ce qui était ajouté en douce est maintenant coché", sources);
   await envoyerJson(`${BOT}/test/etat`, { config: sauve });
 });
 

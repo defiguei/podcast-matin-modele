@@ -107,7 +107,13 @@ const serveur = http.createServer(async (req, res) => {
   // ── tests des clés (écran Connexions) et agenda iCal ──
   if (p === "/gemini/v1beta/models") {
     appels.push({ service: "gemini", methode: "modeles" });
-    return json(res, req.headers["x-goog-api-key"] === "bonne-cle" ? 200 : 400, { models: [] });
+    return json(res, req.headers["x-goog-api-key"] === "bonne-cle" ? 200 : 400, { models: ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite",
+      "gemini-3.8-flash-tts", "text-embedding-005"].map((n) => ({ name: `models/${n}` })) });
+  }
+  if (p === "/tavily/usage") {
+    appels.push({ service: "tavily", methode: "usage" });
+    return json(res, req.headers.authorization === "Bearer tvly-bonne" ? 200 : 401,
+      { key: { usage: 188, limit: null }, account: { current_plan: "Researcher", plan_usage: 188, plan_limit: 1000 } });
   }
   if (p === "/tavily/search") {
     appels.push({ service: "tavily" });
@@ -117,7 +123,8 @@ const serveur = http.createServer(async (req, res) => {
     appels.push({ service: "modele" });
     return json(res, 200, { version: "2099-01-01.1", titre: "Plus tard", nouveautes: ["Une nouveauté", "Une autre"] });
   }
-  if (p === "/sncf/v1/coverage/sncf") return json(res, req.headers.authorization === "sncf-bonne" ? 200 : 401, {});
+  if (p === "/sncf/v1/coverage/sncf") return json(res, req.headers.authorization === "sncf-bonne" ? 200 : 401,
+    { regions: [{ id: "sncf", status: "running", end_production_date: "20261215T000000" }] });
   if (p === "/ics/perso.ics") {
     res.writeHead(200, { "Content-Type": "text/calendar" });
     return res.end("BEGIN:VCALENDAR\r\nX-WR-CALNAME:Famille\r\nBEGIN:VEVENT\r\nSUMMARY:Piscine\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nSUMMARY:Match\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n");
