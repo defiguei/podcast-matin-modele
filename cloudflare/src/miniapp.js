@@ -10,12 +10,12 @@ import {
   heurePrevue, prochainEpisode, ajouterJours, dateCourte, nomRubrique, dateOuNull, nettoyerListe,
   VOIX, VOIX_CONSEILLEES, VITESSES, TONS, CITER, TRANSPORTS, fluxActus, profilPays, PAYS, DELAIS_RATTRAPAGE,
   DEVISES, REGIONS_FERIES, MODES_VOIX, sourcesAuto, estFerie, nomFerie, animateursDuJour, equipeComplete, normaliserTexte,
-  jourDeSemaine,
+  jourDeSemaine, MODELES_RUBRIQUES, catalogueRubriques, nouvelleRegle, modifierRegle,
 } from "./config.js";
 
 const DUREE_VALIDITE = 24 * 3600;      // une ouverture reste valable 24 h
 const MOIS_CALENDRIER = 12;            // le planning se feuillette jusqu'à un an à l'avance
-const PERIODES = ["toujours", "dates", "jours", "une_fois", "ponctuelle"];
+export const PERIODES = ["toujours", "dates", "jours", "une_fois", "ponctuelle"];
 const MOMENTS = ["jour_meme", "veille", "jours_avant"];
 const CHAMPS_FICHE = ["quoi", "avec_qui", "ages", "ou", "quand", "attendu"];
 export const ECRANS_BOT = ["planning", "voix", "format", "agenda", "actus", "consignes", "accueil"];
@@ -220,6 +220,12 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
       echantillons: liens.voix, temps_echantillons: etat.temps_echantillons || {},
     },
     regles: config.regles.map((r) => regleVisible(r, aujourdHui)),
+    // Le catalogue « + » : le même que celui que Gemini utilise pour une rubrique demandée à la voix.
+    modeles: catalogueRubriques(config),
+    // Les dernières demandes au bot (écrites ou vocales) : ce qui a été compris et fait.
+    demandes: (etat.historique || []).slice(-10).reverse().map((d) => ({
+      quand: d.quand, message: d.message, vocal: Boolean(d.vocal), changements: d.changements || [], erreurs: d.erreurs || [],
+      a_confirmer: d.a_confirmer || [], issue: d.issue || null, operations: d.operations || "" })),
     deroule: config.deroule.map((el) => {
       const regle = config.regles.find((r) => r.id === el.cle);
       return { cle: el.cle, actif: el.actif !== false, nom: regle ? (regle.rubrique?.titre || regle.titre) : nomRubrique(config, el.cle),
@@ -289,14 +295,66 @@ export function champsDepuisFormulaire(f, ancienne, aujourdHui, devise = "CHF") 
     n: Math.max(1, Math.min(30, Number(c.n) || 1)),
   } : null;
 
+  // Champs que seule la demande à la voix remplit (la fiche de l'application ne les envoie pas,
+  // et une rubrique modifiée dans l'application garde donc les siens).
+  if (recherche && Array.isArray(f.requetes)) recherche.requetes = nettoyerListe(f.requetes, 6, 120);
+
   const champs = {
     titre, consigne, periode, rubrique, recherche, condition,
     importance: f.prioritaire ? "prioritaire" : "normale",
     etat: f.active === false ? "pause" : "active",
   };
+  if (f.jours_avant !== undefined && f.jours_avant !== null && f.jours_avant !== "" && Number.isFinite(Number(f.jours_avant))) {
+    champs.presentation = { jours_avant: Math.max(0, Math.min(14, Math.round(Number(f.jours_avant)))) };
+  }
   if (ancienne && JSON.stringify({ ...ancienne.periode }) !== JSON.stringify(periode)) champs.servie = false;
   if (!ancienne) champs.cree_le = aujourdHui;
   return champs;
+}
+
+// Le formulaire d'une nouvelle rubrique, comme la fiche de l'application l'ouvre depuis le
+// catalogue (« + ») : un seul point de départ pour l'application et pour la voix.
+export function formulaireNeuf(config, idModele = "libre", ponctuelle = false) {
+  const modele = MODELES_RUBRIQUES.find((m) => m.id === idModele) || MODELES_RUBRIQUES.find((m) => m.id === "libre");
+  const base = modele.formulaire(config.actus?.ville || "");
+  return {
+    titre: base.titre || "", consigne: base.consigne || "",
+    longueur: ponctuelle ? "aucune" : base.longueur || "courte",
+    periode: ponctuelle ? { type: "ponctuelle", debut: "", fin: "", jours: [] }
+      : { type: "toujours", debut: "", fin: "", jours: [], ...(base.periode || {}) },
+    sources_auto: true, sources: ponctuelle ? ["web", "lieux"] : [],
+    fiche: Object.fromEntries(CHAMPS_FICHE.map((c) => [c, ""])),
+    transport: "", budget: { max: "", unite: "personne", devise: profilPays(config).devise, transport_inclus: false },
+    inclure: [], exclure: [], condition: base.condition ? { ...base.condition } : null,
+    place: base.place || "actualites", prioritaire: false, active: true,
+  };
+}
+
+// Le formulaire d'une rubrique existante, comme la fiche de l'application l'affiche.
+export function formulaireDepuisRegle(r, devise = "CHF") {
+  const fiche = r.recherche?.fiche || {};
+  const budget = fiche.budget || {};
+  return {
+    titre: r.titre, consigne: r.consigne,
+    longueur: r.rubrique?.longueur || "aucune",
+    periode: { type: r.periode.type, debut: r.periode.debut || "", fin: r.periode.fin || "", jours: [...(r.periode.jours || [])] },
+    sources_auto: Boolean(r.recherche?.sources_auto), sources: [...(r.recherche?.sources || [])],
+    fiche: Object.fromEntries(CHAMPS_FICHE.map((c) => [c, fiche[c] || ""])),
+    transport: fiche.transport || "",
+    budget: { max: budget.max ?? "", unite: budget.unite || "personne", devise: budget.devise || devise, transport_inclus: Boolean(budget.transport_inclus) },
+    inclure: [...(fiche.inclure || [])], exclure: [...(fiche.exclure || [])],
+    condition: r.condition ? { ...r.condition } : null,
+    place: r.rubrique?.apres || "actualites",
+    prioritaire: r.importance === "prioritaire", active: r.etat !== "pause",
+  };
+}
+
+// Crée ou modifie une rubrique à partir du formulaire : le chemin unique (fiche de
+// l'application, demande écrite ou vocale).
+export function enregistrerRubrique(config, formulaire, existante, aujourdHui, origine = "application") {
+  const champs = champsDepuisFormulaire(formulaire, existante, aujourdHui, profilPays(config).devise);
+  if (existante) return modifierRegle(config, existante.id, champs, aujourdHui);
+  return nouvelleRegle(config, champs, aujourdHui, origine);
 }
 
 // Nouvel ordre du déroulé : doit contenir exactement les mêmes passages.

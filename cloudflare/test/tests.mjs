@@ -226,6 +226,108 @@ await scenario("Compréhension libre : horaire et réglages", async () => {
   verifier(tg(liste, "sendChatAction").length >= 1, "indicateur « écrit… »");
 });
 
+// Gemini (modèle léger) ne range pas toujours les champs où il faut : le bot ne doit
+// jamais en tirer un défaut destructeur, et ce qu'il annonce doit être ce qu'il a fait.
+await scenario("Compréhension : réponses maladroites de Gemini, confirmation, transcription", async () => {
+  const sauvegarde = (await etat()).config;
+  const jours = async () => (await etat()).config.planning.jours;
+  // L'heure rangée dans « valeur » au lieu de « heure » (le cas du 6 h 30 du 21 oct. 2026).
+  await gemini({ entendu: "", operations: [{ action: "horaire", jours: ["tous"], valeur: "06:30" }], reponse: "" });
+  await message("change l'horaire tout le temps à 6h30");
+  let liste = await attendre((l) => tg(l, "sendMessage").length >= 1);
+  let texte = dernierTexte(liste);
+  verifier(Object.values(await jours()).every((h) => h === "06:30"), "heure reprise de « valeur »", await jours());
+  verifier(texte.includes("C'est fait") && texte.includes("6 h 30") && !texte.includes("pas d'épisode"), "confirmation tirée de ce qui a été fait", texte);
+  // Heure oubliée : rien ne change, et la phrase de Gemini (fausse) n'est pas montrée.
+  await vider();
+  await gemini({ entendu: "", operations: [{ action: "horaire", jours: ["tous"] }], reponse: "C'est fait, ton podcast est programmé à 07:00." });
+  await message("tous les jours à 7h");
+  liste = await attendre((l) => tg(l, "sendMessage").length >= 1);
+  texte = dernierTexte(liste);
+  verifier(Object.values(await jours()).every((h) => h === "06:30"), "heure oubliée : planning intact", await jours());
+  verifier(texte.includes("rien changé") && texte.includes("l'heure") && !texte.includes("07:00") && !boutons(tg(liste, "sendMessage")[0].corps).includes("a:undo"),
+    "heure oubliée : erreur claire, sans la phrase de Gemini", texte);
+  // Couper tout le planning : à confirmer. Non → rien ne change.
+  await vider();
+  await gemini({ entendu: "", operations: [{ action: "horaire", jours: ["tous"], heure: "aucun" }], reponse: "" });
+  await message("plus aucun épisode");
+  liste = await attendre((l) => tg(l, "sendMessage").length >= 1);
+  texte = dernierTexte(liste);
+  const clavier = boutons(tg(liste, "sendMessage")[0].corps);
+  verifier(texte.includes("À confirmer") && clavier.includes("a:conf") && clavier.includes("a:nconf") && (await jours()).lun === "06:30",
+    "planning coupé : rien d'appliqué avant confirmation", { texte, clavier });
+  await vider(); await bouton("a:nconf", 640);
+  liste = await attendre((l) => tg(l, "sendMessage").length >= 1);
+  verifier(dernierTexte(liste).includes("rien changé") && (await jours()).lun === "06:30" && !(await etat()).etat.a_confirmer, "« Non » : rien ne change", dernierTexte(liste));
+  verifier(tg(liste, "editMessageReplyMarkup").length >= 1, "boutons de confirmation retirés");
+  await vider(); await bouton("a:conf", 640);
+  liste = await attendre((l) => tg(l, "answerCallbackQuery").length >= 1);
+  verifier(toast(liste).includes("Plus rien en attente") && (await jours()).lun === "06:30", "confirmation déjà traitée : sans effet", toast(liste));
+  // Oui → appliqué, et annulable.
+  await vider();
+  await gemini({ entendu: "", operations: [{ action: "horaire", jours: ["tous"], heure: "aucun" }], reponse: "" });
+  await message("plus aucun épisode");
+  await attendre((l) => tg(l, "sendMessage").length >= 1);
+  await vider(); await bouton("a:conf", 641);
+  liste = await attendre((l) => tg(l, "sendMessage").length >= 1);
+  verifier(Object.values(await jours()).every((h) => h === null) && dernierTexte(liste).includes("C'est fait")
+    && boutons(tg(liste, "sendMessage")[0].corps).includes("a:undo"), "« Oui » : appliqué, annulable", dernierTexte(liste));
+  await vider(); await bouton("a:undo", 641);
+  await attendre((l) => tg(l, "sendMessage").length >= 1);
+  verifier((await jours()).lun === "06:30", "annulé : l'horaire revient");
+  // Vocal : ce que Gemini a entendu est montré.
+  await vider();
+  await gemini({ entendu: "mets le podcast à six heures et quart", operations: [{ action: "horaire", jours: ["semaine"], heure: "06:15" }], reponse: "" });
+  await message(undefined, { voice: { file_id: "vocal-6h15", duration: 3, mime_type: "audio/ogg" } });
+  liste = await attendre((l) => tg(l, "sendMessage").length >= 1);
+  texte = dernierTexte(liste);
+  verifier(texte.includes("« mets le podcast à six heures et quart »") && texte.includes("6 h 15"), "transcription affichée avec le changement", texte);
+  const trace = (await etat()).etat.historique.at(-1);
+  verifier(trace.vocal && trace.message.includes("six heures") && trace.operations.includes("06:15"), "historique : entendu et opérations gardés", trace);
+  // Une liste « réglée » d'un bloc : on ajoute, on ne remplace pas.
+  await vider();
+  await gemini({ operations: [{ action: "regler", chemin: "actus.sujets_a_eviter", valeur: "people" }], reponse: "" });
+  await message("pas de people");
+  await attendre((l) => tg(l, "sendMessage").length >= 1);
+  const evites = (await etat()).config.actus.sujets_a_eviter;
+  verifier(evites.includes("sport") && evites.includes("people"), "liste complétée, pas écrasée", evites);
+  // Rubrique demandée à la voix : modèle du catalogue, comme le « + » de l'application.
+  await vider();
+  await gemini({ operations: [{ action: "nouvelle_regle", regle: { modele: "meteo" } }], reponse: "" });
+  await message("ajoute la météo le matin");
+  liste = await attendre((l) => tg(l, "sendMessage").length >= 2);
+  let config = (await etat()).config;
+  const meteo = config.regles.find((r) => r.titre === "Météo");
+  const cles = config.deroule.map((x) => x.cle);
+  verifier(meteo && meteo.recherche.sources_auto && meteo.recherche.sources.includes("meteo") && meteo.rubrique?.longueur === "phrase"
+    && cles.indexOf(meteo.id) === cles.indexOf("ouverture") + 1, "rubrique du catalogue : sources, longueur et place du modèle", { meteo, cles });
+  verifier(dernierTexte(liste).includes("après Ouverture") || tg(liste, "sendMessage").some((a) => a.corps.text.includes("après Ouverture")), "place annoncée");
+  // Modifier sans rien de compris : erreur, pas de « modifiée ».
+  await vider();
+  await gemini({ operations: [{ action: "modifier_regle", id: meteo.id, regle: {} }], reponse: "C'est modifié." });
+  await message("change la météo");
+  liste = await attendre((l) => tg(l, "sendMessage").length >= 1);
+  verifier(dernierTexte(liste).includes("quoi changer") && !dernierTexte(liste).includes("C'est modifié"), "modification vide signalée", dernierTexte(liste));
+  // La déplacer et la raccourcir par la voix.
+  await vider();
+  await gemini({ operations: [{ action: "modifier_regle", id: meteo.id, regle: { place: "agenda", consigne: "La météo du jour en une phrase." } }], reponse: "" });
+  await message("mets la météo après l'agenda");
+  await attendre((l) => tg(l, "sendMessage").length >= 1);
+  config = (await etat()).config;
+  const cles2 = config.deroule.map((x) => x.cle);
+  verifier(cles2.indexOf(meteo.id) === cles2.indexOf("agenda") + 1 && config.regles.find((r) => r.id === meteo.id).consigne.includes("une phrase"), "rubrique déplacée et modifiée", cles2);
+  // Supprimer : à confirmer.
+  await vider();
+  await gemini({ operations: [{ action: "supprimer_regle", id: meteo.id }], reponse: "" });
+  await message("supprime la météo");
+  liste = await attendre((l) => tg(l, "sendMessage").length >= 1);
+  verifier(dernierTexte(liste).includes("À confirmer") && (await etat()).config.regles.some((r) => r.id === meteo.id), "suppression à confirmer", dernierTexte(liste));
+  await vider(); await bouton("a:conf", 642);
+  await attendre((l) => tg(l, "sendMessage").length >= 1);
+  verifier(!(await etat()).config.regles.some((r) => r.titre === "Météo"), "rubrique supprimée après confirmation");
+  await envoyerJson(`${BOT}/test/etat`, { config: sauvegarde });
+});
+
 await scenario("Règle : saint du jour entre l'agenda et les news", async () => {
   await gemini({ operations: [{ action: "nouvelle_regle", regle: {
     titre: "Saint du jour", consigne: "Dire le saint du jour", periode_type: "toujours",
@@ -1063,6 +1165,39 @@ await scenario("Application : épisodes anciens, sources, extraits par voix", as
   r = await app("extraits");
   const lance = lancements(await appels()).find((a) => a.workflow === "echantillons.yml");
   verifier(r.ok && lance && !lance.entrees.voix.split(",").includes("Kore") && lance.entrees.voix.split(",").length === 7, "seules les voix sans extrait séparé sont préparées", lance?.entrees);
+});
+
+await scenario("Application : demande vocale comprise, confirmation, historique, catalogue partagé", async () => {
+  const sauvegarde = (await etat()).config;
+  const tous = Object.fromEntries(["lun", "mar", "mer", "jeu", "ven", "sam", "dim"].map((j) => [j, "07:30"]));
+  await envoyerJson(`${BOT}/test/etat`, { config: { ...sauvegarde, planning: { ...sauvegarde.planning, jours: tous } } });
+  let r = await app("etat");
+  const meteo = r.donnees.modeles?.find((m) => m.id === "meteo");
+  verifier(r.donnees.modeles?.length === 8 && meteo?.f?.place === "ouverture" && meteo.f.longueur === "phrase", "catalogue fourni par le bot", r.donnees.modeles?.map((m) => m.id));
+  const wav = Buffer.from("RIFF0000WAVEfmt faux").toString("base64");
+  await gemini({ entendu: "plus d'épisode du lundi au jeudi", operations: [{ action: "horaire", jours: ["lun", "mar", "mer", "jeu"], heure: "aucun" }], reponse: "C'est fait." });
+  r = await app("parler", { audio: wav });
+  verifier(r.ok && r.entendu === "plus d'épisode du lundi au jeudi" && r.vocal && r.a_confirmer.length === 1 && r.message_compris?.confirmer
+    && r.donnees.planning.jours.lun !== null && !r.message_compris.note, "vocal : transcription, confirmation demandée, rien d'appliqué", r.message_compris);
+  verifier(r.donnees.demandes?.[0]?.issue === "attente" && r.donnees.demandes[0].vocal && r.donnees.demandes[0].message.includes("lundi au jeudi"), "demande en attente dans l'historique", r.donnees.demandes?.[0]);
+  r = await app("parler_confirmer");
+  verifier(r.ok && ["lun", "mar", "mer", "jeu"].every((j) => r.donnees.planning.jours[j] === null) && r.message_compris?.titre.includes("C'est fait"), "confirmé : appliqué", r.message_compris);
+  verifier(r.donnees.demandes[0].issue === "confirme" && r.donnees.demandes[0].changements.length === 1 && r.donnees.demandes[0].operations.includes("aucun"), "historique : une seule ligne, confirmée", r.donnees.demandes.slice(0, 2));
+  r = await app("parler_abandonner");
+  verifier(r.ok === false && r.erreur.includes("plus en attente"), "rien en attente : refus clair", r.erreur);
+  // Non : rien ne change.
+  const joursAvant = JSON.stringify((await etat()).config.planning.jours);
+  await gemini({ entendu: "", operations: [{ action: "horaire", jours: ["tous"], heure: "aucun" }], reponse: "" });
+  r = await app("parler", { texte: "aucun épisode" });
+  verifier(r.ok && r.message_compris?.confirmer, "tout couper : à confirmer", r.message_compris);
+  r = await app("parler_abandonner");
+  verifier(r.ok && r.abandon && JSON.stringify(r.donnees.planning.jours) === joursAvant && r.donnees.demandes[0].issue === "abandonne", "« Non » : rien ne change", r.donnees.demandes[0]);
+  // Une rubrique demandée par écrit passe par le même formulaire que la fiche.
+  await gemini({ entendu: "", operations: [{ action: "nouvelle_regle", regle: { modele: "actu", titre: "Actu vélo", consigne: "Les nouvelles importantes du vélo." } }], reponse: "" });
+  r = await app("parler", { texte: "les nouvelles du vélo" });
+  const velo = r.donnees.regles.find((x) => x.titre === "Actu vélo");
+  verifier(r.ok && velo && velo.sources_auto && velo.sources.includes("actus") && velo.place === "actualites" && r.ouvrir?.id === velo.id, "rubrique du catalogue créée et ouverte", velo);
+  await envoyerJson(`${BOT}/test/etat`, { config: sauvegarde });
 });
 
 await scenario("Application : miniatures, sources par section, historique, demande vocale", async () => {

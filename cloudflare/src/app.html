@@ -902,7 +902,8 @@ function vueParler() {
   return `${entete("Demande au bot", "En une phrase")}
   <p class="aide">Écris, ou touche le micro et parle. Par exemple : « 6 h 45 en semaine, rien le dimanche », « parle plus lentement », « le sport ne m'intéresse pas », « chaque vendredi, propose une sortie à Lausanne ».</p>
   <div id="fil" style="display:flex;flex-direction:column;gap:8px">
-    ${S.discussion.map((m) => m.moi ? `<div class="bulle moi">${h(m.texte)}</div>` : `<div class="bulle bot">${m.html}</div>`).join("")}
+    ${S.discussion.length ? "" : historiqueDemandes()}
+    ${S.discussion.map((m) => m.moi ? `<div class="bulle moi">${h(m.texte)}</div>` : `<div class="bulle bot">${m.html}${m.boutons || ""}</div>`).join("")}
     ${S.occupe ? `<div class="bulle bot"><span class="attente" style="width:16px;height:16px;margin:0" aria-hidden="true"></span> Je réfléchis…</div>` : ""}
   </div>
   <div class="barre"><div style="display:flex;gap:8px;max-width:524px;margin:0 auto;align-items:center">
@@ -915,33 +916,84 @@ function vueParler() {
   </div></div>`;
 }
 
+// Les dernières demandes (gardées par le bot) : ce qui a été entendu, et ce qui a été fait.
+function historiqueDemandes() {
+  const demandes = ((S.d && S.d.demandes) || []).slice(0, 5).reverse();
+  if (!demandes.length) return "";
+  const issue = { attente: "En attente de ta confirmation.", abandonne: "Tu as répondu non : rien changé.",
+                  expire: "Pas confirmé à temps : rien changé.", confirme: "Confirmé." };
+  return `<span class="groupe">Tes dernières demandes</span>${demandes.map((d) => {
+    const quand = d.quand ? `${dateCourteLocale(d.quand.slice(0, 10))} · ${d.quand.slice(11, 16)}` : "";
+    const lignes = d.changements.length ? d.changements : d.a_confirmer;
+    const corps = [lignes.length ? `<ul>${lignes.map((c) => `<li>${h(c)}</li>`).join("")}</ul>` : "",
+      d.erreurs.length ? d.erreurs.map((x) => `⚠️ ${h(x)}`).join("<br>") : "",
+      issue[d.issue] ? `<i>${h(issue[d.issue])}</i>` : "",
+      !lignes.length && !d.erreurs.length ? "Rien changé." : "",
+      d.operations && d.operations !== "[]" ? `<details><summary style="font-size:12px;color:var(--doux)">Détail technique</summary><code style="font-size:11px;word-break:break-all">${h(d.operations)}</code></details>` : ""]
+      .filter(Boolean).join("");
+    return `<div class="bulle moi" style="opacity:.75">${d.vocal ? "🎤 " : ""}${h(d.message)}</div><div class="bulle bot" style="opacity:.75"><span style="font-size:12px;color:var(--doux)">${h(quand)}</span>${corps}</div>`;
+  }).join("")}<span class="groupe">Nouvelle demande</span>`;
+}
+
+function dateCourteLocale(iso) {
+  try { return new Date(`${iso}T12:00:00Z`).toLocaleDateString("fr-CH", { day: "numeric", month: "short", timeZone: "UTC" }); } catch (e) { return iso; }
+}
+
+// Le message du bot, construit d'après ce qui a vraiment été appliqué (le même que dans Telegram).
+function htmlCompris(m) {
+  return [m.titre ? `<b>${h(m.titre)}</b>` : "",
+    m.lignes.length ? `<ul>${m.lignes.map((c) => `<li>${h(c)}</li>`).join("")}</ul>` : "",
+    m.erreurs.length ? `<div style="margin-top:6px">${m.erreurs.map((x) => `⚠️ ${h(x)}`).join("<br>")}</div>` : "",
+    m.note ? `<div style="margin-top:6px">${h(m.note)}</div>` : ""].filter(Boolean).join("");
+}
+
 async function envoyerDemande(texte, audio = null) {
   texte = String(texte || "").trim();
   if (!texte && !audio) return;
-  S.discussion.push({ moi: true, texte: audio ? `🎤 Message vocal (${minSec(audio.secondes)})` : texte });
+  const moi = { moi: true, texte: audio ? `🎤 Message vocal (${minSec(audio.secondes)})` : texte };
+  S.discussion.push(moi);
   const promesse = demander("parler", audio ? { audio: audio.base64 } : { texte }, { discret: true });
   dessiner();
   const j = await promesse;
-  let html = "";
+  // Ce que le bot a entendu remplace « Message vocal » : on voit tout de suite s'il a mal compris.
+  if (j.ok && audio) moi.texte = j.entendu ? `🎤 « ${j.entendu} »` : `🎤 Message vocal (${minSec(audio.secondes)}), sans transcription`;
+  afficherReponse(j);
+}
+
+function afficherReponse(j) {
+  let html = "", boutons = [];
+  const m = j.ok ? (j.message_compris || { titre: "", lignes: j.changements || [], erreurs: j.erreurs || [], note: j.reponse || "" }) : null;
   if (!j.ok) html = h(j.erreur || "Je n'ai pas pu traiter ta demande.");
   else {
-    html = h(j.reponse || (j.changements && j.changements.length ? "C'est fait." : "D'accord."));
-    const lignes = [...(j.changements || []), ...(j.suites || [])];
-    if (lignes.length) html += `<ul>${lignes.map((c) => `<li>${h(c)}</li>`).join("")}</ul>`;
-    if (j.erreurs && j.erreurs.length) html += `<br>Pas compris ou impossible : ${h(j.erreurs.join(" ; "))}`;
-    const boutons = [];
-    if (j.changements && j.changements.length) boutons.push(`<button type="button" data-action="annuler">Annuler</button>`);
-    if (j.ouvrir) {
+    html = htmlCompris(m) || "D'accord.";
+    if (m.confirmer) boutons.push(`<button type="button" data-action="parler-confirmer">Oui, appliquer</button>`, `<button type="button" data-action="parler-abandonner">Non</button>`);
+    else if (j.changements && j.changements.length) boutons.push(`<button type="button" data-action="annuler">Annuler</button>`);
+    if (j.ouvrir && !m.confirmer) {
       if (j.ouvrir.ecran === "fiche" && j.ouvrir.id) boutons.push(`<button type="button" data-ouvrir="${h(j.ouvrir.id)}">Voir la rubrique</button>`);
       else if (j.ouvrir.ecran === "recherche") boutons.push(`<button type="button" data-action="nouvelle-recherche">Préparer la recherche</button>`);
       else if (DESTINATIONS[j.ouvrir.ecran]) boutons.push(`<button type="button" data-destination="${DESTINATIONS[j.ouvrir.ecran]}">Ouvrir</button>`);
     }
-    if (boutons.length) html += `<div class="gestes" style="margin-top:8px">${boutons.join("")}</div>`;
-    vibrer(j.changements && j.changements.length ? "success" : "choix");
+    vibrer(m.confirmer ? "warning" : j.changements && j.changements.length ? "success" : "choix");
   }
-  S.discussion.push({ moi: false, html });
+  S.discussion.push({ moi: false, html, confirmation: Boolean(m && m.confirmer),
+                      boutons: boutons.length ? `<div class="gestes" style="margin-top:8px">${boutons.join("")}</div>` : "" });
   S.discussion = S.discussion.slice(-20);
   if (S.ecran === "parler") dessiner();
+}
+
+async function repondreConfirmation(oui) {
+  S.discussion.forEach((m) => { if (m.confirmation) { m.boutons = ""; m.confirmation = false; } });
+  S.discussion.push({ moi: true, texte: oui ? "Oui, applique" : "Non, laisse tel quel" });
+  const promesse = demander(oui ? "parler_confirmer" : "parler_abandonner", {}, { discret: true });
+  dessiner();
+  const j = await promesse;
+  if (j.ok && j.abandon) {
+    S.discussion.push({ moi: false, html: h(j.message || "D'accord, je n'ai rien changé."), boutons: "" });
+    vibrer("choix");
+    if (S.ecran === "parler") dessiner();
+    return;
+  }
+  afficherReponse(j);
 }
 
 // Enregistrement de la voix : micro du téléphone → WAV 16 kHz mono, une minute au plus.
@@ -1168,32 +1220,14 @@ function vueProgrammeDuJour(date) {
 }
 
 // ─────────────────────────────── catalogue ──────────────────────────────
-// Modèles déjà réglés : l'application choisit les sources d'après la consigne.
-const MODELES = [
-  { id: "prenom", famille: "jour", titre: "Fête du prénom", texte: "Les prénoms fêtés aujourd'hui (calendrier des saints)",
-    f: () => ({ place: "ouverture", titre: "Fête du prénom", consigne: "Dis-moi quels prénoms on fête aujourd'hui (un ou deux).", longueur: "phrase" }) },
-  { id: "journee", famille: "jour", titre: "Journée du jour", texte: "La journée mondiale ou la fête nationale célébrée aujourd'hui",
-    f: () => ({ place: "ouverture", titre: "Journée du jour", consigne: "Dis-moi quelle journée mondiale, internationale ou fête nationale on célèbre aujourd'hui.", longueur: "phrase" }) },
-  { id: "meteo", famille: "jour", titre: "Météo", texte: "Le temps du jour chez toi, et comment t'habiller",
-    f: (ville) => ({ place: "ouverture", titre: "Météo", consigne: `La météo du jour${ville ? ` à ${ville}` : ""} : températures, risque de pluie, et un conseil pour s'habiller.`, longueur: "phrase" }) },
-  { id: "rappel", famille: "agenda", titre: "Rappel selon l'agenda", texte: "« La veille d'un match, rappelle-moi de préparer mon sac »",
-    f: () => ({ place: "agenda", titre: "Rappel", consigne: "Rappelle-moi de ", longueur: "phrase", condition: { texte: "", moment: "veille", n: 1 } }) },
-  { id: "train", famille: "sortie", titre: "Mon train", texte: "Retard ou suppression de ton train habituel (Suisse, France, Belgique)",
-    f: (ville) => ({ place: "agenda", titre: "Mon train", consigne: `Retard du train de ${ville || "…"} vers … à …h…`, longueur: "phrase",
-                     periode: { type: "jours", jours: ["lun", "mar", "mer", "jeu", "ven"] } }) },
-  { id: "actu", famille: "info", titre: "Actu d'un pays ou d'un thème", texte: "« L'actualité du Portugal », « les nouvelles du vélo »",
-    f: () => ({ place: "actualites", titre: "Actu de ", consigne: "Les nouvelles importantes sur ", longueur: "courte" }) },
-  { id: "sortie", famille: "sortie", titre: "Idée de sortie", texte: "Une sortie proposée dans tes épisodes, selon tes critères (lieu, budget, transport)", recherche: true,
-    f: () => ({ place: "deplacements", titre: "Sortie du week-end", consigne: "Propose une idée de sortie pour le week-end.", longueur: "courte",
-                periode: { type: "jours", jours: ["jeu", "ven"] } }) },
-  { id: "libre", famille: "info", titre: "Rubrique libre", texte: "Tu écris la consigne, l'application choisit où chercher",
-    f: () => ({ place: "actualites", titre: "", consigne: "", longueur: "courte" }) },
-];
+// Modèles déjà réglés (fournis par le bot : les mêmes que pour une rubrique demandée à la voix).
+// L'application choisit les sources d'après la consigne.
+const modeles = () => (S.d && S.d.modeles) || [];
 
 function vueCatalogue() {
   return `${entete("Ajouter une rubrique", "Ton épisode")}
   <p class="aide" style="font-size:14px;color:var(--doux-2)">Choisis un modèle : il est déjà réglé. Tu pourras tout ajuster avant de l'ajouter.</p>
-  <div class="liste">${MODELES.map((m) => `<button type="button" class="rubrique" data-modele="${m.id}">
+  <div class="liste">${modeles().map((m) => `<button type="button" class="rubrique" data-modele="${m.id}">
     ${pastille(m.id)}
     <span class="textes"><span class="nom">${h(m.titre)}</span><span class="detail" style="white-space:normal">${h(m.texte)}</span></span>
     <span style="color:var(--eteint)">${icone("suite", 18, 2)}</span></button>`).join("")}</div>
@@ -2105,7 +2139,7 @@ document.addEventListener("click", (ev) => {
   }
   if (ds.reglage) { S.reglage = ds.reglage; return aller("reglage"); }
   if (ds.integree) { S.integree = ds.integree; return aller("integree"); }
-  if (ds.modele) { const m = MODELES.find((x) => x.id === ds.modele); return m && ouvrirFiche(null, m); }
+  if (ds.modele) { const m = modeles().find((x) => x.id === ds.modele); return m && ouvrirFiche(null, m); }
   if (ds.consigneRubrique !== undefined) return rubriqueDepuisConsigne(Number(ds.consigneRubrique));
   if (ds.actifRegle) {
     const actif = el.getAttribute("aria-checked") !== "true";
@@ -2219,6 +2253,8 @@ document.addEventListener("click", (ev) => {
     case "sans-condition": S.fiche.f.condition = null; S.fiche.modifie = true; return dessiner();
     case "recherche": S.fiche.recherche = true; return dessiner();
     case "annuler": return changer("annuler");
+    case "parler-confirmer": return repondreConfirmation(true);
+    case "parler-abandonner": return repondreConfirmation(false);
     case "envoyer": { const t = document.getElementById("demande"); const v = t ? t.value : ""; if (t) t.value = ""; return envoyerDemande(v); }
     case "vocal": return V.enCours ? arreterVocal(true) : demarrerVocal();
     case "vocal-annuler": return arreterVocal(false);

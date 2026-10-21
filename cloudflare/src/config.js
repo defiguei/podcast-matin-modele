@@ -52,6 +52,35 @@ export const RUBRIQUES = {
 export const ECRAN_INTEGREE = {
   agenda: "agenda", deplacements: "deplacements", actu_locale: "actulocale", approfondissements: "acreuser", actualites: "actus",
 };
+// Catalogue des rubriques : les modèles proposés par « + » dans l'application ET ceux que
+// Gemini choisit quand on demande une rubrique à la voix. Le formulaire de départ est celui
+// de la fiche de l'application ; « pret » : titre et consigne utilisables tels quels.
+export const MODELES_RUBRIQUES = [
+  { id: "prenom", famille: "jour", titre: "Fête du prénom", texte: "Les prénoms fêtés aujourd'hui (calendrier des saints)", pret: true,
+    formulaire: () => ({ place: "ouverture", titre: "Fête du prénom", consigne: "Dis-moi quels prénoms on fête aujourd'hui (un ou deux).", longueur: "phrase" }) },
+  { id: "journee", famille: "jour", titre: "Journée du jour", texte: "La journée mondiale ou la fête nationale célébrée aujourd'hui", pret: true,
+    formulaire: () => ({ place: "ouverture", titre: "Journée du jour", consigne: "Dis-moi quelle journée mondiale, internationale ou fête nationale on célèbre aujourd'hui.", longueur: "phrase" }) },
+  { id: "meteo", famille: "jour", titre: "Météo", texte: "Le temps du jour chez toi, et comment t'habiller", pret: true,
+    formulaire: (ville) => ({ place: "ouverture", titre: "Météo", consigne: `La météo du jour${ville ? ` à ${ville}` : ""} : températures, risque de pluie, et un conseil pour s'habiller.`, longueur: "phrase" }) },
+  { id: "rappel", famille: "agenda", titre: "Rappel selon l'agenda", texte: "« La veille d'un match, rappelle-moi de préparer mon sac »",
+    formulaire: () => ({ place: "agenda", titre: "Rappel", consigne: "Rappelle-moi de ", longueur: "phrase", condition: { texte: "", moment: "veille", n: 1 } }) },
+  { id: "train", famille: "sortie", titre: "Mon train", texte: "Retard ou suppression de ton train habituel (Suisse, France, Belgique)",
+    formulaire: (ville) => ({ place: "agenda", titre: "Mon train", consigne: `Retard du train de ${ville || "…"} vers … à …h…`, longueur: "phrase",
+                              periode: { type: "jours", jours: ["lun", "mar", "mer", "jeu", "ven"] } }) },
+  { id: "actu", famille: "info", titre: "Actu d'un pays ou d'un thème", texte: "« L'actualité du Portugal », « les nouvelles du vélo »",
+    formulaire: () => ({ place: "actualites", titre: "Actu de ", consigne: "Les nouvelles importantes sur ", longueur: "courte" }) },
+  { id: "sortie", famille: "sortie", titre: "Idée de sortie", texte: "Une sortie proposée dans tes épisodes, selon tes critères (lieu, budget, transport)", recherche: true, pret: true,
+    formulaire: () => ({ place: "deplacements", titre: "Sortie du week-end", consigne: "Propose une idée de sortie pour le week-end.", longueur: "courte",
+                         periode: { type: "jours", jours: ["jeu", "ven"] } }) },
+  { id: "libre", famille: "info", titre: "Rubrique libre", texte: "Tu écris la consigne, l'application choisit où chercher",
+    formulaire: () => ({ place: "actualites", titre: "", consigne: "", longueur: "courte" }) },
+];
+
+// Le catalogue tel que l'application le reçoit (formulaire déjà rempli pour ta ville).
+export function catalogueRubriques(config) {
+  return MODELES_RUBRIQUES.map(({ formulaire, ...m }) => ({ ...m, f: formulaire(config?.actus?.ville || "") }));
+}
+
 export const DELAIS_RATTRAPAGE = [30, 45, 60, 90, 120];
 export const LONGUEUR_CONSIGNE = 300;
 

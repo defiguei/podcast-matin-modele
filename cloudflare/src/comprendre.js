@@ -1,12 +1,21 @@
 // Compréhension des messages : Gemini traduit ce que dit l'auditeur en
 // opérations précises, que le code valide puis applique à la configuration.
+//
+// Principes (depuis 2026-10-21.9) :
+// - un champ absent n'a jamais de valeur par défaut destructrice (une heure oubliée ne
+//   coupe pas l'épisode : c'est une erreur, affichée) ;
+// - la confirmation montrée à l'auditeur vient de ce que le code a appliqué, pas de la
+//   phrase de Gemini ; un changement lourd attend son ✅ (voir « lourd ») ;
+// - une rubrique demandée à la voix passe par le même catalogue et le même formulaire
+//   que la fiche de l'application (miniapp.js : formulaireNeuf, enregistrerRubrique).
 
 import {
   JOURS, NOMS_JOURS, REGLAGES, RUBRIQUES, SOURCES, TRANSPORTS, LONGUEURS, VOIX, VITESSES, TONS, CITER,
-  regler, nouvelleRegle, modifierRegle, supprimerRegle, heureValide, dateOuNull, placerRubriqueApres,
-  nettoyerListe, LONGUEUR_CONSIGNE, normaliserTexte, etatRegle, decrirePeriode, nomRubrique, ajouterJours, jourDeSemaine,
-  heureParlee, dateCourte, nettoyerPlanning, fluxActus, profilPays, PAYS,
+  regler, supprimerRegle, heureValide, dateOuNull, placerRubriqueApres,
+  nettoyerListe, LONGUEUR_CONSIGNE, normaliserTexte, etatRegle, decrirePeriode, nomRubrique, jourDeSemaine,
+  heureParlee, dateCourte, nettoyerPlanning, fluxActus, profilPays, MODELES_RUBRIQUES,
 } from "./config.js";
+import { formulaireNeuf, formulaireDepuisRegle, enregistrerRubrique, PERIODES } from "./miniapp.js";
 import { GRATUIT } from "./assistant.js";
 
 export const ACTIONS = [
@@ -18,34 +27,52 @@ export const ACTIONS = [
 
 const LISTES = ["actus.sujets_preferes", "actus.sujets_a_eviter", "consignes"];
 const MENUS = ["reglages", "planning", "format", "voix", "deroule", "agenda", "actus", "consignes", "regles", "aide", "tableau"];
+const LONGUEURS_FORMULAIRE = ["aucune", ...Object.keys(LONGUEURS)];
+// Couper au moins ce nombre de jours d'un coup demande une confirmation.
+const JOURS_COUPES_LOURD = 3;
+
+// Nom lisible d'une opération, pour les messages d'erreur.
+const NOMS_ACTIONS = {
+  regler: "Réglage", ajouter_liste: "Ajout", retirer_liste: "Retrait", horaire: "Horaire", exception: "Exception",
+  retirer_exception: "Exception", pause: "Pause", retirer_pause: "Pause", approfondir: "À creuser",
+  nouvelle_regle: "Nouvelle rubrique", modifier_regle: "Rubrique", supprimer_regle: "Suppression",
+  pause_regle: "Rubrique", reactiver_regle: "Rubrique", deplacer_rubrique: "Déroulé", activer_rubrique: "Déroulé",
+  desactiver_rubrique: "Déroulé", ajouter_source: "Source", retirer_source: "Source",
+};
 
 export function schemaOperations() {
   const texte = { type: "string" };
   const listeTextes = { type: "array", items: texte };
+  const decrit = (schema, description) => ({ ...schema, description });
   return {
     type: "object",
     properties: {
+      // En premier : écouter avant de décider.
+      entendu: decrit(texte, "S'il a parlé : la transcription fidèle de son message vocal. S'il a écrit : vide."),
       operations: {
         type: "array",
         items: {
           type: "object",
           properties: {
             action: { type: "string", enum: ACTIONS },
-            chemin: { type: "string", enum: Object.keys(REGLAGES) },
-            valeur: texte,
-            jours: listeTextes, heure: texte, date: texte, du: texte, au: texte,
+            chemin: decrit({ type: "string", enum: Object.keys(REGLAGES) }, "Pour regler, ajouter_liste, retirer_liste."),
+            valeur: decrit(texte, "Nouvelle valeur d'un réglage, élément d'une liste, sujet, source. Jamais une heure d'horaire ou d'exception."),
+            jours: decrit(listeTextes, "Pour horaire : codes des jours, ou [\"tous\"], [\"semaine\"], [\"weekend\"]."),
+            heure: decrit(texte, "Pour horaire et exception, OBLIGATOIRE : HH:MM, ou \"aucun\" seulement si l'auditeur ne veut pas d'épisode."),
+            date: texte, du: texte, au: texte,
             id: texte, ids: listeTextes, format: { type: "string", enum: ["ecrit", "audio"] },
             rubrique: texte, apres: texte,
             regle: {
               type: "object",
               properties: {
+                modele: decrit({ type: "string", enum: MODELES_RUBRIQUES.map((m) => m.id) }, "Pour nouvelle_regle : le modèle du catalogue le plus proche."),
                 titre: texte, consigne: texte,
-                periode_type: { type: "string", enum: ["toujours", "dates", "jours", "une_fois", "ponctuelle"] },
+                periode_type: { type: "string", enum: PERIODES },
                 debut: texte, fin: texte, jours: listeTextes,
                 condition_texte: texte, condition_moment: { type: "string", enum: ["jour_meme", "veille", "jours_avant"] },
                 condition_n: { type: "number" },
-                rubrique_titre: texte, rubrique_apres: texte,
-                rubrique_longueur: { type: "string", enum: Object.keys(LONGUEURS) },
+                place: decrit(texte, "Clé de la rubrique (ou id R…) après laquelle elle passe."),
+                longueur: { type: "string", enum: LONGUEURS_FORMULAIRE },
                 sources: { type: "array", items: { type: "string", enum: Object.keys(SOURCES) } },
                 requetes: listeTextes,
                 quoi: texte, avec_qui: texte, ages: texte, ou: texte, quand: texte,
@@ -61,65 +88,70 @@ export function schemaOperations() {
           required: ["action"],
         },
       },
-      reponse: texte,
+      reponse: decrit(texte, "Seulement ce qui s'ajoute aux changements : réponse à une question, demande impossible et pourquoi. Vide sinon."),
     },
-    required: ["operations", "reponse"],
+    required: ["entendu", "operations", "reponse"],
   };
 }
 
 export function consigneComprehension(config, ctx) {
   const adresse = config.voix.tutoiement ? "en tutoyant l'auditeur" : "en vouvoyant l'auditeur";
   const voix = VOIX.map(([nom, style, genre]) => `${nom} (${style}, ${genre === "f" ? "féminine" : "masculine"})`).join(", ");
-  return `Tu es l'assistant de réglage d'un podcast audio matinal personnel, en français. Tu traduis chaque message de l'auditeur (écrit ou vocal) en opérations précises sur ses réglages, puis tu rédiges une réponse courte.
+  return `Tu es l'assistant de réglage d'un podcast audio matinal personnel, en français. Tu traduis chaque message de l'auditeur (écrit ou vocal) en opérations précises sur ses réglages. C'est l'application qui applique les opérations et annonce elle-même ce qui a changé.
 
 Aujourd'hui : ${NOMS_JOURS[jourDeSemaine(ctx.aujourdHui)]} ${ctx.aujourdHui}. Codes des jours : lun, mar, mer, jeu, ven, sam, dim. Écris toujours les dates au format AAAA-MM-JJ (calcule « demain », « samedi prochain », « la semaine prochaine » d'après la date du jour) et les heures au format HH:MM.
 
+ENTENDU : si le message est vocal, écris d'abord dans « entendu » ce que l'auditeur a dit, mot pour mot. S'il a écrit, laisse « entendu » vide.
+
 OPÉRATIONS (champ « action ») :
-- regler : change un réglage simple. chemin parmi la liste ci-dessous, valeur = nouvelle valeur (texte).
-- ajouter_liste / retirer_liste : ajoute ou retire un élément d'une liste. chemin parmi ${LISTES.join(", ")} ; valeur = l'élément.
-- horaire : heure d'envoi de l'épisode. jours = liste de codes (ou ["tous"], ["semaine"] pour lun-ven, ["weekend"]) ; heure = HH:MM, ou "aucun" pour aucun épisode ces jours-là.
-- exception : un jour précis. date ; heure = HH:MM ou "aucun".
+- regler : change un réglage simple. chemin parmi la liste ci-dessous, valeur = nouvelle valeur (texte). Pas pour les listes ni pour l'horaire.
+- ajouter_liste / retirer_liste : ajoute ou retire UN élément d'une liste. chemin parmi ${LISTES.join(", ")} ; valeur = l'élément.
+- horaire : heure d'envoi de l'épisode. jours = liste de codes (ou ["tous"], ["semaine"] pour lun-ven, ["weekend"]) ; heure = HH:MM. L'heure va TOUJOURS dans « heure », jamais dans « valeur ». heure = "aucun" seulement si l'auditeur demande de ne PAS avoir d'épisode ces jours-là.
+- exception : un jour précis. date ; heure = HH:MM, ou "aucun" pour pas d'épisode ce jour-là.
 - retirer_exception : date.
 - pause : aucun épisode du (du) au (au), dates incluses.
 - retirer_pause : du (date de début de la pause à retirer).
 - approfondir : valeur = sujet à développer dans le PROCHAIN épisode seulement.
 - nouvelle_regle : crée une rubrique (objet « regle », voir plus bas). Dans l'interface, ce que le code appelle « règle » s'appelle « rubrique ».
-- modifier_regle : id (ex. "R3") + les champs de « regle » à changer, et seulement eux (titre, consigne, quoi, ou, sources, budget, période…).
-- supprimer_regle / pause_regle / reactiver_regle : id. Les rubriques sont toujours numérotées R1, R2… dans l'ordre (une suppression renumérote les suivantes).
-- deplacer_rubrique : rubrique (clé ou id de rubrique) ; apres = clé ou id après lequel la placer ("debut" pour la mettre en premier).
-- activer_rubrique / desactiver_rubrique : rubrique.
+- modifier_regle : id (ex. "R3") + les champs de « regle » à changer, et seulement eux.
+- supprimer_regle / pause_regle / reactiver_regle : id. Les rubriques sont numérotées R1, R2… (liste plus bas).
+- deplacer_rubrique : rubrique (clé ou id) ; apres = clé ou id après lequel la placer ("debut" pour la mettre en premier).
+- activer_rubrique / desactiver_rubrique : rubrique (clé ou id).
 - ajouter_source : valeur = nom du média ou adresse de son flux RSS. retirer_source : valeur = nom de la source (sources par défaut : ${fluxActus({ ...config, actus: {} }).map((f) => f.nom).join(", ")}).
-- nouvel_episode : l'auditeur veut un nouvel épisode tout de suite. ids = règles à traiter spécialement (facultatif).
-- resultats : lancer tout de suite la recherche d'une ou plusieurs règles. ids, format = "ecrit" ou "audio".
+- nouvel_episode : l'auditeur veut un nouvel épisode tout de suite. ids = rubriques à traiter spécialement (facultatif).
+- resultats : lancer tout de suite la recherche d'une ou plusieurs rubriques. ids, format = "ecrit" ou "audio".
 - assistant : l'auditeur veut organiser une activité ou une sortie mais il manque des informations (qui, où, quand, transport, budget…). valeur = son message résumé. N'utilise PAS nouvelle_regle dans ce cas.
 - afficher : l'auditeur veut voir quelque chose. valeur parmi ${MENUS.join(", ")}, ou "regle:R3".
 - annuler : annuler le dernier changement.
 - aucune : rien à changer (question, remerciement…).
 
 RÉGLAGES SIMPLES (chemin → valeurs) :
-${Object.entries(REGLAGES).map(([c, d]) => `- ${c} : ${d.nom}`).join("\n")}
+${Object.entries(REGLAGES).filter(([c]) => !LISTES.includes(c)).map(([c, d]) => `- ${c} : ${d.nom}`).join("\n")}
 Valeurs : vitesse parmi ${VITESSES.join(", ")} (« plus lentement » = un cran plus lent) ; ton parmi ${Object.keys(TONS).join(", ")} ; citer_sources parmi ${Object.keys(CITER).join(", ")} ; planning.feries parmi normal, dimanche (horaire du dimanche), aucun.
 Voix disponibles : ${voix}.
 
-RUBRIQUES : une rubrique est un passage de l'épisode avec ses propres paramètres. Champs de « regle » :
-- titre (court), consigne (ce qu'il faut faire, en une ou deux phrases claires)
-- periode_type : toujours | dates (debut/fin) | jours (jours = codes) | une_fois (prochain épisode) | ponctuelle (recherche hors podcast)
-- condition_texte : si la règle dépend de l'agenda (« un match de foot ») ; condition_moment : jour_meme | veille | jours_avant (+ condition_n)
-- rubrique_titre / rubrique_apres / rubrique_longueur : si la règle ajoute un passage à une place précise du déroulé (ex. le saint du jour après l'agenda)
-- sources parmi ${Object.keys(SOURCES).join(", ")} (saints = calendrier des saints / fête du prénom, exact ; fetes = fêtes nationales et journées internationales du jour, exact ; meteo, transports, lieux = OpenStreetMap ; web = recherche web)
+RUBRIQUES : une rubrique est un passage de l'épisode avec ses propres paramètres. Pour en créer une, choisis d'abord dans « modele » le modèle du catalogue le plus proche :
+${MODELES_RUBRIQUES.map((m) => `- ${m.id} : ${m.titre} — ${m.texte}`).join("\n")}
+Le modèle règle déjà la place, la longueur et les sources : ne remplis que ce que l'auditeur précise. Champs de « regle » :
+- titre (court, 2 à 5 mots) et consigne (ce que les animateurs doivent dire ou faire, en une ou deux phrases claires) : toujours, sauf pour prenom, journee et meteo si l'auditeur ne précise rien.
+- periode_type : toujours | dates (debut/fin) | jours (jours = codes) | une_fois (prochain épisode) | ponctuelle (recherche hors podcast, résultats à part)
+- condition_texte : si la rubrique dépend de l'agenda (« un match de foot ») ; condition_moment : jour_meme | veille | jours_avant (+ condition_n)
+- place : clé ou id après lequel elle passe (seulement si l'auditeur le dit) ; longueur : ${LONGUEURS_FORMULAIRE.join(" | ")} (aucune = glissée dans l'épisode, sans passage à elle)
+- sources parmi ${Object.keys(SOURCES).join(", ")} : seulement si l'auditeur cite une source précise, sinon laisse vide (l'application choisit)
 - requetes : recherches web utiles (courtes)
-- pour une activité ou une sortie : quoi, avec_qui, ages, ou, quand, transport, budget_max (CHF), budget_unite (personne | total), budget_transport_inclus, inclure, exclure, attendu, jours_avant (combien de jours avant en parler)
+- pour une activité ou une sortie : quoi, avec_qui, ages, ou, quand, transport, budget_max, budget_unite (personne | total), budget_transport_inclus, inclure, exclure, attendu, jours_avant (combien de jours avant en parler)
 - importance : normale | prioritaire
 Une information exacte (saint du jour, jour férié, météo, horaire de train) doit venir d'une source, pas de tes connaissances.
 
-RUBRIQUES INTÉGRÉES DU DÉROULÉ (clés) : ${Object.keys(RUBRIQUES).join(", ")}.
+RUBRIQUES INTÉGRÉES DU DÉROULÉ (clés) : ${Object.entries(RUBRIQUES).map(([c, n]) => `${c} (${n})`).join(", ")}.
 
-Si un message contient plusieurs demandes, renvoie plusieurs opérations. Ne change que ce qui est demandé. Si une demande est impossible (heure des voix hors liste, info indisponible), ne l'invente pas et explique-le dans la réponse.
-reponse : une à trois phrases, ${adresse}, qui disent ce qui change concrètement.`;
+Si un message contient plusieurs demandes, renvoie plusieurs opérations. Ne change que ce qui est demandé. Si une information indispensable manque (une heure, une date), ne devine pas : n'émets pas l'opération et demande-la dans « reponse ».
+reponse : vide si tout est traduit en opérations (l'application annonce elle-même les changements, ne les récapitule pas). Sinon une ou deux phrases, ${adresse} : réponse à une question, ou ce qui est impossible et pourquoi.`;
 }
 
 export function contexteComprehension(config, ctx) {
-  const regles = config.regles.map((r) => `${r.id} « ${r.titre} » — ${decrirePeriode(r.periode)} — ${etatRegle(r, ctx.aujourdHui)}`).join("\n") || "(aucune)";
+  const regles = config.regles.map((r) => `${r.id} « ${r.titre} » — ${decrirePeriode(r.periode)} — ${etatRegle(r, ctx.aujourdHui)}`
+    + `${r.rubrique ? ` — après ${r.rubrique.apres}, ${r.rubrique.longueur}` : r.periode.type === "ponctuelle" ? "" : " — glissée"} — consigne : ${r.consigne.slice(0, 120)}`).join("\n") || "(aucune)";
   const planning = JOURS.map((j) => `${j} ${config.planning.jours[j] || "aucun"}`).join(", ");
   const sujets = ctx.dernierEpisode?.sujets?.map((s, i) => `${i + 1}. ${s}`).join("; ") || "(pas encore d'épisode)";
   return `RÉGLAGES ACTUELS (JSON) :
@@ -133,35 +165,79 @@ Sujets du dernier épisode : ${sujets}
 Message de l'auditeur :`;
 }
 
-// Convertit le format « à plat » renvoyé par Gemini en règle structurée.
-export function regleDepuisGemini(r = {}, texte = "") {
-  const champs = {};
-  if (r.titre) champs.titre = r.titre;
-  if (r.consigne) champs.consigne = r.consigne;
-  if (r.periode_type || r.debut || r.fin || r.jours) {
-    champs.periode = { type: r.periode_type || (r.debut || r.fin ? "dates" : r.jours?.length ? "jours" : "toujours"),
-                       debut: dateOuNull(r.debut), fin: dateOuNull(r.fin), jours: joursDepuisTexte(r.jours || []) };
-    // Dates illisibles : on ne remplace pas la période par « toujours ».
-    if (champs.periode.type === "dates" && !champs.periode.debut && !champs.periode.fin) delete champs.periode;
+// ─────────────────────────── rubriques : formulaire ─────────────────────────
+
+const rempli = (v) => v !== undefined && v !== null && String(v).trim() !== "";
+
+// Reporte sur le formulaire de la fiche ce que Gemini a compris (seulement ce qui est dit).
+export function completerFormulaire(f, r = {}, texte = "") {
+  if (rempli(r.titre)) f.titre = String(r.titre).trim();
+  else if (rempli(r.rubrique_titre) && !rempli(f.titre)) f.titre = String(r.rubrique_titre).trim();
+  if (rempli(r.consigne)) f.consigne = String(r.consigne).trim();
+  // Période. Des dates illisibles ne remplacent pas la période existante.
+  const joursDits = Array.isArray(r.jours) && r.jours.length ? joursDepuisTexte(r.jours) : [];
+  if (rempli(r.periode_type) || rempli(r.debut) || rempli(r.fin) || joursDits.length) {
+    const type = PERIODES.includes(r.periode_type) ? r.periode_type : rempli(r.debut) || rempli(r.fin) ? "dates" : joursDits.length ? "jours" : f.periode.type;
+    const debut = dateOuNull(r.debut), fin = dateOuNull(r.fin);
+    if (!(type === "dates" && !debut && !fin)) {
+      f.periode = { type, debut: debut || "", fin: fin || "", jours: type === "jours" ? (joursDits.length ? joursDits : f.periode.jours || []) : [] };
+    }
   }
-  if (r.condition_texte) champs.condition = { texte: r.condition_texte, moment: r.condition_moment, n: r.condition_n };
-  if (r.rubrique_titre) champs.rubrique = { titre: r.rubrique_titre, apres: r.rubrique_apres, longueur: r.rubrique_longueur };
-  const fiche = {};
-  for (const cle of ["quoi", "avec_qui", "ages", "ou", "quand", "transport", "inclure", "exclure", "attendu"]) {
-    if (cle === "transport" && r[cle] === "peu_importe") continue;     // « peu importe » = aucun critère
-    if (r[cle] !== undefined && r[cle] !== "" && !(Array.isArray(r[cle]) && !r[cle].length)) fiche[cle] = r[cle];
+  if (rempli(r.condition_texte)) {
+    f.condition = { texte: String(r.condition_texte).trim(), moment: r.condition_moment || f.condition?.moment || "jour_meme",
+                    n: Number(r.condition_n) || f.condition?.n || 1 };
   }
+  // Place et longueur du passage (anciens noms acceptés : rubrique_apres, rubrique_longueur).
+  const place = rempli(r.place) ? r.place : r.rubrique_apres;
+  const longueur = rempli(r.longueur) ? r.longueur : r.rubrique_longueur;
+  if (rempli(place)) {
+    const p = String(place).trim();
+    const cle = RUBRIQUES[p] ? p : /^r\d+$/i.test(p) ? p.toUpperCase() : Object.keys(RUBRIQUES).find((k) => normaliserTexte(RUBRIQUES[k]) === normaliserTexte(p));
+    if (cle) f.place = cle;
+  }
+  if (LONGUEURS_FORMULAIRE.includes(longueur)) f.longueur = longueur;
+  else if ((rempli(place) || rempli(r.rubrique_titre)) && f.longueur === "aucune") f.longueur = "courte";   // une place dite = un passage
+  // Sources : seulement si l'auditeur en cite ; sinon l'application les choisit.
+  const sources = (Array.isArray(r.sources) ? r.sources : []).filter((s) => SOURCES[s]);
+  if (sources.length) { f.sources = sources; f.sources_auto = false; }
+  // Détails d'une sortie ou d'une recherche.
+  for (const cle of ["quoi", "avec_qui", "ages", "ou", "quand", "attendu"]) if (rempli(r[cle])) f.fiche[cle] = String(r[cle]).trim();
+  if (TRANSPORTS[r.transport] && r.transport !== "peu_importe") f.transport = r.transport;        // « peu importe » = aucun critère
   // Gemini met parfois 0 à un nombre non précisé : « gratuit » doit avoir été dit.
-  const budget = typeof r.budget_max === "number" && r.budget_max >= 0 && (r.budget_max > 0 || GRATUIT.test(texte)) ? r.budget_max : undefined;
-  if (budget !== undefined || r.budget_unite || r.budget_transport_inclus) {
-    fiche.budget = { max: budget ?? null, unite: r.budget_unite, transport_inclus: Boolean(r.budget_transport_inclus) };
-  }
-  if (Object.keys(fiche).length || r.sources?.length || r.requetes?.length) {
-    champs.recherche = { fiche, sources: r.sources || [], requetes: r.requetes || [] };
-  }
-  if (typeof r.jours_avant === "number" && (r.jours_avant > 0 || /m[êe]me jour|jour m[êe]me/i.test(texte))) champs.presentation = { jours_avant: r.jours_avant };
-  if (r.importance) champs.importance = r.importance;
-  return champs;
+  if (typeof r.budget_max === "number" && r.budget_max >= 0 && (r.budget_max > 0 || GRATUIT.test(texte))) f.budget.max = r.budget_max;
+  if (r.budget_unite === "personne" || r.budget_unite === "total") f.budget.unite = r.budget_unite;
+  if (typeof r.budget_transport_inclus === "boolean") f.budget.transport_inclus = r.budget_transport_inclus;
+  for (const cle of ["inclure", "exclure"]) if (Array.isArray(r[cle]) && r[cle].length) f[cle] = nettoyerListe([...(f[cle] || []), ...r[cle]], 8);
+  if (Array.isArray(r.requetes) && r.requetes.length) f.requetes = r.requetes;
+  if (typeof r.jours_avant === "number" && (r.jours_avant > 0 || /m[êe]me jour|jour m[êe]me/i.test(texte))) f.jours_avant = r.jours_avant;
+  if (r.importance === "prioritaire" || r.importance === "normale") f.prioritaire = r.importance === "prioritaire";
+  return f;
+}
+
+// Titre court tiré de la consigne, quand Gemini n'en donne pas.
+function titreDepuisConsigne(consigne) {
+  const mots = String(consigne || "").replace(/[.!?;:].*$/, "").split(/\s+/).filter(Boolean);
+  let titre = "";
+  for (const mot of mots) { if ((`${titre} ${mot}`).trim().length > 40) break; titre = `${titre} ${mot}`.trim(); }
+  return titre.charAt(0).toUpperCase() + titre.slice(1);
+}
+
+function nouvelleRubrique(config, r = {}, ctx) {
+  const modele = MODELES_RUBRIQUES.find((m) => m.id === r.modele) || MODELES_RUBRIQUES.find((m) => m.id === "libre");
+  const f = formulaireNeuf(config, modele.id, r.periode_type === "ponctuelle");
+  if (!modele.pret) { f.titre = ""; f.consigne = ""; }     // titre et consigne du modèle à compléter : c'est à l'auditeur de les dire
+  completerFormulaire(f, r, ctx.message);
+  if (!rempli(f.consigne)) throw new Error("je n'ai pas compris ce que la rubrique doit dire");
+  if (!rempli(f.titre)) f.titre = titreDepuisConsigne(f.consigne);
+  const regle = enregistrerRubrique(config, f, null, ctx.aujourdHui, ctx.message);
+  return regle;
+}
+
+// Où passe une rubrique, en mots.
+export function decrirePlace(config, regle) {
+  if (regle.periode.type === "ponctuelle") return "recherche, hors podcast";
+  if (!regle.rubrique) return "glissée dans l'épisode";
+  return `après ${nomRubrique(config, regle.rubrique.apres)}`;
 }
 
 export function joursDepuisTexte(jours) {
@@ -179,62 +255,105 @@ export function joursDepuisTexte(jours) {
   return JOURS.filter((j) => resultat.has(j));
 }
 
-// Applique les opérations ; renvoie les changements lisibles et les actions à mener.
+// L'heure d'un horaire ou d'une exception. Absente, vide ou « null » : erreur (jamais
+// « pas d'épisode » par défaut). Gemini la range parfois dans « valeur » : on l'y reprend.
+export function heureDemandee(op) {
+  for (const brut of [op.heure, op.valeur]) {
+    if (brut === undefined || brut === null) continue;
+    const t = normaliserTexte(brut);
+    if (t === "" || t === "null" || t === "undefined") continue;
+    return heureValide(brut);
+  }
+  throw new Error("je n'ai pas compris l'heure (dis par exemple « 6 h 30 », ou « aucun » pour ne pas avoir d'épisode)");
+}
+
+// Applique les opérations ; renvoie les changements lisibles, les actions à mener, et ce qui
+// est lourd (à confirmer avant d'enregistrer). Les suppressions passent en dernier, de la plus
+// grande à la plus petite, pour que les numéros cités par Gemini restent les bons.
 export function appliquerOperations(config, operations, ctx) {
-  const changements = [], actions = [], erreurs = [], reglesCreees = [];
-  for (const op of operations || []) {
+  const changements = [], actions = [], erreurs = [], reglesCreees = [], lourds = [], suppressions = [];
+  const liste = Array.isArray(operations) ? operations.filter((op) => op && typeof op === "object") : [];
+  const numero = (op) => Number(/(\d+)/.exec(String(op.id || ""))?.[1] || 0);
+  const ordonnees = [...liste.filter((op) => op.action !== "supprimer_regle"),
+                     ...liste.filter((op) => op.action === "supprimer_regle").sort((a, b) => numero(b) - numero(a))];
+  for (const op of ordonnees) {
     try {
       const resultat = appliquerUne(config, op, ctx);
       if (resultat?.changement) changements.push(resultat.changement);
       if (resultat?.action) actions.push(resultat.action);
       if (resultat?.regle) reglesCreees.push(resultat.regle);
+      if (resultat?.lourd) lourds.push(resultat.lourd);
+      if (resultat?.suppression) suppressions.push(resultat.suppression);
     } catch (erreur) {
-      erreurs.push(`${op.action} : ${erreur.message}`);
+      erreurs.push(`${NOMS_ACTIONS[op.action] || op.action || "?"} : ${erreur.message}`);
     }
   }
   nettoyerPlanning(config.planning, ctx.aujourdHui);
-  return { changements, actions, erreurs, reglesCreees };
+  return { changements, actions, erreurs, reglesCreees, lourds, suppressions };
 }
 
 function appliquerUne(config, op, ctx) {
   switch (op.action) {
-    case "regler":
+    case "regler": {
+      if (!rempli(op.valeur) && typeof op.valeur !== "boolean") throw new Error("valeur manquante");
+      // Une liste ne se remplace pas d'un bloc depuis une phrase (on perdrait le reste) : on ajoute.
+      if (LISTES.includes(op.chemin)) {
+        const elements = op.chemin === "consignes" ? [op.valeur] : String(op.valeur).split(/[,;\n]/).filter((x) => x.trim());
+        const faits = elements.map((valeur) => appliquerUne(config, { ...op, action: "ajouter_liste", valeur }, ctx).changement);
+        return { changement: faits.join(" ; ") };
+      }
       return { changement: regler(config, op.chemin, op.valeur) };
+    }
     case "ajouter_liste":
     case "retirer_liste": {
       if (!LISTES.includes(op.chemin)) throw new Error("liste inconnue");
       const [section, cle] = op.chemin.includes(".") ? op.chemin.split(".") : [null, op.chemin];
       const conteneur = section ? config[section] : config;
       const actuelle = conteneur[cle];
-      const valeur = String(op.valeur || "").trim();
+      const valeur = String(op.valeur ?? "").trim();
       if (!valeur) throw new Error("élément vide");
-      conteneur[cle] = op.action === "ajouter_liste"
-        ? nettoyerListe([...actuelle, valeur], 20, op.chemin === "consignes" ? LONGUEUR_CONSIGNE : 80)
-        : actuelle.filter((x) => normaliserTexte(x) !== normaliserTexte(valeur));
-      if (op.chemin === "actus.sujets_a_eviter" && op.action === "ajouter_liste") {
+      const nom = REGLAGES[op.chemin].nom;
+      if (op.action === "retirer_liste") {
+        // Le même élément, ou un élément qui le contient (« le sport » / « sport »).
+        const v = normaliserTexte(valeur);
+        let retires = actuelle.filter((x) => normaliserTexte(x) === v);
+        if (!retires.length) retires = actuelle.filter((x) => normaliserTexte(x).includes(v) || v.includes(normaliserTexte(x)));
+        if (!retires.length) throw new Error(`« ${valeur} » n'est pas dans la liste (${nom.toLowerCase()})`);
+        conteneur[cle] = actuelle.filter((x) => !retires.includes(x));
+        return { changement: `${nom} : − ${retires.join(", ")}` };
+      }
+      if (actuelle.length >= 20 && !actuelle.some((x) => normaliserTexte(x) === normaliserTexte(valeur))) {
+        throw new Error("la liste est pleine (20 au plus) : retire d'abord un élément");
+      }
+      conteneur[cle] = nettoyerListe([...actuelle, valeur], 20, op.chemin === "consignes" ? LONGUEUR_CONSIGNE : 80);
+      if (op.chemin === "actus.sujets_a_eviter") {
         config.actus.sujets_preferes = config.actus.sujets_preferes.filter((x) => normaliserTexte(x) !== normaliserTexte(valeur));
       }
-      return { changement: `${REGLAGES[op.chemin].nom} : ${op.action === "ajouter_liste" ? "+" : "−"} ${valeur}` };
+      return { changement: `${nom} : + ${valeur}` };
     }
     case "horaire": {
       const jours = joursDepuisTexte(op.jours?.length ? op.jours : ["tous"]);
       if (!jours.length) throw new Error("jours non reconnus");
-      const heure = heureValide(op.heure);
+      const heure = heureDemandee(op);
+      const coupes = heure ? [] : jours.filter((j) => config.planning.jours[j]);
       for (const j of jours) config.planning.jours[j] = heure;
-      return { changement: `Horaire ${resumerJours(jours)} : ${heure ? heureParlee(heure) : "pas d'épisode"}` };
+      const changement = `Horaire ${resumerJours(jours)} : ${heure ? heureParlee(heure) : "pas d'épisode"}`;
+      const plusAucun = JOURS.every((j) => !config.planning.jours[j]);
+      return { changement, lourd: coupes.length >= JOURS_COUPES_LOURD || (coupes.length && plusAucun) ? changement : null };
     }
     case "exception": {
       const date = dateOuNull(op.date);
       if (!date || date < ctx.aujourdHui) throw new Error("date invalide");
-      const heure = heureValide(op.heure);
+      const heure = heureDemandee(op);
       config.planning.exceptions = config.planning.exceptions.filter((e) => e.date !== date);
       config.planning.exceptions.push({ date, heure });
       return { changement: `${dateCourte(date)} : ${heure ? heureParlee(heure) : "pas d'épisode"}` };
     }
     case "retirer_exception": {
       const date = dateOuNull(op.date);
+      if (!date || !config.planning.exceptions.some((e) => e.date === date)) throw new Error("aucune exception ce jour-là");
       config.planning.exceptions = config.planning.exceptions.filter((e) => e.date !== date);
-      return { changement: `Exception du ${date ? dateCourte(date) : "?"} retirée` };
+      return { changement: `Exception du ${dateCourte(date)} retirée` };
     }
     case "pause": {
       const du = dateOuNull(op.du), au = dateOuNull(op.au);
@@ -244,41 +363,70 @@ function appliquerUne(config, op, ctx) {
     }
     case "retirer_pause": {
       const du = dateOuNull(op.du);
-      config.planning.pauses = du ? config.planning.pauses.filter((p) => p.du !== du) : [];
-      return { changement: "Pause retirée" };
+      const pauses = config.planning.pauses.filter((p) => p.au >= ctx.aujourdHui);
+      // Sans date : seulement s'il n'y a qu'une pause, sinon on ne devine pas laquelle.
+      const visee = du ? pauses.find((p) => p.du === du) : pauses.length === 1 ? pauses[0] : null;
+      if (!visee) throw new Error(pauses.length ? (du ? "aucune pause ne commence ce jour-là" : "précise laquelle (sa date de début)") : "aucune pause prévue");
+      config.planning.pauses = config.planning.pauses.filter((p) => p !== visee);
+      return { changement: `Pause du ${dateCourte(visee.du)} au ${dateCourte(visee.au)} retirée` };
     }
     case "approfondir": {
-      const sujet = String(op.valeur || "").trim().slice(0, 80);
+      const sujet = String(op.valeur ?? "").trim().slice(0, 80);
       if (!sujet) throw new Error("sujet vide");
       config.a_approfondir = [...config.a_approfondir.filter((a) => normaliserTexte(a.sujet) !== normaliserTexte(sujet)),
                               { sujet, demande_le: ctx.maintenantIso }].slice(-5);
       return { changement: `À creuser au prochain épisode : ${sujet}` };
     }
     case "nouvelle_regle": {
-      const regle = nouvelleRegle(config, regleDepuisGemini(op.regle, ctx.message), ctx.aujourdHui, ctx.message);
-      return { changement: `Règle ${regle.id} créée : ${regle.titre}`, regle };
+      const regle = nouvelleRubrique(config, op.regle || {}, ctx);
+      return { changement: `Rubrique ${regle.id} créée : ${regle.titre} (${decrirePlace(config, regle)})`, regle };
     }
     case "modifier_regle": {
-      const regle = modifierRegle(config, identifiantRegle(op.id), regleDepuisGemini(op.regle, ctx.message), ctx.aujourdHui);
-      return { changement: `Règle ${regle.id} modifiée`, regle };
+      const id = identifiantRegle(op.id);
+      const existante = config.regles.find((r) => r.id === id);
+      if (!existante) throw new Error(`rubrique ${id} introuvable`);
+      const f = formulaireDepuisRegle(existante, profilPays(config).devise);
+      const avant = JSON.stringify(f);
+      completerFormulaire(f, op.regle || {}, ctx.message);
+      if (JSON.stringify(f) === avant) throw new Error(`je n'ai pas compris quoi changer dans ${id}`);
+      const nouvellePlace = existante.rubrique && f.place !== existante.rubrique.apres ? f.place : null;
+      if (nouvellePlace && !config.deroule.some((el) => el.cle === nouvellePlace)) throw new Error(`place « ${nouvellePlace} » inconnue`);
+      const regle = enregistrerRubrique(config, f, existante, ctx.aujourdHui);
+      // La fiche garde la place d'une rubrique déjà placée : la déplacer, c'est la remettre ailleurs.
+      if (nouvellePlace && regle.rubrique) {
+        placerRubriqueApres(config, id, nouvellePlace);
+        regle.rubrique.apres = nouvellePlace;
+      }
+      return { changement: `Rubrique ${regle.id} modifiée : ${regle.titre} (${decrirePlace(config, regle)})`, regle };
     }
     case "supprimer_regle": {
       const id = identifiantRegle(op.id);
-      supprimerRegle(config, id);
-      return { changement: `Règle ${id} supprimée` };
+      const regle = config.regles.find((r) => r.id === id);
+      if (!regle) throw new Error(`rubrique ${id} introuvable`);
+      const table = supprimerRegle(config, id);
+      const changement = `Rubrique ${id} « ${regle.titre} » supprimée`;
+      return { changement, lourd: changement, suppression: { table, id } };
     }
     case "pause_regle":
     case "reactiver_regle": {
       const id = identifiantRegle(op.id);
       const regle = config.regles.find((r) => r.id === id);
-      if (!regle) throw new Error(`règle ${id} introuvable`);
+      if (!regle) throw new Error(`rubrique ${id} introuvable`);
       regle.etat = op.action === "pause_regle" ? "pause" : "active";
       regle.modifie_le = ctx.aujourdHui;
-      return { changement: `Règle ${id} ${regle.etat === "pause" ? "en pause" : "réactivée"}` };
+      // Comme dans l'application : un seul interrupteur, le passage suit.
+      const passage = config.deroule.find((el) => el.cle === id);
+      if (passage) passage.actif = regle.etat === "active";
+      return { changement: `Rubrique ${id} ${regle.etat === "pause" ? "en pause" : "réactivée"}` };
     }
     case "deplacer_rubrique": {
       const cle = cleRubrique(config, op.rubrique), apres = op.apres === "debut" ? "debut" : cleRubrique(config, op.apres);
       placerRubriqueApres(config, cle, apres);
+      // Comme dans l'application : chaque rubrique retient la place qu'on lui a donnée.
+      config.deroule.forEach((el, i) => {
+        const regle = config.regles.find((r) => r.id === el.cle);
+        if (regle?.rubrique) regle.rubrique.apres = i > 0 ? config.deroule[i - 1].cle : "ouverture";
+      });
       return { changement: `${nomRubrique(config, cle)} placée ${apres === "debut" ? "en premier" : `après ${nomRubrique(config, apres)}`}` };
     }
     case "activer_rubrique":
@@ -287,15 +435,22 @@ function appliquerUne(config, op, ctx) {
       const element = config.deroule.find((r) => r.cle === cle);
       if (!element) throw new Error(`rubrique « ${op.rubrique} » absente du déroulé`);
       element.actif = op.action === "activer_rubrique";
+      const regle = config.regles.find((r) => r.id === cle);
+      if (regle) { regle.etat = element.actif ? "active" : "pause"; regle.modifie_le = ctx.aujourdHui; }
       return { changement: `${nomRubrique(config, cle)} ${element.actif ? "activée" : "désactivée"}` };
     }
-    case "ajouter_source":
-      return { action: { type: "ajouter_source", valeur: String(op.valeur || "").trim() } };
+    case "ajouter_source": {
+      const valeur = String(op.valeur ?? "").trim();
+      if (!valeur) throw new Error("quelle source ?");
+      return { action: { type: "ajouter_source", valeur } };
+    }
     case "retirer_source": {
       const nom = normaliserTexte(op.valeur);
+      if (!nom) throw new Error("quelle source ?");
       const flux = fluxActus(config);
-      const restants = flux.filter((f) => !normaliserTexte(f.nom).includes(nom) || !nom);
+      const restants = flux.filter((f) => !normaliserTexte(f.nom).includes(nom));
       if (restants.length === flux.length) throw new Error("source introuvable");
+      if (!restants.length) throw new Error("garde au moins une source");
       config.actus.flux = restants;
       return { changement: `Source retirée : ${op.valeur}` };
     }
@@ -316,16 +471,17 @@ function appliquerUne(config, op, ctx) {
 
 function identifiantRegle(id) {
   const m = /(\d+)/.exec(String(id || ""));
-  if (!m) throw new Error("numéro de règle manquant");
+  if (!m) throw new Error("numéro de rubrique manquant");
   return `R${Number(m[1])}`;
 }
 
 function cleRubrique(config, valeur) {
   const v = normaliserTexte(valeur);
+  if (!v) throw new Error("quelle rubrique ?");
   if (/^r\d+$/.test(v)) return v.toUpperCase();
   const cle = Object.keys(RUBRIQUES).find((k) => k === v || normaliserTexte(RUBRIQUES[k]).startsWith(v));
   if (cle) return cle;
-  const regle = config.regles.find((r) => r.rubrique && normaliserTexte(r.rubrique.titre).includes(v));
+  const regle = config.regles.find((r) => normaliserTexte(r.rubrique?.titre || r.titre).includes(v));
   if (regle) return regle.id;
   throw new Error(`rubrique « ${valeur} » introuvable`);
 }
@@ -336,4 +492,20 @@ export function resumerJours(jours) {
   if (cle === JOURS.slice(0, 5).join(",")) return "du lundi au vendredi";
   if (cle === "sam,dim") return "le week-end";
   return jours.map((j) => NOMS_JOURS[j]).join(", ");
+}
+
+// ─────────────────────────── ce qu'on montre ───────────────────────────────
+
+// Le message pour l'auditeur, le même dans Telegram et dans l'application. La phrase de
+// Gemini n'est gardée que si elle ne risque pas de contredire ce qui a été fait : elle
+// accompagne des changements réussis, ou répond quand il n'y a rien à changer.
+export function messageCompris(resultat) {
+  const { changements = [], erreurs = [], a_confirmer: aConfirmer = [], reponse = "", suites = [] } = resultat;
+  const note = String(reponse || "").trim();
+  if (aConfirmer.length) {
+    return { titre: "À confirmer avant que je l'applique :", lignes: aConfirmer, erreurs, note: "", confirmer: true };
+  }
+  if (changements.length) return { titre: "C'est fait :", lignes: [...changements, ...suites], erreurs, note: erreurs.length ? "" : note };
+  if (erreurs.length) return { titre: "Je n'ai rien changé.", lignes: suites, erreurs, note: "" };
+  return { titre: "", lignes: suites, erreurs, note: note || (suites.length ? "" : "Je n'ai rien changé.") };
 }

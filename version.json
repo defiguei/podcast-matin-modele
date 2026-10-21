@@ -1,13 +1,13 @@
 {
-  "version": "2026-10-21.8",
+  "version": "2026-10-21.9",
   "date": "2026-10-21",
-  "titre": "Mémoire des actus, vitesse ×2, couleurs des rubriques",
+  "titre": "Demandes vocales fiables",
   "nouveautes": [
-    "Mémoire réparée : une actu déjà racontée ne revient plus les jours suivants (elle s'effaçait chaque matin), même reprise sous un autre titre.",
-    "Déplacements : le podcast se souvient des idées déjà proposées pour un lieu et n'en redonne qu'une nouvelle.",
-    "Lecteur : bouton de vitesse 1× · 1,5× · 2×.",
-    "Chaque rubrique a son icône et sa couleur.",
-    "Planning : feuillette librement jusqu'à un an à l'avance."
+    "Demandes écrites ou vocales : une heure mal comprise ne coupe plus tes épisodes, le bot te dit ce qu'il n'a pas compris.",
+    "La réponse du bot est ce qu'il a vraiment fait ; en vocal, il te montre aussi ce qu'il a entendu.",
+    "Couper plusieurs jours d'un coup ou supprimer une rubrique attend ton ✅.",
+    "Une rubrique demandée en parlant suit le catalogue « + » de l'application (place, longueur, sources).",
+    "Demande au bot : tes dernières demandes et ce qui en a été fait."
   ],
   "supprimes": [
     "cloudflare/worker.js",

@@ -10,7 +10,7 @@ import {
   placerRubrique, FLUX_DEFAUT, NOMS_JOURS, heureValide, modifierChamp, CHAMPS_RUBRIQUE, TRANSPORTS, analyserPeriode,
   VOIX, animateursDuJour, equipeComplete, LONGUEUR_CONSIGNE, PAYS, profilPays, fluxActus, FERIES_CALCULES,
 } from "./config.js";
-import { consigneComprehension, contexteComprehension, schemaOperations, appliquerOperations, resumerJours } from "./comprendre.js";
+import { consigneComprehension, contexteComprehension, schemaOperations, appliquerOperations, resumerJours, messageCompris } from "./comprendre.js";
 import { ecran, ficheRegle, clavierRegle, tableauDeBord, clavierTableau, clavierEpisode, clavierAvisNegatif, aide, CLAVIER_FIXE, COMMANDES } from "./ui.js";
 import {
   nouvelleSession, prochaineEtape, ecranAssistant, ecranModifier, schemaFiche, consigneFiche, fusionnerFiche,
@@ -21,9 +21,9 @@ import { CLES, testerCle, lireAgenda, identifiantAgenda, resumeConnexions } from
 import { fluxRss, chapitresJson, episodeDeCle, jetonValide, nouveauJeton } from "./flux.js";
 import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
-import { donneesApp, episodeApp, champsDepuisFormulaire, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, nettoyerEquipe, telechargerFeries } from "./miniapp.js";
+import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, nettoyerEquipe, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-21.8";
+export const VERSION = "2026-10-21.9";
 const MAX_REFAITS = 6;
 const LONGUEURS_VALIDES = ["phrase", "courte", "developpee"];
 const MAX_RECHERCHES = 15;
@@ -34,11 +34,11 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 // Message envoyé après une mise à jour : les nouveautés de cette version…
 const NOUVEAUTES = `✅ <b>Ton podcast est à jour</b> (version ${VERSION}).
 
-• Mémoire réparée : une actu déjà racontée ne revient plus les jours suivants (elle s'effaçait chaque matin), même reprise sous un autre titre.
-• Déplacements : le podcast se souvient des idées déjà proposées pour un lieu et n'en redonne qu'une nouvelle.
-• Lecteur : bouton de vitesse 1× · 1,5× · 2×.
-• Chaque rubrique a son icône et sa couleur.
-• Planning : feuillette librement jusqu'à un an à l'avance.`;
+• Demandes écrites ou vocales : une heure mal comprise ne coupe plus tes épisodes, le bot te dit ce qu'il n'a pas compris.
+• La réponse du bot est ce qu'il a vraiment fait ; en vocal, il te montre aussi ce qu'il a entendu.
+• Couper plusieurs jours d'un coup ou supprimer une rubrique attend ton ✅.
+• Une rubrique demandée en parlant suit le catalogue « + » de l'application (place, longueur, sources).
+• Demande au bot : tes dernières demandes et ce qui en a été fait.`;
 
 // … ou, pour qui arrive d'avant l'application (installation neuve, ancienne version
 // réglée par la conversation), sa présentation.
@@ -435,8 +435,8 @@ export class Etat extends DurableObject {
 
   // ───────────────────────── compréhension libre (Gemini) ─────────────────────
 
-  // Comprend une demande libre et applique les réglages. Renvoie ce qu'il faut
-  // dire et faire ensuite, ou null si Gemini ne répond pas.
+  // Comprend une demande libre (écrite ou vocale) et applique les réglages. Renvoie ce
+  // qu'il faut dire et faire ensuite, ou null si Gemini ne répond pas.
   async comprendreCoeur(texte, audio = null, indice = "") {
     const ctx = this.contexte();
     const config = await this.lireConfig();
@@ -453,20 +453,65 @@ export class Etat extends DurableObject {
       console.log("Gemini :", erreur.message);
       return null;
     }
+    const compris = {
+      texte: String(texte || "").slice(0, 2000), vocal: Boolean(audio),
+      entendu: audio ? String(reponse?.entendu || "").trim().slice(0, 1000) : "",
+      operations: Array.isArray(reponse?.operations) ? reponse.operations.slice(0, 20) : [],
+      reponse: String(reponse?.reponse || "").trim().slice(0, 600),
+    };
+    return this.appliquerCompris(compris, false);
+  }
+
+  // Applique ce que Gemini a compris. Un changement lourd (plusieurs jours sans épisode,
+  // une rubrique supprimée) n'est pas enregistré : il attend la confirmation de l'auditeur.
+  async appliquerCompris(compris, confirme) {
+    const ctx = this.contexte();
+    const config = await this.lireConfig();
+    const etat = await this.lireEtat();
     const ancienne = cloner(config);
-    const resultat = appliquerOperations(config, reponse.operations, { ...ctx, message: texte || "(vocal)" });
-    for (const action of resultat.actions.filter((a) => a.type === "ajouter_source")) {
-      try { resultat.changements.push(await this.ajouterSource(config, action.valeur)); } catch (erreur) { resultat.erreurs.push(erreur.message); }
+    const message = compris.texte || compris.entendu || "(vocal)";
+    const resultat = appliquerOperations(config, compris.operations, { ...ctx, message });
+    const base = { reponse: compris.reponse || "", entendu: compris.entendu || "", vocal: Boolean(compris.vocal) };
+    const trace = { quand: ctx.maintenantIso, message: message.slice(0, 300), vocal: Boolean(compris.vocal),
+                    operations: JSON.stringify(compris.operations).slice(0, 1500), erreurs: resultat.erreurs };
+    if (!confirme && resultat.lourds.length) {
+      etat.a_confirmer = { compris, quand: Date.now() };
+      etat.historique = [...(etat.historique || []), { ...trace, changements: [], a_confirmer: resultat.changements, issue: "attente" }].slice(-30);
+      await this.ecrireEtat(etat);
+      return { ...base, config: ancienne, changements: [], actions: [], erreurs: resultat.erreurs, reglesCreees: [], a_confirmer: resultat.changements };
     }
-    etat.historique = [...etat.historique, { quand: ctx.maintenantIso, message: (texte || "(vocal)").slice(0, 200), changements: resultat.changements }].slice(-30);
-    if (resultat.changements.length) await this.enregistrer(config, etat, ancienne, resultat.changements[0]);
+    delete etat.a_confirmer;
+    for (const action of resultat.actions.filter((a) => a.type === "ajouter_source")) {
+      try { resultat.changements.push(await this.ajouterSource(config, action.valeur)); } catch (erreur) { resultat.erreurs.push(`Source : ${erreur.message}`); }
+    }
+    for (const { table, id } of resultat.suppressions) this.remapperEtat(etat, table, id);
+    // Une demande confirmée complète sa ligne « en attente » de l'historique.
+    const enAttente = confirme ? [...(etat.historique || [])].reverse().find((d) => d.issue === "attente") : null;
+    if (enAttente) Object.assign(enAttente, { changements: resultat.changements, erreurs: resultat.erreurs, a_confirmer: [], issue: "confirme" });
+    else etat.historique = [...(etat.historique || []), { ...trace, changements: resultat.changements, erreurs: resultat.erreurs, issue: null }].slice(-30);
+    if (resultat.changements.length) await this.enregistrer(config, etat, ancienne, resultat.changements.length > 1 ? `${resultat.changements[0]} (+${resultat.changements.length - 1})` : resultat.changements[0]);
     else await this.ecrireEtat(etat);
-    return { reponse: reponse.reponse || "", config, ...resultat };
+    return { ...base, config, ...resultat, a_confirmer: [] };
+  }
+
+  // Réponse de l'auditeur à « À confirmer » : appliquer (oui) ou laisser tel quel (non).
+  // null : plus rien en attente (déjà traité, ou trop ancien : 15 minutes).
+  async repondreConfirmation(oui) {
+    const etat = await this.lireEtat();
+    const attente = etat.a_confirmer;
+    if (!attente) return null;
+    delete etat.a_confirmer;
+    const expiree = Date.now() - attente.quand > 15 * 60_000;
+    const ligne = [...(etat.historique || [])].reverse().find((d) => d.issue === "attente");
+    if (ligne && (expiree || !oui)) ligne.issue = expiree ? "expire" : "abandonne";
+    await this.ecrireEtat(etat);
+    if (expiree) return null;
+    if (!oui) return { abandon: true };
+    return this.appliquerCompris(attente.compris, true);
   }
 
   async comprendre(message, texte, indice = "") {
     await this.tg.ecrit();
-    const ctx = this.contexte();
     let audio = null;
     const vocal = message?.voice || message?.audio;
     if (vocal?.file_id) {
@@ -482,21 +527,32 @@ export class Etat extends DurableObject {
       return;
     }
     if (coeur.vide) return;
-    const { config, reponse } = coeur;
-    const resultat = coeur;
+    await this.afficherCompris(coeur);
+  }
+
+  // Le message de réponse dans la conversation, puis les actions demandées.
+  async afficherCompris(coeur) {
+    const ctx = this.contexte();
+    const { config } = coeur;
+    const m = messageCompris(coeur);
     const lignes = [];
-    if (reponse) lignes.push(e(reponse));
-    if (resultat.changements.length) lignes.push("", ...resultat.changements.map((c) => `• ${e(c)}`));
-    if (resultat.erreurs.length) lignes.push("", `⚠️ Pas compris ou impossible : ${e(resultat.erreurs.join(" ; "))}`);
+    if (coeur.vocal) lignes.push(coeur.entendu ? `🎤 <i>« ${e(coeur.entendu)} »</i>` : "🎤 <i>(je n'ai pas pu transcrire ton message)</i>", "");
+    if (m.titre) lignes.push(`${m.confirmer ? "⚠️ " : coeur.changements.length ? "✅ " : ""}<b>${e(m.titre)}</b>`);
+    lignes.push(...m.lignes.map((c) => `• ${e(c)}`));
+    if (m.erreurs.length) lignes.push("", ...m.erreurs.map((x) => `⚠️ ${e(x)}`));
+    if (m.note) lignes.push("", e(m.note));
     const boutons = [];
-    if (resultat.changements.length) boutons.push({ text: "↩️ Annuler", callback_data: "a:undo" });
-    boutons.push({ text: "⚙️ Réglages", callback_data: "m:accueil" });
-    if (lignes.length) await this.tg.envoyer(`${resultat.changements.length ? "✅ " : ""}${lignes.join("\n")}`, { reply_markup: { inline_keyboard: [boutons] } });
-    for (const regle of resultat.reglesCreees) {
+    if (m.confirmer) boutons.push({ text: "✅ Oui, appliquer", callback_data: "a:conf" }, { text: "✕ Non", callback_data: "a:nconf" });
+    else {
+      if (coeur.changements.length) boutons.push({ text: "↩️ Annuler", callback_data: "a:undo" });
+      boutons.push({ text: "⚙️ Réglages", callback_data: "m:accueil" });
+    }
+    await this.tg.envoyer(lignes.join("\n").replace(/^\n+/, ""), { reply_markup: { inline_keyboard: [boutons] } });
+    for (const regle of coeur.reglesCreees) {
       const frais = config.regles.find((r) => r.id === regle.id);
       if (frais) await this.tg.envoyer(ficheRegle(frais, config, ctx), { reply_markup: { inline_keyboard: clavierRegle(frais, ctx) } });
     }
-    for (const action of resultat.actions) {
+    for (const action of coeur.actions) {
       if (action.type === "nouvel_episode") await this.lancerEpisode(action.ids, "audio");
       if (action.type === "resultats") await this.lancerRecherche(action.ids, action.format);
       if (action.type === "assistant") await this.demarrerAssistant(action.valeur);
@@ -624,6 +680,16 @@ export class Etat extends DurableObject {
       case "undo":
         await this.tg.repondreBouton(q.id);
         return this.annuler(messageId);
+      // « À confirmer » : changement lourd compris dans un message.
+      case "conf":
+      case "nconf": {
+        const resultat = await this.repondreConfirmation(nom === "conf");
+        await this.tg.repondreBouton(q.id, resultat ? "" : "Plus rien en attente : redis ta demande si besoin.", !resultat);
+        if (messageId) await this.tg.modifierBoutons(messageId, []);
+        if (!resultat) return;
+        if (resultat.abandon) return this.tg.envoyer("D'accord, je n'ai rien changé.");
+        return this.afficherCompris({ ...resultat, vocal: false });
+      }
       case "podcast":
         await this.tg.repondreBouton(q.id, "Je prépare un épisode…");
         return this.lancerEpisode([], "audio");
@@ -1732,6 +1798,26 @@ export class Etat extends DurableObject {
     return ((await this.ctx.storage.get(`archive:${mois}`)) || []).find((ep) => cleEpisode(ep) === cle) || null;
   }
 
+  // Ce que l'application reçoit après une demande libre : le message (le même que dans
+  // Telegram) et les actions faites tout de suite (épisode, recherche, annulation).
+  async reponseParler(resultat, relire) {
+    const suites = [];
+    for (const action of resultat.actions) {
+      if (action.type === "nouvel_episode") suites.push((await this.lancerEpisode(action.ids, "audio", { silencieux: true })).ok ? "Nouvel épisode lancé." : "Épisode non lancé (limite du jour).");
+      if (action.type === "resultats") suites.push((await this.lancerRecherche(action.ids, action.format, { silencieux: true })).ok ? "Recherche lancée." : "Recherche non lancée (limite du jour).");
+      if (action.type === "annuler") { const annule = await this.annulerCoeur(); suites.push(annule ? `Annulé : ${annule}` : "Rien à annuler."); }
+    }
+    const afficher = resultat.actions.find((a) => a.type === "afficher" || a.type === "assistant");
+    await relire();
+    return {
+      reponse: resultat.reponse || "", entendu: resultat.entendu || "", vocal: Boolean(resultat.vocal),
+      changements: resultat.changements, erreurs: resultat.erreurs, suites, a_confirmer: resultat.a_confirmer || [],
+      message_compris: messageCompris({ ...resultat, suites }),
+      ouvrir: resultat.reglesCreees[0] ? { ecran: "fiche", id: resultat.reglesCreees[0].id }
+        : afficher ? { ecran: afficher.type === "assistant" ? "recherche" : afficher.valeur } : null,
+    };
+  }
+
   // Une demande de la page : lire l'état, enregistrer une rubrique, un réglage…
   // Répond toujours avec les données à jour, pour que la page se redessine.
   async actionApp(demande) {
@@ -1769,15 +1855,9 @@ export class Etat extends DurableObject {
         case "rubrique": {
           const existante = demande.id ? config.regles.find((r) => r.id === demande.id) : null;
           if (demande.id && !existante) return refus("Cette rubrique n'existe plus.");
-          const champs = champsDepuisFormulaire(demande.formulaire || {}, existante, ctx.aujourdHui, profilPays(config).devise);
-          if (existante) {
-            modifierRegle(config, existante.id, champs, ctx.aujourdHui);
-            id = existante.id;
-            libelle = `${id} modifiée`;
-          } else {
-            id = nouvelleRegle(config, champs, ctx.aujourdHui, "application").id;
-            libelle = `Rubrique ${id} créée`;
-          }
+          // Même chemin que les rubriques demandées à la voix (comprendre.js).
+          id = enregistrerRubrique(config, demande.formulaire || {}, existante, ctx.aujourdHui, "application").id;
+          libelle = existante ? `${id} modifiée` : `Rubrique ${id} créée`;
           break;
         }
         case "supprimer": {
@@ -2136,19 +2216,15 @@ export class Etat extends DurableObject {
           if (!texte && !audio) return refus("Écris ou dis ta demande.");
           const resultat = await this.comprendreCoeur(texte, audio);
           if (!resultat) return refus("Gemini ne répond pas pour le moment. Réessaie dans une minute.");
-          const suites = [];
-          for (const action of resultat.actions) {
-            if (action.type === "nouvel_episode") suites.push((await this.lancerEpisode(action.ids, "audio", { silencieux: true })).ok ? "Nouvel épisode lancé." : "Épisode non lancé (limite du jour).");
-            if (action.type === "resultats") suites.push((await this.lancerRecherche(action.ids, action.format, { silencieux: true })).ok ? "Recherche lancée." : "Recherche non lancée (limite du jour).");
-            if (action.type === "annuler") { const annule = await this.annulerCoeur(); suites.push(annule ? `Annulé : ${annule}` : "Rien à annuler."); }
-          }
-          const afficher = resultat.actions.find((a) => a.type === "afficher" || a.type === "assistant");
-          await relire();
-          return reponse({
-            reponse: resultat.reponse || "", changements: resultat.changements, erreurs: resultat.erreurs, suites,
-            ouvrir: resultat.reglesCreees[0] ? { ecran: "fiche", id: resultat.reglesCreees[0].id }
-              : afficher ? { ecran: afficher.type === "assistant" ? "recherche" : afficher.valeur } : null,
-          });
+          return reponse(await this.reponseParler(resultat, relire));
+        }
+        // Réponse à « À confirmer » (changement lourd demandé en parlant ou en écrivant).
+        case "parler_confirmer":
+        case "parler_abandonner": {
+          const resultat = await this.repondreConfirmation(demande.action === "parler_confirmer");
+          if (!resultat) { await relire(); return refus("Cette demande n'est plus en attente : redis-la si besoin."); }
+          if (resultat.abandon) { await relire(); return reponse({ message: "D'accord, je n'ai rien changé.", abandon: true }); }
+          return reponse(await this.reponseParler(resultat, relire));
         }
         case "annuler": {
           const annule = await this.annulerCoeur();
