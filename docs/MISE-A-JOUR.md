@@ -67,6 +67,18 @@ Relancer *Mettre à jour* ne fait jamais de mal : quand tout est déjà à jour,
 
 ---
 
+## Se passer de Telegram (facultatif)
+
+Depuis la version 2026-10-21.6, Telegram est facultatif. Pour une installation qui l'utilise déjà :
+
+1. **Ouvre l'application sur ton téléphone**, hors de Telegram : Réglages › Application › *Afficher un code*, puis l'adresse de ton bot (`…workers.dev/app`) dans le navigateur du téléphone (sur iPhone : d'abord « Sur l'écran d'accueil », puis depuis l'icône).
+2. **Active les notifications** (Réglages › Application › Notifications).
+3. **Coupe « Recevoir aussi l'épisode dans Telegram »** au même endroit.
+
+C'est suffisant : le bot garde Telegram pour les alertes. Pour l'enlever complètement, supprime les secrets `TELEGRAM_BOT_TOKEN` et `TELEGRAM_CHAT_ID` sur GitHub **et** chez Cloudflare (*Workers & Pages* › `podcast` › *Settings* › *Variables and Secrets*), puis relance *Déployer le bot*. Le jeton GitHub du bot (`BOT_GITHUB_TOKEN`) protège alors seul les échanges entre GitHub et le bot ; pour ouvrir l'application sur un nouvel appareil : onglet *Actions* › *Code de connexion*.
+
+---
+
 ## Pour le modèle : publier une version
 
 1. Changer `VERSION` et `NOUVEAUTES` dans `cloudflare/src/etat.js` (format `AAAA-MM-JJ.n`).

@@ -613,6 +613,8 @@ EXPORT = {"format": "bot-v2", "version": "test", "config": config_bot(), "aujour
           "derniers_resultats": {"regles": ["R2"], "idees": ["Juraparc"]}}
 etat = {"appels": [], "bot_joignable": True, "evenements": [], "message_id": 700, "poll": 0}
 SECRET = liaison.secret_partage("111:jeton-test")
+SECRET_GH = liaison.secret_partage("gh-jeton-test")      # sans Telegram : dérivé du jeton GitHub du bot
+SECRETS = {SECRET, SECRET_GH}
 
 
 def faux_get(url, timeout=None, headers=None, params=None):
@@ -620,8 +622,9 @@ def faux_get(url, timeout=None, headers=None, params=None):
     if url.endswith("/api/config"):
         if not etat["bot_joignable"]:
             return Reponse(503, contenu=b"indisponible")
-        if (headers or {}).get("X-Podcast-Secret") != SECRET:
+        if (headers or {}).get("X-Podcast-Secret") not in SECRETS:
             return Reponse(403, contenu=b"interdit")
+        etat["secret_vu"] = headers["X-Podcast-Secret"]
         return Reponse(200, json.loads(json.dumps(EXPORT)))
     if "rss" in url or "news.google" in url:
         return Reponse(200, contenu=b"<rss><channel><title>T</title><item><title>Budget vaudois adopt\xc3\xa9</title><link>https://exemple.ch/1</link><description>Le Grand Conseil a vot\xc3\xa9.</description></item></channel></rss>")
@@ -631,7 +634,7 @@ def faux_get(url, timeout=None, headers=None, params=None):
 def faux_post(url, json=None, data=None, files=None, timeout=None, headers=None):
     etat["appels"].append(("POST", url, json if json is not None else data, files))
     if url.endswith("/api/evenement"):
-        assert headers["X-Podcast-Secret"] == SECRET
+        assert headers["X-Podcast-Secret"] in SECRETS
         etat["evenements"].append(json)
         return Reponse(200, {"ok": True})
     if "generativelanguage" in url:
@@ -689,7 +692,7 @@ def faux_post(url, json=None, data=None, files=None, timeout=None, headers=None)
 
 def faux_put(url, params=None, data=None, timeout=None, headers=None):
     etat["appels"].append(("PUT", url, (params or {}).get("nom"), data, (headers or {}).get("Content-Type")))
-    if url.endswith("/api/fichier") and (headers or {}).get("X-Podcast-Secret") == SECRET and etat.get("stockage", True):
+    if url.endswith("/api/fichier") and (headers or {}).get("X-Podcast-Secret") in SECRETS and etat.get("stockage", True):
         return Reponse(200, {"ok": True, "nom": params["nom"], "taille": len(data)})
     return Reponse(404, contenu=b"introuvable")
 
@@ -941,6 +944,54 @@ podcast.requests.post = ancien_post
 messages = [a for a in etat["appels"] if a[0] == "POST" and a[1].endswith("sendMessage")]
 verifier(code == 0 and messages and "Nouvel essai automatique à 7 h 15" in messages[-1][2]["text"],
          "échec planifié avec rattrapage à 30 min : annoncé à 7 h 15")
+
+# ───────────────────────── 12. sans Telegram ─────────────────────────────────
+print("\n12. Sans Telegram (jeton GitHub du bot seulement)")
+env_avant = {k: os.environ.get(k) for k in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "BOT_GITHUB_TOKEN")}
+os.environ.pop("TELEGRAM_BOT_TOKEN", None)
+os.environ.pop("TELEGRAM_CHAT_ID", None)
+os.environ["BOT_GITHUB_TOKEN"] = "gh-jeton-test"
+appels_tg = lambda: [a for a in etat["appels"] if a[0] == "POST" and "api.telegram.org" in a[1]]
+MEMOIRE.write_text(json.dumps({}), encoding="utf-8")
+etat["appels"].clear()
+etat["evenements"].clear()
+etat.pop("secret_vu", None)
+code = podcast.main(["--mode", "manuel"])
+ev = [x for x in etat["evenements"] if x["type"] == "episode"]
+depots = [a for a in etat["appels"] if a[0] == "PUT"]
+verifier(code == 0 and not appels_tg() and ev and ev[-1]["audio"] and ev[-1]["message_id"] is None and depots and etat.get("secret_vu") == SECRET_GH,
+         "épisode sans Telegram : gardé par le bot, secret dérivé du jeton GitHub, aucun appel à Telegram")
+etat["stockage"] = False
+etat["evenements"].clear()
+code = podcast.main(["--mode", "manuel"])
+echec = [x for x in etat["evenements"] if x["type"] == "echec"]
+verifier(code == 1 and echec and "rien n'est parti" in echec[-1]["message"] and not appels_tg(),
+         "sans Telegram, si le bot ne garde pas l'épisode : échec clair, signalé au bot")
+etat["stockage"] = True
+etat["appels"].clear()
+etat["evenements"].clear()
+code = podcast.main(["--recherche", "R2", "--format", "audio"])
+rech = [x for x in etat["evenements"] if x["type"] == "recherche"]
+verifier(code == 0 and not appels_tg() and rech and re.fullmatch(r"\d{4}-\d{2}/idees-[\d-]+\.mp3", rech[-1]["audio"] or "") and rech[-1]["titre_audio"],
+         f"mini-podcast d'idées sans Telegram : gardé par le bot ({rech[-1].get('audio') if rech else None})")
+etat["appels"].clear()
+etat["evenements"].clear()
+code = podcast.main(["--echantillons", "Kore,Puck"])
+extraits = [x for x in etat["evenements"] if x["type"] == "echantillon"]
+verifier(code == 0 and not appels_tg() and len(extraits) == 2 and extraits[0]["fichier"] and extraits[0]["file_id"] is None,
+         "extraits de voix sans Telegram : gardés par le bot")
+etat["appels"].clear()
+code = podcast.main(["--retours"])
+verifier(code == 0 and not appels_tg() and not [a for a in etat["appels"] if a[0] == "POST" and "generativelanguage" in a[1]],
+         "sans Telegram : pas de messages à lire, ni Telegram ni Gemini appelés")
+os.environ.pop("BOT_GITHUB_TOKEN", None)
+code = podcast.main(["--mode", "manuel"])
+verifier(code == 1, "ni Telegram ni jeton GitHub : échec clair")
+for cle_env, valeur in env_avant.items():
+    if valeur is None:
+        os.environ.pop(cle_env, None)
+    else:
+        os.environ[cle_env] = valeur
 
 print()
 if echecs:

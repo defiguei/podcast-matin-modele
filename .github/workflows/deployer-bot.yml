@@ -7,6 +7,8 @@ name: Déployer le bot
 # Le bot reçoit ensuite les secrets GitHub qu'il n'a pas encore
 # (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, GEMINI_API_KEY) et BOT_GITHUB_TOKEN
 # comme jeton GitHub : une valeur déjà réglée chez Cloudflare n'est jamais remplacée.
+# Telegram est facultatif : sans lui, le résumé de l'exécution donne un code
+# pour ouvrir l'application la première fois.
 
 on:
   push:
@@ -117,3 +119,13 @@ jobs:
             sleep 10
           done
           echo "::warning::Activation à confirmer : ouvre $BOT_URL/installer dans ton navigateur (le bot s'active aussi tout seul dans l'heure)."
+
+      # Sans Telegram, à la toute première installation : l'adresse de l'application et un
+      # code de connexion s'affichent dans le résumé de cette exécution.
+      - name: Première ouverture de l'application
+        if: steps.secrets.outputs.pret == 'true'
+        working-directory: .
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
+        run: python3 code_connexion.py --premiere

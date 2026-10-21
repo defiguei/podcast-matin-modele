@@ -950,6 +950,16 @@ with tempfile.TemporaryDirectory() as dossier:
         else:
             os.environ[cle] = valeur
     verifier("go=false" in sortie.read_text(), "dépôt sans bot : pas d'épisode programmé")
+    # Sans Telegram, le filet de sécurité lit le bot avec le secret du jeton GitHub.
+    vus, lire_bot = [], horaire.lire_bot
+    horaire.lire_bot = lambda adresse, jeton: vus.append(jeton) or None
+    os.environ.update({"EVENEMENT": "schedule", "TELEGRAM_BOT_TOKEN": "", "BOT_GITHUB_TOKEN": "gh-jeton", "BOT_URL": "https://bot.exemple",
+                       "RACINE": dossier, "GITHUB_OUTPUT": str(sortie), "PROGRAMMATION": "30 5 * * *"})
+    with contextlib.redirect_stdout(io.StringIO()):
+        horaire.main()
+    horaire.lire_bot = lire_bot
+    os.environ.pop("BOT_GITHUB_TOKEN", None)
+    verifier(vus == ["gh-jeton"], f"filet de sécurité sans Telegram : le bot est lu avec le jeton GitHub ({vus})")
 
 # Clés et agendas saisis dans l'application : appliqués et masqués dans le journal de GitHub.
 import liaison
@@ -1105,6 +1115,59 @@ verifier(not (resultat / ".github/workflows/nouveau.yml").exists() and relances 
 verifier("::notice title=Jeton GitHub::secret GitHub BOT_GITHUB_TOKEN." in journaux_maj["bon"]
          and "::notice title=Jeton GitHub::aucun" in journaux_maj[""] and not re.search(r"\bbon\b", journaux_maj["bon"].replace("::add-mask::bon", "")),
          "mise à jour : d'où vient le jeton, dans le résumé (jamais sa valeur)")
+
+# Code de connexion à l'application (sans Telegram) : demandé au bot, affiché dans le résumé de GitHub.
+print("\nCode de connexion")
+import code_connexion
+import urllib.error
+
+
+class FausseReponseUrl(io.BytesIO):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+
+def essai_code(arguments, reponse, env=None):
+    vu = {}
+
+    def ouvrir(requete, timeout=None):
+        vu["url"], vu["secret"] = requete.full_url, requete.get_header("X-podcast-secret")
+        if isinstance(reponse, Exception):
+            raise reponse
+        return FausseReponseUrl(json.dumps(reponse).encode())
+    with tempfile.TemporaryDirectory() as dossier:
+        resume_fichier = Path(dossier) / "resume.md"
+        env_avant = dict(os.environ)
+        os.environ.update({"BOT_URL": "https://podcast.alice.workers.dev", "TELEGRAM_BOT_TOKEN": "", "BOT_GITHUB_TOKEN": "gh-jeton",
+                           "GITHUB_STEP_SUMMARY": str(resume_fichier), **(env or {})})
+        ancien = code_connexion.urllib.request.urlopen
+        code_connexion.urllib.request.urlopen = ouvrir
+        sortie = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(sortie):
+                code = code_connexion.main(arguments)
+        finally:
+            code_connexion.urllib.request.urlopen = ancien
+            os.environ.clear(); os.environ.update(env_avant)
+        return code, sortie.getvalue(), resume_fichier.read_text(encoding="utf-8") if resume_fichier.exists() else "", vu
+
+
+code, sortie, resume_md, vu = essai_code(["--premiere"], {"ok": True, "code": "123456", "jusqua": "09:41", "adresse": "https://podcast.alice.workers.dev/app"})
+verifier(code == 0 and "**123456**" in resume_md and "https://podcast.alice.workers.dev/app#code=123456" in resume_md and "9 h 41" in resume_md
+         and vu["url"].endswith("/api/code-connexion?si=premiere") and vu["secret"] == liaison.secret_partage("gh-jeton"),
+         "code de connexion : demandé avec le secret du jeton GitHub, affiché dans le résumé (code et lien)")
+verifier("::notice title=Code de connexion::123456" in sortie, "code aussi en annotation de l'exécution")
+code, sortie, resume_md, _ = essai_code(["--premiere"], {"ok": True, "code": None, "raison": "telegram"})
+verifier(code == 0 and not resume_md and "Telegram est configuré" in sortie, "avec Telegram : pas de code à la fin du déploiement")
+code, sortie, _, _ = essai_code([], urllib.error.HTTPError("u", 403, "interdit", {}, None))
+verifier(code == 1 and "::error::" in sortie and "Déployer le bot" in sortie, "secret refusé : erreur claire (workflow « Code de connexion »)")
+code, sortie, _, _ = essai_code(["--premiere"], urllib.error.URLError("pas de réseau"))
+verifier(code == 0 and "::warning::" in sortie and "BOT_URL" in sortie, "bot injoignable en fin de déploiement : simple avertissement")
+code, sortie, _, _ = essai_code([], {}, {"BOT_GITHUB_TOKEN": ""})
+verifier(code == 1 and "BOT_GITHUB_TOKEN" in sortie, "sans jeton : message clair")
 
 print("\nRÉSULTAT :", "tout est vert ✅" if not echecs else f"{len(echecs)} échec(s) ❌")
 for e in echecs:

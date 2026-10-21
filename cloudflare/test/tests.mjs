@@ -1563,5 +1563,72 @@ await scenario("Déploiement : secrets transmis au bot", async () => {
     "rien à transmettre quand le bot a déjà tout");
 });
 
+await scenario("Sans Telegram : installation, première connexion, épisodes, notifications", async () => {
+  const BOT2 = "http://127.0.0.1:8798";
+  const SECRET_GH = createHash("sha256").update("podcast:gh-test").digest("hex").slice(0, 48);
+  const S2 = { "X-Podcast-Secret": SECRET_GH };
+  const { avertissementManquants } = await import("../secrets.mjs");
+  verifier(avertissementManquants(["GITHUB_TOKEN"]) === "" && avertissementManquants(["GITHUB_TOKEN", "TELEGRAM_CHAT_ID"]).includes("TELEGRAM_BOT_TOKEN")
+    && avertissementManquants(["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"]).includes("BOT_GITHUB_TOKEN"), "déploiement : Telegram facultatif, jeton GitHub indispensable");
+  await vider();
+  verifier((await envoyerJson(`${BOT2}/telegram`, { update_id: 1 }, { "X-Telegram-Bot-Api-Secret-Token": SECRET })).status === 403, "pas de Telegram : sa porte est fermée");
+  const activation = await obtenir(`${BOT2}/installer`);
+  verifier(activation.texte.includes("activé") && activation.texte.includes("sans Telegram"), "installation sans Telegram : le bot s'active", activation.texte);
+  verifier((await obtenir(`${BOT2}/api/config`, { headers: { "X-Podcast-Secret": SECRET } })).statut === 403, "secret dérivé de Telegram : refusé (il n'y a pas de Telegram)");
+  const exportBot = await (await fetch(`${BOT2}/api/config`, { headers: S2 })).json();
+  verifier(exportBot.format === "bot-v2" && exportBot.config?.planning, "secret dérivé du jeton GitHub : GitHub lit les réglages", exportBot.format);
+  verifier((await obtenir(`${BOT2}/api/config`, { headers: { "X-Podcast-Secret": "" } })).statut === 403, "secret vide : refusé");
+
+  // Première ouverture : GitHub demande un code (fin du déploiement), l'appareil se connecte avec.
+  let code = await (await fetch(`${BOT2}/api/code-connexion?si=premiere`, { headers: S2 })).json();
+  verifier(/^\d{6}$/.test(code.code || "") && code.adresse === `${BOT2}/app` && /^\d{2}:\d{2}$/.test(code.jusqua || ""), "premier code de connexion pour GitHub", code);
+  verifier((await obtenir(`${BOT2}/api/code-connexion`)).statut === 403, "code jamais donné sans le secret");
+  const ouvrirTelegram = await envoyerJson(`${BOT2}/app/api`, { action: "etat" }, { "X-Telegram-Init-Data": ouverture() });
+  verifier(ouvrirTelegram.status === 401, "ouverture « Telegram » refusée : il n'y en a pas");
+  const connexion = await envoyerJson(`${BOT2}/app/connexion`, { code: code.code, nom: "Android · Chrome" }).then((r) => r.json());
+  verifier(connexion.ok && /^[0-9a-f]{64}$/.test(connexion.jeton), "le code ouvre l'application", connexion);
+  const app2 = async (action, extra = {}) => { const r = await envoyerJson(`${BOT2}/app/api`, { action, ...extra }, { "X-Appareil": connexion.jeton }); return { statut: r.status, ...(await r.json()) }; };
+  let r = await app2("etat");
+  verifier(r.ok && r.donnees.telegram === false && r.donnees.appareils.length === 1, "l'application sait qu'il n'y a pas de Telegram", r.donnees?.telegram);
+  code = await (await fetch(`${BOT2}/api/code-connexion?si=premiere`, { headers: S2 })).json();
+  verifier(code.code === null && code.raison === "deja_connecte", "fin de déploiement suivante : pas de nouveau code (déjà connecté)", code);
+  code = await (await fetch(`${BOT2}/api/code-connexion`, { headers: S2 })).json();
+  verifier(/^\d{6}$/.test(code.code || ""), "workflow « Code de connexion » : un code pour un nouvel appareil");
+
+  // Notifications et épisode, sans rien chez Telegram.
+  const ecdh = createECDH("prime256v1"); ecdh.generateKeys();
+  r = await app2("notif_abonner", { abonnement: { endpoint: `${FAUX}/push/sans-tg`, keys: { p256dh: ecdh.getPublicKey().toString("base64url"), auth: randomBytes(16).toString("base64url") } }, nom: "Android · Chrome" });
+  verifier(r.ok, "notifications activées sans Telegram", r.erreur);
+  await fetch(`${BOT2}/api/fichier?nom=${encodeURIComponent("2026-10/2026-10-25-071500.mp3")}`, { method: "PUT", body: new Uint8Array(3000).fill(7), headers: S2 });
+  await fetch(`${BOT2}/api/evenement`, { method: "POST", headers: { ...S2, "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "episode", date: "2026-10-25", titre: "Sans Telegram", mode: "planifie", duree: 240, ref: 71500, audio: "2026-10/2026-10-25-071500.mp3" }) });
+  r = await app2("etat");
+  const ep = r.donnees.episodes.find((x) => x.titre === "Sans Telegram");
+  const lu = ep?.audio ? await fetch(`${BOT2}${ep.audio}`, { headers: { Range: "bytes=0-9" } }) : null;
+  verifier(ep?.cle === "ep:2026-10-25:71500" && lu?.status === 206, "épisode reçu et lu chez le bot", ep);
+  // Un mini-podcast d'idées : gardé par le bot, il s'écoute dans « Idées trouvées ».
+  await fetch(`${BOT2}/api/fichier?nom=${encodeURIComponent("2026-10/idees-2026-10-25-090000.mp3")}`, { method: "PUT", body: new Uint8Array(2000).fill(3), headers: S2 });
+  await fetch(`${BOT2}/api/evenement`, { method: "POST", headers: { ...S2, "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "recherche", regles: [], idees: ["Grottes de Vallorbe"], format: "audio", resultats: [{ regle: "", titre: "Sortie", idees: [{ titre: "Grottes de Vallorbe" }] }],
+      audio: "2026-10/idees-2026-10-25-090000.mp3", titre_audio: "Sous terre samedi", duree: 150 }) });
+  r = await app2("etat");
+  const mini = r.donnees.resultats?.episode;
+  const luMini = mini?.audio ? await fetch(`${BOT2}${mini.audio}`) : null;
+  verifier(mini?.titre === "Sous terre samedi" && luMini?.status === 200 && (await luMini.arrayBuffer()).byteLength === 2000, "mini-podcast d'idées écouté dans l'application", mini);
+  const pushs = await (await fetch(`${FAUX}/control/pushs`)).json();
+  verifier(pushs.filter((p) => p.id === "sans-tg").length >= 3, "notifications : activation, épisode, idées", pushs.map((p) => p.id));
+
+  // Nouvelle version déployée : annoncée par notification ; rien n'a jamais été envoyé à Telegram.
+  await envoyerJson(`${BOT2}/test/etat`, { etat: { ...(await (await fetch(`${BOT2}/test/etat`)).json()).etat, version_installee: "2026-10-21.4" } });
+  const avant = (await (await fetch(`${FAUX}/control/pushs`)).json()).length;
+  await obtenir(`${BOT2}/installer`);
+  await fetch(`${BOT2}/test/horloge?iso=2026-10-20T12:00&tic=1`);
+  await fetch(`${BOT2}/test/horloge?iso=2026-10-20T12:05&tic=1`);
+  const apres = (await (await fetch(`${FAUX}/control/pushs`)).json()).slice(avant);
+  verifier(apres.length === 1, "nouvelle version annoncée une fois, par notification", apres.length);
+  verifier(!tg(await appels(), "sendMessage").length && !tg(await appels(), "setWebhook").length && !tg(await appels(), "sendAudio").length,
+    "aucun appel à Telegram", tg(await appels(), "sendMessage").length);
+});
+
 console.log(`\n${reussis} vérifications réussies, ${rates} ratées.`);
 if (rates) { console.log(echecs.map((x) => ` - ${x}`).join("\n")); process.exit(1); }

@@ -2,9 +2,10 @@
 
 Chaque matin, un épisode audio rien que pour toi : deux animateurs te parlent de ton agenda, des nouvelles qui t'intéressent et de tout ce que tu leur as demandé (la fête du jour, la météo, ton train, une idée de sortie pour samedi…).
 
-- **Tout se règle dans une application** : l'heure de chaque jour, la durée, les voix, les rubriques, les clés et tes agendas. Elle s'ouvre dans Telegram, ou dans le navigateur de n'importe quel appareil.
-- **Tu écoutes où tu veux** : dans l'application (avec une notification quand l'épisode est prêt), dans Telegram, ou dans ton appli de podcasts (Apple Podcasts, AntennaPod…) grâce à un flux privé.
-- **Gratuit, rien chez toi** : ton ordinateur n'a pas besoin d'être allumé (offres gratuites de Cloudflare, GitHub, Gemini, Tavily et Telegram).
+- **Tout se règle dans une application** : l'heure de chaque jour, la durée, les voix, les rubriques, les clés et tes agendas. Elle s'installe sur ton téléphone (Android, iPhone) ou s'ouvre dans Telegram.
+- **Tu écoutes où tu veux** : dans l'application (avec une notification quand l'épisode est prêt), dans ton appli de podcasts (Apple Podcasts, AntennaPod…) grâce à un flux privé, ou dans Telegram.
+- **Telegram facultatif** : sans lui, tout passe par l'application ; avec lui, tu as en plus la conversation avec le bot.
+- **Gratuit, rien chez toi** : ton ordinateur n'a pas besoin d'être allumé (offres gratuites de Cloudflare, GitHub, Gemini et Tavily).
 - **Suisse, France ou Belgique** : le pays règle l'heure, les jours fériés, la devise et les médias.
 - **Mises à jour en un bouton**, sans toucher à tes réglages.
 
@@ -14,7 +15,7 @@ Chaque matin, un épisode audio rien que pour toi : deux animateurs te parlent d
 
 ## L'application 📱
 
-Dans Telegram, touche **Application** à gauche du champ de saisie (ou **🎧 Ouvrir dans l'application** sous l'épisode). Au premier lancement, cinq petites étapes te guident : qui tu es, l'heure, ton agenda, la clé Gemini.
+Sur ton téléphone, ouvre l'adresse de ton bot (`https://podcast.TON-SOUS-DOMAINE.workers.dev/app`) et ajoute-la à l'écran d'accueil ; avec Telegram, touche aussi **Application** à gauche du champ de saisie. Au premier lancement, cinq petites étapes te guident : qui tu es, l'heure, ton agenda, la clé Gemini.
 
 | Onglet | Ce qu'on y trouve |
 |---|---|
@@ -24,7 +25,7 @@ Dans Telegram, touche **Application** à gauche du champ de saisie (ou **🎧 Ou
 | **Planning** | Heure et activation de chaque jour, jours fériés, rattrapage, exceptions, pauses, calendrier. |
 | **Réglages** | **Moi** (prénom, ville, pays) · **Voix** · **Durée et style** (ton, consignes) · **Connexions** (clés et agendas) · **Application** (flux privé, autres appareils, version). |
 
-Chaque changement s'annule depuis l'accueil (*Annuler*). Tu peux toujours écrire ou dicter au bot dans Telegram si tu préfères : il comprend « 6 h 45 en semaine, rien le dimanche », « plus d'humour », « refais le podcast »…
+Chaque changement s'annule depuis l'accueil (*Annuler*). Avec Telegram, tu peux aussi écrire ou dicter au bot : il comprend « 6 h 45 en semaine, rien le dimanche », « plus d'humour », « refais le podcast »…
 
 ### Les rubriques
 
@@ -51,14 +52,14 @@ L'application choisit les sources utiles à chaque rubrique (tu peux les changer
 
 Tes **agendas** (Google, Outlook…) s'ajoutent au même endroit, ou depuis la fiche Agenda, avec leur adresse secrète iCal. Une clé déjà rangée en secret GitHub continue de marcher : celle de l'application passe avant.
 
-### Hors de Telegram
+### Sur ton téléphone, avec ou sans Telegram
 
+- **Ouvrir l'application** : à l'adresse de ton bot (`https://podcast.TON-SOUS-DOMAINE.workers.dev/app`), avec un code à 6 chiffres : *Afficher un code* dans l'application déjà ouverte (Réglages › Application), ou, sur GitHub, onglet *Actions* › **Code de connexion** › *Run workflow* (le code est dans le résumé de l'exécution). L'application s'ajoute ensuite à l'écran d'accueil.
+- **Notifications** (Réglages › Application) : une notification dès que l'épisode est prêt, ou s'il a raté ; la toucher ouvre l'épisode. **Android** : dans Chrome, directement. **iPhone** : ajoute d'abord la page à l'écran d'accueil (Partager › « Sur l'écran d'accueil »), ouvre-la depuis l'icône, entre le code, puis active les notifications.
 - **Flux privé** (Réglages › Application) : une adresse secrète à coller dans ton appli de podcasts. Les épisodes s'y téléchargent la nuit, avec chapitres et pochette.
-- **Autres appareils** : ouvre l'adresse de ton bot (`https://podcast.TON-SOUS-DOMAINE.workers.dev/app`) dans n'importe quel navigateur et entre le code affiché par *Afficher un code*. L'application peut ensuite s'ajouter à l'écran d'accueil.
-- **Notifications** (Réglages › Application) : une notification sur ton téléphone dès que l'épisode est prêt, ou s'il a raté ; la toucher ouvre l'épisode. Elles s'activent dans l'application ouverte hors de Telegram. **Android** : dans Chrome, directement. **iPhone** : ajoute d'abord la page à l'écran d'accueil (Partager › « Sur l'écran d'accueil »), ouvre-la depuis l'icône, entre le code, puis active les notifications.
-- **Sans Telegram** : une fois les notifications (ou le flux) en place, coupe « Recevoir aussi l'épisode dans Telegram ». L'épisode t'attend alors dans l'application, ton appli de podcasts et la notification ; les alertes restent dans Telegram.
+- **Avec Telegram**, une fois les notifications (ou le flux) en place, tu peux couper « Recevoir aussi l'épisode dans Telegram » ; les alertes y restent.
 
-Tes épisodes (audio, pochette, texte) sont gardés par ton bot pendant un an : l'application et le flux les lisent chez lui. Telegram reste nécessaire pour l'installation.
+Tes épisodes (audio, pochette, texte) et les mini-podcasts d'idées sont gardés par ton bot pendant un an : l'application et le flux les lisent chez lui.
 
 ---
 
@@ -89,7 +90,7 @@ Les faits précis (prix, horaires, dates) viennent des sources. Quand une inform
 ## Bon à savoir
 
 - **Gratuité.** GitHub : environ 4 minutes par épisode, loin des 2 000 minutes offertes par mois. Cloudflare : un an d'épisodes tient en 1 à 2 Go, sur les 5 Go offerts (les plus anciens s'effacent d'eux-mêmes). Gemini : quelques requêtes par épisode, avec un modèle de secours quand un quota du jour est épuisé (6 épisodes à la demande par jour au plus, pour garder celui du matin). Tavily : 15 recherches par jour au plus.
-- **Confidentialité.** Tes clés et tes agendas restent chez ton bot (ou dans les secrets GitHub) : jamais dans le dépôt, les journaux ni les messages à Gemini. Pour écrire l'épisode, Google reçoit le titre, l'heure et le lieu de tes rendez-vous ; Tavily reçoit les recherches de tes rubriques. Le bot ignore toute autre personne que toi, et l'application ne s'ouvre qu'avec ton compte Telegram ou un appareil que tu as autorisé.
+- **Confidentialité.** Tes clés et tes agendas restent chez ton bot (ou dans les secrets GitHub) : jamais dans le dépôt, les journaux ni les messages à Gemini. Pour écrire l'épisode, Google reçoit le titre, l'heure et le lieu de tes rendez-vous ; Tavily reçoit les recherches de tes rubriques. Le bot ignore toute autre personne que toi, et l'application ne s'ouvre qu'avec un appareil que tu as autorisé (code à 6 chiffres) ou ton compte Telegram.
 - **Licence.** [PolyForm Noncommercial 1.0.0](LICENSE.md) : tu peux utiliser, modifier et partager ce code pour un usage personnel et non commercial. Tout usage commercial demande l'accord de l'auteur.
 - **Conditions d'utilisation.** Google destine officiellement l'API Gemini aux développeurs ; pour un usage personnel comme celui-ci, c'est une zone grise.
 - **Idées de sortie.** Prix et horaires viennent des sites trouvés ; quand ils manquent, c'est écrit « à vérifier ».
@@ -103,6 +104,7 @@ Les faits précis (prix, horaires, dates) viennent des sources. Quand une inform
 | « agenda inaccessible » | L'adresse iCal a changé : retire l'agenda et ajoute la nouvelle adresse. |
 | « Recherche web : non configurée » | Ajoute la clé Tavily dans Réglages › Connexions. |
 | Le bot ne répond plus | Ouvre `https://podcast.TON-SOUS-DOMAINE.workers.dev/installer` dans ton navigateur. |
+| Nouvel appareil, sans application ouverte ailleurs | Onglet *Actions* › *Code de connexion* › *Run workflow* : le code est dans le résumé de l'exécution. |
 | *Déployer le bot* en orange | Il manque `CLOUDFLARE_API_TOKEN` ou `CLOUDFLARE_ACCOUNT_ID` (secrets GitHub). |
 | La mise à jour n'a pas touché aux fichiers d'automatisation | Le jeton GitHub n'a pas la permission *Workflows* : voir [docs/MISE-A-JOUR.md](docs/MISE-A-JOUR.md). |
 
@@ -121,6 +123,7 @@ Le détail d'une exécution : onglet *Actions* de ton dépôt → l'exécution �
 | `recherche.py` | Résultats de recherche, mini-podcast, extraits de voix |
 | `horaire.py` | Filet de sécurité des déclenchements GitHub |
 | `mise_a_jour.py`, `version.json` | Mise à jour depuis le modèle |
+| `code_connexion.py` | Code de connexion à l'application, donné par GitHub (sans Telegram) |
 | `reglages.toml` | Partie technique : modèles Gemini, débit du MP3… (l'application a le dernier mot) |
 | `memoire.json`, `preferences.json` | Débit réel de la voix, dernier épisode ; sauvegarde quotidienne des réglages |
 

@@ -30,6 +30,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}   # sans Telegram : base du secret partagé avec le bot
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           CALENDAR_ICS_URL: ${{ secrets.CALENDAR_ICS_URL }}
         run: .venv/bin/python podcast.py --agendas

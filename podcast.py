@@ -2317,7 +2317,7 @@ def main(arguments: list[str] | None = None) -> int:
         # Le bot d'abord : il peut fournir les clés et agendas saisis dans l'application.
         jeton = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
         bot = Bot(os.environ.get("BOT_URL", ""), jeton)
-        export = bot.config() if jeton else None
+        export = bot.config() if bot.secret else None
         presents = secrets_presents()
         appliquees = appliquer_cles(export)
         if appliquees:
@@ -2332,9 +2332,15 @@ def main(arguments: list[str] | None = None) -> int:
         if not cle:
             raise ErreurPodcast("La clé Gemini manque : ajoute-la dans l'application (Réglages › Connexions) "
                                 "ou en secret GEMINI_API_KEY sur GitHub.")
-        if options.retours or not options.sans_envoi:
-            if not jeton:
-                raise ErreurPodcast("Le secret TELEGRAM_BOT_TOKEN est manquant.")
+        if (options.retours or not options.sans_envoi) and not jeton:
+            # Sans Telegram (facultatif) : tout passe par le bot (application, flux, notifications).
+            if options.retours:
+                journal("Pas de Telegram : aucun message à lire.")
+                return 0
+            if not bot.secret:
+                raise ErreurPodcast("Ni Telegram (secret TELEGRAM_BOT_TOKEN) ni jeton GitHub du bot (secret BOT_GITHUB_TOKEN) : "
+                                    "personne à qui confier l'épisode.")
+        elif options.retours or not options.sans_envoi:
             telegram = Telegram(jeton)
             conversation = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
             if not conversation:
@@ -2374,7 +2380,7 @@ def main(arguments: list[str] | None = None) -> int:
             urls = separer_urls(os.environ.get("CALENDAR_ICS_URL", ""))
             lire_agendas(urls, {**reglages, "agendas_exclus": []}, maintenant, 30)
             journal("Agendas : " + (", ".join(f"{a['nom']} ({a['nb']})" for a in AGENDAS_VUS) or "aucun"))
-            if AGENDAS_VUS and jeton:
+            if AGENDAS_VUS and bot.secret:
                 bot.evenement({"type": "agendas", "liste": AGENDAS_VUS, "evenements": AGENDA_APERCU})
             return 0
         if options.echantillons or options.recherche:
@@ -2463,7 +2469,10 @@ def main(arguments: list[str] | None = None) -> int:
         titre = f"{script['titre']} – {date_longue(maintenant.date(), False)}"
         # Telegram coupé dans l'application (Réglages › Application) : l'épisode n'arrive que chez
         # le bot (application, flux, notification). S'il n'a pas pu le garder, Telegram quand même.
-        par_telegram = (((config_bot or {}).get("livraison") or {}).get("telegram", True) is not False) or not audio_bot
+        par_telegram = telegram is not None and (
+            (((config_bot or {}).get("livraison") or {}).get("telegram", True) is not False) or not audio_bot)
+        if not par_telegram and not audio_bot:
+            raise ErreurPodcast("Le bot n'a pas pu garder l'épisode, et Telegram n'est pas configuré : rien n'est parti.")
         envoi = None if not par_telegram else telegram.audio(
             conversation, mp3, nom_fichier, tronquer(titre, 64), noms,
             legende(script, maintenant, contenu.proches, contenu.articles, contenu.remarques,
@@ -2474,7 +2483,7 @@ def main(arguments: list[str] | None = None) -> int:
             # avec l'application, un seul bouton qui l'ouvre sur cet épisode.
             clavier_application(export.get("app"), aujourd_hui) if export and export.get("app")
             else clavier_episode(aujourd_hui, nombre_sujets, details) if export else None)
-        journal("Envoyé sur Telegram ✅" if par_telegram else "Telegram coupé dans l'application : épisode gardé par le bot seulement.")
+        journal("Envoyé sur Telegram ✅" if par_telegram else "Épisode gardé par le bot seulement (Telegram coupé ou absent).")
         evenement = {
             "type": "episode", "date": aujourd_hui, "titre": script["titre"],
             "sujets": script["sujets"][:nombre_sujets] if nombre_sujets else [],
@@ -2533,7 +2542,7 @@ def main(arguments: list[str] | None = None) -> int:
         # Le bot prévient aussi par notification (application), hors des modes annexes.
         if not (options.retours or options.sans_envoi or options.recherche or options.echantillons or options.agendas):
             try:
-                Bot(os.environ.get("BOT_URL", ""), os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()).evenement({
+                Bot(os.environ.get("BOT_URL", "")).evenement({
                     "type": "echec",
                     "titre": "⏳ Podcast du matin : raté pour l'instant" if essai_suivant else
                              ("⚠️ Épisode pas préparé" if mode == "manuel" else "⚠️ Pas d'épisode aujourd'hui"),

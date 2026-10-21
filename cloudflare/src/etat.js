@@ -16,14 +16,14 @@ import {
   nouvelleSession, prochaineEtape, ecranAssistant, ecranModifier, schemaFiche, consigneFiche, fusionnerFiche,
   regleDepuisFiche, schemaQuestions, consigneQuestions, detailFiche, LIBELLES,
 } from "./assistant.js";
-import { Telegram, GitHub, demanderGemini, maintenantLocal, instantLocal, echapper as e, base64, secretPartage, definirFuseau, empreinte } from "./services.js";
+import { Telegram, GitHub, demanderGemini, maintenantLocal, instantLocal, echapper as e, base64, secretPartage, definirFuseau, empreinte, telegramActif } from "./services.js";
 import { CLES, testerCle, lireAgenda, identifiantAgenda, resumeConnexions } from "./connexions.js";
 import { fluxRss, chapitresJson, episodeDeCle, jetonValide, nouveauJeton } from "./flux.js";
 import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, champsDepuisFormulaire, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, nettoyerEquipe, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-21.5";
+export const VERSION = "2026-10-21.6";
 const MAX_REFAITS = 6;
 const LONGUEURS_VALIDES = ["phrase", "courte", "developpee"];
 const MAX_RECHERCHES = 15;
@@ -34,9 +34,9 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 // Message envoyé après une mise à jour : les nouveautés de cette version…
 const NOUVEAUTES = `✅ <b>Ton podcast est à jour</b> (version ${VERSION}).
 
-• <b>Notifications</b> : ton téléphone te prévient dès que l'épisode est prêt (ou s'il a raté) ; la toucher ouvre l'épisode. À activer dans Réglages › Application, depuis l'application ouverte hors de Telegram.
-• Une fois prévenu autrement, tu peux couper l'envoi des épisodes ici (« Recevoir aussi l'épisode dans Telegram »).
-• Ton bot garde tes épisodes un an : l'onglet Épisodes remonte jusque-là.`;
+• Telegram devient facultatif : une installation peut s'en passer (code de connexion donné par GitHub, onglet Actions › Code de connexion).
+• Le mini-podcast d'idées s'écoute aussi dans l'application (Idées trouvées).
+• Icône des notifications corrigée sur Android.`;
 
 // … ou, pour qui arrive d'avant l'application (installation neuve, ancienne version
 // réglée par la conversation), sa présentation.
@@ -143,6 +143,7 @@ export class Etat extends DurableObject {
       if (url.pathname === "/api/config") return Response.json(await this.enFile(() => this.exporterConfig()));
       if (url.pathname === "/flux") return await this.enFile(() => this.servirFlux(url.searchParams));
       if (url.pathname === "/api/maj") return await this.enFile(() => this.jetonPourMaj());
+      if (url.pathname === "/api/code-connexion") return Response.json(await this.enFile(() => this.codeConnexion(url.searchParams.get("si") === "premiere")));
       if (url.pathname === "/appareil/connexion") { const corps = await requete.json().catch(() => ({})); return Response.json(await this.enFile(() => this.connecterAppareil(corps))); }
       if (url.pathname === "/appareil/verifier") return Response.json(await this.enFile(() => this.verifierAppareil(url.searchParams.get("e") || "")));
       if (url.pathname === "/fichier-depose") {
@@ -1484,6 +1485,7 @@ export class Etat extends DurableObject {
 
   async installer(adresse, forcer) {
     if (!adresse) return "Adresse du bot inconnue.";
+    if (!telegramActif(this.env)) return this.installerSansTelegram(adresse);
     const etat = await this.lireEtat();
     const secret = await secretPartage(this.env);
     const r = await this.tg.appeler("setWebhook", { url: `${adresse}/telegram`, secret_token: secret,
@@ -1493,6 +1495,7 @@ export class Etat extends DurableObject {
     const app = this.adresseApp({ adresse });
     await this.tg.appeler("setChatMenuButton", { chat_id: this.env.TELEGRAM_CHAT_ID,
       menu_button: app ? { type: "web_app", text: "Application", web_app: { url: app } } : { type: "commands" } });
+    const nouvelle = etat.version_installee !== VERSION;
     if (r.ok && etat.version_installee !== VERSION) {
       const avant = etat.version_installee;
       etat.version_installee = VERSION;
@@ -1523,7 +1526,47 @@ export class Etat extends DurableObject {
       await this.ecrireEtat(etat);
     }
     await this.planifierReveil(await this.lireConfig(), await this.lireEtat()).catch((erreur) => console.log("Réveil :", erreur.message));
+    // Envoi des épisodes coupé dans Telegram : la nouvelle version s'annonce aussi par notification.
+    if (r.ok && nouvelle && (await this.lireConfig()).livraison?.telegram === false) await this.annoncerVersion(await this.lireEtat());
     return r.ok ? "✅ Bot instantané activé (nouvelle version)." : `Telegram refuse : ${r.description}`;
+  }
+
+  // Sans Telegram : rien à brancher, la version est notée et annoncée par notification.
+  async installerSansTelegram(adresse) {
+    const etat = await this.lireEtat();
+    const avant = etat.version_installee;
+    etat.adresse = adresse;
+    if (avant !== VERSION) {
+      etat.version_installee = VERSION;
+      await this.ecrireEtat(etat);
+      await this.sauvegarder(await this.lireConfig()).catch(() => {});
+      if (avant) await this.annoncerVersion(etat);
+    } else {
+      await this.ecrireEtat(etat);
+    }
+    await this.planifierReveil(await this.lireConfig(), await this.lireEtat()).catch((erreur) => console.log("Réveil :", erreur.message));
+    return `✅ Bot activé (sans Telegram), version ${VERSION}.`;
+  }
+
+  async annoncerVersion(etat) {
+    const premier = NOUVEAUTES.split("\n").find((l) => l.startsWith("•")) || "";
+    await this.notifier(etat, { titre: "✅ Ton podcast est à jour", corps: `Version ${VERSION}. ${premier.replace(/^•\s*/, "").replace(/<[^>]+>/g, "")}`.slice(0, 200),
+      url: "/app", tag: "version" });
+  }
+
+  // Code de connexion à l'application, demandé par GitHub (workflow « Code de connexion »,
+  // ou fin du déploiement pour la toute première ouverture sans Telegram). Valable une heure.
+  async codeConnexion(premiere) {
+    const etat = await this.lireEtat();
+    const adresse = `${String(etat.adresse || this.env.ADRESSE || "").replace(/\/$/, "")}/app`;
+    if (premiere && (telegramActif(this.env) || (etat.appareils || []).length)) {
+      return { ok: true, code: null, adresse, raison: telegramActif(this.env) ? "telegram" : "deja_connecte" };
+    }
+    const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
+    const expire = Date.now() + 60 * 60 * 1000;
+    etat.code_appareil = { code, expire, essais: 0 };
+    await this.ecrireEtat(etat);
+    return { ok: true, code, expire, jusqua: maintenantLocal(new Date(expire)).heure, adresse };
   }
 
   // ─────────────────────────── application (Mini App) ────────────────────────
@@ -1552,6 +1595,7 @@ export class Etat extends DurableObject {
       if (episode.audio || episode.file_id) liens.episodes[cleEpisode(episode)] = await lienAudio(secret, cleEpisode(episode), maintenant());
       if (episode.pochette || episode.pochette_id) liens.pochettes[cleEpisode(episode)] = await lienAudio(secret, `img:${cleEpisode(episode)}`, maintenant());
     }
+    if (etat.derniers_resultats?.audio) liens.idees = await lienAudio(secret, "idees:dernier", maintenant());
     for (const voix of new Set([...Object.keys(etat.echantillons || {}), ...Object.keys(etat.echantillons_fichiers || {})])) {
       if (/^[A-Za-z]+$/.test(voix) && (etat.echantillons?.[voix] || etat.echantillons_fichiers?.[voix])) liens.voix[voix] = await lienAudio(secret, `voix:${voix}`, maintenant());
     }
@@ -1583,6 +1627,7 @@ export class Etat extends DurableObject {
   // Où trouver un fichier : chez le bot (fichier) et/ou chez Telegram (file_id, épisodes d'avant).
   async fichierAudio(cle) {
     const etat = await this.lireEtat();
+    if (cle === "idees:dernier") return { fichier: etat.derniers_resultats?.audio || null, file_id: null };
     if (cle.startsWith("voix:")) {
       const voix = cle.slice(5);
       return { fichier: etat.echantillons_fichiers?.[voix] || null, file_id: etat.echantillons?.[voix] || null };
@@ -1694,6 +1739,7 @@ export class Etat extends DurableObject {
     this.modelesLegers = etat.modeles_legers;
     const ancienne = cloner(config);
     const donnees = async () => ({ ...donneesApp(config, etat, ctx, VERSION, await this.liensAudio(etat)), connexions: resumeConnexions(this.cles, etat),
+      telegram: telegramActif(this.env),
       notifications: { cle: (await this.clesVapid()).publique,
         abonnements: (etat.abonnements || []).map((a) => ({ id: a.id, nom: a.nom, cree_le: a.cree_le, erreur: a.erreur || null, fin: a.endpoint.slice(-16) })) },
       // Premier lancement : rien de personnel encore réglé.
@@ -2133,7 +2179,7 @@ export class Etat extends DurableObject {
     const code = String(corps.code || "").replace(/\D/g, "");
     const attendu = etat.code_appareil;
     if (!attendu || attendu.expire < Date.now() || attendu.essais >= 5) {
-      return { ok: false, erreur: "Pas de code valable : affiche-en un nouveau dans l'application, dans Telegram (Réglages › Application)." };
+      return { ok: false, erreur: "Pas de code valable : demandes-en un nouveau dans l'application déjà ouverte (Réglages › Application), ou sur GitHub (onglet Actions › Code de connexion)." };
     }
     if (code !== attendu.code) {
       attendu.essais = (attendu.essais || 0) + 1;
@@ -2348,16 +2394,18 @@ export class Etat extends DurableObject {
       }
       await this.ctx.storage.put("config", config);
       etat.derniers_resultats = { regles: ev.regles || [], idees: (ev.idees || []).slice(0, 10), quand: ctx.maintenantIso,
-                                  details: nettoyerResultats(ev.resultats) };
+                                  details: nettoyerResultats(ev.resultats),
+                                  // Mini-podcast gardé par le bot (écoute dans l'application, avec ou sans Telegram).
+                                  audio: fichierRecu(ev.audio, ".mp3"), titre_audio: String(ev.titre_audio || "").slice(0, 120), duree_audio: Number(ev.duree) || null };
       if (ev.sondage?.poll_id && Array.isArray(ev.sondage.options)) {
         const sondages = { ...(etat.sondages || {}), [ev.sondage.poll_id]: { options: ev.sondage.options.slice(0, 10).map(String), regle: ev.sondage.regle || ev.regles?.[0] || null, quand: ctx.aujourdHui } };
         etat.sondages = Object.fromEntries(Object.entries(sondages).slice(-10));
       }
       await this.ecrireEtat(etat);
       const nombre = etat.derniers_resultats.idees.length;
-      if (ev.format !== "audio" && nombre) {
-        await this.notifier(etat, { titre: "💡 Tes idées sont prêtes", corps: etat.derniers_resultats.idees.slice(0, 3).join(" · ").slice(0, 200),
-          url: "/app?ecran=resultats", tag: "idees" });
+      if (nombre) {
+        await this.notifier(etat, { titre: ev.format === "audio" ? "🎧 Ton mini-podcast d'idées est prêt" : "💡 Tes idées sont prêtes",
+          corps: etat.derniers_resultats.idees.slice(0, 3).join(" · ").slice(0, 200), url: "/app?ecran=resultats", tag: "idees" });
       }
       return { ok: true };
     }

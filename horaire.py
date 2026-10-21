@@ -179,7 +179,9 @@ def main() -> int:
         mode_python = (os.environ.get("MODE_DEMANDE", "") or "").strip().lower() or "manuel"
         mode, explication = "manuel", f"Lancement « {evenement} » (mode {mode_python}) : on y va."
     else:
-        export = lire_bot(os.environ.get("BOT_URL", ""), os.environ.get("TELEGRAM_BOT_TOKEN", ""))
+        # Secret partagé : jeton Telegram, sinon jeton GitHub du bot (installation sans Telegram).
+        jeton = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip() or os.environ.get("BOT_GITHUB_TOKEN", "").strip()
+        export = lire_bot(os.environ.get("BOT_URL", ""), jeton)
         secours = None if export else lire_secours(racine / "preferences.json")
         config = (export or {}).get("config") or secours or {}
         if config.get("pays") in pays.PROFILS:      # le pays choisi dans l'application donne le fuseau
@@ -189,8 +191,9 @@ def main() -> int:
                                               date_dernier_episode(racine / "memoire.json"))
             mode_python = mode
         elif not os.environ.get("TELEGRAM_BOT_TOKEN", "").strip():
-            # Dépôt modèle, ou installation pas encore terminée : personne à qui envoyer un épisode.
-            mode, explication = "", "Aucun bot Telegram (secret TELEGRAM_BOT_TOKEN absent) : pas d'épisode programmé ici."
+            # Dépôt modèle, installation pas encore terminée, ou bot (sans Telegram) injoignable et
+            # sans sauvegarde : personne à qui envoyer un épisode.
+            mode, explication = "", "Bot injoignable et pas de Telegram : pas d'épisode programmé ici."
         else:      # ancien fonctionnement, sans bot
             mode, explication = decider(evenement, os.environ.get("PROGRAMMATION", ""), heure_locale, fuseau,
                                         heure_rattrapage=heure_rattrapage)

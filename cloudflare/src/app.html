@@ -503,7 +503,8 @@ const L = { cle: null, ep: null };
 
 function episodeParCle(cle) {
   return (S.d && S.d.episodes || []).find((e) => e.cle === cle)
-    || Object.values(S.archives).flat().find((e) => e.cle === cle) || null;
+    || Object.values(S.archives).flat().find((e) => e.cle === cle)
+    || (S.d && S.d.resultats && S.d.resultats.episode && S.d.resultats.episode.cle === cle ? S.d.resultats.episode : null) || null;
 }
 
 // Un mois plus ancien que les épisodes récents : demandé au bot, gardé pour la session.
@@ -826,6 +827,7 @@ function vueResultats() {
   const res = S.d.resultats;
   if (!res || !res.details.length) return `${entete("Idées trouvées")}<div class="vide">Aucun résultat récent. Lance une recherche depuis une rubrique.</div>`;
   return `${entete("Idées trouvées", res.quand ? `Le ${dateLongue(res.quand.slice(0, 10))}` : "")}
+  ${res.episode ? `<section class="carte"><h2>${h(res.episode.titre)}</h2>${vueLecteur(res.episode)}</section>` : ""}
   ${res.details.map((r) => `
     <section style="display:flex;flex-direction:column;gap:10px">
       <div class="entre"><h2>${h(r.titre || r.regle)}</h2>${r.regle ? `<button type="button" class="lien" data-ouvrir="${h(r.regle)}">Rubrique</button>` : ""}</div>
@@ -1725,7 +1727,7 @@ function vueReglage() {
           <p class="aide"><b>Apple Podcasts</b> : Bibliothèque › ⋯ › Ajouter une émission par URL. <b>AntennaPod</b> : + › Ajouter un podcast par son adresse RSS. Garde cette adresse pour toi : qui l'a peut écouter tes épisodes.</p>`
           : `<button type="button" class="bouton plein" data-action="creer-flux">Créer mon flux privé</button>`}
       </section>
-      <section class="carte" aria-labelledby="t-hors"><h2 id="t-hors">Hors de Telegram</h2>
+      <section class="carte" aria-labelledby="t-hors"><h2 id="t-hors">${d.telegram ? "Hors de Telegram" : "Autres appareils"}</h2>
         <p class="aide">Ouvre ton podcast dans le navigateur de n'importe quel appareil, à l'adresse <b style="word-break:break-all">${h(d.adresse_app)}</b>, puis entre un code. Tu peux ensuite l'ajouter à l'écran d'accueil comme une vraie application.</p>
         ${d.code_appareil ? `<div class="code-geant" aria-label="Code ${h(d.code_appareil.code.split("").join(" "))}">${h(d.code_appareil.code)}</div>
           <p class="aide" style="text-align:center">Valable jusqu'à ${h(new Date(d.code_appareil.expire).toLocaleTimeString("fr-CH", { hour: "2-digit", minute: "2-digit" }))}, pour un seul appareil.</p>`
@@ -1798,7 +1800,7 @@ function vueVoix() {
       <select class="saisie" data-nouveau="animateur-voix" aria-label="Voix du nouvel animateur">${optionsVoix(S.nouveau.voix)}</select>
     </section>
     <section class="carte" aria-labelledby="t-ecoute"><h2 id="t-ecoute">Écouter les voix</h2>
-      <p class="aide">Coche les voix à découvrir, puis prépare leurs extraits (16 par jour au plus). Ils restent ici, pas dans la conversation.</p>
+      <p class="aide">Coche les voix à découvrir, puis prépare leurs extraits (16 par jour au plus). Ils restent ici${d.telegram ? ", pas dans la conversation" : ""}.</p>
       ${[["Conseillées", (x) => x.conseillee], ["Voix féminines", (x) => !x.conseillee && x.genre === "f"], ["Voix masculines", (x) => !x.conseillee && x.genre === "m"]]
         .map(([groupe, filtre]) => `<span class="groupe">${groupe}</span><div class="bloc" style="background:var(--carte-2)">${d.listes.voix.filter(filtre).map(ligneVoix).join("")}</div>`).join("")}
       ${S.aPreparer.length ? `<button type="button" class="bouton plein" data-action="extraits">Préparer ${S.aPreparer.length > 1 ? `ces ${S.aPreparer.length} extraits` : "cet extrait"}</button>` : ""}
@@ -2103,7 +2105,7 @@ document.addEventListener("click", (ev) => {
   }
   switch (ds.action) {
     case "generer":
-      return confirmer("Générer un nouvel épisode maintenant ? Il arrivera ici et dans la conversation.", () => changer("generer", {}, () => {}));
+      return confirmer(`Générer un nouvel épisode maintenant ? Il arrivera ici${S.d.telegram && S.d.reglages.livraison.telegram !== false ? " et dans la conversation" : ""}.`, () => changer("generer", {}, () => {}));
     case "fermer": return tg ? tg.close() : null;
     case "nouvelle": return aller("catalogue");
     case "nouvelle-recherche": return ouvrirFiche(null, { id: "recherche" });
@@ -2242,13 +2244,19 @@ function vueConnexionAppareil() {
   ecranEl.innerHTML = `<div class="connexion">
     <span class="icone-app" aria-hidden="true">${icone("aube", 40, 1.6)}</span>
     <h1>Podcast Matin</h1>
-    <p class="aide" style="font-size:15px;color:var(--doux-2)">Pour ouvrir ton podcast sur cet appareil, entre le code à 6 chiffres affiché dans l'application, dans Telegram : <b>Réglages › Application › Hors de Telegram</b>.</p>
+    <p class="aide" style="font-size:15px;color:var(--doux-2)">Pour ouvrir ton podcast sur cet appareil, entre un code à 6 chiffres : affiché dans l'application déjà ouverte ailleurs (<b>Réglages › Application</b>), ou donné par GitHub (onglet <b>Actions › Code de connexion</b>).</p>
     <input id="code-appareil" class="saisie" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" aria-label="Code à 6 chiffres" style="font-size:28px;letter-spacing:.3em;text-align:center">
     <button type="button" class="bouton plein" data-action="connecter-appareil">Ouvrir le podcast</button>
     ${estIOS() && !autonome() ? `<p class="aide">Sur iPhone, ajoute d'abord cette page à ton écran d'accueil (bouton Partager › « Sur l'écran d'accueil ») et ouvre-la depuis l'icône : c'est là que les notifications marchent, et tu n'auras qu'un code à entrer.</p>` : ""}
   </div>`;
   const champ = document.getElementById("code-appareil");
-  if (champ) champ.focus();
+  // Lien de connexion (…/app#code=123456, donné par GitHub) : le code est déjà là.
+  const donne = /(?:^#|&)code=(\d{6})\b/.exec(location.hash || "");
+  if (champ && donne) {
+    champ.value = donne[1];
+    if (history.replaceState) history.replaceState(null, "", location.pathname + location.search);
+    if (!(estIOS() && !autonome())) connecterAppareil();
+  } else if (champ) champ.focus();
 }
 
 function nomAppareil() {
@@ -2268,15 +2276,16 @@ const autonome = () => (window.matchMedia && window.matchMedia("(display-mode: s
 const notifsPossibles = () => !tg && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 const octetsDe = (b64) => Uint8Array.from(atob(b64.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(b64.length / 4) * 4, "=")), (c) => c.charCodeAt(0));
 
-async function abonnementLocal() {
+async function abonnementLocal(mettreAJour = false) {
   if (!notifsPossibles()) return null;
   const reg = await navigator.serviceWorker.getRegistration("/app").catch(() => null);
+  if (reg && mettreAJour) reg.update().catch(() => {});   // service worker à jour (icône, textes)
   return reg ? reg.pushManager.getSubscription().catch(() => null) : null;
 }
 
 // Au démarrage : cet appareil est-il abonné ? (et l'abonnement, renouvelé par le navigateur, est-il connu du bot ?)
 async function lireNotifs() {
-  const abo = await abonnementLocal();
+  const abo = await abonnementLocal(true);
   NOTIF.fin = abo ? abo.endpoint.slice(-16) : null;
   NOTIF.lu = true;
   const connus = ((S.d && S.d.notifications && S.d.notifications.abonnements) || []).map((a) => a.fin);
@@ -2333,9 +2342,9 @@ function vueNotifs(d) {
           <span class="aide">${a.erreur ? `Dernier envoi ${h(a.erreur)}` : `Depuis le ${h(dateLongue(String(a.cree_le).slice(0, 10)))}`}</span></span>
           <button type="button" class="lien" style="color:var(--rouge)" data-notif-retirer="${h(a.id)}">Retirer</button></div>`).join("")}</div>
         <button type="button" class="bouton gris" data-action="notif-tester">Envoyer un essai</button>` : ""}
-      ${interrupteur("Recevoir aussi l'épisode dans Telegram", d.reglages.livraison.telegram !== false, 'data-regler-bool="livraison.telegram"')}
+      ${d.telegram ? `${interrupteur("Recevoir aussi l'épisode dans Telegram", d.reglages.livraison.telegram !== false, 'data-regler-bool="livraison.telegram"')}
       <p class="aide">${d.reglages.livraison.telegram !== false ? "Tu le reçois dans Telegram et ici."
-        : `Ton épisode n'arrive plus dans Telegram : il t'attend ici${d.flux ? ", dans ton appli de podcasts" : ""}${n.abonnements.length ? " et par notification" : ""}. Les alertes (épisode raté…) restent dans Telegram.`}</p>
+        : `Ton épisode n'arrive plus dans Telegram : il t'attend ici${d.flux ? ", dans ton appli de podcasts" : ""}${n.abonnements.length ? " et par notification" : ""}. Les alertes (épisode raté…) restent dans Telegram.`}</p>` : ""}
     </section>`;
 }
 

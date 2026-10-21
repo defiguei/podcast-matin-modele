@@ -1,0 +1,29 @@
+name: Code de connexion
+run-name: Code de connexion à l'application
+
+# Un code à 6 chiffres (valable une heure, une seule fois) pour ouvrir
+# l'application sur un nouvel appareil, sans Telegram : Run workflow, puis
+# ouvre l'exécution : le code et un lien sont dans son résumé.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BOT_URL: ${{ vars.BOT_URL || 'https://podcast.TON-SOUS-DOMAINE.workers.dev' }}
+
+jobs:
+  code:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v6
+
+      - name: Demander un code au bot
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
+        run: python3 code_connexion.py

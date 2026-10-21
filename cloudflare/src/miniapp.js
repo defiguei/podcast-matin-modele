@@ -44,7 +44,7 @@ export async function lienAudio(secret, cle, maintenant = Date.now()) {
 
 export async function verifierAudio(secret, params, maintenant = Date.now()) {
   const cle = params.get("c") || "", expiration = Number(params.get("e")), signature = params.get("s") || "";
-  if (!/^((img:)?ep:\d{4}-\d{2}-\d{2}(:\d+)?|voix:[A-Za-z]+)$/.test(cle) || !expiration || expiration < maintenant / 1000) return null;
+  if (!/^((img:)?ep:\d{4}-\d{2}-\d{2}(:\d+)?|voix:[A-Za-z]+|idees:dernier)$/.test(cle) || !expiration || expiration < maintenant / 1000) return null;
   return egal(await signerAudio(secret, cle, expiration), signature) ? cle : null;
 }
 
@@ -67,7 +67,7 @@ function egal(a, b) {
 
 // Renvoie { ok: true, utilisateur } si initData est authentique, récent et vient de toi.
 export async function verifierOuverture(initData, env, maintenant = Date.now()) {
-  if (!initData || typeof initData !== "string" || initData.length > 4096) return { ok: false, raison: "absente" };
+  if (!initData || typeof initData !== "string" || initData.length > 4096 || !env.TELEGRAM_BOT_TOKEN) return { ok: false, raison: "absente" };
   const champs = new URLSearchParams(initData);
   const signature = champs.get("hash");
   if (!signature) return { ok: false, raison: "non signée" };
@@ -169,6 +169,10 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
     resultats: etat.derniers_resultats ? {
       quand: etat.derniers_resultats.quand, regles: etat.derniers_resultats.regles || [],
       idees: etat.derniers_resultats.idees || [], details: etat.derniers_resultats.details || [],
+      // Le mini-podcast, comme un épisode pour le lecteur de l'application.
+      episode: liens.idees ? { cle: "idees:dernier", titre: etat.derniers_resultats.titre_audio || "Mini-podcast d'idées", audio: liens.idees,
+        date: String(etat.derniers_resultats.quand || "").slice(0, 10), texte: "", duree: etat.derniers_resultats.duree_audio || null,
+        chapitres: [], sujets: [], coches: [], sources: [], image: null } : null,
     } : null,
     reglages: {
       format: config.format,

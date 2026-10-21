@@ -11,8 +11,8 @@
 import { Etat, VERSION } from "./etat.js";
 import { Audio, objetAudio, nomValide, objetDuNom, typeDuNom, TAILLE_MAX } from "./audio.js";
 import { SERVICE_WORKER } from "./notifications.js";
-import { secretPartage, Telegram, empreinte } from "./services.js";
-import { icone192, icone512, masque512, pomme180 } from "./icones.js";
+import { secretPartage, secretValide, telegramActif, Telegram, empreinte } from "./services.js";
+import { icone192, icone512, masque512, pomme180, badge96 } from "./icones.js";
 import { verifierOuverture, verifierAudio } from "./miniapp.js";
 import PAGE_APP from "./app.html";
 
@@ -38,7 +38,7 @@ export default {
 
     // Telegram : chaque message, bouton ou réaction arrive ici à l'instant.
     if (url.pathname === "/telegram") {
-      if (requete.method !== "POST" || requete.headers.get("X-Telegram-Bot-Api-Secret-Token") !== secret) {
+      if (requete.method !== "POST" || !telegramActif(env) || requete.headers.get("X-Telegram-Bot-Api-Secret-Token") !== secret) {
         return new Response("interdit", { status: 403 });
       }
       const corps = await requete.text();
@@ -69,7 +69,8 @@ export default {
                 { src: "/app/icone-masque.png", sizes: "512x512", type: "image/png", purpose: "maskable" }],
       }, { headers: { "Content-Type": "application/manifest+json", "Cache-Control": "public, max-age=86400" } });
     }
-    const icones = { "/app/icone-192.png": icone192, "/app/icone-512.png": icone512, "/app/icone-masque.png": masque512, "/app/apple-touch-icon.png": pomme180 };
+    const icones = { "/app/icone-192.png": icone192, "/app/icone-512.png": icone512, "/app/icone-masque.png": masque512, "/app/apple-touch-icon.png": pomme180,
+                     "/app/badge.png": badge96 };   // petite icône des notifications (Android n'en garde que la forme)
     if (icones[url.pathname]) {
       return new Response(Uint8Array.from(atob(icones[url.pathname]), (c) => c.charCodeAt(0)), { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=604800" } });
     }
@@ -118,7 +119,7 @@ export default {
 
     // GitHub (fabrication des épisodes) : lecture des réglages, événements.
     if (url.pathname.startsWith("/api/")) {
-      if (requete.headers.get("X-Podcast-Secret") !== secret) return new Response("interdit", { status: 403 });
+      if (!(await secretValide(env, requete.headers.get("X-Podcast-Secret")))) return new Response("interdit", { status: 403 });
       // Dépôt d'un fichier (MP3, pochette, extrait de voix) : rangé directement dans l'objet de son mois.
       if (url.pathname === "/api/fichier") {
         const nom = url.searchParams.get("nom") || "";
@@ -146,7 +147,7 @@ export default {
     }
 
     if (url.pathname === "/desinstaller") {
-      if (url.searchParams.get("secret") !== secret) {
+      if (!secret || url.searchParams.get("secret") !== secret) {
         return new Response("Pour désinstaller, ajoute ?secret=… (voir le README).", { status: 403 });
       }
       const r = await new Telegram(env).appeler("deleteWebhook", {});

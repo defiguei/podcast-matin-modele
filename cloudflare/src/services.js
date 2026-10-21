@@ -42,12 +42,14 @@ export function instantLocal(dateIso, heure) {
 
 export class Telegram {
   constructor(env) {
+    this.actif = telegramActif(env);   // sans Telegram, chaque appel répond « non configuré », sans rien envoyer
     this.base = `${env.TELEGRAM_API || "https://api.telegram.org"}/bot${env.TELEGRAM_BOT_TOKEN}`;
     this.fichiers = `${env.TELEGRAM_API || "https://api.telegram.org"}/file/bot${env.TELEGRAM_BOT_TOKEN}`;
     this.chat = env.TELEGRAM_CHAT_ID;
   }
 
   async appeler(methode, corps = {}) {
+    if (!this.actif) return { ok: false, description: "Telegram non configuré" };
     const r = await fetch(`${this.base}/${methode}`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corps),
     });
@@ -205,7 +207,32 @@ export async function empreinte(texte, longueur = 48) {
   return [...new Uint8Array(octets)].map((o) => o.toString(16).padStart(2, "0")).join("").slice(0, longueur);
 }
 
-// Secret partagé : vérifie les appels de Telegram et de GitHub (dérivé du jeton du bot).
-export function secretPartage(env) {
-  return empreinte(`podcast:${env.TELEGRAM_BOT_TOKEN}`);
+// Telegram est facultatif : il faut son jeton et la conversation.
+export function telegramActif(env) {
+  return Boolean(String(env.TELEGRAM_BOT_TOKEN || "").trim() && String(env.TELEGRAM_CHAT_ID || "").trim());
+}
+
+// Secrets partagés avec GitHub (en-tête X-Podcast-Secret) : dérivés du jeton Telegram
+// (installations d'avant), ou, sans Telegram, du jeton GitHub du bot (BOT_GITHUB_TOKEN,
+// que GitHub et le bot ont tous les deux). Les deux sont acceptés quand ils existent.
+export async function secretsAcceptes(env) {
+  const bases = [env.TELEGRAM_BOT_TOKEN, env.GITHUB_TOKEN].map((x) => String(x || "").trim()).filter(Boolean);
+  return Promise.all(bases.map((base) => empreinte(`podcast:${base}`)));
+}
+
+// Le secret principal : signe les liens audio, protège le webhook Telegram.
+export async function secretPartage(env) {
+  return (await secretsAcceptes(env))[0] || "";
+}
+
+export async function secretValide(env, recu) {
+  if (!recu || typeof recu !== "string") return false;
+  for (const attendu of await secretsAcceptes(env)) {
+    if (attendu.length === recu.length) {
+      let difference = 0;
+      for (let i = 0; i < attendu.length; i++) difference |= attendu.charCodeAt(i) ^ recu.charCodeAt(i);
+      if (!difference) return true;
+    }
+  }
+  return false;
 }

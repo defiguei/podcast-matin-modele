@@ -112,7 +112,7 @@ self.addEventListener("push", (ev) => {
   let d = {};
   try { d = ev.data ? ev.data.json() : {}; } catch (e) { d = { corps: ev.data ? ev.data.text() : "" }; }
   ev.waitUntil(self.registration.showNotification(d.titre || "Podcast du matin", {
-    body: d.corps || "", icon: "/app/icone-192.png", badge: "/app/icone-192.png",
+    body: d.corps || "", icon: "/app/icone-192.png", badge: "/app/badge.png",
     tag: d.tag || "podcast", data: { url: d.url || "/app" },
   }));
 });

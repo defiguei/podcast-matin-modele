@@ -319,16 +319,22 @@ def lancer(identifiants: list[str], format_: str, effectifs: dict, cle_gemini: s
     if sources.credits_tavily:
         p.journal(f"Recherche web : {sources.credits_tavily} crédit(s) Tavily.")
 
-    if sans_envoi or not telegram:
+    if sans_envoi or not (telegram or bot.secret):
         for regle, _, resultat in traitees:
             print(json.dumps({"regle": regle["id"], **resultat}, ensure_ascii=False, indent=2))
         return 0
 
     sondages = []
+    audio_bot, titre_audio, duree = None, "", 0
     if format_ == "audio":
         script, pcm, taux, minutage = mini_podcast(traitees, effectifs, cle_gemini, maintenant)
         mp3 = p.encoder_mp3(pcm, taux, effectifs["debit_mp3_kbps"])
         duree = round(len(pcm) / (2 * taux))
+        titre_audio = script["titre"]
+        # Gardé par le bot : il s'écoute dans l'application (Idées trouvées), avec ou sans Telegram.
+        nom_bot = f"{maintenant:%Y-%m}/idees-{maintenant:%Y-%m-%d-%H%M%S}.mp3"
+        audio_bot = nom_bot if bot.deposer(nom_bot, mp3, "audio/mpeg") else None
+    if format_ == "audio" and telegram:
         lignes = [f"🎧 <b>{e(script['titre'])}</b>", ""]
         for regle, _, resultat in traitees:
             for numero, idee in enumerate(resultat["idees"], 1):
@@ -339,14 +345,14 @@ def lancer(identifiants: list[str], format_: str, effectifs: dict, cle_gemini: s
                        " & ".join(a["nom"] for a in effectifs["animateurs"]), "\n".join(lignes)[:1024], duree, vignette)
         for regle, _, resultat in traitees:
             sondages.append(envoyer_suite(telegram, conversation, regle, resultat))
-    else:
+    elif telegram:
         for regle, collecte, resultat in traitees:
             sondages.append(envoyer_ecrit(telegram, conversation, regle, collecte, resultat, sources, effectifs))
 
     sondage = next((s for s in sondages if s.get("poll_id")), None)
     bot.evenement({"type": "recherche", "regles": [r["id"] for r, _, _ in traitees],
                    "idees": [i["titre"] for _, _, res in traitees for i in res["idees"]][:10],
-                   "sondage": sondage, "format": format_,
+                   "sondage": sondage, "format": format_, "audio": audio_bot, "titre_audio": titre_audio, "duree": duree,
                    # Pour l'application : les idées complètes, rubrique par rubrique.
                    "resultats": [{"regle": r["id"], "titre": r.get("titre", ""), "intro": res.get("intro", ""),
                                   "conseil": res.get("conseil", ""), "idees": res["idees"]} for r, _, res in traitees]})
@@ -382,7 +388,7 @@ def echantillons(liste: str, effectifs: dict, cle_gemini: str, telegram: p.Teleg
         duree = round(len(pcm) / (2 * taux), 1)
         coupure = minutage[1] if len(minutage) == 2 else round(duree / 2, 1)
         temps = {premiere: [0.0, coupure], seconde: [coupure, duree]} if seconde != premiere else {premiere: [0.0, duree]}
-        if sans_envoi or not telegram:
+        if sans_envoi or not (telegram or bot.secret):
             p.journal(f"Extrait {premiere}/{seconde} prêt ({len(mp3)} octets).")
             continue
         legende_audio = f"🎤 <b>{premiere}</b> ({VOIX[premiere]})" + (f" puis <b>{seconde}</b> ({VOIX[seconde]})" if seconde != premiere else "")
@@ -390,12 +396,12 @@ def echantillons(liste: str, effectifs: dict, cle_gemini: str, telegram: p.Teleg
         nom_bot = f"voix/{premiere}-{seconde}-{int(time.time())}.mp3"
         fichier = nom_bot if bot.deposer(nom_bot, mp3, "audio/mpeg") else None
         envoi = telegram.audio(conversation, mp3, f"voix-{premiere}-{seconde}.mp3", f"Voix : {premiere} & {seconde}",
-                               "Podcast du matin", legende_audio, round(len(pcm) / (2 * taux)))
+                               "Podcast du matin", legende_audio, round(len(pcm) / (2 * taux))) if telegram else None
         file_id = ((envoi or {}).get("audio") or {}).get("file_id")
         if file_id or fichier:
             for nom in set(paire):
                 bot.evenement({"type": "echantillon", "voix": nom, "file_id": file_id, "fichier": fichier, "legende": legende_audio,
                                "debut": temps[nom][0], "fin": temps[nom][1]})
-            if discret and (envoi or {}).get("message_id"):
+            if telegram and discret and (envoi or {}).get("message_id"):
                 telegram.appeler("deleteMessage", {"chat_id": conversation, "message_id": envoi["message_id"]})
     return 0

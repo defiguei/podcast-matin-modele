@@ -1,12 +1,12 @@
 {
-  "version": "2026-10-21.5",
+  "version": "2026-10-21.6",
   "date": "2026-10-21",
-  "titre": "Prévenu sans Telegram",
+  "titre": "Telegram facultatif",
   "nouveautes": [
-    "Notifications : ton téléphone te prévient dès que l'épisode est prêt, ou s'il a raté ; la toucher ouvre l'épisode.",
-    "Elles s'activent dans Réglages › Application, depuis l'application ouverte hors de Telegram (sur iPhone : depuis l'icône de l'écran d'accueil).",
-    "Tu peux couper l'envoi des épisodes dans Telegram : ils t'attendent dans l'application, ton appli de podcasts et la notification.",
-    "Ton bot garde tes épisodes un an : l'onglet Épisodes remonte jusque-là (version précédente)."
+    "Telegram devient facultatif : une nouvelle installation peut s'en passer entièrement (docs/INSTALLATION.md).",
+    "Ouvrir l'application sur un nouvel appareil sans Telegram : onglet Actions › Code de connexion, sur GitHub.",
+    "Le mini-podcast d'idées s'écoute aussi dans l'application (Idées trouvées).",
+    "Icône des notifications corrigée sur Android."
   ],
   "supprimes": [
     "cloudflare/worker.js",

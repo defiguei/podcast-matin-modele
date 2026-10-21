@@ -58,10 +58,18 @@ function principal() {
       return;
     }
   }
-  const manquants = ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "GITHUB_TOKEN"].filter((n) => !existants.includes(n) && !noms.includes(n));
-  if (manquants.length) {
-    console.log(`::warning::Il manque au bot : ${manquants.join(", ")}. Ajoute-les en secrets GitHub (BOT_GITHUB_TOKEN pour le jeton GitHub), puis relance « Déployer le bot ».`);
+  console.log(avertissementManquants([...existants, ...noms]) || "Le bot a tout ce qu'il lui faut.");
+}
+
+// Le jeton GitHub est indispensable ; Telegram est facultatif, mais il lui faut ses deux secrets.
+export function avertissementManquants(presents) {
+  const a = new Set(presents);
+  if (!a.has("GITHUB_TOKEN")) return "::warning::Il manque au bot le jeton GitHub : ajoute le secret GitHub BOT_GITHUB_TOKEN, puis relance « Déployer le bot ».";
+  const telegram = ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"].filter((n) => a.has(n));
+  if (telegram.length === 1) {
+    return `::warning::Telegram à moitié réglé : il manque ${telegram[0] === "TELEGRAM_BOT_TOKEN" ? "TELEGRAM_CHAT_ID" : "TELEGRAM_BOT_TOKEN"} (ou retire l'autre pour fonctionner sans Telegram).`;
   }
+  return "";
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) principal();
