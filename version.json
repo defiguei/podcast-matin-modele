@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-22.1",
+  "version": "2026-10-22.2",
   "date": "2026-10-22",
-  "titre": "Nouvelle rubrique sans transport par défaut",
+  "titre": "Rubriques à la voix : la consigne n'est plus obligatoire",
   "nouveautes": [
-    "Une nouvelle rubrique démarre sans transport (« Pas de transport ») : tu peux en choisir un dans les détails de recherche."
+    "Une rubrique demandée à la voix ou à l'écrit est créée même si seul le titre a été compris : la consigne reprend tes mots."
   ],
   "supprimes": [
     "cloudflare/worker.js",

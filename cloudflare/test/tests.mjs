@@ -887,6 +887,17 @@ await scenario("Rubrique : période saisie à la main", async () => {
   verifier(tg(liste, "editMessageText")[0].corps.text.includes("à partir du"), "la période s'affiche", tg(liste, "editMessageText")[0].corps.text);
 });
 
+await scenario("Rubrique : Gemini ne donne que le titre, la consigne vient des mots de l'auditeur", async () => {
+  await fetch(`${BOT}/test/etat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ etat: { ...(await etat()).etat, assistant: null, attente: null } }) });
+  const avant = (await etat()).config.regles.length;
+  await gemini({ operations: [{ action: "nouvelle_regle", regle: { titre: "Tech Optique", transport: "peu_importe" } }], reponse: "" });
+  await message("crée une rubrique pour demain sur les nouvelles technologies dans l'optique");
+  await attendre((l) => tg(l, "sendMessage").length >= 1);
+  const regles = (await etat()).config.regles;
+  const r = regles.find((x) => x.titre === "Tech Optique");
+  verifier(regles.length === avant + 1 && r && r.consigne.includes("nouvelles technologies dans l'optique"), "rubrique créée sans consigne de Gemini", r);
+});
+
 await scenario("Rubrique : jeudis seulement = à venir ; longueur sans place ; transport sans critère", async () => {
   await fetch(`${BOT}/test/etat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ etat: { ...(await etat()).etat, assistant: null, attente: null } }) });
   await horloge("2026-10-14T10:00");                       // mercredi

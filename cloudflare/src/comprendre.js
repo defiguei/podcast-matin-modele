@@ -141,7 +141,7 @@ Voix disponibles (nom de la voix, « prénom » donné par l'auditeur) : ${voix}
 RUBRIQUES : une rubrique est un passage de l'épisode avec ses propres paramètres. Pour en créer une, choisis d'abord dans « modele » le modèle du catalogue le plus proche :
 ${MODELES_RUBRIQUES.map((m) => `- ${m.id} : ${m.titre} — ${m.texte}`).join("\n")}
 Le modèle règle déjà la place, la longueur et les sources : ne remplis que ce que l'auditeur précise. Champs de « regle » :
-- titre (court, 2 à 5 mots) et consigne (ce que les animateurs doivent dire ou faire, en une ou deux phrases claires) : toujours, sauf pour prenom, journee et meteo si l'auditeur ne précise rien.
+- titre (court, 2 à 5 mots) et consigne (ce que les animateurs doivent dire ou faire, en une ou deux phrases claires) : toujours les DEUX, une rubrique sans consigne est refusée, sauf pour prenom, journee et meteo si l'auditeur ne précise rien.
 - periode_type : toujours | dates (debut/fin) | jours (jours = codes) | une_fois (prochain épisode) | ponctuelle (recherche hors podcast, résultats à part)
 - condition_texte : si la rubrique dépend de l'agenda (« un match de foot ») ; condition_moment : jour_meme | veille | jours_avant (+ condition_n)
 - place : clé ou id après lequel elle passe (seulement si l'auditeur le dit) ; longueur : ${LONGUEURS_FORMULAIRE.join(" | ")} (aucune = glissée dans l'épisode, sans passage à elle)
@@ -235,6 +235,12 @@ function nouvelleRubrique(config, r = {}, ctx) {
   const f = formulaireNeuf(config, modele.id, r.periode_type === "ponctuelle");
   if (!modele.pret) { f.titre = ""; f.consigne = ""; }     // titre et consigne du modèle à compléter : c'est à l'auditeur de les dire
   completerFormulaire(f, r, ctx.message);
+  // Gemini oublie parfois la consigne (il ne donne que le titre) : on reprend alors les mots de l'auditeur
+  // plutôt que de refuser la rubrique.
+  if (!rempli(f.consigne) && rempli(ctx.message) && ctx.message !== "(vocal)") {
+    f.consigne = rempli(f.titre) ? `Parle de : ${f.titre}. Demande de l'auditeur : ${ctx.message}` : String(ctx.message);
+    f.consigne = f.consigne.replace(/\s+/g, " ").trim().slice(0, 400);
+  }
   if (!rempli(f.consigne)) throw new Error("je n'ai pas compris ce que la rubrique doit dire");
   if (!rempli(f.titre)) f.titre = titreDepuisConsigne(f.consigne);
   const regle = enregistrerRubrique(config, f, null, ctx.aujourdHui, ctx.message);
