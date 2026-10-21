@@ -23,7 +23,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, champsDepuisFormulaire, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, nettoyerEquipe, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-21.6";
+export const VERSION = "2026-10-21.7";
 const MAX_REFAITS = 6;
 const LONGUEURS_VALIDES = ["phrase", "courte", "developpee"];
 const MAX_RECHERCHES = 15;
@@ -34,9 +34,8 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 // Message envoyé après une mise à jour : les nouveautés de cette version…
 const NOUVEAUTES = `✅ <b>Ton podcast est à jour</b> (version ${VERSION}).
 
-• Telegram devient facultatif : une installation peut s'en passer (code de connexion donné par GitHub, onglet Actions › Code de connexion).
-• Le mini-podcast d'idées s'écoute aussi dans l'application (Idées trouvées).
-• Icône des notifications corrigée sur Android.`;
+• Après un déploiement, le résumé de l'exécution GitHub rappelle l'adresse de l'application et comment obtenir un code de connexion.
+• Telegram reste facultatif (version précédente) : code de connexion par l'onglet Actions › Code de connexion.`;
 
 // … ou, pour qui arrive d'avant l'application (installation neuve, ancienne version
 // réglée par la conversation), sa présentation.

@@ -1161,7 +1161,8 @@ verifier(code == 0 and "**123456**" in resume_md and "https://podcast.alice.work
          "code de connexion : demandé avec le secret du jeton GitHub, affiché dans le résumé (code et lien)")
 verifier("::notice title=Code de connexion::123456" in sortie, "code aussi en annotation de l'exécution")
 code, sortie, resume_md, _ = essai_code(["--premiere"], {"ok": True, "code": None, "raison": "telegram"})
-verifier(code == 0 and not resume_md and "Telegram est configuré" in sortie, "avec Telegram : pas de code à la fin du déploiement")
+verifier(code == 0 and "Telegram est configuré" in resume_md and "Code de connexion" in resume_md and not re.search(r"\*\*\d{6}\*\*", resume_md),
+         "avec Telegram : pas de code à la fin du déploiement, mais le résumé dit pourquoi et comment en avoir un")
 code, sortie, _, _ = essai_code([], urllib.error.HTTPError("u", 403, "interdit", {}, None))
 verifier(code == 1 and "::error::" in sortie and "Déployer le bot" in sortie, "secret refusé : erreur claire (workflow « Code de connexion »)")
 code, sortie, _, _ = essai_code(["--premiere"], urllib.error.URLError("pas de réseau"))

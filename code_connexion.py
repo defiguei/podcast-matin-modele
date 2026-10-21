@@ -59,11 +59,17 @@ def main(arguments: list[str]) -> int:
     code = donnees.get("code")
     application = donnees.get("adresse") or f"{adresse}/app"
     if not code:
-        if donnees.get("raison") == "telegram":
-            print("Telegram est configuré : ouvre l'application depuis ton bot (bouton « Application »).")
-        else:
-            print("Un appareil est déjà connecté : pour en ajouter un autre, lance « Code de connexion » "
-                  "(onglet Actions) ou affiche un code dans l'application (Réglages › Application).")
+        # Fin du déploiement, quand un code n'est pas utile : on dit pourquoi, et comment en avoir un.
+        pourquoi = ("Telegram est configuré : l'application s'ouvre depuis ton bot (bouton « Application »)."
+                    if donnees.get("raison") == "telegram" else "Un appareil est déjà connecté à l'application.")
+        resume("\n".join([
+            "## 📱 Ton application",
+            "",
+            f"Adresse : **{application}** (dans le navigateur de n'importe quel appareil).",
+            "",
+            f"{pourquoi} Pour l'ouvrir sur un nouvel appareil, il faut un code : *Afficher un code* dans l'application "
+            "déjà ouverte (Réglages › Application), ou ici : onglet **Actions** › **Code de connexion** › *Run workflow*.",
+        ]))
         return 0
     jusqua = donnees.get("jusqua") or ""
     resume("\n".join([
