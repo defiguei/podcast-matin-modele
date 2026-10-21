@@ -9,7 +9,7 @@ import {
   JOURS, NOMS_JOURS, COURTS_JOURS, LONGUEURS, SOURCES, RUBRIQUES, etatRegle, prochainPassage, decrirePeriode,
   heurePrevue, prochainEpisode, ajouterJours, dateCourte, nomRubrique, dateOuNull, nettoyerListe,
   VOIX, VOIX_CONSEILLEES, VITESSES, TONS, CITER, TRANSPORTS, fluxActus, profilPays, PAYS, DELAIS_RATTRAPAGE,
-  DEVISES, REGIONS_FERIES, MODES_VOIX, sourcesAuto, estFerie, nomFerie, animateursDuJour, equipeComplete, normaliserTexte,
+  DEVISES, REGIONS_FERIES, MODES_VOIX, sourcesAuto, estFerie, nomFerie, animateursDuJour, placesDuJour, normaliserTexte,
   jourDeSemaine, MODELES_RUBRIQUES, catalogueRubriques, nouvelleRegle, modifierRegle,
 } from "./config.js";
 
@@ -208,8 +208,11 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
     reglages: {
       format: config.format,
       voix: { vitesse: config.voix.vitesse, tutoiement: config.voix.tutoiement, prenom: config.voix.prenom, animateurs: config.voix.animateurs,
-              solo: Boolean(config.voix.solo), mode: config.voix.mode || "fixe", equipe: config.voix.equipe || [],
-              jours: config.voix.jours || {}, tirage: config.voix.tirage || [],
+              solo: Boolean(config.voix.solo), mode: config.voix.mode || "fixe",
+              // Chaque voix est un animateur possible : ses prénoms et celles qu'on n'utilise pas.
+              noms: config.voix.noms || {}, inactives: config.voix.inactives || [],
+              // Mode « selon le jour » : les deux voix de chaque jour (habituels aux places vides).
+              jours: Object.fromEntries(JOURS.map((j) => [j, placesDuJour(config.voix, j)])),
               du_prochain: animateursDuJour(config, prochain?.date || aujourdHui) },
       actus: { ville: config.actus.ville, sujets_preferes: config.actus.sujets_preferes, sujets_a_eviter: config.actus.sujets_a_eviter,
                fraicheur_heures: config.actus.fraicheur_heures, citer_sources: config.actus.citer_sources,
@@ -414,22 +417,6 @@ export function sourcesDeLegende(legende, entites) {
     sources.push({ titre: suite ? `${site} · ${suite}` : site, url: ent.url });
   }
   return nettoyerSources(sources);
-}
-
-// Équipe d'animateurs proposée par la page : noms uniques, voix connues.
-export function nettoyerEquipe(equipe, animateurs) {
-  const voixConnues = new Set(VOIX.map(([nom]) => nom));
-  const pris = new Set((animateurs || []).map((a) => normaliserTexte(a.nom)));
-  const resultat = [];
-  for (const a of Array.isArray(equipe) ? equipe.slice(0, 8) : []) {
-    const nom = String(a?.nom ?? "").replace(/\s+/g, " ").trim().slice(0, 20);
-    if (!nom) throw new Error("Chaque animateur a besoin d'un prénom.");
-    if (pris.has(normaliserTexte(nom))) throw new Error(`Le prénom « ${nom} » est déjà pris.`);
-    if (!voixConnues.has(a?.voix)) throw new Error(`Voix inconnue pour ${nom}.`);
-    pris.add(normaliserTexte(nom));
-    resultat.push({ nom, voix: a.voix });
-  }
-  return resultat;
 }
 
 // Jours fériés d'un pays (Nager.Date, gratuit) : [[date, nom]] pour une année.

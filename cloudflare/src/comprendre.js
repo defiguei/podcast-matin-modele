@@ -14,6 +14,7 @@ import {
   regler, supprimerRegle, heureValide, dateOuNull, placerRubriqueApres,
   nettoyerListe, LONGUEUR_CONSIGNE, normaliserTexte, etatRegle, decrirePeriode, nomRubrique, jourDeSemaine,
   heureParlee, dateCourte, nettoyerPlanning, fluxActus, profilPays, MODELES_RUBRIQUES,
+  nomVoix, voixActive, trouverVoix, renommerVoix, activerVoix, choisirVoixJour,
 } from "./config.js";
 import { formulaireNeuf, formulaireDepuisRegle, enregistrerRubrique, PERIODES } from "./miniapp.js";
 import { GRATUIT } from "./assistant.js";
@@ -22,6 +23,7 @@ export const ACTIONS = [
   "regler", "ajouter_liste", "retirer_liste", "horaire", "exception", "retirer_exception", "pause", "retirer_pause",
   "approfondir", "nouvelle_regle", "modifier_regle", "supprimer_regle", "pause_regle", "reactiver_regle",
   "deplacer_rubrique", "activer_rubrique", "desactiver_rubrique", "ajouter_source", "retirer_source",
+  "nommer_voix", "activer_voix", "desactiver_voix", "voix_jour",
   "nouvel_episode", "resultats", "assistant", "afficher", "annuler", "aucune",
 ];
 
@@ -38,6 +40,7 @@ const NOMS_ACTIONS = {
   nouvelle_regle: "Nouvelle rubrique", modifier_regle: "Rubrique", supprimer_regle: "Suppression",
   pause_regle: "Rubrique", reactiver_regle: "Rubrique", deplacer_rubrique: "Déroulé", activer_rubrique: "Déroulé",
   desactiver_rubrique: "Déroulé", ajouter_source: "Source", retirer_source: "Source",
+  nommer_voix: "Voix", activer_voix: "Voix", desactiver_voix: "Voix", voix_jour: "Animateurs du jour",
 };
 
 export function schemaOperations() {
@@ -57,10 +60,12 @@ export function schemaOperations() {
             action: { type: "string", enum: ACTIONS },
             chemin: decrit({ type: "string", enum: Object.keys(REGLAGES) }, "Pour regler, ajouter_liste, retirer_liste."),
             valeur: decrit(texte, "Nouvelle valeur d'un réglage, élément d'une liste, sujet, source. Jamais une heure d'horaire ou d'exception."),
-            jours: decrit(listeTextes, "Pour horaire : codes des jours, ou [\"tous\"], [\"semaine\"], [\"weekend\"]."),
+            jours: decrit(listeTextes, "Pour horaire et voix_jour : codes des jours, ou [\"tous\"], [\"semaine\"], [\"weekend\"]."),
             heure: decrit(texte, "Pour horaire et exception, OBLIGATOIRE : HH:MM, ou \"aucun\" seulement si l'auditeur ne veut pas d'épisode."),
             date: texte, du: texte, au: texte,
-            id: texte, ids: listeTextes, format: { type: "string", enum: ["ecrit", "audio"] },
+            id: decrit(texte, "Rubrique (R3) ; pour nommer_voix, activer_voix, desactiver_voix : la voix ou son prénom."),
+            ids: decrit(listeTextes, "Rubriques ; pour voix_jour : une ou deux voix (ou prénoms), vide = animateurs habituels."),
+            format: { type: "string", enum: ["ecrit", "audio"] },
             rubrique: texte, apres: texte,
             regle: {
               type: "object",
@@ -96,7 +101,7 @@ export function schemaOperations() {
 
 export function consigneComprehension(config, ctx) {
   const adresse = config.voix.tutoiement ? "en tutoyant l'auditeur" : "en vouvoyant l'auditeur";
-  const voix = VOIX.map(([nom, style, genre]) => `${nom} (${style}, ${genre === "f" ? "féminine" : "masculine"})`).join(", ");
+  const voix = VOIX.map(([nom, style, genre]) => `${nom}${nomVoix(config.voix, nom) !== nom ? ` « ${nomVoix(config.voix, nom)} »` : ""} (${style}, ${genre === "f" ? "féminine" : "masculine"}${voixActive(config.voix, nom) ? "" : ", pas utilisée"})`).join(", ");
   return `Tu es l'assistant de réglage d'un podcast audio matinal personnel, en français. Tu traduis chaque message de l'auditeur (écrit ou vocal) en opérations précises sur ses réglages. C'est l'application qui applique les opérations et annonce elle-même ce qui a changé.
 
 Aujourd'hui : ${NOMS_JOURS[jourDeSemaine(ctx.aujourdHui)]} ${ctx.aujourdHui}. Codes des jours : lun, mar, mer, jeu, ven, sam, dim. Écris toujours les dates au format AAAA-MM-JJ (calcule « demain », « samedi prochain », « la semaine prochaine » d'après la date du jour) et les heures au format HH:MM.
@@ -117,6 +122,9 @@ OPÉRATIONS (champ « action ») :
 - supprimer_regle / pause_regle / reactiver_regle : id. Les rubriques sont numérotées R1, R2… (liste plus bas).
 - deplacer_rubrique : rubrique (clé ou id) ; apres = clé ou id après lequel la placer ("debut" pour la mettre en premier).
 - activer_rubrique / desactiver_rubrique : rubrique (clé ou id).
+- nommer_voix : donne un prénom à une voix (chaque voix est un animateur possible, appelé par ce prénom). id = la voix ou son prénom actuel ; valeur = le nouveau prénom (vide : elle reprend son nom de voix).
+- activer_voix / desactiver_voix : id = la voix ou son prénom. Une voix désactivée n'anime plus aucun épisode.
+- voix_jour : qui présente certains jours de la semaine (mode « selon le jour », chemin voix.mode = jours). jours = codes ; ids = une ou deux voix ou prénoms (vide : les animateurs habituels).
 - ajouter_source : valeur = nom du média ou adresse de son flux RSS. retirer_source : valeur = nom de la source (sources par défaut : ${fluxActus({ ...config, actus: {} }).map((f) => f.nom).join(", ")}).
 - nouvel_episode : l'auditeur veut un nouvel épisode tout de suite. ids = rubriques à traiter spécialement (facultatif).
 - resultats : lancer tout de suite la recherche d'une ou plusieurs rubriques. ids, format = "ecrit" ou "audio".
@@ -126,9 +134,9 @@ OPÉRATIONS (champ « action ») :
 - aucune : rien à changer (question, remerciement…).
 
 RÉGLAGES SIMPLES (chemin → valeurs) :
-${Object.entries(REGLAGES).filter(([c]) => !LISTES.includes(c)).map(([c, d]) => `- ${c} : ${d.nom}`).join("\n")}
+${Object.entries(REGLAGES).filter(([c]) => !LISTES.includes(c)).map(([c, d]) => `- ${c} : ${d.gemini || d.nom}`).join("\n")}
 Valeurs : vitesse parmi ${VITESSES.join(", ")} (« plus lentement » = un cran plus lent) ; ton parmi ${Object.keys(TONS).join(", ")} ; citer_sources parmi ${Object.keys(CITER).join(", ")} ; planning.feries parmi normal, dimanche (horaire du dimanche), aucun.
-Voix disponibles : ${voix}.
+Voix disponibles (nom de la voix, « prénom » donné par l'auditeur) : ${voix}. Les animateurs s'appellent par le prénom de leur voix ; « au hasard » (voix.mode = aleatoire) tire parmi les voix utilisées.
 
 RUBRIQUES : une rubrique est un passage de l'épisode avec ses propres paramètres. Pour en créer une, choisis d'abord dans « modele » le modèle du catalogue le plus proche :
 ${MODELES_RUBRIQUES.map((m) => `- ${m.id} : ${m.titre} — ${m.texte}`).join("\n")}
@@ -438,6 +446,22 @@ function appliquerUne(config, op, ctx) {
       const regle = config.regles.find((r) => r.id === cle);
       if (regle) { regle.etat = element.actif ? "active" : "pause"; regle.modifie_le = ctx.aujourdHui; }
       return { changement: `${nomRubrique(config, cle)} ${element.actif ? "activée" : "désactivée"}` };
+    }
+    case "nommer_voix": {
+      const voix = trouverVoix(config.voix, op.id);
+      if (!voix) throw new Error(`voix inconnue : ${op.id || "?"}`);
+      renommerVoix(config.voix, voix, op.valeur);
+      return { changement: config.voix.noms[voix] ? `${voix} s'appelle ${config.voix.noms[voix]}` : `${voix} reprend son nom` };
+    }
+    case "activer_voix":
+    case "desactiver_voix":
+      return { changement: activerVoix(config.voix, String(op.id || ""), op.action === "activer_voix") };
+    case "voix_jour": {
+      const jours = joursDepuisTexte(op.jours || []);
+      if (!jours.length) throw new Error("jours non reconnus");
+      const changements = jours.map((j) => choisirVoixJour(config.voix, j, op.ids || []));
+      if (config.voix.mode !== "jours") { config.voix.mode = "jours"; changements.unshift("Animateurs : selon le jour"); }
+      return { changement: changements.join(" ; ") };
     }
     case "ajouter_source": {
       const valeur = String(op.valeur ?? "").trim();

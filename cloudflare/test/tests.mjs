@@ -94,6 +94,9 @@ await scenario("Installation et import des réglages", async () => {
   const { config } = await etat();
   verifier(config.format.duree_minutes === 5 && config.voix.vitesse === "rapide" && config.actus.ville === "Yverdon", "import depuis preferences.json", config.format);
   verifier(config.consignes[0]?.includes("Yverdon") && config.planning.jours.lun === "07:30", "consignes et horaire importés");
+  const voixImportees = (await app("etat")).donnees.reglages.voix;
+  verifier(voixImportees.noms.Aoede === "Léa" && voixImportees.noms.Puck === "Hugo" && voixImportees.animateurs.map((a) => a.voix).join() === "Aoede,Puck",
+    "animateurs de reglages.toml : leurs prénoms passent à leurs voix", voixImportees);
   verifier(Boolean((await etat()).reveil), "réveil programmé dès l'installation");
   const deuxieme = await obtenir(`${BOT}/installer`);
   const apres = await appels();
@@ -1030,7 +1033,7 @@ await scenario("Application : réglages, planning, listes", async () => {
   verifier((await app("regler", { chemin: "format.duree_minutes", valeur: 40 })).ok === false, "valeur hors limites refusée");
   verifier((await app("regler", { chemin: "prochain_numero", valeur: 3 })).ok === false, "réglage non autorisé refusé");
   r = await app("regler", { chemin: "voix.animateurs.1.voix", valeur: "Charon" });
-  verifier(r.ok && (await etat()).config.voix.animateurs[1].voix === "Charon", "voix d'un animateur");
+  verifier(r.ok && (await etat()).config.voix.animateurs[1].voix === "Charon" && r.donnees.reglages.voix.animateurs[1].nom === "Charon", "voix d'un animateur (son nom suit la voix)");
   r = await app("liste", { chemin: "actus.sujets_a_eviter", valeurs: ["sport", "people", "sport"] });
   ({ config } = await etat());
   verifier(r.ok && config.actus.sujets_a_eviter.join() === "sport,people", "thèmes à éviter (doublons retirés)", config.actus.sujets_a_eviter);
@@ -1230,29 +1233,84 @@ await scenario("Application : miniatures, sources par section, historique, deman
   await app("regler", { chemin: "format.duree_minutes", valeur: 5 });
 });
 
-await scenario("Application : animateurs (équipe, jours, tirage, une voix), fériés, agenda", async () => {
+await scenario("Application : voix (prénoms, voix utilisées, jours, tirage, une voix), fériés, agenda", async () => {
   await horloge("2026-10-20T08:00");                       // mardi
-  let r = await app("equipe", { equipe: [{ nom: "Sam", voix: "Charon" }, { nom: "Iris", voix: "Kore" }] });
-  verifier(r.ok && r.donnees.reglages.voix.equipe.length === 2, "équipe d'animateurs", r.erreur);
-  verifier((await app("equipe", { equipe: [{ nom: "Léa", voix: "Kore" }] })).ok === false, "prénom déjà pris refusé");
-  verifier((await app("equipe", { equipe: [{ nom: "Zoé", voix: "Inconnue" }] })).ok === false, "voix inconnue refusée");
+  const apiConfig = async () => (await (await fetch(`${BOT}/api/config`, { headers: entetesApi })).json()).config;
+  await app("regler", { chemin: "voix.animateurs.0.voix", valeur: "Aoede" });
+  let r = await app("regler", { chemin: "voix.animateurs.1.voix", valeur: "hugo" });
+  verifier(r.ok && r.donnees.reglages.voix.animateurs.map((a) => `${a.nom}/${a.voix}`).join() === "Léa/Aoede,Hugo/Puck", "habituels choisis par la voix ou par son prénom", r.donnees.reglages.voix.animateurs);
+  r = await app("regler", { chemin: "voix.animateurs.0.voix", valeur: "Puck" });
+  verifier(r.ok && r.donnees.reglages.voix.animateurs.map((a) => a.voix).join() === "Puck,Aoede", "choisir l'autre habituel les échange");
+  await app("regler", { chemin: "voix.animateurs.0.voix", valeur: "Aoede" });
+  // Chaque voix est un animateur possible, sous son nom tant qu'on ne la renomme pas.
+  r = await app("etat");
+  verifier(r.donnees.reglages.voix.inactives.length === 0 && r.donnees.listes.voix.length === 30 && !r.donnees.reglages.voix.noms.Kore, "toutes les voix utilisées, sous leur nom", r.donnees.reglages.voix);
+  r = await app("nom_voix", { voix: "Charon", nom: "  Sam " });
+  verifier(r.ok && r.donnees.reglages.voix.noms.Charon === "Sam" && r.message === "Charon s'appelle Sam", "prénom donné à une voix", r.erreur || r.message);
+  await app("nom_voix", { voix: "Kore", nom: "Iris" });
+  verifier((await app("nom_voix", { voix: "Leda", nom: "léa" })).ok === false, "prénom déjà pris refusé");
+  verifier((await app("nom_voix", { voix: "Leda", nom: "Puck" })).erreur?.includes("autre voix"), "nom d'une autre voix refusé");
+  verifier((await app("nom_voix", { voix: "Inconnue", nom: "Zoé" })).ok === false, "voix inconnue refusée");
+  r = await app("nom_voix", { voix: "Aoede", nom: "Léonie" });
+  verifier(r.ok && r.donnees.reglages.voix.animateurs[0].nom === "Léonie" && (await apiConfig()).voix.animateurs[0].nom === "Léonie", "renommer la voix d'un habituel renomme l'animateur");
+  r = await app("nom_voix", { voix: "Aoede", nom: "" });
+  verifier(r.ok && r.donnees.reglages.voix.animateurs[0].nom === "Aoede" && r.message === "Aoede reprend son nom", "prénom effacé : la voix reprend son nom");
+  await app("nom_voix", { voix: "Aoede", nom: "Léa" });
+  // Voix utilisées ou non.
+  r = await app("voix_active", { voix: "Aoede", active: false });
+  verifier(r.ok === false && r.erreur.includes("habituels"), "un animateur habituel reste utilisé", r.erreur);
+  r = await app("voix_active", { voix: "Zephyr", active: false });
+  verifier(r.ok && r.donnees.reglages.voix.inactives.join() === "Zephyr", "voix désactivée", r.donnees.reglages.voix.inactives);
+  // Selon le jour : deux listes par jour, les habituels aux places vides.
   await app("regler", { chemin: "voix.mode", valeur: "jours" });
-  r = await app("voix_jour", { jour: "mar", noms: ["Iris", "Sam", "Personne"] });
-  let exp = await (await fetch(`${BOT}/api/config`, { headers: entetesApi })).json();
-  verifier(r.ok && exp.config.voix.animateurs.map((a) => a.nom).join() === "Iris,Sam", "mardi : Iris et Sam pour GitHub", exp.config.voix.animateurs);
+  r = await app("voix_jour", { jour: "mar", voix: ["Kore", "Charon"] });
+  verifier(r.ok && (await apiConfig()).voix.animateurs.map((a) => a.nom).join() === "Iris,Sam", "mardi : Iris et Sam pour GitHub", r.erreur);
+  verifier(r.donnees.reglages.voix.jours.mer.join() === "Aoede,Puck" && r.donnees.reglages.voix.jours.mar.join() === "Kore,Charon", "les autres jours : les habituels", r.donnees.reglages.voix.jours);
+  r = await app("voix_jour", { jour: "mer", voix: ["", "Kore"] });
+  verifier(r.ok && r.donnees.reglages.voix.jours.mer.join() === "Aoede,Kore", "une place vide : l'habituel", r.donnees.reglages.voix.jours.mer);
+  r = await app("voix_active", { voix: "Charon", active: false });
+  verifier(r.ok && (await apiConfig()).voix.animateurs.map((a) => a.nom).join() === "Iris,Léa", "voix désactivée : son jour revient à l'habituel", r.donnees.reglages.voix.jours.mar);
+  await app("voix_active", { voix: "Charon", active: true });
+  await app("voix_jour", { jour: "mar", voix: ["Kore", "Charon"] });
   await app("regler", { chemin: "voix.solo", valeur: true });
-  exp = await (await fetch(`${BOT}/api/config`, { headers: entetesApi })).json();
-  verifier(exp.config.voix.animateurs.length === 1 && exp.config.voix.animateurs[0].nom === "Iris", "une seule voix : un animateur envoyé", exp.config.voix.animateurs);
-  await app("regler", { chemin: "voix.mode", valeur: "aleatoire" });
+  let exp = await apiConfig();
+  verifier(exp.voix.animateurs.length === 1 && exp.voix.animateurs[0].nom === "Iris", "une seule voix : un animateur envoyé", exp.voix.animateurs);
   await app("regler", { chemin: "voix.solo", valeur: false });
-  r = await app("tirage", { noms: ["Sam", "Iris"] });
-  exp = await (await fetch(`${BOT}/api/config`, { headers: entetesApi })).json();
-  const tires = exp.config.voix.animateurs.map((a) => a.nom).sort().join();
-  const encore = (await (await fetch(`${BOT}/api/config`, { headers: entetesApi })).json()).config.voix.animateurs.map((a) => a.nom).sort().join();
-  verifier(r.ok && tires === "Iris,Sam" && encore === tires, "tirage parmi la sélection, stable pour la journée", tires);
+  // Au hasard : parmi les voix utilisées seulement, le même tirage toute la journée.
+  await app("voix_active", { voix: "Zephyr", active: true });
+  const autres = (await app("etat")).donnees.listes.voix.map((x) => x.nom).filter((x) => !["Aoede", "Puck", "Kore", "Charon"].includes(x));
+  for (const voix of autres) await app("voix_active", { voix, active: false });
+  await app("regler", { chemin: "voix.mode", valeur: "aleatoire" });
+  const tirages = new Set();
+  for (const jour of ["2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-25", "2026-10-26"]) {
+    await horloge(`${jour}T08:00`);
+    const noms = (await apiConfig()).voix.animateurs.map((a) => a.voix);
+    noms.forEach((n) => tirages.add(n));
+    verifier(noms.length === 2 && noms[0] !== noms[1] && noms.every((n) => ["Aoede", "Puck", "Kore", "Charon"].includes(n)), `tirage du ${jour} parmi les voix utilisées`, noms);
+  }
+  const encore = (await apiConfig()).voix.animateurs.map((a) => a.voix).join();
+  verifier(encore === (await apiConfig()).voix.animateurs.map((a) => a.voix).join() && tirages.size > 2, "tirage stable pour la journée, varié d'un jour à l'autre", [...tirages]);
+  await horloge("2026-10-20T08:00");
   verifier((await etat()).config.voix.animateurs.map((a) => a.nom).join() === "Léa,Hugo", "les animateurs habituels ne changent pas");
-  await app("regler", { chemin: "voix.mode", valeur: "fixe" });
-  await app("equipe", { equipe: [] });
+  // Par la conversation : même chemin que l'application.
+  await gemini({ entendu: "", operations: [{ action: "nommer_voix", id: "Iris", valeur: "Inès" }, { action: "voix_jour", jours: ["ven"], ids: ["Inès", "Hugo"] },
+    { action: "activer_voix", id: "Zephyr" }], reponse: "" });
+  r = await app("parler", { texte: "Iris s'appelle Inès, et le vendredi c'est Inès et Hugo" });
+  const v = r.donnees.reglages.voix;
+  verifier(r.ok && v.noms.Kore === "Inès" && v.mode === "jours" && v.jours.ven.join() === "Kore,Puck" && !v.inactives.includes("Zephyr"), "demande libre : prénom, jour, voix réactivée", { v, erreurs: r.erreurs });
+  await gemini({ entendu: "", operations: [{ action: "desactiver_voix", id: "Léa" }], reponse: "" });
+  r = await app("parler", { texte: "je ne veux plus entendre Léa" });
+  verifier(r.donnees.reglages.voix.inactives.includes("Aoede") === false && JSON.stringify(r).includes("habituels"), "demande libre : un habituel n'est pas désactivé", r.erreurs || r.message_compris);
+  // Les anciens réglages (prénom + voix, équipe, tirage) passent aux voix.
+  const avant = (await etat()).config;
+  await envoyerJson(`${BOT}/test/etat`, { config: { ...avant, voix: { vitesse: "normale", tutoiement: true, prenom: "", solo: false, mode: "aleatoire",
+    animateurs: [{ nom: "Léa", voix: "Aoede" }, { nom: "Hugo", voix: "Puck" }], equipe: [{ nom: "Sam", voix: "Charon" }, { nom: "Iris", voix: "Kore" }, { nom: "Kore", voix: "Leda" }],
+    jours: { mar: ["Iris", "Sam"], mer: ["Personne"] }, tirage: ["Sam", "Iris"] } } });
+  const migre = (await app("etat")).donnees.reglages.voix;
+  verifier(migre.noms.Charon === "Sam" && migre.noms.Kore === "Iris" && !migre.noms.Leda && migre.noms.Aoede === "Léa", "anciens animateurs : prénoms passés aux voix", migre.noms);
+  verifier(migre.jours.mar.join() === "Kore,Charon" && migre.jours.mer.join() === "Aoede,Puck", "anciens jours : par voix", migre.jours);
+  verifier(migre.inactives.length === 26 && !migre.inactives.includes("Kore") && !migre.inactives.includes("Aoede"), "ancien tirage : ses voix (et les habituels) restent utilisées", migre.inactives);
+  await envoyerJson(`${BOT}/test/etat`, { config: { ...avant, voix: { ...avant.voix, mode: "fixe", inactives: [], jours: {} } } });
   // Jours fériés de France (liste téléchargée), puis retour à Vaud.
   await vider();
   r = await app("feries", { region: "FR" });

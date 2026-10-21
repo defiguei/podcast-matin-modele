@@ -5,7 +5,7 @@
 import {
   JOURS, NOMS_JOURS, COURTS_JOURS, VITESSES, TONS, CITER, RUBRIQUES, VOIX, VOIX_CONSEILLEES, SOURCES, TRANSPORTS,
   LONGUEURS, LIBELLES_ETATS, etatRegle, prochainPassage, decrirePeriode, nomRubrique, heureParlee, dateCourte, prochainEpisode,
-  heurePrevue, fluxActus, profilPays, PAYS, ECRAN_INTEGREE, DELAIS_RATTRAPAGE,
+  heurePrevue, fluxActus, profilPays, PAYS, ECRAN_INTEGREE, DELAIS_RATTRAPAGE, nomVoix,
 } from "./config.js";
 import { echapper as e } from "./services.js";
 
@@ -147,9 +147,10 @@ const ECRANS = {
     const parPage = 8;
     const voix = [...VOIX].sort((x, y) => (VOIX_CONSEILLEES.includes(y[0]) - VOIX_CONSEILLEES.includes(x[0])));
     const tranche = voix.slice(p * parPage, (p + 1) * parPage);
-    const texte = `🎤 <b>Animateur ${i + 1} : ${e(a.nom)}</b>\nVoix actuelle : ${a.voix}\n\n⭐ = voix conseillées. ♀/♂ = timbre plutôt féminin ou masculin.`;
+    const texte = `🎤 <b>Animateur ${i + 1} : ${e(a.nom)}</b>\nVoix actuelle : ${a.voix}\n\n⭐ = voix conseillées. ♀/♂ = timbre plutôt féminin ou masculin. Chaque voix garde son prénom ; le changer renomme la voix.`;
+    const prenom = (nom) => (nomVoix(config.voix, nom) !== nom ? `« ${nomVoix(config.voix, nom)} » ` : "");
     const boutons = tranche.map(([nom, style, genre]) =>
-      b(`${nom === a.voix ? "• " : ""}${VOIX_CONSEILLEES.includes(nom) ? "⭐ " : ""}${nom} ${genre === "f" ? "♀" : "♂"} ${style}`, `a:va:${i}:${nom}`));
+      b(`${nom === a.voix ? "• " : ""}${VOIX_CONSEILLEES.includes(nom) ? "⭐ " : ""}${prenom(nom)}${nom} ${genre === "f" ? "♀" : "♂"} ${style}`, `a:va:${i}:${nom}`));
     const clavier = [];
     for (let k = 0; k < boutons.length; k += 2) clavier.push(boutons.slice(k, k + 2));
     const nav = [];

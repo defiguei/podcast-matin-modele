@@ -8,7 +8,7 @@ import {
   nettoyerPlanning, prochainEpisode, etatRegle, modifierRegle, supprimerRegle, nouvelleRegle, deplacerRubrique,
   nomRubrique, decrirePeriode, ajouterJours, dateCourte, heureParlee, normaliserTexte, nettoyerListe, TONS, CITER, VOIX_CONSEILLEES,
   placerRubrique, FLUX_DEFAUT, NOMS_JOURS, heureValide, modifierChamp, CHAMPS_RUBRIQUE, TRANSPORTS, analyserPeriode,
-  VOIX, animateursDuJour, equipeComplete, LONGUEUR_CONSIGNE, PAYS, profilPays, fluxActus, FERIES_CALCULES,
+  VOIX, animateursDuJour, renommerVoix, activerVoix, choisirVoixJour, LONGUEUR_CONSIGNE, PAYS, profilPays, fluxActus, FERIES_CALCULES,
 } from "./config.js";
 import { consigneComprehension, contexteComprehension, schemaOperations, appliquerOperations, resumerJours, messageCompris } from "./comprendre.js";
 import { ecran, ficheRegle, clavierRegle, tableauDeBord, clavierTableau, clavierEpisode, clavierAvisNegatif, aide, CLAVIER_FIXE, COMMANDES } from "./ui.js";
@@ -21,9 +21,9 @@ import { CLES, testerCle, lireAgenda, identifiantAgenda, resumeConnexions } from
 import { fluxRss, chapitresJson, episodeDeCle, jetonValide, nouveauJeton } from "./flux.js";
 import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
-import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, nettoyerEquipe, telechargerFeries } from "./miniapp.js";
+import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-21.9";
+export const VERSION = "2026-10-21.10";
 const MAX_REFAITS = 6;
 const LONGUEURS_VALIDES = ["phrase", "courte", "developpee"];
 const MAX_RECHERCHES = 15;
@@ -34,11 +34,10 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 // Message envoyé après une mise à jour : les nouveautés de cette version…
 const NOUVEAUTES = `✅ <b>Ton podcast est à jour</b> (version ${VERSION}).
 
-• Demandes écrites ou vocales : une heure mal comprise ne coupe plus tes épisodes, le bot te dit ce qu'il n'a pas compris.
-• La réponse du bot est ce qu'il a vraiment fait ; en vocal, il te montre aussi ce qu'il a entendu.
-• Couper plusieurs jours d'un coup ou supprimer une rubrique attend ton ✅.
-• Une rubrique demandée en parlant suit le catalogue « + » de l'application (place, longueur, sources).
-• Demande au bot : tes dernières demandes et ce qui en a été fait.`;
+• Toutes les voix sont des animateurs possibles, sous leur nom : donne-leur un prénom dans Réglages › Voix.
+• Chaque voix s'active ou se coupe ; « Au hasard » tire parmi celles que tu utilises.
+• Selon le jour : une liste par place pour choisir qui présente chaque jour.
+• « Autres animateurs » disparaît : leurs prénoms passent à leurs voix.`;
 
 // … ou, pour qui arrive d'avant l'application (installation neuve, ancienne version
 // réglée par la conversation), sa présentation.
@@ -304,7 +303,12 @@ export class Etat extends DurableObject {
     affecter("agenda.notes", valeur("inclure_notes_agenda"));
     affecter("actus.fraicheur_heures", valeur("fraicheur_heures"));
     const animateurs = [...toml.matchAll(/\[\[animateurs\]\]\s*\nnom\s*=\s*"([^"]+)"\s*\nvoix\s*=\s*"([^"]+)"/g)];
-    if (animateurs.length === 2) config.voix.animateurs = animateurs.map((m) => ({ nom: m[1], voix: m[2] }));
+    if (animateurs.length === 2) {
+      // Ancien format (un prénom et une voix par animateur) : la lecture de la configuration
+      // donne ces prénoms à leurs voix.
+      config.voix.animateurs = animateurs.map((m) => ({ nom: m[1], voix: m[2] }));
+      delete config.voix.noms;
+    }
     const workflow = (await this.gh.lire(".github/workflows/podcast-du-matin.yml"))?.texte || "";
     const heure = /HEURE_LOCALE:\s*"(\d{2}:\d{2})"/.exec(workflow)?.[1];
     if (heure) for (const j of JOURS) config.planning.jours[j] = heure;
@@ -1937,25 +1941,20 @@ export class Etat extends DurableObject {
           if (!REGLAGES_APP.includes(demande.chemin)) return refus("Réglage inconnu.");
           libelle = regler(config, demande.chemin, demande.valeur);
           break;
-        case "equipe":
-          config.voix.equipe = nettoyerEquipe(demande.equipe, config.voix.animateurs);
-          config.voix.tirage = (config.voix.tirage || []).filter((n) => equipeComplete(config.voix).some((a) => normaliserTexte(a.nom) === normaliserTexte(n)));
-          libelle = `Équipe : ${equipeComplete(config.voix).map((a) => a.nom).join(", ")}`;
+        // ── voix : chacune est un animateur possible ──
+        case "nom_voix": {
+          const voix = String(demande.voix || "");
+          renommerVoix(config.voix, voix, demande.nom);
+          libelle = config.voix.noms[voix] ? `${voix} s'appelle ${config.voix.noms[voix]}` : `${voix} reprend son nom`;
           break;
-        case "voix_jour": {
+        }
+        case "voix_active":
+          libelle = activerVoix(config.voix, String(demande.voix || ""), Boolean(demande.active));
+          break;
+        case "voix_jour":
           if (!JOURS.includes(demande.jour)) return refus("Jour inconnu.");
-          const equipe = equipeComplete(config.voix);
-          const noms = (Array.isArray(demande.noms) ? demande.noms : []).map((n) => equipe.find((a) => normaliserTexte(a.nom) === normaliserTexte(n))?.nom).filter(Boolean).slice(0, 2);
-          config.voix.jours = { ...(config.voix.jours || {}), [demande.jour]: noms };
-          libelle = `${NOMS_JOURS[demande.jour]} : ${noms.length ? noms.join(" & ") : "animateurs habituels"}`;
+          libelle = choisirVoixJour(config.voix, demande.jour, demande.voix);
           break;
-        }
-        case "tirage": {
-          const equipe = equipeComplete(config.voix);
-          config.voix.tirage = (Array.isArray(demande.noms) ? demande.noms : []).map((n) => equipe.find((a) => normaliserTexte(a.nom) === normaliserTexte(n))?.nom).filter(Boolean);
-          libelle = `Tirage parmi : ${config.voix.tirage.join(", ") || "toute l'équipe"}`;
-          break;
-        }
         case "feries": {
           libelle = regler(config, "planning.feries_region", demande.region);
           if (!FERIES_CALCULES.includes(config.planning.feries_region)) {

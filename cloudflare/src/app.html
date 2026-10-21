@@ -298,6 +298,22 @@ input.avance { width: 100%; accent-color: var(--aube); margin: 0; height: 24px; 
 .ajout .saisie { flex: 1; }
 .ajout .bouton { flex: none; }
 .compacte { min-height: 40px; background: var(--carte-2); border: 0; border-radius: 10px; padding: 0 10px; color: var(--texte); font-variant-numeric: tabular-nums; }
+/* voix : chacune est un animateur possible */
+.voix-ligne { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "nom inter" "detail inter"; align-items: center; column-gap: 8px; row-gap: 6px; padding: 10px 6px 10px 12px; }
+.voix-ligne .nom-voix { grid-area: nom; min-height: 40px; width: 100%; min-width: 0; border: 0; border-radius: 10px; background: var(--carte); color: var(--texte); padding: 0 10px; font-size: 15px; font-weight: 600; }
+.voix-ligne .nom-voix::placeholder { color: var(--texte); opacity: 1; }
+.voix-ligne .mini-inter { grid-area: inter; }
+.voix-ligne .detail { grid-area: detail; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding-left: 2px; }
+.voix-ligne .detail .aide { margin: 0; min-width: 0; }
+.voix-ligne.eteinte .nom-voix, .voix-ligne.eteinte .nom-voix::placeholder { color: var(--doux); font-weight: 500; }
+.coche.ecoute { display: inline-flex; align-items: center; gap: 4px; padding: 0 12px 0 8px; color: var(--texte); }
+.coche.ecoute svg { width: 16px; height: 16px; }
+.choix-voix { min-width: 0; max-width: 100%; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+.reglage .choix-voix { width: 168px; flex: none; }
+.jour-voix { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center; gap: 8px; padding: 6px 10px 6px 14px; min-height: 52px; }
+.jour-voix > span { font-size: 15px; font-weight: 500; }
+.jour-voix > div { display: grid; grid-template-columns: repeat(var(--places, 2), minmax(0, 1fr)); gap: 6px; }
+.jour-voix .compacte { background-color: var(--carte); width: 100%; font-size: 14px; padding-right: 28px; background-position: right 8px center; }
 .idee { background: var(--carte); border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
 .idee h3 { margin: 0; font-family: var(--titre); font-size: 17px; }
 .idee .infos { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -351,7 +367,7 @@ const APPAREIL = "podcast-matin-appareil";
 const jetonAppareil = { lire() { try { return localStorage.getItem(APPAREIL) || ""; } catch (e) { return ""; } },
   ecrire(v) { try { if (v) localStorage.setItem(APPAREIL, v); else localStorage.removeItem(APPAREIL); } catch (e) { /* stockage refusé */ } } };
 const S = { d: null, ecran: "accueil", integree: null, fiche: null, mois: 0, occupe: false,
-            reglage: null, episode: null, texte: null, discussion: [], charge: 0, choisi: null, jourVue: { rubriques: "", deroule: "" }, jourDernier: {}, moisEpisodes: null, archives: {}, aPreparer: [], nouveau: { nom: "", voix: "Kore" } };
+            reglage: null, episode: null, texte: null, discussion: [], charge: 0, choisi: null, jourVue: { rubriques: "", deroule: "" }, jourDernier: {}, moisEpisodes: null, archives: {}, aPreparer: [] };
 const ecranEl = document.getElementById("ecran");
 const navEl = document.getElementById("nav");
 const miniEl = document.getElementById("mini");
@@ -660,8 +676,9 @@ function basculerExtrait(voix) {
 function majExtraits() {
   document.querySelectorAll("[data-extrait]").forEach((b) => {
     const enCours = b.dataset.extrait === X.voix && !extrait.paused;
-    b.innerHTML = enCours ? PAUSE : LECTURE;
-    b.setAttribute("aria-label", `${enCours ? "Pause" : "Écouter"} ${b.dataset.extrait}`);
+    const nom = (S.d.reglages.voix.noms || {})[b.dataset.extrait] || b.dataset.extrait;
+    b.innerHTML = `${enCours ? PAUSE : LECTURE}${b.classList.contains("ecoute") ? (enCours ? "Pause" : "Écouter") : ""}`;
+    b.setAttribute("aria-label", `${enCours ? "Pause" : "Écouter"} ${nom}`);
   });
 }
 extrait.addEventListener("timeupdate", () => {
@@ -1885,47 +1902,60 @@ function vueReglage() {
   return `${entete(titre, "Réglages")}${corps ? corps() : ""}`;
 }
 
+// Chaque voix est un animateur possible, appelé par son prénom (son nom de voix
+// tant qu'on ne lui en donne pas). Les habituels, les jours et le tirage au sort
+// se choisissent parmi les voix utilisées.
 function vueVoix() {
-  const d = S.d, r = d.reglages, v = r.voix, equipe = [...v.animateurs, ...v.equipe];
-  const optionsVoix = (choisie) => [["Conseillées", (x) => x.conseillee], ["Voix féminines", (x) => !x.conseillee && x.genre === "f"], ["Voix masculines", (x) => !x.conseillee && x.genre === "m"]]
-    .map(([groupe, filtre]) => `<optgroup label="${groupe}">${d.listes.voix.filter(filtre).map((x) => `<option value="${x.nom}" ${choisie === x.nom ? "selected" : ""}>${x.nom} — ${h(x.description)}</option>`).join("")}</optgroup>`).join("");
-  const pastilles = (choisis, attribut) => equipe.map((a) => `<button type="button" ${attribut} data-nom="${h(a.nom)}" aria-pressed="${choisis.includes(a.nom)}">${h(a.nom)}</button>`).join("");
+  const d = S.d, r = d.reglages, v = r.voix;
+  const nomDe = (voix) => (v.noms || {})[voix] || voix;
+  const utilisee = (voix) => !(v.inactives || []).includes(voix);
+  const habituelles = v.animateurs.map((a) => a.voix);
+  const voulus = v.solo ? 1 : 2;
+  // Dans la case : le prénom seul ; dans la feuille de choix : la voix et son timbre.
+  const optionsVoix = (choisie) => [["Voix féminines", "f"], ["Voix masculines", "m"]].map(([groupe, genre]) => {
+    const liste = d.listes.voix.filter((x) => x.genre === genre && (utilisee(x.nom) || x.nom === choisie))
+      .sort((a, b) => nomDe(a.nom).localeCompare(nomDe(b.nom), "fr"));
+    return liste.length ? `<optgroup label="${groupe}">${liste.map((x) => `<option value="${x.nom}" label="${h(nomDe(x.nom))}" ${choisie === x.nom ? "selected" : ""}>${h(nomDe(x.nom))}${nomDe(x.nom) !== x.nom ? ` · ${x.nom}` : ""} — ${h(x.description)}</option>`).join("")}</optgroup>` : "";
+  }).join("");
+  const aideMode = {
+    fixe: `${v.solo ? "L'animateur habituel présente" : "Les animateurs habituels présentent"} chaque épisode.`,
+    jours: "Choisis qui présente chaque jour. Au départ, ce sont les animateurs habituels.",
+    aleatoire: `Chaque épisode tire au sort ${v.solo ? "une voix" : "deux voix"} parmi les ${d.listes.voix.filter((x) => utilisee(x.nom)).length} voix utilisées (« Les voix », plus bas).`,
+  }[v.mode] || "";
   const ligneVoix = (x) => {
+    const nom = nomDe(x.nom), active = utilisee(x.nom), habituelle = habituelles.includes(x.nom);
     const pret = r.echantillons[x.nom] && r.temps_echantillons[x.nom];
-    return `<div class="reglage"><span>${x.nom} <span class="aide">${h(x.description)}</span></span>
-      ${pret ? `<button type="button" class="lire petit" data-extrait="${x.nom}" aria-label="Écouter ${x.nom}">${X.voix === x.nom && !extrait.paused ? PAUSE : LECTURE}</button>`
-        : `<button type="button" class="coche" role="checkbox" aria-checked="${S.aPreparer.includes(x.nom)}" data-a-preparer="${x.nom}" aria-label="Préparer l'extrait de ${x.nom}">${S.aPreparer.includes(x.nom) ? "✓ " : ""}Préparer</button>`}</div>`;
+    const enCours = X.voix === x.nom && !extrait.paused;
+    return `<div class="voix-ligne${active ? "" : " eteinte"}">
+      <input class="nom-voix" maxlength="20" value="${h(nom === x.nom ? "" : nom)}" placeholder="${x.nom}" data-nom-voix="${x.nom}" autocomplete="off" spellcheck="false" enterkeyhint="done" aria-label="Prénom de la voix ${x.nom}">
+      <button type="button" class="mini-inter" role="switch" aria-checked="${active}" data-voix-active="${x.nom}" aria-label="Utiliser ${h(nom)}"><span class="rail"><span></span></span></button>
+      <div class="detail"><span class="aide">${nom !== x.nom ? `${x.nom} · ` : ""}${h(x.description)}${habituelle ? " · habituel" : active ? "" : " · pas utilisée"}</span>
+        ${pret ? `<button type="button" class="coche ecoute" data-extrait="${x.nom}" aria-label="${enCours ? "Pause" : "Écouter"} ${h(nom)}">${enCours ? PAUSE : LECTURE}${enCours ? "Pause" : "Écouter"}</button>`
+          : `<button type="button" class="coche" role="checkbox" aria-checked="${S.aPreparer.includes(x.nom)}" data-a-preparer="${x.nom}" aria-label="Préparer l'extrait de ${h(nom)}">${S.aPreparer.includes(x.nom) ? "✓ " : ""}Préparer</button>`}</div></div>`;
   };
   return `<section class="bloc">
       <div class="reglage"><span>Vitesse</span>${choix("voix.vitesse", v.vitesse, d.listes.vitesses.map((x) => [x, majuscule(x)]))}</div>
     </section>
     <section class="carte" aria-labelledby="t-anim">
       <h2 id="t-anim">Animateurs</h2>
-      <p class="aide" style="font-size:14px;color:var(--doux-2)">Prochain épisode : ${h(v.du_prochain.map((a) => `${a.nom} (${a.voix})`).join(" & "))}</p>
+      <p class="aide" style="font-size:14px;color:var(--doux-2)">Prochain épisode : ${h(v.du_prochain.map((a) => a.nom).join(" & "))}</p>
       <div class="segments" style="grid-template-columns:repeat(3,minmax(0,1fr));background:var(--carte-2)">
         ${Object.entries(d.listes.modes_voix).map(([m, n]) => `<button type="button" style="font-size:13px" data-valeur-segment="${m}" data-chemin="voix.mode" aria-pressed="${v.mode === m}">${n}</button>`).join("")}</div>
       <div class="bloc" style="background:var(--carte-2)">${interrupteur("Une seule voix (sans second animateur)", v.solo, 'data-regler-bool="voix.solo"')}</div>
-      ${v.mode === "jours" ? `<p class="aide">Choisis ${v.solo ? "l'animateur" : "deux animateurs"} pour chaque jour. Rien de coché : les animateurs habituels.</p>
-        <div class="bloc" style="background:var(--carte-2)">${d.listes.jours.map(([j, , long]) => `<div class="reglage" style="flex-wrap:wrap"><span style="flex:0 0 84px">${majuscule(long)}</span>
-          <div class="puces-choix" style="flex:1">${pastilles(v.jours[j] || [], `data-voix-jour="${j}"`)}</div></div>`).join("")}</div>` : ""}
-      ${v.mode === "aleatoire" ? `<p class="aide">Chaque épisode tire au sort ${v.solo ? "un animateur" : "deux animateurs"} parmi ceux cochés (au moins ${v.solo ? "un" : "deux"} ; sinon toute l'équipe).</p>
-        <div class="puces-choix">${pastilles(v.tirage, "data-tirage")}</div>` : ""}
+      <span class="groupe">Animateurs habituels</span>
+      <div class="bloc" style="background:var(--carte-2)">
+        ${v.animateurs.map((a, i) => `<div class="reglage${v.solo && i === 1 && v.mode === "fixe" ? " grise" : ""}"><span>Animateur ${i + 1}${v.solo && i === 1 && v.mode === "fixe" ? '<br><span class="aide">Pas utilisé avec une seule voix</span>' : ""}</span>
+          <select class="compacte choix-voix" data-regler="voix.animateurs.${i}.voix" aria-label="Animateur habituel ${i + 1}">${optionsVoix(a.voix)}</select></div>`).join("")}
+      </div>
+      <p class="aide">${aideMode}</p>
+      ${v.mode === "jours" ? `<div class="bloc" style="background:var(--carte-2)">${d.listes.jours.map(([j, court, long]) => `<div class="jour-voix${d.planning.jours[j] ? "" : " grise"}">
+          <span title="${majuscule(long)}${d.planning.jours[j] ? "" : " : pas d'épisode"}">${court}</span>
+          <div style="--places:${voulus}">${(v.jours[j] || habituelles).slice(0, voulus).map((x, i) => `<select class="compacte choix-voix" data-voix-jour="${j}" data-place="${i}" aria-label="${majuscule(long)} : animateur ${i + 1}">${optionsVoix(x)}</select>`).join("")}</div></div>`).join("")}</div>
+        ${Object.values(d.planning.jours).some((x) => !x) ? `<p class="aide">Les jours grisés n'ont pas d'épisode (Planning).</p>` : ""}` : ""}
     </section>
-    ${v.animateurs.map((a, i) => `<section class="sous-bloc ${v.solo && i === 1 && v.mode === "fixe" ? "grise" : ""}"><span class="etiquette" style="font-size:13px;color:var(--doux)">Animateur habituel ${i + 1}${v.solo && i === 1 && v.mode === "fixe" ? " · pas utilisé avec une seule voix" : ""}</span>
-      <input class="saisie" maxlength="20" value="${h(a.nom)}" data-regler-texte="voix.animateurs.${i}.nom" aria-label="Prénom de l'animateur ${i + 1}">
-      <select class="saisie" data-regler="voix.animateurs.${i}.voix" aria-label="Voix de l'animateur ${i + 1}">${optionsVoix(a.voix)}</select></section>`).join("")}
-    <section class="carte" aria-labelledby="t-equipe"><h2 id="t-equipe">Autres animateurs</h2>
-      <p class="aide">Pour varier selon le jour ou au hasard.</p>
-      ${v.equipe.map((a, i) => `<div class="sous-bloc" style="background:var(--carte-2)">
-        <div class="ajout"><input class="saisie" maxlength="20" value="${h(a.nom)}" data-equipe-nom="${i}" aria-label="Prénom">
-        <button type="button" class="icone" data-retirer-equipe="${i}" aria-label="Retirer ${h(a.nom)}">${icone("croix", 18, 2)}</button></div>
-        <select class="saisie" data-equipe-voix="${i}" aria-label="Voix de ${h(a.nom)}">${optionsVoix(a.voix)}</select></div>`).join("")}
-      <div class="ajout"><input class="saisie" maxlength="20" placeholder="Prénom" data-nouveau="animateur-nom" aria-label="Prénom du nouvel animateur" value="${h(S.nouveau.nom)}">
-        <button type="button" class="bouton gris" data-action="ajouter-animateur">Ajouter</button></div>
-      <select class="saisie" data-nouveau="animateur-voix" aria-label="Voix du nouvel animateur">${optionsVoix(S.nouveau.voix)}</select>
-    </section>
-    <section class="carte" aria-labelledby="t-ecoute"><h2 id="t-ecoute">Écouter les voix</h2>
-      <p class="aide">Coche les voix à découvrir, puis prépare leurs extraits (16 par jour au plus). Ils restent ici${d.telegram ? ", pas dans la conversation" : ""}.</p>
+    <section class="carte" aria-labelledby="t-ecoute"><h2 id="t-ecoute">Les voix</h2>
+      <p class="aide">Chaque voix est un animateur possible, appelé par son prénom : écris-en un pour la renommer, ou laisse vide pour garder son nom. Coupe celles que tu ne veux pas entendre.</p>
+      <p class="aide">Pour écouter une voix, coche « Préparer » puis prépare les extraits (16 par jour au plus). Ils restent ici${d.telegram ? ", pas dans la conversation" : ""}.</p>
       ${[["Conseillées", (x) => x.conseillee], ["Voix féminines", (x) => !x.conseillee && x.genre === "f"], ["Voix masculines", (x) => !x.conseillee && x.genre === "m"]]
         .map(([groupe, filtre]) => `<span class="groupe">${groupe}</span><div class="bloc" style="background:var(--carte-2)">${d.listes.voix.filter(filtre).map(ligneVoix).join("")}</div>`).join("")}
       ${S.aPreparer.length ? `<button type="button" class="bouton plein" data-action="extraits">Préparer ${S.aPreparer.length > 1 ? `ces ${S.aPreparer.length} extraits` : "cet extrait"}</button>` : ""}
@@ -2177,17 +2207,7 @@ document.addEventListener("click", (ev) => {
   if (ds.texte) return demander("texte", { cle: ds.texte }).then((j) => { if (j.ok) { S.texte = { cle: ds.texte, texte: j.texte }; dessiner(); } });
   if (ds.extrait) return basculerExtrait(ds.extrait);
   if (ds.aPreparer) { S.aPreparer = S.aPreparer.includes(ds.aPreparer) ? S.aPreparer.filter((x) => x !== ds.aPreparer) : [...S.aPreparer, ds.aPreparer]; vibrer("choix"); return dessiner(); }
-  if (ds.retirerEquipe) { const equipe = S.d.reglages.voix.equipe.filter((_, i) => i !== Number(ds.retirerEquipe)); return changer("equipe", { equipe }); }
-  if (ds.voixJour) {
-    const v = S.d.reglages.voix, max = v.solo ? 1 : 2;
-    let noms = [...(v.jours[ds.voixJour] || [])];
-    noms = noms.includes(ds.nom) ? noms.filter((n) => n !== ds.nom) : [...noms, ds.nom].slice(-max);
-    return changer("voix_jour", { jour: ds.voixJour, noms });
-  }
-  if (ds.tirage !== undefined && ds.nom) {
-    const t = S.d.reglages.voix.tirage;
-    return changer("tirage", { noms: t.includes(ds.nom) ? t.filter((n) => n !== ds.nom) : [...t, ds.nom] });
-  }
+  if (ds.voixActive) return changer("voix_active", { voix: ds.voixActive, active: el.getAttribute("aria-checked") !== "true" });
   if (ds.lien) return ouvrirLien(ds.lien);
   if (ds.creuser) return changer("creuser", { sujet: ds.creuser }, () => {});
   if (ds.chercher) return chercher(ds.chercher, "ecrit");
@@ -2304,12 +2324,6 @@ document.addEventListener("click", (ev) => {
       });
     }
     case "extraits": return changer("extraits", { voix: S.aPreparer }, (j) => { if (j.ok) S.aPreparer = []; dessiner(); });
-    case "ajouter-animateur": {
-      const champ = document.querySelector('[data-nouveau="animateur-nom"]');
-      const nom = champ ? champ.value.trim() : "";
-      if (!nom) return annoncer("Donne un prénom au nouvel animateur.", true);
-      return changer("equipe", { equipe: [...S.d.reglages.voix.equipe, { nom, voix: S.nouveau.voix }] }, (j) => { if (j.ok) S.nouveau = { nom: "", voix: "Kore" }; dessiner(); });
-    }
     case "ecran-accueil": try { tg.addToHomeScreen(); } catch (e) { annoncer("Impossible ici : mets Telegram à jour.", true); } return;
     case "recharger": return demarrer();
   }
@@ -2320,20 +2334,20 @@ document.addEventListener("input", (ev) => {
   if (!t.dataset) return;
   if (t.dataset.champ && S.fiche && t.tagName !== "SELECT") return saisirChamp(t);
   if (t.dataset.avance && L.cle === t.dataset.avance) { audio.currentTime = Number(t.value); return; }
-  if (t.dataset.nouveau === "animateur-nom") { S.nouveau.nom = t.value; return; }
 });
 document.addEventListener("change", (ev) => {
   const t = ev.target;
   if (!t.dataset) return;
   if (t.dataset.bulle) return ajouterBulle(t);
   if (t.dataset.region !== undefined) return changer("feries", { region: t.value });
-  if (t.dataset.equipeNom !== undefined || t.dataset.equipeVoix !== undefined) {
-    const equipe = S.d.reglages.voix.equipe.map((a) => ({ ...a }));
-    const i = Number(t.dataset.equipeNom ?? t.dataset.equipeVoix);
-    if (t.dataset.equipeNom !== undefined) equipe[i].nom = t.value; else equipe[i].voix = t.value;
-    return changer("equipe", { equipe });
+  if (t.dataset.nomVoix) return changer("nom_voix", { voix: t.dataset.nomVoix, nom: t.value });
+  if (t.dataset.voixJour) {
+    // Les deux voix du jour telles qu'affichées ; choisir celle de l'autre place les échange.
+    const places = [...S.d.reglages.voix.jours[t.dataset.voixJour]], i = Number(t.dataset.place);
+    if (places[1 - i] === t.value) places[1 - i] = places[i];
+    places[i] = t.value;
+    return changer("voix_jour", { jour: t.dataset.voixJour, voix: places });
   }
-  if (t.dataset.nouveau === "animateur-voix") { S.nouveau.voix = t.value; return; }
   if (t.dataset.bienvenueHeure) { if (t.value) B[t.dataset.bienvenueHeure] = t.value; return; }
   if (t.dataset.champ && S.fiche && t.tagName === "SELECT") return saisirChamp(t);
   if (t.dataset.jourMode) {
@@ -2354,6 +2368,7 @@ document.addEventListener("change", (ev) => {
 document.addEventListener("keydown", (ev) => {
   if ((ev.key === "Enter" || ev.key === ",") && ev.target.dataset && ev.target.dataset.bulle) { if (ajouterBulle(ev.target) || ev.key === "Enter") ev.preventDefault(); return; }
   if (ev.key === "Enter" && ev.target.id === "code-appareil") { ev.preventDefault(); return connecterAppareil(); }
+  if (ev.key === "Enter" && ev.target.dataset && ev.target.dataset.nomVoix) { ev.preventDefault(); ev.target.blur(); return; }
   if (ev.key === "Enter" && !ev.shiftKey && ev.target.id === "demande") { ev.preventDefault(); const v = ev.target.value; ev.target.value = ""; envoyerDemande(v); }
 });
 // Après une longue absence, les données (et les liens audio) se rafraîchissent.

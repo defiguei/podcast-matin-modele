@@ -95,6 +95,7 @@ export const VOIX = [
   ["Achird", "amicale", "m"], ["Zubenelgenubi", "familière", "m"], ["Sadachbia", "vive", "m"], ["Sadaltager", "savante", "m"],
 ];
 export const VOIX_CONSEILLEES = ["Aoede", "Kore", "Leda", "Sulafat", "Puck", "Charon", "Fenrir", "Achird"];
+export const MAX_PRENOM = 20;   // prénom donné à une voix
 
 export const FLUX_DEFAUT = PAYS[PAYS_DEFAUT].flux;
 
@@ -114,14 +115,16 @@ export function configParDefaut() {
       feries_cache: {},       // { "2027": [["2027-01-01", "Nouvel an"], …] } pour les autres que Vaud
     },
     format: { duree_minutes: 3, nombre_sujets: 3, ton: "naturel" },
+    // Chaque voix est un animateur possible, sous son nom (celui de la voix, sauf si
+    // l'auditeur lui donne un prénom) ; une voix désactivée n'est jamais choisie.
     voix: {
       vitesse: "normale", tutoiement: true, prenom: "",
-      animateurs: [{ nom: "Léa", voix: "Aoede" }, { nom: "Hugo", voix: "Puck" }],
+      animateurs: [{ nom: "Léa", voix: "Aoede" }, { nom: "Hugo", voix: "Puck" }], // habituels (nom recopié de la voix)
+      noms: { Aoede: "Léa", Puck: "Hugo" }, // prénoms donnés aux voix ; les autres gardent leur nom
+      inactives: [],      // voix à ne pas utiliser
       solo: false,        // une seule voix (le premier animateur du jour)
-      mode: "fixe",       // fixe | jours (animateurs par jour) | aleatoire (tirage dans une sélection)
-      equipe: [],         // autres animateurs possibles : [{ nom, voix }]
-      jours: {},          // { lun: ["Léa", "Sam"], … } en mode « jours »
-      tirage: [],         // noms retenus pour le tirage au sort
+      mode: "fixe",       // fixe | jours (voix choisies par jour) | aleatoire (tirage parmi les voix activées)
+      jours: {},          // { lun: ["Kore", ""], … } en mode « jours » : deux places, "" = animateur habituel
     },
     deroule: Object.keys(RUBRIQUES).map((cle) => ({ cle, actif: true })),
     agenda: { jours: 7, horizon: 90, notes: true, deplacements: true, jours_deplacements: 14,
@@ -166,11 +169,6 @@ const booleen = (v) => {
 const texteCourt = (max = 60) => (v) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
 // Une consigne peut être une vraie phrase (300 caractères) ; les autres listes restent courtes (80).
 const liste = (max = 15, longueur = 80) => (v) => nettoyerListe(Array.isArray(v) ? v : String(v ?? "").split(/[,;\n]/), max, longueur);
-const voixValide = (v) => {
-  const trouve = VOIX.find(([nom]) => normaliserTexte(nom) === normaliserTexte(v));
-  if (!trouve) throw new Error("voix inconnue");
-  return trouve[0];
-};
 
 export const REGLAGES = {
   "pays": { nom: "Pays", valider: (v) => { const c = String(v || "").toUpperCase(); if (!PAYS[c]) throw new Error("pays non proposé"); return c; } },
@@ -180,10 +178,15 @@ export const REGLAGES = {
   "voix.vitesse": { nom: "Vitesse", valider: parmi(VITESSES) },
   "voix.tutoiement": { nom: "Tutoiement", valider: booleen },
   "voix.prenom": { nom: "Ton prénom", valider: texteCourt(40) },
-  "voix.animateurs.0.nom": { nom: "Prénom de l'animateur 1", valider: texteCourt(20) },
-  "voix.animateurs.0.voix": { nom: "Voix de l'animateur 1", valider: voixValide },
-  "voix.animateurs.1.nom": { nom: "Prénom de l'animateur 2", valider: texteCourt(20) },
-  "voix.animateurs.1.voix": { nom: "Voix de l'animateur 2", valider: voixValide },
+  // Un animateur habituel est une voix : changer son prénom renomme la voix.
+  "voix.animateurs.0.nom": { nom: "Prénom de l'animateur 1", gemini: "Prénom de l'animateur habituel 1 (renomme sa voix)", valider: texteCourt(MAX_PRENOM),
+                             appliquer: (c, v) => renommerVoix(c.voix, c.voix.animateurs[0].voix, v) },
+  "voix.animateurs.0.voix": { nom: "Animateur 1", gemini: "Animateur habituel 1 : une voix, ou le prénom donné à une voix", valider: texteCourt(40),
+                              appliquer: (c, v) => choisirHabituel(c.voix, 0, v) },
+  "voix.animateurs.1.nom": { nom: "Prénom de l'animateur 2", gemini: "Prénom de l'animateur habituel 2 (renomme sa voix)", valider: texteCourt(MAX_PRENOM),
+                             appliquer: (c, v) => renommerVoix(c.voix, c.voix.animateurs[1].voix, v) },
+  "voix.animateurs.1.voix": { nom: "Animateur 2", gemini: "Animateur habituel 2 : une voix, ou le prénom donné à une voix", valider: texteCourt(40),
+                              appliquer: (c, v) => choisirHabituel(c.voix, 1, v) },
   "voix.solo": { nom: "Une seule voix", valider: booleen },
   "voix.mode": { nom: "Choix des animateurs", valider: parmi(Object.keys(MODES_VOIX)) },
   "agenda.jours": { nom: "Jours d'agenda couverts", valider: entier(1, 31) },
@@ -223,6 +226,7 @@ export function regler(config, chemin, valeurBrute) {
   const definition = REGLAGES[chemin];
   if (!definition) throw new Error(`réglage inconnu : ${chemin}`);
   const valeur = definition.valider(valeurBrute);
+  if (definition.appliquer) return `${definition.nom} : ${definition.appliquer(config, valeur)}`;
   const ancienPays = config.pays;
   ecrireChemin(config, chemin, valeur);
   // Changer de pays : les jours fériés suivent, s'ils étaient ceux de l'ancien pays.
@@ -622,32 +626,192 @@ export function nomFerie(planning, dateIso) {
   return (liste.find(([d]) => d === dateIso) || [])[1] || null;
 }
 
-// Animateurs de l'épisode d'un jour : habituels, selon le jour, ou tirés au sort
-// (toujours le même tirage pour une date donnée), un seul en mode « une voix ».
-export function equipeComplete(voix) {
-  const vus = new Set();
-  return [...(voix.animateurs || []), ...(voix.equipe || [])]
-    .filter((a) => a?.nom && a?.voix && !vus.has(normaliserTexte(a.nom)) && vus.add(normaliserTexte(a.nom)));
+// ─────────────────────────── voix et animateurs ─────────────────────────────
+// Chaque voix est un animateur possible, sous son nom de voix ou sous le prénom
+// que l'auditeur lui a donné. Les deux animateurs habituels sont deux voix ;
+// « selon le jour » range deux voix par jour (une place laissée vide revient à
+// l'habituel) ; « au hasard » tire parmi les voix activées. Une voix désactivée
+// n'est jamais choisie ; un animateur habituel ne peut pas l'être.
+
+const NOMS_VOIX = VOIX.map(([nom]) => nom);
+
+// Deux prénoms qui donnent le même locuteur pour podcast.py (lettres et chiffres
+// sans accents) sont le même prénom.
+const clePrenom = (t) => normaliserTexte(t).replace(/[^a-z0-9]/g, "");
+
+export function nomVoix(v, voix) {
+  return v?.noms?.[voix] || voix;
 }
 
-export function animateursDuJour(config, dateIso) {
-  const v = config.voix, equipe = equipeComplete(v);
-  const trouver = (nom) => equipe.find((a) => normaliserTexte(a.nom) === normaliserTexte(nom));
+export function voixActive(v, voix) {
+  return NOMS_VOIX.includes(voix) && !(v?.inactives || []).includes(voix);
+}
+
+// Les animateurs possibles : les voix activées, avec leur nom.
+export function equipeComplete(v) {
+  return NOMS_VOIX.filter((voix) => voixActive(v, voix)).map((voix) => ({ nom: nomVoix(v, voix), voix }));
+}
+
+// Une voix désignée par le prénom qu'on lui a donné ou par son nom de voix.
+export function trouverVoix(v, texte) {
+  const cle = clePrenom(texte);
+  if (!cle) return null;
+  return NOMS_VOIX.find((voix) => clePrenom(nomVoix(v, voix)) === cle) || NOMS_VOIX.find((voix) => clePrenom(voix) === cle) || null;
+}
+
+// « Léa (Aoede) », ou « Kore » pour une voix sans prénom.
+export function decrireVoix(v, voix) {
+  const nom = nomVoix(v, voix);
+  return nom === voix ? voix : `${nom} (${voix})`;
+}
+
+// Prénoms valables : au moins une lettre ou un chiffre, uniques, et jamais le nom
+// d'une autre voix (on saurait plus de laquelle on parle).
+function nettoyerNoms(noms) {
+  const pris = new Map(NOMS_VOIX.map((voix) => [clePrenom(voix), voix]));
+  const resultat = {};
+  for (const voix of NOMS_VOIX) {
+    const nom = String(noms?.[voix] ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_PRENOM);
+    const cle = clePrenom(nom);
+    if (!cle || nom === voix || (pris.has(cle) && pris.get(cle) !== voix)) continue;
+    pris.set(cle, voix);
+    resultat[voix] = nom;
+  }
+  return resultat;
+}
+
+function rafraichirAnimateurs(v) {
+  v.animateurs = v.animateurs.map((a) => ({ nom: nomVoix(v, a.voix), voix: a.voix }));
+}
+
+// Donne un prénom à une voix (vide : elle reprend son nom). Renvoie ce qui est affiché.
+export function renommerVoix(v, voix, nomBrut) {
+  if (!NOMS_VOIX.includes(voix)) throw new Error("voix inconnue");
+  const nom = String(nomBrut ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_PRENOM);
+  const noms = { ...(v.noms || {}) };
+  if (!nom || nom === voix) delete noms[voix];
+  else {
+    const cle = clePrenom(nom);
+    if (!cle) throw new Error("le prénom doit contenir au moins une lettre");
+    const autre = NOMS_VOIX.find((x) => x !== voix && (clePrenom(nomVoix(v, x)) === cle || clePrenom(x) === cle));
+    if (autre) throw new Error(clePrenom(autre) === cle ? `« ${nom} » est le nom d'une autre voix` : `« ${nom} » est déjà le prénom de la voix ${autre}`);
+    noms[voix] = nom;
+  }
+  v.noms = noms;
+  rafraichirAnimateurs(v);
+  return decrireVoix(v, voix);
+}
+
+// Une voix (ou son prénom) devient l'animateur habituel n° i. Choisir l'autre
+// habituel les échange ; une voix désactivée redevient utilisée.
+export function choisirHabituel(v, i, texte) {
+  const voix = NOMS_VOIX.includes(texte) ? texte : trouverVoix(v, texte);
+  if (!voix) throw new Error(`voix inconnue : ${texte}`);
+  const animateurs = v.animateurs.map((a) => ({ ...a }));
+  if (animateurs[1 - i].voix === voix) animateurs[1 - i] = animateurs[i];
+  animateurs[i] = { voix };
+  v.animateurs = animateurs;
+  v.inactives = (v.inactives || []).filter((x) => x !== voix);
+  rafraichirAnimateurs(v);
+  return decrireVoix(v, voix);
+}
+
+// Utiliser ou non une voix. Les jours qui l'avaient choisie reviennent à l'habituel.
+export function activerVoix(v, voixBrute, active) {
+  const voix = NOMS_VOIX.includes(voixBrute) ? voixBrute : trouverVoix(v, voixBrute);
+  if (!voix) throw new Error(`voix inconnue : ${voixBrute}`);
+  if (!active && v.animateurs.some((a) => a.voix === voix)) {
+    throw new Error(`${nomVoix(v, voix)} est un de tes animateurs habituels : choisis-en un autre avant de ne plus l'utiliser`);
+  }
+  const inactives = new Set(v.inactives || []);
+  if (active) inactives.delete(voix); else inactives.add(voix);
+  v.inactives = NOMS_VOIX.filter((x) => inactives.has(x));
+  if (!active) v.jours = nettoyerJours(v);
+  return `${decrireVoix(v, voix)} : ${active ? "utilisée" : "plus utilisée"}`;
+}
+
+// Voix d'un jour de la semaine (mode « selon le jour »), deux places au plus ;
+// une place vide revient à l'habituel. Une voix désactivée redevient utilisée.
+export function choisirVoixJour(v, jour, places) {
+  if (!JOURS.includes(jour)) throw new Error("jour inconnu");
+  const liste = (Array.isArray(places) ? places : []).slice(0, 2).map((x) => {
+    if (!x) return "";
+    const voix = NOMS_VOIX.includes(x) ? x : trouverVoix(v, x);
+    if (!voix) throw new Error(`voix inconnue : ${x}`);
+    return voix;
+  });
+  v.inactives = (v.inactives || []).filter((x) => !liste.includes(x));
+  v.jours = nettoyerJours({ ...v, jours: { ...(v.jours || {}), [jour]: liste } });
   const voulus = v.solo ? 1 : 2;
-  let choix = [...v.animateurs];
-  if (v.mode === "jours") {
-    const noms = (v.jours?.[jourDeSemaine(dateIso)] || []).map(trouver).filter(Boolean);
-    if (noms.length) choix = noms;
-  } else if (v.mode === "aleatoire") {
-    let candidats = (v.tirage || []).map(trouver).filter(Boolean);
-    if (candidats.length < voulus) candidats = equipe;
+  return `${NOMS_JOURS[jour][0].toUpperCase()}${NOMS_JOURS[jour].slice(1)} : ${placesDuJour(v, jour).slice(0, voulus).map((x) => nomVoix(v, x)).join(" & ")}`;
+}
+
+function nettoyerJours(v) {
+  const jours = {};
+  for (const j of JOURS) {
+    const liste = (Array.isArray(v.jours?.[j]) ? v.jours[j] : []).slice(0, 2).map((x) => (voixActive(v, x) ? x : ""));
+    if (liste[1] && liste[1] === liste[0]) liste[1] = "";
+    if (liste.some(Boolean)) jours[j] = [liste[0] || "", liste[1] || ""];
+  }
+  return jours;
+}
+
+// Les deux voix d'un jour de la semaine en mode « selon le jour » : celles choisies,
+// et les animateurs habituels aux places laissées vides.
+export function placesDuJour(v, jour) {
+  const choisies = [0, 1].map((i) => { const x = v.jours?.[jour]?.[i]; return voixActive(v, x) ? x : ""; });
+  if (choisies[1] === choisies[0]) choisies[1] = "";
+  const libres = v.animateurs.map((a) => a.voix).filter((x) => !choisies.includes(x));
+  return choisies.map((x) => x || libres.shift());
+}
+
+// Animateurs de l'épisode d'un jour : habituels, selon le jour, ou tirés au sort
+// (toujours le même tirage pour une date donnée), un seul en mode « une voix ».
+export function animateursDuJour(config, dateIso) {
+  const v = config.voix, voulus = v.solo ? 1 : 2;
+  let voix = v.animateurs.map((a) => a.voix);
+  if (v.mode === "jours") voix = placesDuJour(v, jourDeSemaine(dateIso));
+  else if (v.mode === "aleatoire") {
     let graine = [...dateIso].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261);
     const hasard = () => { graine = Math.imul(graine ^ (graine >>> 15), 2246822507) >>> 0; graine ^= graine >>> 13; return (graine >>> 0) / 4294967296; };
-    choix = [...candidats];
-    for (let i = choix.length - 1; i > 0; i--) { const j = Math.floor(hasard() * (i + 1)); [choix[i], choix[j]] = [choix[j], choix[i]]; }
+    voix = equipeComplete(v).map((a) => a.voix);
+    for (let i = voix.length - 1; i > 0; i--) { const j = Math.floor(hasard() * (i + 1)); [voix[i], voix[j]] = [voix[j], voix[i]]; }
   }
-  for (const a of equipe) if (choix.length < voulus && !choix.some((x) => normaliserTexte(x.nom) === normaliserTexte(a.nom))) choix.push(a);
-  return choix.slice(0, voulus).map((a) => ({ nom: a.nom, voix: a.voix }));
+  return voix.slice(0, voulus).map((x) => ({ nom: nomVoix(v, x), voix: x }));
+}
+
+// Réglages des voix lus (anciennes versions comprises). Avant 2026-10-21.10, un
+// animateur était un prénom ET une voix, avec une « équipe » d'autres animateurs
+// et une sélection pour le tirage au sort : les prénoms passent à leur voix, les
+// jours suivent, et le tirage garde ses voix (les autres sont désactivées).
+function completerVoix(ancienne, base) {
+  const v = { ...base, ...(ancienne || {}) };
+  const anciens = Array.isArray(v.animateurs) && v.animateurs.length === 2 ? v.animateurs : base.animateurs;
+  if (ancienne && (!ancienne.noms || typeof ancienne.noms !== "object")) {
+    const equipe = [...anciens, ...(Array.isArray(v.equipe) ? v.equipe : [])]
+      .filter((a) => NOMS_VOIX.includes(a?.voix) && String(a?.nom ?? "").trim());
+    v.noms = {};
+    for (const a of equipe) if (!v.noms[a.voix]) v.noms[a.voix] = String(a.nom).trim();
+    const parNom = (nom) => equipe.find((a) => normaliserTexte(a.nom) === normaliserTexte(nom))?.voix || "";
+    const jours = v.jours && typeof v.jours === "object" ? v.jours : {};
+    v.jours = Object.fromEntries(Object.entries(jours).map(([j, noms]) => [j, (Array.isArray(noms) ? noms : []).slice(0, 2).map(parNom)]));
+    if (v.mode === "aleatoire") {
+      let tirage = (Array.isArray(v.tirage) ? v.tirage : []).map(parNom).filter(Boolean);
+      if (new Set(tirage).size < (v.solo ? 1 : 2)) tirage = equipe.map((a) => a.voix);
+      v.inactives = NOMS_VOIX.filter((x) => !tirage.includes(x));
+    }
+  }
+  delete v.equipe;
+  delete v.tirage;
+  v.noms = nettoyerNoms(v.noms);
+  const habituels = anciens.map((a, i) => (NOMS_VOIX.includes(a?.voix) ? a.voix : base.animateurs[i].voix));
+  if (habituels[1] === habituels[0]) habituels[1] = [base.animateurs[1].voix, base.animateurs[0].voix].find((x) => x !== habituels[0]);
+  v.inactives = NOMS_VOIX.filter((x) => (Array.isArray(v.inactives) ? v.inactives : []).includes(x) && !habituels.includes(x));
+  v.animateurs = habituels.map((voix) => ({ nom: nomVoix(v, voix), voix }));
+  v.jours = nettoyerJours(v);
+  if (!MODES_VOIX[v.mode]) v.mode = "fixe";
+  v.solo = Boolean(v.solo);
+  return v;
 }
 
 // Jours fériés du canton de Vaud.
@@ -734,11 +898,9 @@ export function completerConfig(config) {
   const base = configParDefaut();
   const resultat = { ...base, ...(config || {}) };
   if (!PAYS[resultat.pays]) resultat.pays = PAYS_DEFAUT;
-  for (const cle of ["planning", "format", "voix", "agenda", "actus", "livraison"]) resultat[cle] = { ...base[cle], ...(config?.[cle] || {}) };
-  for (const cle of ["equipe", "tirage"]) if (!Array.isArray(resultat.voix[cle])) resultat.voix[cle] = [];
-  if (!resultat.voix.jours || typeof resultat.voix.jours !== "object") resultat.voix.jours = {};
+  for (const cle of ["planning", "format", "agenda", "actus", "livraison"]) resultat[cle] = { ...base[cle], ...(config?.[cle] || {}) };
+  resultat.voix = completerVoix(config?.voix, base.voix);
   resultat.planning.jours = { ...base.planning.jours, ...(config?.planning?.jours || {}) };
-  if (!Array.isArray(resultat.voix.animateurs) || resultat.voix.animateurs.length !== 2) resultat.voix.animateurs = base.voix.animateurs;
   if (!Array.isArray(resultat.deroule) || !resultat.deroule.length) resultat.deroule = base.deroule;
   for (const cle of Object.keys(RUBRIQUES)) {
     if (!resultat.deroule.some((r) => r.cle === cle)) placerRubrique(resultat, cle, cle === "actu_locale" ? "deplacements" : "agenda");
