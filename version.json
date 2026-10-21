@@ -1,10 +1,13 @@
 {
-  "version": "2026-10-21.7",
+  "version": "2026-10-21.8",
   "date": "2026-10-21",
-  "titre": "Code de connexion plus clair",
+  "titre": "Mémoire des actus, vitesse ×2, couleurs des rubriques",
   "nouveautes": [
-    "Après un déploiement, le résumé de l'exécution GitHub rappelle l'adresse de l'application et comment obtenir un code de connexion.",
-    "Telegram reste facultatif (version précédente) : code de connexion par l'onglet Actions › Code de connexion."
+    "Mémoire réparée : une actu déjà racontée ne revient plus les jours suivants (elle s'effaçait chaque matin), même reprise sous un autre titre.",
+    "Déplacements : le podcast se souvient des idées déjà proposées pour un lieu et n'en redonne qu'une nouvelle.",
+    "Lecteur : bouton de vitesse 1× · 1,5× · 2×.",
+    "Chaque rubrique a son icône et sa couleur.",
+    "Planning : feuillette librement jusqu'à un an à l'avance."
   ],
   "supprimes": [
     "cloudflare/worker.js",

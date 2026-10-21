@@ -828,7 +828,13 @@ await scenario("Application : page et contrôle de l'ouverture", async () => {
   verifier((await fetch(`${BOT}/app/api`)).status === 405, "GET sur l'API refusé");
   const r = await app("etat");
   verifier(r.statut === 200 && r.ok && Array.isArray(r.donnees?.regles) && r.donnees.planning.semaine.length === 7 && r.donnees.deroule.length > 3, "données des écrans", r);
-  verifier(Object.keys(r.donnees.planning.calendrier).length === 70 && r.donnees.listes.sources.meteo, "calendrier et listes fournis");
+  // Calendrier d'un an (mois en cours + 12) : seuls les jours hors de l'habitude y sont.
+  const pl = r.donnees.planning, auj = r.donnees.aujourdhui;
+  const finAttendue = (() => { const x = new Date(`${auj.slice(0, 8)}01T12:00:00Z`); x.setUTCMonth(x.getUTCMonth() + 13, 0); return x.toISOString().slice(0, 10); })();
+  const nouvelAn = `${Number(auj.slice(0, 4)) + 1}-01-01`;
+  verifier(pl.calendrier_jusqua === finAttendue && pl.calendrier[nouvelAn]?.ferie && Object.keys(pl.calendrier).length < 40
+    && r.donnees.listes.sources.meteo, "calendrier d'un an (jours particuliers seulement) et listes fournis",
+    { jusqua: pl.calendrier_jusqua, jours: Object.keys(pl.calendrier) });
 });
 
 await scenario("Application : créer, modifier, supprimer une rubrique", async () => {

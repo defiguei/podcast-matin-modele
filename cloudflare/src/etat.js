@@ -23,7 +23,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, champsDepuisFormulaire, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, nettoyerEquipe, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-21.7";
+export const VERSION = "2026-10-21.8";
 const MAX_REFAITS = 6;
 const LONGUEURS_VALIDES = ["phrase", "courte", "developpee"];
 const MAX_RECHERCHES = 15;
@@ -34,8 +34,11 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 // Message envoyé après une mise à jour : les nouveautés de cette version…
 const NOUVEAUTES = `✅ <b>Ton podcast est à jour</b> (version ${VERSION}).
 
-• Après un déploiement, le résumé de l'exécution GitHub rappelle l'adresse de l'application et comment obtenir un code de connexion.
-• Telegram reste facultatif (version précédente) : code de connexion par l'onglet Actions › Code de connexion.`;
+• Mémoire réparée : une actu déjà racontée ne revient plus les jours suivants (elle s'effaçait chaque matin), même reprise sous un autre titre.
+• Déplacements : le podcast se souvient des idées déjà proposées pour un lieu et n'en redonne qu'une nouvelle.
+• Lecteur : bouton de vitesse 1× · 1,5× · 2×.
+• Chaque rubrique a son icône et sa couleur.
+• Planning : feuillette librement jusqu'à un an à l'avance.`;
 
 // … ou, pour qui arrive d'avant l'application (installation neuve, ancienne version
 // réglée par la conversation), sa présentation.

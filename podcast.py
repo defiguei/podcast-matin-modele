@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import base64
 import datetime as dt
+import functools
 import hashlib
 import html
 import json
@@ -125,8 +126,9 @@ INSTRUCTIONS_RUBRIQUES = {
                      "rappelle quand c'est, propose deux ou trois idées d'activités, de visites ou de culture sur "
                      "place (ou autour du lieu de la sortie), puis les actus locales utiles. Pour les idées, "
                      "appuie-toi sur tes connaissances générales (lieux emblématiques, quartiers, musées, "
-                     "spécialités), sans inventer d'événement daté, d'horaire ni de prix. Si un lieu a déjà été "
-                     "présenté dans l'épisode précédent, fais court : un rappel et une seule idée nouvelle."),
+                     "spécialités), sans inventer d'événement daté, d'horaire ni de prix. Si la section indique "
+                     "qu'un lieu a déjà été présenté, fais court : un rappel de la date et une seule idée "
+                     "nouvelle, jamais une des idées déjà proposées. Note chaque idée proposée dans « idees »."),
     "actu_locale": ("L'actu locale, seulement si la section ACTU LOCALE est fournie : une ou deux informations de "
                     "{ville}, en quelques répliques : de quoi il s'agit et ce que ça change au quotidien. "
                     "Appuie-toi uniquement sur les articles fournis."),
@@ -275,6 +277,40 @@ def cle_titre(titre: str) -> str:
     return " ".join(m for m in mots if len(m) > 2)[:70]
 
 
+MOTS_VIDES = frozenset(
+    "les des aux une pour par sur dans avec est son ses qui que pas plus apres avant entre the and for "
+    "ont sont leur leurs cette ces tout tous mais comme fait etait etre deja encore sans sous chez vers "
+    "selon contre face lors depuis".split())
+
+
+@functools.lru_cache(maxsize=4096)
+def mots_significatifs(cle: str) -> frozenset:
+    return frozenset(m for m in cle.split() if m not in MOTS_VIDES)
+
+
+def meme_sujet(a: str, b: str) -> bool:
+    """Deux titres (clés) qui parlent de la même chose : au moins trois mots importants
+    en commun, et l'essentiel du plus court (« Trafic ferroviaire entre Lausanne et Yverdon
+    repris dimanche » et « Reprise du trafic ferroviaire entre Yverdon et Lausanne dimanche »)."""
+    if a == b:
+        return True
+    ma, mb = mots_significatifs(a), mots_significatifs(b)
+    communs = len(ma & mb)
+    return communs >= 3 and communs >= 0.6 * min(len(ma), len(mb))
+
+
+def deja_vu(cle: str, vus: set[str]) -> bool:
+    return cle in vus or any(meme_sujet(cle, v) for v in vus)
+
+
+def meme_lieu(a: str, b: str) -> bool:
+    """« Saintes-Maries-de-la-Mer » et « Camarkas, Saintes Maries de la Mer », « Arles » et
+    « Arles et Les Saintes-Maries-de-la-Mer » : le même déplacement."""
+    ma, mb = mots_significatifs(cle_titre(a)), mots_significatifs(cle_titre(b))
+    communs = len(ma & mb)
+    return communs >= 1 and communs >= 0.6 * min(len(ma), len(mb))
+
+
 LONGUEUR_CONSIGNE = 300   # une consigne peut être une vraie phrase ; les autres listes restent courtes
 
 
@@ -393,6 +429,8 @@ def memoire_vide() -> dict[str, Any]:
         "episodes_refaits": {},        # {"date": ..., "nombre": ...}
         "dernier_programme": "",       # date du dernier épisode programmé (hors épisodes à la demande)
         "debit_mots_minute": {},     # débit réellement mesuré, par vitesse
+        "articles_vus": {},          # titre normalisé → date : actus déjà racontées (pas deux fois en une semaine)
+        "lieux_presentes": [],       # déplacements déjà présentés : lieu, dates, idées proposées
     }
 
 
@@ -848,15 +886,24 @@ def chercher_actus(requete: str, reglages: dict, maintenant: dt.datetime,
     return articles
 
 
-def garder_nouveaux(articles: list[Article], vus: set[str]) -> list[Article]:
-    """Retire les doublons (même sujet déjà retenu ailleurs)."""
+def garder_nouveaux(articles: list[Article], vus: set[str], maximum: int | None = None) -> list[Article]:
+    """Retire les doublons (même sujet déjà retenu ailleurs, ou déjà raconté ces derniers
+    jours), puis garde au plus « maximum » articles."""
     gardes = []
     for article in articles:
+        if maximum is not None and len(gardes) >= maximum:
+            break
         cle = cle_titre(article.titre)
-        if cle and cle not in vus:
+        if cle and not deja_vu(cle, vus):
             vus.add(cle)
             gardes.append(article)
     return gardes
+
+
+# Une recherche lit plus d'articles qu'il n'en faut : ceux déjà racontés sont écartés,
+# il en reste assez de nouveaux.
+def lus_pour(gardes: int) -> int:
+    return max(12, 3 * gardes)
 
 
 def ligne_article(article: Article, maintenant: dt.datetime) -> str:
@@ -1542,8 +1589,13 @@ def schema_script(noms: list[str], rubriques: list[str] | None = None) -> dict:
                        "description": "Sujets abordés, dans l'ordre, en quelques mots chacun."},
             "sources": {"type": "array", "items": {"type": "integer"},
                         "description": "Numéros des articles utilisés."},
+            **({"idees": {"type": "array", "items": {"type": "string"},
+                          "description": "Idées de visites ou d'activités proposées dans la rubrique déplacements, "
+                                         "en quelques mots chacune (ex. « musée Réattu à Arles »)."}}
+               if rubriques and "deplacements" in rubriques else {}),
         },
-        "required": ["titre", "repliques", "sujets", "sources"],
+        "required": ["titre", "repliques", "sujets", "sources"]
+                    + (["idees"] if rubriques and "deplacements" in rubriques else []),
     }
 
 
@@ -1615,7 +1667,8 @@ def nettoyer_script(script: dict, noms: list[str], rubriques: list[str] | None =
     titre = nettoyer_replique(str(script.get("titre", "")), {"balises": 99, "reactions": 99})
     return {"titre": tronquer(titre.replace("|", ""), 60) or "Le point du matin",
             "repliques": repliques, "sources": sources,
-            "sujets": nettoyer_liste(script.get("sujets"), 12)}
+            "sujets": nettoyer_liste(script.get("sujets"), 12),
+            "idees": nettoyer_liste(script.get("idees"), 8)}
 
 
 def ecrire_script(effectifs: dict, cle: str, maintenant: dt.datetime, agenda: str,
@@ -2056,6 +2109,7 @@ class Contenu:
     deplacements: list[dict]
     collectes: dict = None              # règles appliquées : identifiant → moteur.Collecte
     rubriques: list = None              # déroulé du jour : [(clé, titre)]
+    titres_regles: list = None          # titres des actus données aux rubriques personnalisées (mémoire)
 
 
 JOURS_MEMOIRE_ARTICLES = 7
@@ -2069,19 +2123,66 @@ def articles_deja_traites(memoire: dict, maintenant: dt.datetime) -> set[str]:
             if isinstance(jour, str) and limite <= jour < aujourd_hui}
 
 
-def retenir_articles(memoire: dict, articles: list, citees: set[int], maintenant: dt.datetime) -> None:
-    """Note les articles cités (à défaut, les premiers de la liste) pour ne pas les répéter demain."""
+def retenir_articles(memoire: dict, articles: list, citees: set[int], maintenant: dt.datetime,
+                     autres: list[str] | None = None) -> None:
+    """Note les articles cités (à défaut, les premiers de la liste), et les actus des
+    rubriques personnalisées (« autres », titres), pour ne pas les répéter demain."""
     jour = maintenant.date().isoformat()
     limite = (maintenant.date() - dt.timedelta(days=JOURS_MEMOIRE_ARTICLES + 3)).isoformat()
     vus = {k: j for k, j in (memoire.get("articles_vus") or {}).items() if isinstance(j, str) and j >= limite}
     choisis = [a for a in articles if a.numero in citees]
     if len(choisis) < 6:
         choisis += [a for a in articles if a not in choisis][: 8 - len(choisis)]
-    for article in choisis:
-        k = cle_titre(article.titre)
+    for k in [cle_titre(a.titre) for a in choisis] + [cle_titre(t) for t in autres or []]:
         if k:
             vus[k] = jour
     memoire["articles_vus"] = dict(sorted(vus.items(), key=lambda x: x[1])[-400:])
+
+
+JOURS_MEMOIRE_LIEUX = 30
+
+
+def lieu_deja_presente(memoire: dict, deplacement: dict, maintenant: dt.datetime) -> dict | None:
+    """Ce qui a déjà été dit d'un lieu de déplacement ces dernières semaines (avant aujourd'hui)."""
+    aujourd_hui = maintenant.date().isoformat()
+    for entree in memoire.get("lieux_presentes") or []:
+        if not isinstance(entree, dict):
+            continue
+        dates = [d for d in entree.get("dates") or [] if isinstance(d, str) and d < aujourd_hui]
+        if dates and (meme_lieu(entree.get("lieu", ""), deplacement["lieu"])
+                      or (entree.get("evenement") and cle_titre(entree["evenement"]) == cle_titre(deplacement.get("evenement", "")))):
+            return {**entree, "dates": dates}
+    return None
+
+
+def retenir_lieux(memoire: dict, deplacements: list[dict], idees: list[str], maintenant: dt.datetime) -> None:
+    """Note les lieux présentés aujourd'hui et les idées proposées, pour la suite du compte à rebours."""
+    jour = maintenant.date()
+    limite = (jour - dt.timedelta(days=JOURS_MEMOIRE_LIEUX)).isoformat()
+    lieux = [e for e in memoire.get("lieux_presentes") or []
+             if isinstance(e, dict) and max(e.get("dates") or [""]) >= limite]
+    idees = nettoyer_liste(idees, 8, 80)
+    for deplacement in deplacements:
+        entree = next((e for e in lieux if meme_lieu(e.get("lieu", ""), deplacement["lieu"])
+                       or (e.get("evenement") and cle_titre(e["evenement"]) == cle_titre(deplacement.get("evenement", "")))), None)
+        if entree is None:
+            entree = {"lieu": deplacement["lieu"], "evenement": deplacement.get("evenement", ""), "dates": [], "idees": []}
+            lieux.append(entree)
+        entree["dates"] = sorted(set(entree.get("dates") or []) | {jour.isoformat()})[-15:]
+        entree["idees"] = nettoyer_liste((entree.get("idees") or []) + idees, 100, 80)[-20:]
+    memoire["lieux_presentes"] = lieux[-10:]
+
+
+def deja_presente_en_mots(deja: dict, maintenant: dt.datetime) -> str:
+    derniere = dt.date.fromisoformat(max(deja["dates"]))
+    ecart = (maintenant.date() - derniere).days
+    quand = "hier" if ecart == 1 else f"il y a {ecart} jours"
+    fois = len(deja["dates"])
+    texte = f"  Déjà présenté dans {fois} épisode{'s' if fois > 1 else ''} (dernière fois {quand})."
+    if deja.get("idees"):
+        texte += " Idées déjà proposées : " + " ; ".join(deja["idees"]) + "."
+    return texte + (" Fais court : un rappel de la date, puis une seule idée nouvelle (absente de cette liste) "
+                    "et seulement les actus nouvelles ci-dessous.")
 
 
 def resumer_episode_precedent(memoire: dict, maintenant: dt.datetime) -> str:
@@ -2122,9 +2223,14 @@ def raison_lisible(message: str) -> str:
 
 
 def preparer_regles(effectifs: dict, cle: str, maintenant: dt.datetime, evenements: list[Evenement],
-                    forcees: list[str] | None = None) -> dict:
+                    forcees: list[str] | None = None, vus: set[str] | None = None,
+                    titres_actus: list[str] | None = None) -> dict:
     """Rubriques du jour : sélection, vérification des conditions d'agenda et
-    préparation des recherches (un appel au modèle léger), puis collecte."""
+    préparation des recherches (un appel au modèle léger), puis collecte.
+    Les actus des rubriques évitent celles déjà racontées (« vus ») ; leurs titres
+    sont ajoutés à « titres_actus » pour la mémoire."""
+    vus = set() if vus is None else vus
+    titres_actus = [] if titres_actus is None else titres_actus
     config = effectifs.get("config_bot")
     if not config:
         return {}
@@ -2146,8 +2252,9 @@ def preparer_regles(effectifs: dict, cle: str, maintenant: dt.datetime, evenemen
     sources = Sources(os.environ.get("TAVILY_API_KEY", ""))
 
     def actus(requete: str) -> list[str]:
-        return [f"{a.source} — {a.titre}" + (f" : {a.resume}" if a.resume else "")
-                for a in chercher_actus(requete, effectifs, maintenant, 4, 7)]
+        trouves = garder_nouveaux(chercher_actus(requete, effectifs, maintenant, lus_pour(4), 7), vus, 4)
+        titres_actus.extend(a.titre for a in trouves)
+        return [f"{a.source} — {a.titre}" + (f" : {a.resume}" if a.resume else "") for a in trouves]
 
     collectes = {}
     for regle in candidates:
@@ -2188,20 +2295,27 @@ def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: l
     approfondissements = []
     if rubrique_active(effectifs, "approfondissements"):
         for demande in effectifs["a_approfondir"]:
-            trouves = garder_nouveaux(chercher_actus(demande["sujet"], effectifs, maintenant, 4, 14), vus)
+            trouves = garder_nouveaux(chercher_actus(demande["sujet"], effectifs, maintenant, lus_pour(4), 14), vus, 4)
             approfondissements.append((demande, trouves))
-    vus |= articles_deja_traites(memoire, maintenant)     # pas deux fois la même actu sur plusieurs jours
+    deja_racontes = articles_deja_traites(memoire, maintenant)
+    journal(f"Mémoire : {len(deja_racontes)} actu(s) déjà racontée(s) ces {JOURS_MEMOIRE_ARTICLES} derniers jours, écartée(s).")
+    vus |= deja_racontes                                  # pas deux fois la même actu sur plusieurs jours
     deplacements = (reperer_deplacements(tous, effectifs, cle, maintenant, prochain)
                     if tous and rubrique_active(effectifs, "deplacements") else [])
     for deplacement in deplacements:
         deplacement["articles"] = garder_nouveaux(
             chercher_actus(deplacement["recherche"] or deplacement["lieu"], effectifs,
-                           maintenant, 4, 7), vus)
-    collectes = preparer_regles(effectifs, cle, maintenant, tous, forcees)
+                           maintenant, lus_pour(4), 7), vus, 4)
+        deplacement["deja"] = lieu_deja_presente(memoire, deplacement, maintenant)
+    titres_regles: list[str] = []
+    collectes = preparer_regles(effectifs, cle, maintenant, tous, forcees, vus, titres_regles)
     locales: list[Article] = []
+    locales_deja_dites = False
     if effectifs["ville_habituelle"] and rubrique_active(effectifs, "actu_locale"):
-        locales = garder_nouveaux(chercher_actus(effectifs["ville_habituelle"], effectifs, maintenant,
-                                                 int(effectifs.get("locale_articles", 3)), 7), vus)
+        voulues = int(effectifs.get("locale_articles", 3))
+        lues = chercher_actus(effectifs["ville_habituelle"], effectifs, maintenant, lus_pour(voulues), 7)
+        locales = garder_nouveaux(lues, vus, voulues)
+        locales_deja_dites = bool(lues) and not locales
         for article in locales:
             article.etiquette = f"actu locale : {effectifs['ville_habituelle']}"
     avec_actus = rubrique_active(effectifs, "actualites")
@@ -2245,12 +2359,18 @@ def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: l
             pays = f" ({d['pays']})" if d["pays"] else ""
             lignes.append(f"- {d['lieu']}{pays} — {d['nature']}, {d['quand']} "
                           f"(événement : « {d['evenement']} »)")
+            if d.get("deja"):
+                lignes.append(deja_presente_en_mots(d["deja"], maintenant))
             lignes += [f"  {ligne_article(a, maintenant)}" for a in d["articles"]] or [
-                "  (pas d'actualité récente trouvée sur ce lieu)"]
+                "  (pas d'actualité nouvelle sur ce lieu)"]
         sections.append(("DÉPLACEMENTS", "\n".join(lignes)))
     if locales:
         sections.append((f"ACTU LOCALE ({effectifs['ville_habituelle']})",
                          "\n".join(ligne_article(a, maintenant) for a in locales)))
+    elif locales_deja_dites:
+        sections.append((f"ACTU LOCALE ({effectifs['ville_habituelle']})",
+                         "Rien de nouveau : les nouvelles trouvées ont déjà été racontées dans les épisodes précédents. "
+                         "Dis-le en une phrase, sans les répéter."))
     for identifiant_regle, collecte in collectes.items():
         sections.append((f"RUBRIQUE {identifiant_regle}", collecte.texte))
     if avec_actus:
@@ -2260,10 +2380,10 @@ def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: l
     if not tous_articles and not tous and not urls and not collectes:
         raise ErreurPodcast("Ni agenda ni actualités : rien à raconter ce matin.")
     actifs = {"deplacements": bool(deplacements), "approfondissements": bool(approfondissements),
-              "actu_locale": bool(locales), "actualites": avec_actus}
+              "actu_locale": bool(locales) or locales_deja_dites, "actualites": avec_actus}
     rubriques = moteur.deroule_du_jour({"deroule": effectifs.get("deroule")}, collectes, actifs)
     return Contenu(agenda, sections, proches, prochain, tous_articles, remarques, deplacements,
-                   collectes, rubriques)
+                   collectes, rubriques, titres_regles)
 
 
 def identifiants_regles(texte: str) -> list[str]:
@@ -2511,7 +2631,9 @@ def main(arguments: list[str] | None = None) -> int:
             "deplacements": [d["lieu"] for d in contenu.deplacements],
             "regles": list(contenu.collectes or {}),
         }
-        retenir_articles(memoire, contenu.articles, set(script["sources"]), maintenant)
+        retenir_articles(memoire, contenu.articles, set(script["sources"]), maintenant, contenu.titres_regles)
+        if contenu.deplacements:
+            retenir_lieux(memoire, contenu.deplacements, script.get("idees") or [], maintenant)
         if mode != "manuel":
             memoire["dernier_programme"] = aujourd_hui
         memoire["a_approfondir"] = []

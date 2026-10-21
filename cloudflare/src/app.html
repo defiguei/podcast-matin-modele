@@ -99,6 +99,8 @@ h2 { margin: 0; font-family: var(--titre); font-weight: 700; font-size: 18px; }
 .f-sortie, .f-agenda { background: var(--vert-fond); color: var(--vert); }
 
 .pastille-mini { width: 30px; height: 30px; flex: none; border-radius: 9px; display: flex; align-items: center; justify-content: center; }
+/* genre de rubrique : sa couleur (--g) sur un fond teinté de la même couleur */
+.genre { color: var(--g); background: var(--carte-2); background: color-mix(in srgb, var(--g) 16%, var(--carte)); }
 .f-integree { background: var(--carte-2); color: var(--doux-2); }
 .deroule li.eteint .pastille-mini { opacity: .5; }
 .section-fiche { display: flex; flex-direction: column; gap: 10px; }
@@ -211,6 +213,9 @@ nav.onglets-bas button[aria-current="page"] { color: var(--aube); font-weight: 6
 .lire { width: 52px; height: 52px; flex: none; border: 0; border-radius: 50%; background: var(--texte); color: var(--fond); display: flex; align-items: center; justify-content: center; }
 .lire.petit { width: 40px; height: 40px; }
 input.avance { width: 100%; accent-color: var(--aube); margin: 0; height: 24px; }
+.vitesse { flex: none; min-width: 50px; height: 36px; padding: 0 8px; border: 1.5px solid var(--trait-2); border-radius: 999px; background: transparent; color: var(--doux-2); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.vitesse.rapide { background: var(--aube-fond); border-color: var(--aube); color: var(--aube); }
+.vitesse.petite { min-width: 44px; height: 32px; font-size: 13px; }
 .temps { display: flex; justify-content: space-between; font-size: 12px; color: var(--doux); font-variant-numeric: tabular-nums; }
 .chapitres button { display: flex; gap: 12px; padding: 10px 0; border: 0; border-top: 1px solid var(--trait); background: none; color: var(--texte); font-size: 14px; text-align: left; width: 100%; }
 .chapitres button span:first-child { color: var(--aube); font-variant-numeric: tabular-nums; width: 42px; flex: none; }
@@ -330,6 +335,7 @@ select.compacte { appearance: none; background-image: url("data:image/svg+xml,%3
 <main id="ecran" aria-live="polite"><div class="chargement"><span class="attente" aria-hidden="true"></span><br>Chargement…</div></main>
 <div id="mini" class="cache" role="region" aria-label="Lecture en cours">
   <button type="button" id="mini-titre" class="t"></button>
+  <button type="button" class="vitesse petite" data-vitesse aria-label="Vitesse de lecture"></button>
   <button type="button" class="lire petit" data-mini aria-label="Lecture"></button>
   <div class="barre-mini" aria-hidden="true"><i></i></div>
 </div>
@@ -398,6 +404,17 @@ const ICONES = {
   idees: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
   moi: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
   cle: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/>',
+  // Icônes des genres de rubriques (une par genre, voir GENRES).
+  meteo: '<circle cx="8.5" cy="8.5" r="3"/><path d="M8.5 2.5V4M2.5 8.5H4M4.3 4.3l1 1M12.7 4.3l-1 1"/><path d="M8.5 20h9a3.5 3.5 0 0 0 .3-7 5 5 0 0 0-9.5 1.2A2.9 2.9 0 0 0 8.5 20z"/>',
+  journee: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/>',
+  prenom: '<path d="M4 21h16M5.5 21v-6.5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2V21"/><path d="M5.5 16.5c1.3.9 2.6.9 3.9 0s2.6-.9 3.9 0 2.6.9 3.9 0"/><path d="M12 12.5V9.5"/><path d="M12 4.2c.9 1.1.9 2.2 0 2.9-.9-.7-.9-1.8 0-2.9z"/>',
+  train: '<rect x="6" y="3" width="12" height="13" rx="3"/><path d="M6 9.5h12M9.5 16l-2.5 5M14.5 16l2.5 5M8 19h8"/><path d="M9 12.8h.01M15 12.8h.01"/>',
+  rappel: '<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 21a2.2 2.2 0 0 0 4 0"/>',
+  theme: '<path d="M3.5 4.5v7l9 9 8-8-9-9h-7z"/><circle cx="8" cy="8.5" r="1.4"/>',
+  libre: '<path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/><path d="M18.5 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>',
+  valise: '<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M8 7v13M16 7v13"/>',
+  ville: '<path d="M3 21h18M5 21V10l5-3v14M10 21V4l9 4v13"/><path d="M13.5 10.5h2.5M13.5 13.5h2.5M13.5 16.5h2.5"/>',
+  lune: '<path d="M19.5 14.5A8 8 0 1 1 9.5 4.5a6.3 6.3 0 0 0 10 10z"/>',
 };
 ICONES.programme = ICONES.deroule;
 ICONES.integree = ICONES.aube;
@@ -501,6 +518,29 @@ const audio = new Audio();
 audio.preload = "metadata";
 const L = { cle: null, ep: null };
 
+// Vitesse de lecture : 1×, 1,5×, 2× (un appui passe à la suivante), retenue sur l'appareil.
+const VITESSES_LECTURE = [1, 1.5, 2];
+const CLE_VITESSE = "podcast-matin-vitesse";
+let vitesseLecture = (() => {
+  try { const v = Number(localStorage.getItem(CLE_VITESSE)); return VITESSES_LECTURE.includes(v) ? v : 1; } catch (e) { return 1; }
+})();
+const texteVitesse = (v) => `${String(v).replace(".", ",")}×`;
+function appliquerVitesse() {
+  audio.defaultPlaybackRate = vitesseLecture;
+  if (audio.playbackRate !== vitesseLecture) audio.playbackRate = vitesseLecture;
+}
+function changerVitesse() {
+  vitesseLecture = VITESSES_LECTURE[(VITESSES_LECTURE.indexOf(vitesseLecture) + 1) % VITESSES_LECTURE.length];
+  try { localStorage.setItem(CLE_VITESSE, String(vitesseLecture)); } catch (e) { /* stockage refusé */ }
+  appliquerVitesse();
+  majLecteur();
+}
+function boutonVitesse(petit = false) {
+  return `<button type="button" class="vitesse${petit ? " petite" : ""}${vitesseLecture !== 1 ? " rapide" : ""}" data-vitesse
+    aria-label="Vitesse de lecture : ${texteVitesse(vitesseLecture)}">${texteVitesse(vitesseLecture)}</button>`;
+}
+appliquerVitesse();
+
 function episodeParCle(cle) {
   return (S.d && S.d.episodes || []).find((e) => e.cle === cle)
     || Object.values(S.archives).flat().find((e) => e.cle === cle)
@@ -560,6 +600,7 @@ function vueLecteur(ep) {
         <input type="range" class="avance" min="0" max="${Math.max(1, Math.round(total))}" step="1" value="${Math.round(position)}" data-avance="${h(ep.cle)}" aria-label="Position dans l'épisode">
         <div class="temps"><span data-temps="${h(ep.cle)}">${minSec(position)}</span><span>${minSec(total)}</span></div>
       </div>
+      ${boutonVitesse()}
     </div>
     ${ep.chapitres.length ? `<div class="chapitres">${ep.chapitres.map(([t, titre], i) => `<button type="button" data-chapitre="${h(ep.cle)}" data-t="${t}" data-i="${i}">
       <span>${minSec(t)}</span><span>${h(titre)}</span></button>`).join("")}</div>` : ""}
@@ -572,6 +613,11 @@ function majLecteur() {
     const enCours = b.dataset.lire === L.cle && !audio.paused;
     b.innerHTML = enCours ? PAUSE : LECTURE;
     b.setAttribute("aria-label", enCours ? "Pause" : "Lecture");
+  });
+  document.querySelectorAll("[data-vitesse]").forEach((b) => {
+    b.textContent = texteVitesse(vitesseLecture);
+    b.classList.toggle("rapide", vitesseLecture !== 1);
+    b.setAttribute("aria-label", `Vitesse de lecture : ${texteVitesse(vitesseLecture)}`);
   });
   if (!ep) { miniEl.classList.add("cache"); return; }
   const position = audio.currentTime || 0, total = duree(ep);
@@ -590,6 +636,7 @@ function majLecteur() {
   b.innerHTML = audio.paused ? LECTURE : PAUSE;
   b.setAttribute("aria-label", audio.paused ? "Lecture" : "Pause");
 }
+["play", "loadedmetadata"].forEach((ev) => audio.addEventListener(ev, appliquerVitesse));   // certains navigateurs l'oublient au changement d'épisode
 ["play", "pause", "timeupdate", "loadedmetadata", "ended"].forEach((ev) => audio.addEventListener(ev, majLecteur));
 audio.addEventListener("play", () => { if (!extrait.paused) extrait.pause(); });
 
@@ -967,14 +1014,42 @@ function arreterVocal(envoyer) {
 const INTEGREES = {
   ouverture: { icone: "aube", texte: "Salutation, date du jour et ce qui t'attend dans l'épisode.", fixe: "Toujours au début de l'épisode." },
   agenda: { icone: "agenda", texte: "Tes rendez-vous du jour (heure, lieu, ce qu'il faut préparer), puis un aperçu des jours suivants." },
-  deplacements: { icone: "sortie", texte: "Quand ton agenda annonce un voyage ou une sortie ailleurs : quand c'est, deux ou trois idées sur place et les actus du lieu." },
-  actu_locale: { icone: "actus", texte: "Une ou deux nouvelles de ta ville, et ce qu'elles changent au quotidien." },
+  deplacements: { icone: "valise", texte: "Quand ton agenda annonce un voyage ou une sortie ailleurs : quand c'est, deux ou trois idées sur place et les actus du lieu." },
+  actu_locale: { icone: "ville", texte: "Une ou deux nouvelles de ta ville, et ce qu'elles changent au quotidien." },
   approfondissements: { icone: "creuser", texte: "Un moment plus fouillé sur les sujets que tu as demandé de creuser. Il ne passe qu'au prochain épisode, puis la liste se vide." },
   actualites: { icone: "actus", texte: "Les sujets importants du jour : ton pays d'abord, puis l'international." },
-  cloture: { icone: "aube", texte: "Rappel de ton premier rendez-vous du jour, puis le mot de la fin.", fixe: "Toujours à la fin de l'épisode." },
+  cloture: { icone: "lune", texte: "Rappel de ton premier rendez-vous du jour, puis le mot de la fin.", fixe: "Toujours à la fin de l'épisode." },
 };
 // Celles qui ne passent que s'il y a de quoi en parler.
 const SI_CONTENU = ["deplacements", "approfondissements", "actu_locale"];
+
+// Chaque genre de rubrique a son icône et sa couleur : les fournies (clé du déroulé)
+// et celles qu'on crée (genre calculé par le bot, ou modèle du catalogue).
+const GENRES = {
+  ouverture: { icone: "aube", couleur: "#F2A65A" },
+  agenda: { icone: "agenda", couleur: "#F2CB6D" },
+  deplacements: { icone: "valise", couleur: "#5ED6C6" },
+  actu_locale: { icone: "ville", couleur: "#B2DE79" },
+  approfondissements: { icone: "creuser", couleur: "#C99AF0" },
+  actualites: { icone: "actus", couleur: "#85B6F4" },
+  cloture: { icone: "lune", couleur: "#A99CF4" },
+  meteo: { icone: "meteo", couleur: "#6FCFEB" },
+  journee: { icone: "journee", couleur: "#E3DB6E" },
+  prenom: { icone: "prenom", couleur: "#F29AC6" },
+  feries: { icone: "jour", couleur: "#7FDBB0" },
+  rappel: { icone: "rappel", couleur: "#F7B48A" },
+  train: { icone: "train", couleur: "#F2827C" },
+  sortie: { icone: "sortie", couleur: "#8FD39A" },
+  actu: { icone: "theme", couleur: "#99A3F7" },
+  libre: { icone: "libre", couleur: "#E29BE6" },
+};
+// Bot d'avant le genre : on retombe sur la famille.
+const GENRE_PAR_FAMILLE = { jour: "meteo", info: "libre", sortie: "sortie", agenda: "rappel" };
+const genreDe = (r) => (r && (GENRES[r.genre] ? r.genre : GENRE_PAR_FAMILLE[r.famille])) || "libre";
+function pastille(genre, taille = 20, mini = false) {
+  const g = GENRES[genre] || GENRES.libre;
+  return `<span class="${mini ? "pastille-mini" : "pastille"} genre" style="--g:${g.couleur}">${icone(g.icone, taille)}</span>`;
+}
 
 function resumeIntegree(cle) {
   const r = S.d.reglages, lus = r.agendas.length - r.agenda.exclus.length;
@@ -1009,7 +1084,7 @@ function carteRubrique(r) {
     ? h(r.derniere_application ? `Dernière recherche le ${dateLongue(r.derniere_application)}` : r.consigne)
     : detailRubrique(r);
   return `<button type="button" class="rubrique" data-ouvrir="${h(r.id)}">
-    <span class="pastille f-${r.famille}">${icone(r.famille, 20)}</span>
+    ${pastille(genreDe(r))}
     <span class="textes"><span class="nom">${h(r.titre)}</span><span class="detail">${detail}</span></span>
     ${r.importance === "prioritaire" ? '<span class="puce prio">Prioritaire</span>' : `<span style="color:var(--eteint)">${icone("suite", 18, 2)}</span>`}
   </button>`;
@@ -1032,18 +1107,17 @@ function appliqueLe(r, date) {
 function ligneProgramme(x, i, fixe) {
   const r = x.integree ? null : S.d.regles.find((y) => y.id === x.cle);
   const actif = x.actif && !(r && r.pause);
-  const famille = x.integree ? "integree" : (r ? r.famille : "info");
-  const pastille = `<span class="pastille-mini f-${famille}">${icone(x.integree ? INTEGREES[x.cle].icone : famille, 17)}</span>`;
+  const marque = pastille(x.integree ? x.cle : genreDe(r), 17, true);
   const detail = x.integree ? h(resumeIntegree(x.cle)) : r ? detailRubrique(r) : "";
   const cible = x.integree ? `data-integree="${h(x.cle)}"` : `data-ouvrir="${h(x.cle)}"`;
   const textes = `<button type="button" class="textes" ${cible}><span class="nom">${h(x.nom)}</span><span class="detail">${detail}</span></button>`;
   if (fixe) {
-    return `<li class="fixe" data-cle="${h(x.cle)}"><span class="num">${i + 1}</span>${pastille}${textes}
+    return `<li class="fixe" data-cle="${h(x.cle)}"><span class="num">${i + 1}</span>${marque}${textes}
       <span class="mini-inter" style="color:var(--eteint)" role="img" aria-label="Position fixe">${icone("cadenas", 18)}</span></li>`;
   }
   const interrupteurLigne = x.integree ? `data-actif="${h(x.cle)}"` : `data-actif-regle="${h(x.cle)}"`;
   return `<li class="mobile ${actif ? "" : "eteint"}" data-cle="${h(x.cle)}">
-    <span class="num">${i + 1}</span>${pastille}${textes}
+    <span class="num">${i + 1}</span>${marque}${textes}
     <button type="button" class="mini-inter" role="switch" aria-checked="${actif}" ${interrupteurLigne} aria-label="${h(x.nom)} : ${actif ? "active" : "en pause"}"><span class="rail"><span></span></span></button>
     <button type="button" class="poignee" data-poignee aria-label="Déplacer ${h(x.nom)} (flèches haut et bas)">${POIGNEE}</button>
   </li>`;
@@ -1073,7 +1147,7 @@ function vueProgramme() {
 
 // Le programme d'une date : seulement ce qui passe ce jour-là, dans l'ordre (lecture seule).
 function vueProgrammeDuJour(date) {
-  const d = S.d, c = d.planning.calendrier[date] || {};
+  const d = S.d, c = jourCalendrier(date);
   const lignes = [];
   for (const x of d.deroule) {
     if (!x.actif) continue;
@@ -1120,7 +1194,7 @@ function vueCatalogue() {
   return `${entete("Ajouter une rubrique", "Ton épisode")}
   <p class="aide" style="font-size:14px;color:var(--doux-2)">Choisis un modèle : il est déjà réglé. Tu pourras tout ajuster avant de l'ajouter.</p>
   <div class="liste">${MODELES.map((m) => `<button type="button" class="rubrique" data-modele="${m.id}">
-    <span class="pastille f-${m.famille}">${icone(m.famille, 20)}</span>
+    ${pastille(m.id)}
     <span class="textes"><span class="nom">${h(m.titre)}</span><span class="detail" style="white-space:normal">${h(m.texte)}</span></span>
     <span style="color:var(--eteint)">${icone("suite", 18, 2)}</span></button>`).join("")}</div>
   <p class="aide">Pour une recherche ponctuelle (une sortie ce samedi, une idée de cadeau…), passe par l'onglet Idées : elle ne s'ajoute pas à tes épisodes.</p>`;
@@ -1434,23 +1508,38 @@ function brancherGlisser() {
 }
 
 // ─────────────────────────────── planning ───────────────────────────────
+// Un jour du calendrier. Le bot n'envoie que les jours qui sortent de l'habitude :
+// les autres ont l'heure habituelle de leur jour de la semaine.
+function jourCalendrier(date) {
+  const pl = S.d.planning;
+  return pl.calendrier[date] || { heure: pl.jours[CLES_JOURS[dateObj(date).getUTCDay()]] || null };
+}
+// Nombre de mois qu'on peut feuilleter après le mois en cours.
+function moisPlanningMax() {
+  const d = S.d, fin = d.planning.calendrier_jusqua;
+  if (!fin) return 1;                       // bot d'avant : le mois en cours et le suivant
+  return (Number(fin.slice(0, 4)) - Number(d.aujourdhui.slice(0, 4))) * 12 + Number(fin.slice(5, 7)) - Number(d.aujourdhui.slice(5, 7));
+}
+
 function vuePlanning() {
   const d = S.d, pl = d.planning;
   const premier = `${d.aujourdhui.slice(0, 8)}01`;
-  const mois = S.mois === 0 ? premier : (() => { const x = dateObj(premier); x.setUTCMonth(x.getUTCMonth() + 1); return x.toISOString().slice(0, 10); })();
+  const maxMois = moisPlanningMax();
+  S.mois = Math.max(0, Math.min(maxMois, S.mois || 0));
+  const mois = (() => { const x = dateObj(premier); x.setUTCMonth(x.getUTCMonth() + S.mois); return x.toISOString().slice(0, 10); })();
   const m = dateObj(mois);
   const decalage = (m.getUTCDay() + 6) % 7;
   const jours = [];
   for (let i = 0; i < 31; i++) { const date = plusJours(mois, i); if (date.slice(5, 7) !== mois.slice(5, 7)) break; jours.push(date); }
   const normal = (date) => pl.jours[CLES_JOURS[dateObj(date).getUTCDay()]];
   const cellule = (date) => {
-    const c = pl.calendrier[date] || {};
+    const c = jourCalendrier(date);
     const classes = [];
     if (date < d.aujourdhui) classes.push("passe");
     if (date === d.aujourdhui) classes.push("aujourdhui");
     if (c.pause) {
       // Bande continue sur les jours de la pause, arrondie à ses bouts et en fin de semaine.
-      const enPause = (x) => (pl.calendrier[x] || {}).pause;
+      const enPause = (x) => jourCalendrier(x).pause;
       const col = (dateObj(date).getUTCDay() + 6) % 7;
       classes.push("pause");
       if (col === 0 || !enPause(plusJours(date, -1)) || date.slice(8) === "01") classes.push("debut");
@@ -1466,10 +1555,12 @@ function vuePlanning() {
   return `
   <h1>Planning</h1>
   <section class="carte" aria-labelledby="t-mois">
-    <div class="entre"><h2 id="t-mois">${majuscule(MOIS[m.getUTCMonth()])} ${m.getUTCFullYear()}</h2>
+    <div class="entre"><div style="display:flex;flex-direction:column;align-items:flex-start;min-width:0">
+        <h2 id="t-mois">${majuscule(MOIS[m.getUTCMonth()])} ${m.getUTCFullYear()}</h2>
+        ${S.mois > 1 ? `<button type="button" class="lien" style="min-height:32px;padding:0;font-size:13px" data-mois="0">Revenir à aujourd'hui</button>` : ""}</div>
       <div class="ligne" style="gap:4px">
-        <button type="button" class="icone" style="background:var(--carte-2);width:40px;height:40px" data-mois="0" ${S.mois === 0 ? "disabled" : ""} aria-label="Mois en cours">${icone("retour", 16, 2.2)}</button>
-        <button type="button" class="icone" style="background:var(--carte-2);width:40px;height:40px" data-mois="1" ${S.mois === 1 ? "disabled" : ""} aria-label="Mois suivant">${icone("suite", 16, 2.2)}</button>
+        <button type="button" class="icone" style="background:var(--carte-2);width:40px;height:40px" data-mois="${S.mois - 1}" ${S.mois === 0 ? "disabled" : ""} aria-label="Mois précédent">${icone("retour", 16, 2.2)}</button>
+        <button type="button" class="icone" style="background:var(--carte-2);width:40px;height:40px" data-mois="${S.mois + 1}" ${S.mois >= maxMois ? "disabled" : ""} aria-label="Mois suivant">${icone("suite", 16, 2.2)}</button>
       </div></div>
     <div class="calendrier">
       ${["L", "M", "M", "J", "V", "S", "D"].map((x) => `<span class="tete" aria-hidden="true">${x}</span>`).join("")}
@@ -1589,7 +1680,7 @@ document.addEventListener("keydown", (ev) => {
 // Toucher un jour du calendrier : changer son heure, ou pas d'épisode pendant N jours.
 const J = { date: "", heure: "", nb: 1 };
 function toucherJour(date) {
-  const d = S.d, pl = d.planning, c = pl.calendrier[date] || {};
+  const d = S.d, pl = d.planning, c = jourCalendrier(date);
   if (date < d.aujourdhui) return;
   const habituelle = pl.jours[CLES_JOURS[dateObj(date).getUTCDay()]] || "";
   if (J.date !== date) Object.assign(J, { date, heure: c.heure || habituelle || "07:30", nb: 1 });
@@ -2005,6 +2096,7 @@ document.addEventListener("click", (ev) => {
   const ds = el.dataset;
   if (el.id === "mini-titre") { S.episode = L.cle; return aller("episode"); }
   if (ds.mini !== undefined) { if (audio.paused) audio.play(); else audio.pause(); return; }
+  if (ds.vitesse !== undefined) return changerVitesse();
   if (ds.aller) return aller(ds.aller);
   if (ds.destination) {
     if (ds.destination.startsWith("r:")) { S.reglage = ds.destination.slice(2); return aller("reglage"); }

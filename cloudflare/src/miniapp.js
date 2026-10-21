@@ -10,9 +10,11 @@ import {
   heurePrevue, prochainEpisode, ajouterJours, dateCourte, nomRubrique, dateOuNull, nettoyerListe,
   VOIX, VOIX_CONSEILLEES, VITESSES, TONS, CITER, TRANSPORTS, fluxActus, profilPays, PAYS, DELAIS_RATTRAPAGE,
   DEVISES, REGIONS_FERIES, MODES_VOIX, sourcesAuto, estFerie, nomFerie, animateursDuJour, equipeComplete, normaliserTexte,
+  jourDeSemaine,
 } from "./config.js";
 
 const DUREE_VALIDITE = 24 * 3600;      // une ouverture reste valable 24 h
+const MOIS_CALENDRIER = 12;            // le planning se feuillette jusqu'à un an à l'avance
 const PERIODES = ["toujours", "dates", "jours", "une_fois", "ponctuelle"];
 const MOMENTS = ["jour_meme", "veille", "jours_avant"];
 const CHAMPS_FICHE = ["quoi", "avec_qui", "ages", "ou", "quand", "attendu"];
@@ -94,11 +96,35 @@ function familleRegle(r) {
   return "info";
 }
 
+// Genre de la rubrique (son icône et sa couleur dans l'application), plus fin que la famille :
+// météo, fête du prénom et journée du jour n'ont pas le même ; mon train et idée de sortie non plus.
+export function genreRegle(r) {
+  const sources = r.recherche?.sources || [];
+  const fiche = r.recherche?.fiche || {};
+  const titre = normaliserTexte(r.titre || "");
+  const texte = normaliserTexte(`${r.titre || ""} ${r.consigne || ""}`);
+  if (r.condition) return "rappel";
+  if (/\btrains?\b|\bcff\b|sncf|sncb/.test(texte) && /retard|suppr|ponctu|\bcff\b|sncf|sncb|\bgare\b|voie/.test(texte)
+      && !fiche.quoi) return "train";
+  if (fiche.quoi || fiche.ou || sources.some((s) => ["lieux", "wikivoyage"].includes(s))) return "sortie";
+  // Le titre d'abord (« Fête du prénom », « Météo »), puis les sources choisies.
+  if (/prenom|\bsaints?\b/.test(titre)) return "prenom";
+  if (/journee|fete (inter)?nationale/.test(titre)) return "journee";
+  if (/meteo/.test(titre)) return "meteo";
+  if (sources.includes("saints")) return "prenom";
+  if (sources.includes("fetes")) return "journee";
+  if (sources.includes("meteo")) return "meteo";
+  if (sources.includes("transports")) return "train";
+  if (sources.includes("feries")) return "feries";
+  if (sources.includes("actus") || /\bactus?\b|actualite|nouvelles/.test(titre)) return "actu";
+  return "libre";
+}
+
 function regleVisible(r, aujourdHui) {
   const fiche = r.recherche?.fiche || {};
   return {
     id: r.id, titre: r.titre, consigne: r.consigne, importance: r.importance, pause: r.etat === "pause",
-    etat: etatRegle(r, aujourdHui), famille: familleRegle(r),
+    etat: etatRegle(r, aujourdHui), famille: familleRegle(r), genre: genreRegle(r),
     periode: r.periode, periode_texte: decrirePeriode(r.periode),
     prochain: (() => { const d = prochainPassage(r, aujourdHui); return d ? dateCourte(d) : null; })(),
     longueur: r.rubrique?.longueur || null,
@@ -137,17 +163,22 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
     const jour = NOMS_JOURS[JOURS[(new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7]];
     return { date, initiale: jour[0].toUpperCase(), jour, heure: heurePrevue(config.planning, date) };
   });
-  // Deux mois de calendrier : celui en cours et le suivant.
+  // Calendrier du mois en cours et des MOIS_CALENDRIER suivants. N'y figurent que les jours
+  // qui sortent de l'habitude (férié, pause, heure changée) : les autres suivent planning.jours.
   const debutMois = `${aujourdHui.slice(0, 8)}01`;
+  const fin = new Date(`${debutMois}T12:00:00Z`);
+  fin.setUTCMonth(fin.getUTCMonth() + MOIS_CALENDRIER + 1, 0);
+  const calendrierJusqua = fin.toISOString().slice(0, 10);
   const calendrier = {};
-  for (let i = 0; i < 70; i++) {
-    const date = ajouterJours(debutMois, i);
-    calendrier[date] = {
+  for (let date = debutMois; date <= calendrierJusqua; date = ajouterJours(date, 1)) {
+    const jour = {
       heure: heurePrevue(config.planning, date),
       ferie: estFerie(config.planning, date), ferie_nom: nomFerie(config.planning, date),
       pause: config.planning.pauses.some((p) => date >= p.du && date <= p.au),
       exception: config.planning.exceptions.some((e) => e.date === date),
     };
+    const habituelle = config.planning.jours[jourDeSemaine(date)] ?? null;
+    if (jour.heure !== habituelle || jour.ferie || jour.pause || jour.exception) calendrier[date] = jour;
   }
   return {
     version, aujourdhui: aujourdHui, heure: ctx.maintenant.heure,
@@ -196,7 +227,8 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
                pause: regle ? etatRegle(regle, aujourdHui) !== "active" : false };
     }),
     planning: { jours: config.planning.jours, feries: config.planning.feries, pauses: config.planning.pauses,
-                exceptions: config.planning.exceptions, semaine, calendrier, rattrapage: config.planning.rattrapage,
+                exceptions: config.planning.exceptions, semaine, calendrier, calendrier_jusqua: calendrierJusqua,
+                rattrapage: config.planning.rattrapage,
                 feries_region: config.planning.feries_region || "CH-VD",
                 delai_rattrapage: config.planning.delai_rattrapage, avance_minutes: config.planning.avance_minutes },
     listes: { sources: SOURCES, longueurs: LONGUEURS, jours: JOURS.map((j) => [j, COURTS_JOURS[j], NOMS_JOURS[j]]),

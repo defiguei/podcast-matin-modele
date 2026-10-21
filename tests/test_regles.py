@@ -491,6 +491,56 @@ verifier(podcast.cle_titre("Genève : grève des TPG") in podcast.articles_deja_
 verifier(not podcast.articles_deja_traites(mem, dt.datetime(2026, 10, 14, 9, tzinfo=dt.timezone.utc)), "relance le même jour : rien d'écarté")
 verifier(not podcast.articles_deja_traites(mem, dt.datetime(2026, 10, 25, 7, tzinfo=dt.timezone.utc)), "oublié après 7 jours")
 
+# La mémoire survit à l'enregistrement puis à la relecture de memoire.json (elle s'effaçait chaque jour).
+import tempfile
+from pathlib import Path as _Path
+with tempfile.TemporaryDirectory() as dossier:
+    chemin = _Path(dossier) / "memoire.json"
+    lue = podcast.charger_memoire(chemin)
+    podcast.retenir_articles(lue, [_A(1, "Des reliques exceptionnelles présentées lors du pèlerinage")], {1},
+                             dt.datetime(2026, 10, 18, 7, tzinfo=dt.timezone.utc), ["Festival Jimei x Arles : le programme"])
+    podcast.sauver_memoire(chemin, lue)
+    lue = podcast.charger_memoire(chemin)
+    podcast.retenir_articles(lue, [_A(1, "Yverdon : chasse aux dealers, fausse info")], {1},
+                             dt.datetime(2026, 10, 19, 7, tzinfo=dt.timezone.utc))
+    podcast.sauver_memoire(chemin, lue)
+    deja = podcast.articles_deja_traites(podcast.charger_memoire(chemin), dt.datetime(2026, 10, 20, 7, tzinfo=dt.timezone.utc))
+    verifier(podcast.cle_titre("Des reliques exceptionnelles présentées lors du pèlerinage") in deja
+             and podcast.cle_titre("Yverdon : chasse aux dealers, fausse info") in deja
+             and podcast.cle_titre("Festival Jimei x Arles : le programme") in deja,
+             f"mémoire des actus gardée d'un jour à l'autre, rubriques comprises ({sorted(deja)})")
+
+# Même sujet sous deux titres : écarté ; deux sujets différents d'une même ville : gardés.
+cle = podcast.cle_titre
+verifier(podcast.meme_sujet(cle("Reprise du trafic ferroviaire entre Yverdon et Lausanne dimanche"),
+                            cle("Trafic ferroviaire entre Lausanne et Yverdon repris dimanche matin")), "même sujet, titre reformulé")
+verifier(podcast.meme_sujet(cle("Aux Saintes-Maries-de-la-Mer, un pèlerinage populaire"),
+                            cle("Le pèlerinage des gens du voyage aux Saintes-Maries-de-la-Mer, entre foi et retrouvailles")), "même pèlerinage")
+verifier(not podcast.meme_sujet(cle("Yverdon-les-Bains : 144 arbres doivent être abattus"),
+                                cle("Yverdon-les-Bains : une altercation n'était pas une chasse aux dealers")), "même ville, sujets différents")
+_vus = {cle("Reprise du trafic ferroviaire entre Yverdon et Lausanne dimanche")}
+_arts = [podcast.Article(titre=t, resume="", lien="", source="x") for t in
+         ("Trafic ferroviaire entre Lausanne et Yverdon repris dimanche matin", "Yverdon : nouvelle piscine", "Yverdon : marché de Noël", "Yverdon : budget 2027")]
+_gardes = podcast.garder_nouveaux(_arts, _vus, 2)
+verifier([a.titre for a in _gardes] == ["Yverdon : nouvelle piscine", "Yverdon : marché de Noël"], "nouveaux seulement, au plus deux")
+
+# Déplacements : les lieux déjà présentés et les idées déjà proposées sont retenus.
+memlieux = {"lieux_presentes": []}
+podcast.retenir_lieux(memlieux, [{"lieu": "Arles et Les Saintes-Maries-de-la-Mer", "evenement": "Camargue"}],
+                      ["arènes d'Arles", "musée Réattu"], dt.datetime(2026, 10, 18, 7, tzinfo=dt.timezone.utc))
+podcast.retenir_lieux(memlieux, [{"lieu": "Les Saintes-Maries-de-la-Mer", "evenement": "Camargue"}],
+                      ["promenade en bateau sur le Petit-Rhône"], dt.datetime(2026, 10, 19, 7, tzinfo=dt.timezone.utc))
+verifier(len(memlieux["lieux_presentes"]) == 1, f"même déplacement sous deux noms : une seule fiche ({memlieux})")
+deja_lieu = podcast.lieu_deja_presente(memlieux, {"lieu": "Camarkas, Saintes Maries de la Mer", "evenement": "Séjour"},
+                                       dt.datetime(2026, 10, 20, 7, tzinfo=dt.timezone.utc))
+verifier(deja_lieu and len(deja_lieu["dates"]) == 2 and "musée Réattu" in deja_lieu["idees"], f"lieu reconnu, idées déjà proposées connues ({deja_lieu})")
+texte_deja = podcast.deja_presente_en_mots(deja_lieu, dt.datetime(2026, 10, 20, 7, tzinfo=dt.timezone.utc))
+verifier("2 épisodes" in texte_deja and "hier" in texte_deja and "promenade en bateau" in texte_deja, texte_deja)
+verifier(not podcast.lieu_deja_presente(memlieux, {"lieu": "Genève", "evenement": "Réunion"}, dt.datetime(2026, 10, 20, 7, tzinfo=dt.timezone.utc)),
+         "autre lieu : rien de déjà dit")
+verifier(not podcast.lieu_deja_presente(memlieux, {"lieu": "Les Saintes-Maries-de-la-Mer", "evenement": "Camargue"},
+                                        dt.datetime(2026, 10, 18, 9, tzinfo=dt.timezone.utc)), "épisode refait le même jour : rien de déjà dit")
+
 # Corrections de contenu : fêtes, actus sans lieu, pas d'itinéraire hors sortie.
 class SourcesFetes(FaussesSources):
     def fetes(self, jour):
