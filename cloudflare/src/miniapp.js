@@ -288,7 +288,8 @@ export function champsDepuisFormulaire(f, ancienne, aujourdHui, devise = "CHF") 
                    transport_inclus: fiche.transport === "aucun" ? false : Boolean(f.budget?.transport_inclus) };
   fiche.inclure = nettoyerListe(Array.isArray(f.inclure) ? f.inclure : String(f.inclure || "").split(/[,;\n]/), 8);
   fiche.exclure = nettoyerListe(Array.isArray(f.exclure) ? f.exclure : String(f.exclure || "").split(/[,;\n]/), 8);
-  const avecFiche = CHAMPS_FICHE.some((c) => fiche[c]) || fiche.transport || fiche.budget.max !== null || fiche.inclure.length || fiche.exclure.length;
+  // « Pas de transport » est le choix par défaut d'une nouvelle rubrique : seul, il ne fait pas une recherche.
+  const avecFiche = CHAMPS_FICHE.some((c) => fiche[c]) || (fiche.transport && fiche.transport !== "aucun") || fiche.budget.max !== null || fiche.inclure.length || fiche.exclure.length;
   const recherche = sources.length || avecFiche || type === "ponctuelle"
     ? { sources: sources.length ? sources : ["web"], fiche, sources_auto: auto } : null;
 
@@ -327,7 +328,7 @@ export function formulaireNeuf(config, idModele = "libre", ponctuelle = false) {
       : { type: "toujours", debut: "", fin: "", jours: [], ...(base.periode || {}) },
     sources_auto: true, sources: ponctuelle ? ["web", "lieux"] : [],
     fiche: Object.fromEntries(CHAMPS_FICHE.map((c) => [c, ""])),
-    transport: "", budget: { max: "", unite: "personne", devise: profilPays(config).devise, transport_inclus: false },
+    transport: "aucun", budget: { max: "", unite: "personne", devise: profilPays(config).devise, transport_inclus: false },
     inclure: [], exclure: [], condition: base.condition ? { ...base.condition } : null,
     place: base.place || "actualites", prioritaire: false, active: true,
   };

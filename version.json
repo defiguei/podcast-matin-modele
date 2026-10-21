@@ -1,12 +1,9 @@
 {
-  "version": "2026-10-21.10",
-  "date": "2026-10-21",
-  "titre": "Toutes les voix, avec leur prénom",
+  "version": "2026-10-22.1",
+  "date": "2026-10-22",
+  "titre": "Nouvelle rubrique sans transport par défaut",
   "nouveautes": [
-    "Toutes les voix sont des animateurs possibles, sous leur nom : donne-leur un prénom dans Réglages › Voix.",
-    "Chaque voix s'active ou se coupe ; « Au hasard » tire parmi celles que tu utilises.",
-    "Selon le jour : une liste par place pour choisir qui présente chaque jour.",
-    "« Autres animateurs » disparaît : leurs prénoms passent à leurs voix."
+    "Une nouvelle rubrique démarre sans transport (« Pas de transport ») : tu peux en choisir un dans les détails de recherche."
   ],
   "supprimes": [
     "cloudflare/worker.js",

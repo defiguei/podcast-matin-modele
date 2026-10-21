@@ -1293,7 +1293,7 @@ function ouvrirFiche(id, modele = null, origine = null) {
       sources_auto: r ? Boolean(r.sources_auto) : true,
       sources: r ? [...r.sources] : ponctuelle ? ["web", "lieux"] : [],
       fiche: r ? { ...vide, ...r.fiche } : { ...vide },
-      transport: r ? r.transport : "",
+      transport: r ? r.transport : "aucun",
       budget: r ? { max: r.budget.max ?? "", unite: r.budget.unite || "personne", devise: r.budget.devise || S.d.devise || "CHF", transport_inclus: Boolean(r.budget.transport_inclus) }
                 : { max: "", unite: "personne", devise: S.d.devise || "CHF", transport_inclus: false },
       inclure: r ? [...r.inclure] : [], exclure: r ? [...r.exclure] : [],

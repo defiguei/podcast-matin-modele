@@ -347,7 +347,9 @@ await scenario("Règle : saint du jour entre l'agenda et les news", async () => 
 });
 
 await scenario("Règle : boutons période, budget, pause, importance", async () => {
-  for (const a of ["a:rpj:R1:ven", "a:rpj:R1:sam", "a:ri:R1", "a:rb:R1:20", "a:rbu:R1", "a:rbt:R1"]) {
+  // Une rubrique neuve est sans transport (« aucun », qui interdit « transport compris ») : un clic sur
+  // le transport le remet à « non précisé », ce qui permet de compter le transport dans le budget.
+  for (const a of ["a:rpj:R1:ven", "a:rpj:R1:sam", "a:ri:R1", "a:rb:R1:20", "a:rbu:R1", "a:rtr:R1", "a:rbt:R1"]) {
     await vider(); await bouton(a); await attendre((l) => tg(l, "answerCallbackQuery").length >= 1);
   }
   let regle = (await etat()).config.regles[0];
@@ -764,7 +766,8 @@ await scenario("Rubriques : édition de tous les paramètres", async () => {
   const f = r.recherche.fiche;
   verifier(r.consigne === "Donne une idée de sortie." && f.quoi === "balade en forêt" && f.ou === "Yverdon-les-Bains" && f.rayon_km === 12 && f.avec_qui === "deux enfants", "champs texte", f);
   verifier(f.inclure.join() === "pique-nique,jeux" && r.recherche.requetes.length === 2, "listes", r.recherche);
-  await cliquer(`a:rtr:${id}`);
+  verifier((await etat()).config.regles.find((x) => x.id === id).recherche.fiche.transport === "aucun", "nouvelle rubrique : pas de transport par défaut");
+  await cliquer(`a:rtr:${id}`); await cliquer(`a:rtr:${id}`);   // « aucun » → non précisé → voiture
   verifier((await etat()).config.regles.find((x) => x.id === id).recherche.fiche.transport === "voiture", "transport suivant");
   await cliquer(`a:rs:${id}:meteo`); await cliquer(`a:rs:${id}:lieux`);
   verifier((await etat()).config.regles.find((x) => x.id === id).recherche.sources.includes("meteo"), "source ajoutée");
@@ -891,7 +894,7 @@ await scenario("Rubrique : jeudis seulement = à venir ; longueur sans place ; t
   await message("ajoute une rubrique du jeudi");
   await attendre((l) => tg(l, "sendMessage").length >= 2);
   const id = (await etat()).config.regles.find((r) => r.titre === "Jeudi seulement").id;
-  verifier(!(await etat()).config.regles.find((r) => r.id === id).recherche?.fiche?.transport, "« peu importe » = aucun critère");
+  verifier(["", "aucun", undefined].includes((await etat()).config.regles.find((r) => r.id === id).recherche?.fiche?.transport), "« peu importe » = aucun critère de transport");
   await cliquer(`a:rpj:${id}:jeu`);
   await vider(); await bouton("m:regles:avenir:0");
   let liste = await attendre((l) => tg(l, "editMessageText").length >= 1);
