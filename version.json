@@ -1,11 +1,10 @@
 {
-  "version": "2026-10-23.2",
+  "version": "2026-10-23.3",
   "date": "2026-10-23",
-  "titre": "Tous les pays, durée réglable, résumé de rubrique",
+  "titre": "Fiches de rubrique plus lisibles",
   "nouveautes": [
-    "Pays : près de 200 pays au choix (« Pas renseigné » possible), qui règlent l'heure, la devise, les jours fériés et les médias. Le réglage des jours fériés a disparu du planning (en Suisse, le canton se choisit sous le pays).",
-    "Durée : un curseur et des raccourcis (3, 5, 8, 10, 12 min) ; si Gemini écrit plus court que demandé, le podcast s'en souvient et demande davantage la fois suivante.",
-    "Chaque rubrique garde ce qu'elle a raconté : liste des sujets, podcast de synthèse, textes et sources, dans sa fiche. Les agendas venus de GitHub se retirent aussi (et se remettent). La fête du prénom ne cite plus les saints."
+    "Fiches de rubrique : chaque partie est une carte à part, « Dans l'épisode » devient « Longueur du passage », et les interrupteurs Prioritaire et Active sont retirés de la fiche (Active reste dans l'onglet Épisode).",
+    "Agendas : une pastille de couleur identifie chaque agenda, la même que dans l'aperçu."
   ],
   "supprimes": [
     "cloudflare/worker.js",

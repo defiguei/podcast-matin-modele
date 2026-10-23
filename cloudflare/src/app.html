@@ -103,8 +103,12 @@ h2 { margin: 0; font-family: var(--titre); font-weight: 700; font-size: 18px; }
 .genre { color: var(--g); background: var(--carte-2); background: color-mix(in srgb, var(--g) 16%, var(--carte)); }
 .f-integree { background: var(--carte-2); color: var(--doux-2); }
 .deroule li.eteint .pastille-mini { opacity: .5; }
-.section-fiche { display: flex; flex-direction: column; gap: 10px; }
-.section-fiche > h2 { font-size: 15px; letter-spacing: .02em; color: var(--doux-2); }
+.section-fiche { display: flex; flex-direction: column; gap: 10px; background: var(--carte); border-radius: 20px; padding: 14px 14px 16px; }
+.section-fiche > h2 { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--bleu); margin: 0 0 2px; display: flex; align-items: center; gap: 8px; }
+.section-fiche > h2::before { content: ""; width: 4px; height: 14px; border-radius: 2px; background: var(--bleu); flex: none; }
+.section-fiche .bloc, .section-fiche .sous-bloc, .section-fiche .segments { background: var(--carte-2); }
+.section-fiche .saisie { background: var(--carte-2); }
+.pastille-ag { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; flex: none; vertical-align: baseline; }
 .suggestion { display: flex; flex-direction: column; gap: 2px; background: var(--aube-fond); border-radius: 12px; padding: 10px 12px; font-size: 13px; color: var(--aube-clair); }
 .suggestion .lien { align-self: flex-start; min-height: 36px; padding: 0; }
 .alerte { background: #2E1D1C; color: var(--rouge); border-radius: 12px; padding: 10px 12px; font-size: 14px; font-weight: 600; line-height: 1.4; }
@@ -1377,7 +1381,7 @@ function vueFiche() {
           ${f.condition.moment === "jours_avant" ? `<input class="saisie" type="number" min="1" max="30" data-champ="condition.n" value="${h(f.condition.n || 1)}" aria-label="Nombre de jours avant">` : "<span></span>"}</div>
       </div>` : `<button type="button" class="bouton pointille" data-action="condition">+ Seulement si mon agenda contient…</button>`}
   </section>
-  <section class="section-fiche" aria-labelledby="s-place"><h2 id="s-place">Dans l'épisode</h2>
+  <section class="section-fiche" aria-labelledby="s-place"><h2 id="s-place">Longueur du passage</h2>
     <div class="segments" role="group" aria-labelledby="s-place" style="grid-template-columns:repeat(4,minmax(0,1fr))">
       ${segments.map(([cle, nom]) => `<button type="button" data-longueur="${cle}" aria-pressed="${f.longueur === cle}">${nom}</button>`).join("")}
     </div>
@@ -1386,10 +1390,6 @@ function vueFiche() {
   </section>`}
   ${blocOuCherche(F, f, r)}
   ${r && !ponctuelle ? blocResume(r.id) : ""}
-  <div class="bloc">
-    ${ponctuelle ? "" : interrupteur("Prioritaire", f.prioritaire, 'data-bascule="prioritaire"')}
-    ${interrupteur("Active", f.active, 'data-bascule="active"')}
-  </div>
   ${ponctuelle && F.id ? `<button type="button" class="bouton gris" data-action="garder">Mettre cette idée dans mes épisodes</button>` : ""}
   <div class="barre"><button type="button" class="bouton plein" data-action="enregistrer">${libelleBouton}</button></div>`;
 }
@@ -1758,11 +1758,18 @@ function vuePlanning() {
   </section>`;
 }
 
+// Une couleur par agenda, la même partout (liste, retrait, aperçu) : celle de son rang dans la liste.
+const COULEURS_AGENDA = ["var(--aube)", "var(--bleu)", "var(--vert)", "#E8A0D8", "#C3C9D4", "#F2C14E", "#6FD6D6", "#B08CF2"];
+function couleurAgenda(id) {
+  const tous = [...S.d.reglages.agendas, ...(S.d.reglages.agendas_retires || [])].map((a) => a.id);
+  return COULEURS_AGENDA[Math.max(0, tous.indexOf(id)) % COULEURS_AGENDA.length];
+}
+const pastilleAgenda = (id) => `<i class="pastille-ag" style="background:${couleurAgenda(id)}" aria-hidden="true"></i>`;
+
 // Aperçu de l'agenda : les 7 prochains jours, tous agendas lus confondus.
 function vueAgenda() {
   const d = S.d, evs = d.agenda_apercu || [];
   const agendas = d.reglages.agendas.map((a) => a.id);
-  const couleurs = ["var(--aube)", "var(--bleu)", "var(--vert)", "#E8A0D8", "#C3C9D4"];
   const jours = Array.from({ length: 7 }, (_, i) => plusJours(d.aujourdhui, i));
   const parJour = jours.map((date) => [date, evs.filter((ev) => ev.debut.slice(0, 10) === date || (ev.journee && ev.debut.slice(0, 10) < date && (ev.fin || "").slice(0, 10) > date))]);
   const nom = (date, i) => i === 0 ? "Aujourd'hui" : i === 1 ? "Demain" : majuscule(dateLongue(date));
@@ -1770,7 +1777,7 @@ function vueAgenda() {
     <div class="entre"><h2 id="t-agenda">Mon agenda</h2><button type="button" class="lien" style="min-height:32px;padding:0" data-action="lire-agendas">Relire</button></div>
     ${evs.length ? `<div class="agenda">${parJour.filter(([, l]) => l.length).map(([date, l]) => `<div class="agenda-jour">
         <span class="agenda-date">${h(nom(date, jours.indexOf(date)))}</span>
-        ${l.map((ev) => `<div class="agenda-ev"><i style="background:${couleurs[Math.max(0, agendas.indexOf(ev.agenda)) % couleurs.length]}"></i>
+        ${l.map((ev) => `<div class="agenda-ev"><i style="background:${couleurAgenda(ev.agenda)}"></i>
           <span class="agenda-h">${ev.journee ? "Journée" : h(ev.debut.slice(11, 16).replace(":", "h"))}</span>
           <span class="agenda-t">${h(ev.titre)}${ev.lieu ? `<br><span class="aide">${h(ev.lieu)}</span>` : ""}</span></div>`).join("")}
       </div>`).join("") || `<p class="aide">Rien dans les 7 prochains jours.</p>`}</div>
@@ -2154,9 +2161,9 @@ function blocAjoutAgenda() {
     <p class="aide">Colle l'adresse secrète de ton agenda.<br><b>Google Agenda</b> (sur ordinateur) : ⚙️ Paramètres › ton agenda › Intégrer l'agenda › « Adresse secrète au format iCal ».<br><b>Outlook</b> : Paramètres › Calendrier › Calendriers partagés › Publier un calendrier › lien ICS.</p>
     <div class="ajout"><input class="saisie" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://…/basic.ics" data-nouveau="agenda-url" aria-label="Adresse iCal de l'agenda">
       <button type="button" class="bouton gris" data-action="agenda-ajouter">Ajouter</button></div>
-    ${S.d.reglages.agendas.length ? `<div class="bloc" style="background:var(--carte-2)">${S.d.reglages.agendas.map((a) => `<div class="reglage"><span>${h(a.nom)} <span class="aide">${a.nb} évén.${c.agendas.some((x) => x.id === a.id) ? "" : " · secret GitHub"}</span></span>
+    ${S.d.reglages.agendas.length ? `<div class="bloc" style="background:var(--carte-2)">${S.d.reglages.agendas.map((a) => `<div class="reglage"><span>${pastilleAgenda(a.id)}${h(a.nom)} <span class="aide">${a.nb} évén.${c.agendas.some((x) => x.id === a.id) ? "" : " · secret GitHub"}</span></span>
       <button type="button" class="lien" style="color:var(--rouge)" data-agenda-retirer="${h(a.id)}">Retirer</button></div>`).join("")}</div>` : ""}
-    ${(S.d.reglages.agendas_retires || []).length ? `<p class="aide" style="margin-top:8px">Retirés (plus lus) :</p><div class="bloc" style="background:var(--carte-2)">${S.d.reglages.agendas_retires.map((a) => `<div class="reglage"><span>${h(a.nom)}</span>
+    ${(S.d.reglages.agendas_retires || []).length ? `<p class="aide" style="margin-top:8px">Retirés (plus lus) :</p><div class="bloc" style="background:var(--carte-2)">${S.d.reglages.agendas_retires.map((a) => `<div class="reglage"><span>${pastilleAgenda(a.id)}${h(a.nom)}</span>
       <button type="button" class="lien" data-agenda-remettre="${h(a.id)}">Remettre</button></div>`).join("")}</div>` : ""}
     ${c.agendas_github ? `<p class="aide">Un agenda du secret GitHub CALENDAR_ICS_URL se retire ici aussi : il n'est plus lu, mais reste dans le secret.</p>` : ""}
   </section>`;
@@ -2233,7 +2240,7 @@ const CORPS_INTEGREES = {
   agenda: () => {
     const r = S.d.reglages;
     return `<section class="carte"><h2>Mes agendas</h2>
-        ${r.agendas.length ? `<div class="bloc" style="background:var(--carte-2)">${r.agendas.map((a) => interrupteur(`${h(a.nom)} <span class="aide">${a.nb} évén.</span>`, !r.agenda.exclus.includes(a.id), `data-agenda="${h(a.id)}"`)).join("")}</div>` : `<p class="aide">La liste apparaît après une première lecture.</p>`}
+        ${r.agendas.length ? `<div class="bloc" style="background:var(--carte-2)">${r.agendas.map((a) => interrupteur(`${pastilleAgenda(a.id)}${h(a.nom)} <span class="aide">${a.nb} évén.</span>`, !r.agenda.exclus.includes(a.id), `data-agenda="${h(a.id)}"`)).join("")}</div>` : `<p class="aide">La liste apparaît après une première lecture.</p>`}
         <button type="button" class="bouton gris" data-action="lire-agendas">Relire mes agendas</button>
       </section>
       ${blocAjoutAgenda()}

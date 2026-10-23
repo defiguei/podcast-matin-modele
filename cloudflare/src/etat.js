@@ -24,7 +24,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-23.2";
+export const VERSION = "2026-10-23.3";
 const MAX_REFAITS = 6;
 const LONGUEURS_VALIDES = ["phrase", "courte", "developpee"];
 const MAX_RECHERCHES = 15;
@@ -35,9 +35,8 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 // Message envoyé après une mise à jour : les nouveautés de cette version…
 const NOUVEAUTES = `✅ <b>Ton podcast est à jour</b> (version ${VERSION}).
 
-• Pays : près de 200 pays au choix (« Pas renseigné » possible), qui règlent l'heure, la devise, les jours fériés et les médias. Le réglage des jours fériés a disparu du planning (en Suisse, le canton se choisit sous le pays).
-• Durée : un curseur et des raccourcis (3, 5, 8, 10, 12 min) ; si Gemini écrit plus court que demandé, le podcast s'en souvient et demande davantage la fois suivante.
-• Chaque rubrique garde ce qu'elle a raconté : liste des sujets, podcast de synthèse, textes et sources, dans sa fiche. Les agendas venus de GitHub se retirent aussi (et se remettent). La fête du prénom ne cite plus les saints.`;
+• Fiches de rubrique : chaque partie est une carte à part, « Dans l'épisode » devient « Longueur du passage », et les interrupteurs Prioritaire et Active sont retirés de la fiche (Active reste dans l'onglet Épisode).
+• Agendas : une pastille de couleur identifie chaque agenda, la même que dans l'aperçu.`;
 
 // … ou, pour qui arrive d'avant l'application (installation neuve, ancienne version
 // réglée par la conversation), sa présentation.
