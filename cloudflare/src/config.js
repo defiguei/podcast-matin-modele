@@ -27,7 +27,7 @@ export const LONGUEURS = { phrase: "une phrase", courte: "courte", developpee: "
 // spécialisés de l'auditeur s'y ajoutent sous la forme « flux:<id> ».
 export const SOURCES = {
   actus: "Google Actualités", web: "Recherche web", meteo: "Météo", transports: "Trains",
-  lieux: "Lieux", wikivoyage: "Guides de voyage", saints: "Saints du jour", fetes: "Journées et fêtes",
+  lieux: "Lieux", wikivoyage: "Guides de voyage", saints: "Prénoms et saints du jour", fetes: "Journées et fêtes",
   feries: "Jours fériés", agenda: "Agendas",
 };
 export const INFOS_SOURCES = {
@@ -38,8 +38,8 @@ export const INFOS_SOURCES = {
   transports: { apporte: "Horaires, retards et suppressions de trains.", ou: "CFF et search.ch (Suisse), iRail (Belgique), SNCF (France)", cle_api: "sncf" },
   lieux: { apporte: "Musées, parcs, points de vue… autour d'un lieu.", ou: "OpenStreetMap et Wikipédia" },
   wikivoyage: { apporte: "Ce qu'il faut savoir d'une ville ou d'une région à visiter.", ou: "Wikivoyage (fr.wikivoyage.org)" },
-  saints: { apporte: "Les prénoms fêtés aujourd'hui.", ou: "Calendrier des saints intégré au podcast" },
-  fetes: { apporte: "Les journées mondiales et fêtes nationales du jour.", ou: "Wikipédia (« Ce jour-là »)" },
+  saints: { apporte: "Le prénom fêté aujourd'hui, et les saints du jour.", ou: "Calendrier des prénoms intégré au podcast (sans connexion)" },
+  fetes: { apporte: "Les journées mondiales, fêtes nationales et usages du jour (Suisse, France, Belgique).", ou: "Données intégrées au podcast : ONU, fêtes nationales, usages (sans connexion)" },
   feries: { apporte: "Les jours fériés des deux semaines à venir.", ou: "Calendrier de ta région (Planning › Jours fériés)", aussi: "Planning (horaire des jours fériés)" },
   agenda: { apporte: "Les événements de tes agendas : un rappel selon l'agenda s'en sert.", ou: "Tes liens iCal (fiche Agenda)", aussi: "Agenda, Mes déplacements" },
 };
@@ -94,7 +94,7 @@ export const ECRAN_INTEGREE = {
 // Gemini choisit quand on demande une rubrique à la voix. Le formulaire de départ est celui
 // de la fiche de l'application ; « pret » : titre et consigne utilisables tels quels.
 export const MODELES_RUBRIQUES = [
-  { id: "prenom", sources: ["saints"], famille: "jour", titre: "Fête du prénom", texte: "Les prénoms fêtés aujourd'hui (calendrier des saints)", pret: true,
+  { id: "prenom", sources: ["saints"], famille: "jour", titre: "Fête du prénom", texte: "Le prénom fêté aujourd'hui (calendrier traditionnel) et les saints du jour", pret: true,
     formulaire: () => ({ place: "ouverture", titre: "Fête du prénom", consigne: "Dis-moi quels prénoms on fête aujourd'hui (un ou deux).", longueur: "phrase" }) },
   { id: "journee", sources: ["fetes"], famille: "jour", titre: "Journée du jour", texte: "La journée mondiale ou la fête nationale célébrée aujourd'hui", pret: true,
     formulaire: () => ({ place: "ouverture", titre: "Journée du jour", consigne: "Dis-moi quelle journée mondiale, internationale ou fête nationale on célèbre aujourd'hui.", longueur: "phrase" }) },

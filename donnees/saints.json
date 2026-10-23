@@ -1,5 +1,5 @@
 {
- "source": "data.gouv.fr — « Les saints et fêtes du calendrier », Licence Ouverte",
+ "source": "data.gouv.fr — « Les saints et fêtes du calendrier » (UnExtraterrestres Delespace), Licence Ouverte. Corrigé en oct. 2026 : mai et juin étaient inversés, jour inexistant « 06-31 » retiré, coquilles rectifiées (voir docs/SOURCES-FETES.md).",
  "jours": {
   "01-01": [
    "Jour de l'an",
@@ -113,7 +113,7 @@
    "St-François de Sales"
   ],
   "01-25": [
-   "Converstion de St-Paul"
+   "Conversion de St-Paul"
   ],
   "01-26": [
    "St-Timothée",
@@ -152,7 +152,7 @@
   "02-02": [
    "St-Adalbaud",
    "Chandeleur",
-   "Ste Hadéloge"
+   "Ste-Hadéloge"
   ],
   "02-03": [
    "St-Anschaire",
@@ -208,7 +208,7 @@
    "St-Onésime"
   ],
   "02-17": [
-   "St Polychrone",
+   "St-Polychrone",
    "St-Théodule"
   ],
   "02-18": [
@@ -230,7 +230,7 @@
   ],
   "02-22": [
    "Chaire St-Pierre Apôtre",
-   "Ste Marguerite de Cortone"
+   "Ste-Marguerite de Cortone"
   ],
   "02-23": [
    "St-Lazare",
@@ -535,13 +535,165 @@
    "Ste-Sophie"
   ],
   "05-01": [
+   "St-Joseph",
+   "Ste-Panacée",
+   "St-Sigismond"
+  ],
+  "05-02": [
+   "St-Athanase d'Alexandrie",
+   "St-Célestin",
+   "Ste-Zoé"
+  ],
+  "05-03": [
+   "Ste-Adalsinde",
+   "St-Alexandre 1er, pape",
+   "St-Jacques le Mineur, apôtre",
+   "St-Juvénal de Narni",
+   "St-Philippe, apôtre"
+  ],
+  "05-04": [
+   "St-Florian",
+   "St-Godard",
+   "St-Silvain"
+  ],
+  "05-05": [
+   "St-Ange de Jérusalem",
+   "Ste-Jutta",
+   "St-Pérégrin"
+  ],
+  "05-06": [
+   "Ste-Bénédicte",
+   "St-Héliodore"
+  ],
+  "05-07": [
+   "Ste-Augustin de Nicomédie",
+   "St-Sérène",
+   "St-Villain"
+  ],
+  "05-08": [
+   "St-Désiré, évêque de Bourges",
+   "St-Hellade d'Auxerre",
+   "St-Wiron"
+  ],
+  "05-09": [
+   "St-Béat",
+   "St-Géronce"
+  ],
+  "05-10": [
+   "St-Antonin",
+   "St-Isidore le Laboureur",
+   "Ste-Solange"
+  ],
+  "05-11": [
+   "St-Gengoul",
+   "St-Mayeul",
+   "St-Mamert"
+  ],
+  "05-12": [
+   "St-Achilée",
+   "St-Nérée",
+   "St-Pancrace",
+   "Ste-Rictrude"
+  ],
+  "05-13": [
+   "Ste-Glycérie",
+   "St-Mael",
+   "St-Servais"
+  ],
+  "05-14": [
+   "St-Matthias"
+  ],
+  "05-15": [
+   "Ste-Césarie",
+   "St-Crésiphon",
+   "Ste-Denise"
+  ],
+  "05-16": [
+   "St-Honorat d'Amiens",
+   "St-Jean Népomucène",
+   "St-Ubald Baldassini"
+  ],
+  "05-17": [
+   "St-Adrion",
+   "St-Héradius",
+   "St-Pascal Baylon"
+  ],
+  "05-18": [
+   "St-Eric",
+   "St-Félix de Cantalice",
+   "St-Jean 1er",
+   "Ste-Juliette d'Ancyre",
+   "St-Venance"
+  ],
+  "05-19": [
+   "St-Pierre Célestin",
+   "Ste-Pudentienne",
+   "St-Yves de Kermartin"
+  ],
+  "05-20": [
+   "St-Bernardin de Sienne",
+   "Ste-Plautilla"
+  ],
+  "05-21": [
+   "St-Constantin 1er le Grand",
+   "St-Nicostrate",
+   "St-Théopompe"
+  ],
+  "05-22": [
+   "St-Emile",
+   "Ste-Julie",
+   "Ste-Rita de Cascia"
+  ],
+  "05-23": [
+   "St-Eutyche",
+   "St-Mercurial",
+   "St-Yves de Chartres"
+  ],
+  "05-24": [
+   "St-Donatien",
+   "St-Rogatien"
+  ],
+  "05-25": [
+   "St-Bède le Vénérable",
+   "St-Grégoire VII",
+   "St-Injurieux",
+   "Ste-Marie-Madeleine de Pazzi"
+  ],
+  "05-26": [
+   "St-Bérenger",
+   "St-Philippe de Néri"
+  ],
+  "05-27": [
+   "St-Augustin de Cantorbéry",
+   "St-Ranulphe",
+   "Ste-Restitute"
+  ],
+  "05-28": [
+   "St-Chéron",
+   "St-Germain de Paris"
+  ],
+  "05-29": [
+   "St-Conon",
+   "St-Martyrius",
+   "St-Maximin de Trèves",
+   "St-Sisinnius"
+  ],
+  "05-30": [
+   "Ste-Emmélie de Césarée",
+   "St-Ferdinand III",
+   "Ste-Jeanne D'Arc"
+  ],
+  "05-31": [
+   "Ste-Pétronille"
+  ],
+  "06-01": [
    "St-Caprais",
    "St-Clair",
    "St-Justin le Philosophe",
    "St-Marcellin",
    "St-Pierre"
   ],
-  "05-02": [
+  "06-02": [
    "Ste-Blandine",
    "St-Erasme",
    "St-Eugène 1er",
@@ -549,19 +701,19 @@
    "St-Pothin",
    "St-Sadoc"
   ],
-  "05-03": [
+  "06-03": [
    "St-Charles Lwanga",
    "Ste-Clotilde",
    "St-Kévin"
   ],
-  "05-04": [
+  "06-04": [
    "Ste-Burienne",
    "St-François de Caracciolo",
    "St-Métrophane",
    "St-Quirin",
    "St-Rutilus"
   ],
-  "05-05": [
+  "06-05": [
    "St-Boniface",
    "St-Dorothée de Tyr",
    "St-Dorothée l'Archimandrite",
@@ -569,100 +721,100 @@
    "Ste-Marcia",
    "Ste-Valérie"
   ],
-  "05-06": [
+  "06-06": [
    "St-Bertrand",
    "St-Marcellin Champagnat",
    "St-Norbert de Xanten",
    "Ste-Pauline"
   ],
-  "05-07": [
+  "06-07": [
    "St-Mériadec",
    "Ste-Potamienne la Jeune"
   ],
-  "05-08": [
+  "06-08": [
    "Ste-Eustadiole",
    "St-Médard de Noyon",
    "Ste-Mélanie l'Ancienne"
   ],
-  "05-09": [
+  "06-09": [
    "St-Cumian",
    "St-Ephrem le Syrien",
    "St-Félicien",
    "St-Prime"
   ],
-  "05-10": [
+  "06-10": [
    "St-Bogomile",
    "St-Gétule",
    "St-Landry"
   ],
-  "05-11": [
+  "06-11": [
    "St-Barnabé, apôtre",
    "St-Hérébald"
   ],
-  "05-12": [
+  "06-12": [
    "St-Gaspard Bertoni",
    "St-Gerbaud",
    "St-Guy"
   ],
-  "05-13": [
+  "06-13": [
    "St-Antoine de Padoue",
    "Ste-Aquiline",
    "St-Fandilas",
    "St-Pérégrin",
    "St-Triphyllius"
   ],
-  "05-14": [
+  "06-14": [
    "St-Elisée",
    "St-Rufin",
    "St-Valère"
   ],
-  "05-15": [
-   "Ste Bénilde",
+  "06-15": [
+   "Ste-Bénilde",
    "Ste-Eutrope",
    "Ste-Germaine Cousin"
   ],
-  "05-16": [
+  "06-16": [
    "St-Cyr",
    "Ste-Lutgarde",
    "St-Simplice de Bourges"
   ],
-  "05-17": [
+  "06-17": [
    "St-Hervé",
    "St-Raynier"
   ],
-  "05-18": [
+  "06-18": [
    "St-Amand de Bordeaux",
    "St-Léonce de Tripoli"
   ],
-  "05-19": [
+  "06-19": [
    "St-Gervais",
    "St-Innocent",
    "St-Romuald"
   ],
-  "05-20": [
+  "06-20": [
    "Ste-Florence",
    "Ste-Hélène",
    "St-Sylvère"
   ],
-  "05-21": [
+  "06-21": [
    "St-Aloysius de Gonzague (ou Louis)",
    "St-Démétrie",
    "St-Eusèbe de Samosate",
    "St-Radulphe"
   ],
-  "05-22": [
+  "06-22": [
    "St-Jean Fisher",
    "St-Paulin de Nole",
    "St-Thomas Moore"
   ],
-  "05-23": [
+  "06-23": [
    "Ste-Etheldrède",
    "St-Libert"
   ],
-  "05-24": [
+  "06-24": [
    "Jean le Baptiste (naissance de)"
   ],
-  "05-25": [
+  "06-25": [
    "St-Adalbert d'Egmond",
    "Ste-Fébronie",
    "St-Gallican",
@@ -672,184 +824,29 @@
    "St-Prosper",
    "Sts-Salomon Ier et Salomon III"
   ],
-  "05-26": [
+  "06-26": [
    "St-Anthelme de Chignin",
    "St-Baboléin",
    "St-Maxence",
    "Ste-Persévérande"
   ],
-  "05-27": [
+  "06-27": [
    "St-Cyrille d'Alexandrie",
    "St-Ferdinand d'Aragon",
    "St-Ladislas"
   ],
-  "05-28": [
+  "06-28": [
    "St-Irénée de Lyon"
   ],
-  "05-29": [
+  "06-29": [
    "St-Pierre, apôtre",
    "St-Paul, apôtre"
   ],
-  "05-30": [
+  "06-30": [
    "Ste-Clotsende",
    "Ste-Erentrude",
    "St-Martial de Limoges",
    "Premiers martyrs de Rome"
-  ],
-  "05-31": [
-   "Ste-Pétronille"
-  ],
-  "06-01": [
-   "St-Joseph",
-   "Ste-Panacée",
-   "St-Sigismond"
-  ],
-  "06-02": [
-   "St-Athanase d'Alexandrie",
-   "St-Célestin",
-   "Ste-Zoé"
-  ],
-  "06-03": [
-   "Ste-Adalsinde",
-   "St-Alexandre 1er, pape",
-   "St-Jacques le Mineur, apôtre",
-   "St-Juvénal de Narni",
-   "St-Philippe, apôtre"
-  ],
-  "06-04": [
-   "St-Florian",
-   "St-Godard",
-   "St-Silvain"
-  ],
-  "06-05": [
-   "St-Ange de Jérusalem",
-   "Ste-Jutta",
-   "St-Pérégrin"
-  ],
-  "06-06": [
-   "Ste-Bénédicte",
-   "St-Héliodore"
-  ],
-  "06-07": [
-   "Ste-Augustin de Nicomédie",
-   "St-Sérène",
-   "St-Villain"
-  ],
-  "06-08": [
-   "St-Désiré, évêque de Bourges",
-   "St-Hellade d'Auxerre",
-   "St-Wiron"
-  ],
-  "06-09": [
-   "St-Béat",
-   "St-Géronce"
-  ],
-  "06-10": [
-   "St-Antonin",
-   "St-Isidore le Laboureur",
-   "Ste-Solange"
-  ],
-  "06-11": [
-   "St-Gengoul",
-   "St-Mayeul",
-   "St-Mamert"
-  ],
-  "06-12": [
-   "St-Achilée",
-   "St-Nérée",
-   "St-Pancrace",
-   "Ste-Rictrude"
-  ],
-  "06-13": [
-   "Ste-Glycérie",
-   "St-Mael",
-   "St-Servais"
-  ],
-  "06-14": [
-   "St-Matthias"
-  ],
-  "06-15": [
-   "Ste-Césarie",
-   "St-Crésiphon",
-   "Ste-Denise"
-  ],
-  "06-16": [
-   "St-Honorat d'Amiens",
-   "St-Jean Népomucène",
-   "St-Ubald Baldassini"
-  ],
-  "06-17": [
-   "St-Adrion",
-   "St-Héradius",
-   "St-Pascal Baylon"
-  ],
-  "06-18": [
-   "St-Eric",
-   "St-Félix de Cantalice",
-   "St-Jean 1er",
-   "Ste-Juliette d'Ancyre",
-   "St-Venance"
-  ],
-  "06-19": [
-   "St-Pierre Célestin",
-   "Ste-Pudentienne",
-   "St-Yves de Kermartin"
-  ],
-  "06-20": [
-   "St-Bernardin de Sienne",
-   "Ste-Plautilla"
-  ],
-  "06-21": [
-   "St-Constantin 1er le Grand",
-   "St-Nicostrate",
-   "St-Théopompe"
-  ],
-  "06-22": [
-   "St-Emile",
-   "Ste-Julie",
-   "Ste-Rita de Cascia"
-  ],
-  "06-23": [
-   "St-Eutyche",
-   "St-Mercurial",
-   "St-Yves de Chartres"
-  ],
-  "06-24": [
-   "St-Donatien",
-   "St-Rogatien"
-  ],
-  "06-25": [
-   "St-Bède le Vénérable",
-   "St-Grégoire VII",
-   "St-Injurieux",
-   "Ste-Marie-Madeleine de Pazzi"
-  ],
-  "06-26": [
-   "St-Bérenger",
-   "St-Philippe de Néri"
-  ],
-  "06-27": [
-   "St-Augustin de Cantorbéry",
-   "St-Ranulphe",
-   "Ste-Restitute"
-  ],
-  "06-28": [
-   "St-Chéron",
-   "St-Germain de Paris"
-  ],
-  "06-29": [
-   "St-Conon",
-   "St-Martyrius",
-   "St-Maximin de Trèves",
-   "St-Sisinnius"
-  ],
-  "06-30": [
-   "Ste-Emmélie de Césarée",
-   "St-Ferdinand III",
-   "Ste-Jeanne D'Arc"
-  ],
-  "06-31": [
-   "Ste-Pétronille"
   ],
   "07-01": [
    "St-Domitien",
@@ -1162,7 +1159,7 @@
   "09-10": [
    "St-Aubert",
    "St-Nicolas de Tolentino",
-   "Ste Pulchérie Auguste"
+   "Ste-Pulchérie Auguste"
   ],
   "09-11": [
    "St-Adelphe",

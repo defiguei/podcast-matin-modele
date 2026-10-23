@@ -16,8 +16,8 @@ from typing import Any, Callable
 
 import trains
 import pays
-from sources import (CATEGORIES_OSM, Sources, cle, distance_km, feries, journal, lien_itineraire,
-                     saints_du_jour)
+from fetes import prenoms_en_texte
+from sources import CATEGORIES_OSM, Sources, cle, distance_km, feries, journal, lien_itineraire
 
 JOURS_CODES = ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"]
 JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
@@ -323,12 +323,11 @@ def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: s
         lignes.append(f"Date visée : {date_longue(collecte.date_cible)} (dans {ecart} jour{'s' if abs(ecart) > 1 else ''})")
 
     if "saints" in noms_sources:
-        saints = saints_du_jour(jour)
-        lignes.append(f"Saints et fêtes du jour (calendrier des saints) : {', '.join(saints) if saints else 'aucun trouvé'}")
+        lignes.extend(prenoms_en_texte(jour) or ["Prénoms et saints du jour : aucun trouvé"])
     if "fetes" in noms_sources:
         fetes = sources.fetes(jour)
-        lignes.append(f"Fêtes nationales et journées internationales du {date_longue(jour)} (Wikipédia) : "
-                      + (" ; ".join(fetes) if fetes else "aucune trouvée"))
+        lignes.append(f"Fêtes nationales, journées internationales et usages du {date_longue(jour)} (données de référence du podcast) :")
+        lignes.extend(f"  - {f}" for f in fetes or ["aucune trouvée"])
         collecte.liens.append((f"Wikipédia : {jour.day} {MOIS[jour.month - 1]}",
                                f"https://fr.wikipedia.org/wiki/{jour.day}_{MOIS[jour.month - 1]}"))
     if "feries" in noms_sources:

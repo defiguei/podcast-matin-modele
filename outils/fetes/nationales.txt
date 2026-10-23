@@ -1,0 +1,228 @@
+# Fêtes nationales (une ligne par date célébrée ; un pays peut en avoir plusieurs).
+# Format : date | code ISO | pays | libellé | type | drapeau | note
+#   type    = independance, fondation, republique, revolution, constitution, monarchie, saint, unite
+#   drapeau = S (date établie), C (contestée, ambiguë ou instable : toujours annoncer avec la note)
+# La colonne « recoupement » n'est pas écrite ici : outils/construire_fetes.py la calcule en
+# comparant avec outils/fetes/ref_mfat.txt et ref_wikipedia.txt (voir docs/SOURCES-FETES.md).
+# Non repris : pays dont la date suit un calendrier non grégorien (Israël, Maldives : fête nationale
+# lunaire ou hébraïque), territoires sans statut d'État reconnu.
+01-01 | CU | Cuba | Triomphe de la Révolution | revolution | S |
+10-10 | CU | Cuba | Début de la guerre d'indépendance (1868) | independance | S |
+01-01 | HT | Haïti | Jour de l'indépendance (1804) | independance | S |
+01-01 | SD | Soudan | Jour de l'indépendance (1956) | independance | S |
+01-04 | MM | Birmanie (Myanmar) | Jour de l'indépendance (1948) | independance | S |
+01-26 | AU | Australie | Australia Day | fondation | C | Date contestée : pour de nombreux Aborigènes, jour de l'arrivée de la colonisation britannique (« Invasion Day »).
+01-26 | IN | Inde | Jour de la République (1950) | republique | S |
+01-31 | NR | Nauru | Fête nationale (indépendance 1968) | independance | S |
+02-04 | LK | Sri Lanka | Jour de l'indépendance (1948) | independance | S |
+02-06 | NZ | Nouvelle-Zélande | Waitangi Day (traité de 1840) | fondation | S |
+02-07 | GD | Grenade | Jour de l'indépendance (1974) | independance | S |
+02-11 | IR | Iran | Victoire de la révolution islamique (1979) | revolution | S |
+02-11 | JP | Japon | Jour de la fondation nationale | fondation | C | Le 23 février (anniversaire de l'empereur) sert de fête nationale dans la diplomatie japonaise.
+02-15 | RS | Serbie | Jour de l'État (Sretenje) | fondation | S |
+02-16 | LT | Lituanie | Rétablissement de l'État lituanien (1918) | independance | S |
+02-17 | XK | Kosovo | Jour de l'indépendance (2008) | independance | C | Indépendance reconnue par une partie seulement des États ; la Serbie la conteste.
+02-18 | GM | Gambie | Jour de l'indépendance (1965) | independance | S |
+02-22 | LC | Sainte-Lucie | Jour de l'indépendance (1979) | independance | S |
+02-23 | BN | Brunéi | Fête nationale | independance | C | Indépendance effective le 1er janvier 1984 ; la fête nationale est célébrée le 23 février.
+02-24 | EE | Estonie | Jour de l'indépendance (1918) | independance | S |
+02-25 | KW | Koweït | Fête nationale | independance | S | L'indépendance date du 19 juin 1961.
+02-27 | DO | République dominicaine | Jour de l'indépendance (1844) | independance | S |
+03-01 | BA | Bosnie-Herzégovine | Jour de l'indépendance (1992) | independance | C | Date non célébrée dans toute la Bosnie (Republika Srpska) ; le 25 novembre est un autre jour d'État.
+03-02 | ET | Éthiopie | Victoire d'Adoua (1896) | unite | C | Selon les sources, la fête nationale est le 28 mai (chute du Derg, 1991).
+05-28 | ET | Éthiopie | Jour de la chute du Derg (1991) | revolution | C | Fête nationale officielle selon la loi éthiopienne ; certaines listes citent plutôt le 2 mars.
+03-03 | BG | Bulgarie | Jour de la Libération (1878) | independance | S |
+03-06 | GH | Ghana | Jour de l'indépendance (1957) | independance | S |
+03-12 | MU | Maurice | Fête nationale (indépendance 1968) | independance | S |
+03-17 | IE | Irlande | Saint-Patrick | saint | S |
+03-20 | TN | Tunisie | Fête de l'indépendance (1956) | independance | S |
+03-21 | NA | Namibie | Jour de l'indépendance (1990) | independance | S |
+03-23 | PK | Pakistan | Jour du Pakistan (résolution de Lahore, 1940) | fondation | S |
+03-25 | GR | Grèce | Fête nationale (début de la guerre d'indépendance, 1821) | independance | S |
+10-28 | GR | Grèce | Jour du « Non » (Ohi, 1940) | unite | S |
+03-26 | BD | Bangladesh | Jour de l'indépendance (1971) | independance | S |
+12-16 | BD | Bangladesh | Jour de la Victoire (1971) | independance | S |
+04-04 | SN | Sénégal | Fête de l'indépendance (1960) | independance | S |
+04-17 | SY | Syrie | Fête de l'évacuation (1946) | independance | C | Régime changé en décembre 2024 : les commémorations officielles ont pu changer ; date à relire.
+04-18 | ZW | Zimbabwe | Jour de l'indépendance (1980) | independance | S |
+04-23 | GB-ENG | Angleterre | Saint-Georges | saint | C | Le Royaume-Uni n'a pas de fête nationale officielle.
+04-27 | NL | Pays-Bas | Fête du Roi (Koningsdag) | monarchie | S | Anniversaire du roi Willem-Alexander ; reportée au 26 si le 27 tombe un dimanche.
+04-27 | SL | Sierra Leone | Jour de l'indépendance (1961) | independance | S |
+04-27 | TG | Togo | Jour de l'indépendance (1960) | independance | S |
+04-27 | ZA | Afrique du Sud | Jour de la Liberté (1994) | fondation | S |
+05-01 | MH | Îles Marshall | Jour de la Constitution (1979) | constitution | S |
+05-03 | PL | Pologne | Fête de la Constitution du 3 mai (1791) | constitution | S |
+05-15 | PY | Paraguay | Jour de l'indépendance (1811) | independance | S |
+05-17 | NO | Norvège | Fête de la Constitution (1814) | constitution | S |
+05-20 | CM | Cameroun | Fête nationale (1972) | unite | S | L'indépendance du 1er janvier 1960 n'est pas célébrée.
+05-20 | TL | Timor oriental | Restauration de l'indépendance (2002) | independance | S |
+05-21 | ME | Monténégro | Jour de l'indépendance (2006) | independance | S |
+07-13 | ME | Monténégro | Jour de l'État (1878) | fondation | S |
+05-22 | YE | Yémen | Fête de l'unité (1990) | unite | C | Certaines listes citent le 30 novembre (indépendance du Sud-Yémen, 1967).
+05-24 | ER | Érythrée | Jour de l'indépendance (1991) | independance | S |
+05-25 | AR | Argentine | Révolution de Mai (1810) | fondation | S |
+07-09 | AR | Argentine | Jour de l'indépendance (1816) | independance | S |
+05-25 | JO | Jordanie | Jour de l'indépendance (1946) | independance | S |
+05-26 | GE | Géorgie | Jour de l'indépendance (1918) | independance | S |
+02-23 | GY | Guyana | Jour de la République (Mashramani, 1970) | republique | S |
+05-26 | GY | Guyana | Jour de l'indépendance (1966) | independance | S |
+05-28 | AM | Arménie | Jour de la République (1918) | republique | S |
+09-21 | AM | Arménie | Jour de l'indépendance (1991) | independance | S |
+05-28 | AZ | Azerbaïdjan | Jour de la République (1918) | republique | S |
+10-18 | AZ | Azerbaïdjan | Rétablissement de l'indépendance (1991) | independance | S |
+05-30 | HR | Croatie | Jour de l'État (Jour de la Croatie) | fondation | S |
+06-01 | WS | Samoa | Jour de l'indépendance (1962) | independance | S |
+06-02 | IT | Italie | Fête de la République (1946) | republique | S |
+06-06 | SE | Suède | Fête nationale | fondation | S |
+06-10 | PT | Portugal | Jour du Portugal, de Camões et des communautés portugaises | fondation | S |
+06-12 | PH | Philippines | Jour de l'indépendance (1898) | independance | S |
+06-12 | RU | Russie | Jour de la Russie | fondation | S |
+06-17 | IS | Islande | Fête nationale (république, 1944) | republique | S |
+06-18 | SC | Seychelles | Fête nationale | fondation | S |
+06-29 | SC | Seychelles | Jour de l'indépendance (1976) | independance | S |
+06-23 | LU | Luxembourg | Fête nationale (anniversaire du grand-duc) | monarchie | S |
+06-24 | CA-QC | Québec | Fête nationale du Québec (Saint-Jean-Baptiste) | saint | S | Distincte de la fête du Canada.
+06-25 | MZ | Mozambique | Jour de l'indépendance (1975) | independance | S |
+06-25 | SI | Slovénie | Fête nationale (1991) | independance | S |
+06-26 | MG | Madagascar | Fête de l'indépendance (1960) | independance | S |
+06-26 | SO | Somalie | Jour de l'indépendance (ex-Somaliland britannique, 1960) | independance | C | Le 1er juillet (union avec l'ex-Somalie italienne) est aussi célébré ; le Somaliland fête le 18 mai.
+06-27 | DJ | Djibouti | Fête de l'indépendance (1977) | independance | S |
+06-30 | CD | RD Congo | Jour de l'indépendance (1960) | independance | S |
+07-01 | BI | Burundi | Jour de l'indépendance (1962) | independance | S |
+07-01 | CA | Canada | Fête du Canada | fondation | S |
+07-01 | RW | Rwanda | Jour de l'indépendance (1962) | independance | S |
+07-03 | BY | Biélorussie | Fête de l'indépendance (libération de Minsk, 1944) | independance | S |
+07-04 | US | États-Unis | Independence Day | independance | S |
+07-05 | CV | Cap-Vert | Jour de l'indépendance (1975) | independance | S |
+07-05 | DZ | Algérie | Fête de l'indépendance (1962) | independance | S |
+11-01 | DZ | Algérie | Anniversaire de la Révolution (1954) | revolution | S | Deuxième fête nationale ; certaines listes officielles la présentent comme fête nationale.
+07-05 | VE | Venezuela | Jour de l'indépendance (1811) | independance | S |
+07-06 | KM | Comores | Jour de l'indépendance (1975) | independance | S |
+07-06 | MW | Malawi | Jour de l'indépendance (1964) | independance | S |
+07-07 | SB | Îles Salomon | Jour de l'indépendance (1978) | independance | S |
+07-09 | SS | Soudan du Sud | Jour de l'indépendance (2011) | independance | S |
+07-10 | BS | Bahamas | Jour de l'indépendance (1973) | independance | S |
+07-11 | MN | Mongolie | Jour de la révolution populaire (1921, Naadam) | revolution | S |
+07-12 | KI | Kiribati | Jour de l'indépendance (1979) | independance | S |
+07-12 | ST | Sao Tomé-et-Principe | Jour de l'indépendance (1975) | independance | S |
+07-14 | FR | France | Fête nationale (prise de la Bastille, 1789 ; fête de la Fédération, 1790) | revolution | S |
+07-20 | CO | Colombie | Jour de l'indépendance (1810) | independance | S |
+07-21 | BE | Belgique | Fête nationale (serment de Léopold Ier, 1831) | monarchie | S |
+07-23 | EG | Égypte | Fête de la Révolution (1952) | revolution | S |
+07-26 | LR | Liberia | Jour de l'indépendance (1847) | independance | S |
+07-26 | MV | Maldives | Jour de l'indépendance (1965) | independance | S |
+07-28 | PE | Pérou | Fêtes patriotiques, jour de l'indépendance (1821) | independance | S |
+07-30 | MA | Maroc | Fête du Trône | monarchie | S |
+11-18 | MA | Maroc | Fête de l'indépendance (1955) | independance | S |
+07-30 | VU | Vanuatu | Jour de l'indépendance (1980) | independance | S |
+08-01 | BJ | Bénin | Fête de l'indépendance (1960) | independance | S |
+08-01 | CH | Suisse | Fête nationale (Pacte fédéral de 1291) | fondation | S |
+08-03 | NE | Niger | Fête de l'indépendance (1960) | independance | S |
+08-05 | BF | Burkina Faso | Fête de l'indépendance (1960) | independance | S |
+12-11 | BF | Burkina Faso | Fête nationale (proclamation de la République, 1958) | republique | S |
+08-06 | BO | Bolivie | Jour de l'indépendance (1825) | independance | S |
+08-06 | JM | Jamaïque | Jour de l'indépendance (1962) | independance | S |
+08-07 | CI | Côte d'Ivoire | Fête de l'indépendance (1960) | independance | S |
+08-09 | SG | Singapour | Fête nationale (1965) | independance | S |
+08-10 | EC | Équateur | Premier cri d'indépendance (1809) | independance | S | La bataille de Pichincha (24 mai 1822) est la date de l'indépendance effective.
+08-11 | TD | Tchad | Fête de l'indépendance (1960) | independance | S |
+08-14 | PK | Pakistan | Jour de l'indépendance (1947) | independance | S |
+08-15 | CG | Congo | Fête de l'indépendance (1960) | independance | S |
+08-15 | IN | Inde | Jour de l'indépendance (1947) | independance | S |
+08-15 | KR | Corée du Sud | Jour de la libération (1945) | independance | S |
+08-15 | LI | Liechtenstein | Fête nationale | fondation | S |
+08-17 | GA | Gabon | Fête de l'indépendance (1960) | independance | S |
+08-17 | ID | Indonésie | Jour de l'indépendance (1945) | independance | S |
+08-19 | AF | Afghanistan | Jour de l'indépendance (1919) | independance | C | Depuis 2021, les autorités en place mettent surtout en avant le 15 août (prise de Kaboul).
+08-20 | HU | Hongrie | Fête de la Saint-Étienne (fondation de l'État) | saint | S |
+08-24 | UA | Ukraine | Jour de l'indépendance (1991) | independance | S |
+08-25 | UY | Uruguay | Jour de l'indépendance (1825) | independance | S |
+08-27 | MD | Moldavie | Jour de l'indépendance (1991) | independance | S |
+08-31 | KG | Kirghizistan | Jour de l'indépendance (1991) | independance | S |
+08-31 | MY | Malaisie | Jour de l'indépendance (Merdeka, 1957) | independance | S |
+09-16 | MY | Malaisie | Jour de la Malaisie (1963) | fondation | S |
+08-31 | TT | Trinité-et-Tobago | Jour de l'indépendance (1962) | independance | S |
+09-01 | SK | Slovaquie | Jour de la Constitution (1992) | constitution | S |
+09-01 | UZ | Ouzbékistan | Jour de l'indépendance (1991) | independance | S |
+09-02 | VN | Viêt Nam | Fête nationale (1945) | independance | S |
+09-03 | SM | Saint-Marin | Fête nationale (fondation, saint Marin) | saint | S |
+09-06 | SZ | Eswatini | Jour de l'indépendance (1968) | independance | S |
+09-07 | BR | Brésil | Jour de l'indépendance (1822) | independance | S |
+09-08 | AD | Andorre | Fête nationale (Notre-Dame de Meritxell) | saint | S |
+09-08 | MK | Macédoine du Nord | Jour de l'indépendance (1991) | independance | S |
+09-09 | KP | Corée du Nord | Fondation de la RPDC (1948) | fondation | S |
+09-09 | TJ | Tadjikistan | Jour de l'indépendance (1991) | independance | S |
+09-15 | CR | Costa Rica | Jour de l'indépendance (1821) | independance | S |
+09-15 | GT | Guatemala | Jour de l'indépendance (1821) | independance | S |
+09-15 | HN | Honduras | Jour de l'indépendance (1821) | independance | S |
+09-15 | NI | Nicaragua | Jour de l'indépendance (1821) | independance | S |
+09-15 | SV | Salvador | Jour de l'indépendance (1821) | independance | S |
+09-16 | MX | Mexique | Jour de l'indépendance (1810) | independance | S |
+09-16 | PG | Papouasie-Nouvelle-Guinée | Jour de l'indépendance (1975) | independance | S |
+09-18 | CL | Chili | Fête nationale (1810) | independance | S |
+09-19 | KN | Saint-Christophe-et-Niévès | Jour de l'indépendance (1983) | independance | S |
+09-21 | BZ | Belize | Jour de l'indépendance (1981) | independance | S |
+09-21 | MT | Malte | Jour de l'indépendance (1964) | independance | S |
+09-22 | ML | Mali | Fête de l'indépendance (1960) | independance | S |
+09-23 | SA | Arabie saoudite | Fête nationale (unification du royaume, 1932) | fondation | S |
+09-24 | GW | Guinée-Bissau | Jour de l'indépendance (1973) | independance | S |
+09-27 | TM | Turkménistan | Jour de l'indépendance (1991) | independance | S |
+09-30 | BW | Botswana | Jour de l'indépendance (1966) | independance | S |
+10-01 | CN | Chine | Fête nationale (fondation de la République populaire, 1949) | fondation | S |
+10-01 | CY | Chypre | Jour de l'indépendance (1960) | independance | S |
+10-01 | NG | Nigeria | Jour de l'indépendance (1960) | independance | S |
+10-01 | PW | Palaos | Jour de l'indépendance (1994) | independance | S |
+10-01 | TV | Tuvalu | Jour de l'indépendance (1978) | independance | S |
+10-02 | GN | Guinée | Fête de l'indépendance (1958) | independance | S |
+10-03 | DE | Allemagne | Jour de l'unité allemande (1990) | unite | S |
+10-03 | IQ | Irak | Fête nationale (indépendance, 1932) | independance | C | La date de la fête nationale irakienne a changé à plusieurs reprises depuis 1958.
+10-03 | KR | Corée du Sud | Fête de la fondation nationale (Gaecheonjeol) | fondation | S |
+10-04 | LS | Lesotho | Jour de l'indépendance (1966) | independance | S |
+10-09 | UG | Ouganda | Jour de l'indépendance (1962) | independance | S |
+10-10 | FJ | Fidji | Jour des Fidji (indépendance, 1970) | independance | S |
+10-10 | TW | Taïwan | Double Dix (fête nationale de la République de Chine) | republique | C | Statut politique contesté : la Chine populaire ne reconnaît pas ce statut.
+10-12 | ES | Espagne | Fête nationale (Fiesta Nacional de España) | fondation | S |
+10-12 | GQ | Guinée équatoriale | Jour de l'indépendance (1968) | independance | S |
+10-24 | ZM | Zambie | Jour de l'indépendance (1964) | independance | S |
+10-26 | AT | Autriche | Fête nationale (neutralité, 1955) | fondation | S |
+10-27 | VC | Saint-Vincent-et-les-Grenadines | Jour de l'indépendance (1979) | independance | S |
+10-28 | CZ | Tchéquie | Jour de l'État tchécoslovaque (1918) | fondation | S |
+10-29 | TR | Turquie | Fête de la République (1923) | republique | S |
+11-01 | AG | Antigua-et-Barbuda | Jour de l'indépendance (1981) | independance | S |
+11-03 | DM | Dominique | Jour de l'indépendance (1978) | independance | S |
+11-03 | FM | Micronésie | Fête nationale (1986) | independance | S |
+11-03 | PA | Panama | Séparation de la Colombie (1903) | independance | S |
+11-04 | TO | Tonga | Fête nationale | fondation | C | Selon les sources, l'indépendance du 4 juin 1970 (fête de l'Émancipation) est aussi célébrée.
+11-09 | KH | Cambodge | Fête de l'indépendance (1953) | independance | S |
+11-11 | AO | Angola | Jour de l'indépendance (1975) | independance | S |
+11-11 | PL | Pologne | Jour de l'indépendance (1918) | independance | S |
+11-15 | PS | Palestine | Déclaration d'indépendance (1988) | independance | C | Statut d'État reconnu par une partie seulement des pays.
+11-18 | LV | Lettonie | Proclamation de l'indépendance (1918) | independance | S |
+11-18 | OM | Oman | Fête nationale | monarchie | S |
+11-19 | MC | Monaco | Fête nationale | monarchie | S |
+11-22 | LB | Liban | Jour de l'indépendance (1943) | independance | S |
+11-25 | SR | Suriname | Jour de l'indépendance (1975) | independance | S |
+11-28 | AL | Albanie | Jour de l'indépendance (1912) | independance | S |
+11-28 | MR | Mauritanie | Jour de l'indépendance (1960) | independance | S |
+11-28 | TL | Timor oriental | Proclamation de l'indépendance (1975) | independance | S |
+11-30 | BB | Barbade | Jour de l'indépendance (1966) | independance | S |
+12-01 | CF | Centrafrique | Fête nationale (proclamation de la République, 1958) | republique | S |
+12-01 | PT | Portugal | Restauration de l'indépendance (1640) | independance | S |
+12-01 | RO | Roumanie | Grande Union (1918) | unite | S |
+12-02 | AE | Émirats arabes unis | Fête nationale (1971) | fondation | S |
+12-02 | LA | Laos | Fête nationale (1975) | republique | S |
+12-05 | TH | Thaïlande | Fête nationale (anniversaire du roi Bhumibol) | monarchie | S |
+12-06 | FI | Finlande | Jour de l'indépendance (1917) | independance | S |
+12-09 | TZ | Tanzanie | Jour de l'indépendance (Tanganyika, 1961) | independance | S |
+12-12 | KE | Kenya | Jamhuri Day (1963) | independance | S |
+12-16 | BH | Bahreïn | Fête nationale | fondation | S |
+12-16 | KZ | Kazakhstan | Jour de l'indépendance (1991) | independance | S |
+12-17 | BT | Bhoutan | Fête nationale (couronnement de la dynastie, 1907) | monarchie | S |
+12-18 | QA | Qatar | Fête nationale | fondation | S |
+12-24 | LY | Libye | Jour de l'indépendance (1951) | independance | C | La liste du ministère néo-zélandais donne encore le 1er septembre (coup d'État de 1969) ; Wikipédia retient l'indépendance de 1951.
+06-05 | DK | Danemark | Jour de la Constitution (non férié) | constitution | C | Le Danemark n'a pas de fête nationale officielle.
+11-30 | GB-SCT | Écosse | Saint-André | saint | C | Le Royaume-Uni n'a pas de fête nationale officielle.
+03-01 | GB-WLS | Pays de Galles | Saint-David | saint | C | Le Royaume-Uni n'a pas de fête nationale officielle.
+09-20 | NP | Népal | Jour de la Constitution (2015) | constitution | C | La liste du ministère néo-zélandais donne le 7 juillet, sans explication ; la fête nationale a changé depuis la fin de la monarchie. À relire.
+02-11 | VA | Vatican | Anniversaire des accords du Latran (1929) | fondation | C | Wikipédia donne cette date ; le Saint-Siège marque aussi l'anniversaire de l'élection du pape régnant.
+05-08 | VA | Vatican | Anniversaire de l'élection du pape (Léon XIV, 2025) | autre | C | Selon la liste du ministère néo-zélandais, la fête du Saint-Siège est l'anniversaire de l'élection du pape régnant (13 mars du temps de François) ; date non confirmée pour Léon XIV.

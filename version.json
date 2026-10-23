@@ -1,12 +1,11 @@
 {
-  "version": "2026-10-22.3",
-  "date": "2026-10-22",
-  "titre": "Des sources explicites, et le test des clés",
+  "version": "2026-10-23.1",
+  "date": "2026-10-23",
+  "titre": "Fêtes des prénoms et journées du jour fiables",
   "nouveautes": [
-    "Réglages › Sources : d'où viennent les informations, catégorie par catégorie (où ça cherche, quelles rubriques s'en servent). Une recherche peut être retirée.",
-    "Tes médias se gèrent là, et tu peux ajouter des flux spécialisés (un magazine, un blog…) qu'une rubrique choisit.",
-    "Chaque rubrique dit « Où elle cherche » : un modèle en propose, une rubrique libre demande d'en choisir au moins une. Rien d'autre n'est lu.",
-    "Connexions : « Tester » vérifie aussi une clé déjà enregistrée (modèles Gemini disponibles, crédits Tavily restants, horaires SNCF)."
+    "Fête du prénom : le prénom du jour vient maintenant du calendrier traditionnel (un prénom par jour), et le calendrier des saints est corrigé : mai et juin y étaient inversés.",
+    "Journées et fêtes du jour : plus d'appel à Wikipédia. Les journées de l'ONU, les fêtes nationales de presque tous les pays, les usages de Suisse, de France et de Belgique et les dates mobiles (fête des mères, heure d'hiver…) sont intégrés au podcast.",
+    "Une date contestée (Kosovo, Taïwan…) ou un sujet douloureux est annoncé avec sa réserve ; une journée non officielle est présentée comme telle."
   ],
   "supprimes": [
     "cloudflare/worker.js",

@@ -1,0 +1,141 @@
+# Journées et semaines internationales reconnues (ONU, agences spécialisées, quelques organisations
+# internationales). Seules les journées à date fixe ou à règle simple sont gardées.
+# Format : date | nom | organisme | sensible (0/1)
+#   date    = MM-JJ  |  MM-JJ..MM-JJ (semaine)  |  nth:MOIS:N:JOUR (N-ième jour de la semaine,
+#             N=-1 : dernier ; JOUR 0=lundi … 6=dimanche)
+#   sensible = 1 : sujet douloureux (violence, deuil, suicide…) à traiter avec tact dans un petit-déjeuner.
+# Contrôle d'octobre 2026 contre la page « Journées internationales » de l'ONU (un mois par page).
+01-04 | Journée mondiale du braille | ONU | 0
+01-24 | Journée internationale de l'éducation | ONU | 0
+01-27 | Journée internationale de commémoration des victimes de l'Holocauste | ONU | 1
+01-30 | Journée mondiale de lutte contre les maladies tropicales négligées | OMS | 0
+02-02 | Journée mondiale des zones humides | ONU | 0
+02-04 | Journée mondiale contre le cancer | OMS / UICC | 1
+02-06 | Journée internationale de tolérance zéro à l'égard des mutilations génitales féminines | ONU | 1
+02-10 | Journée mondiale des légumineuses | ONU | 0
+02-11 | Journée internationale des femmes et des filles de science | ONU | 0
+02-13 | Journée mondiale de la radio | UNESCO | 0
+02-20 | Journée mondiale de la justice sociale | ONU | 0
+02-21 | Journée internationale de la langue maternelle | UNESCO | 0
+nth:2:2:1 | Journée mondiale pour un Internet plus sûr | Union européenne / Insafe | 0
+03-01 | Journée zéro discrimination | ONUSIDA | 0
+03-03 | Journée mondiale de la vie sauvage | ONU | 0
+03-08 | Journée internationale des droits des femmes | ONU | 0
+03-20 | Journée internationale du bonheur | ONU | 0
+03-20 | Journée internationale de la Francophonie | OIF | 0
+03-21 | Journée internationale pour l'élimination de la discrimination raciale | ONU | 1
+03-21 | Journée mondiale de la poésie | UNESCO | 0
+03-21 | Journée internationale des forêts | ONU | 0
+03-21 | Journée mondiale de la trisomie 21 | ONU | 0
+03-22 | Journée mondiale de l'eau | ONU | 0
+03-23 | Journée météorologique mondiale | OMM | 0
+03-24 | Journée mondiale de la tuberculose | OMS | 0
+03-25 | Journée internationale de commémoration des victimes de l'esclavage et de la traite transatlantique | ONU | 1
+04-02 | Journée mondiale de sensibilisation à l'autisme | ONU | 0
+04-04 | Journée internationale pour la sensibilisation au problème des mines | ONU | 1
+04-06 | Journée internationale du sport au service du développement et de la paix | ONU | 0
+04-07 | Journée mondiale de la santé | OMS | 0
+04-12 | Journée internationale des vols spatiaux habités | ONU | 0
+04-22 | Journée internationale de la Terre nourricière | ONU | 0
+04-23 | Journée mondiale du livre et du droit d'auteur | UNESCO | 0
+04-24..04-30 | Semaine mondiale de la vaccination | OMS | 0
+04-25 | Journée mondiale du paludisme | OMS | 0
+04-26 | Journée mondiale de la propriété intellectuelle | OMPI | 0
+04-28 | Journée mondiale de la sécurité et de la santé au travail | OIT | 0
+04-30 | Journée internationale du jazz | UNESCO | 0
+05-03 | Journée mondiale de la liberté de la presse | UNESCO | 0
+05-05 | Journée mondiale de l'hygiène des mains | OMS | 0
+05-08 | Temps du souvenir et de la réconciliation pour les victimes de la Seconde Guerre mondiale | ONU | 1
+05-09 | Journée de l'Europe | Union européenne | 0
+05-15 | Journée internationale des familles | ONU | 0
+05-17 | Journée mondiale des télécommunications et de la société de l'information | UIT | 0
+05-20 | Journée mondiale des abeilles | ONU | 0
+05-21 | Journée mondiale de la diversité culturelle pour le dialogue et le développement | UNESCO | 0
+05-22 | Journée internationale de la diversité biologique | ONU | 0
+05-29 | Journée internationale des Casques bleus | ONU | 0
+05-31 | Journée mondiale sans tabac | OMS | 0
+06-01 | Journée mondiale des parents | ONU | 0
+06-05 | Journée mondiale de l'environnement | ONU | 0
+06-07 | Journée mondiale de la sécurité sanitaire des aliments | ONU | 0
+06-08 | Journée mondiale de l'océan | ONU | 0
+06-12 | Journée mondiale contre le travail des enfants | OIT | 1
+06-14 | Journée mondiale du donneur de sang | OMS | 0
+06-15 | Journée mondiale de sensibilisation à la maltraitance des personnes âgées | ONU | 1
+06-17 | Journée mondiale de lutte contre la désertification et la sécheresse | ONU | 0
+06-19 | Journée internationale pour l'élimination de la violence sexuelle en temps de conflit | ONU | 1
+06-20 | Journée mondiale des réfugiés | ONU | 0
+06-21 | Journée internationale du yoga | ONU | 0
+06-23 | Journée des Nations Unies pour la fonction publique | ONU | 0
+06-25 | Journée internationale des gens de mer | OMI | 0
+06-26 | Journée internationale contre l'abus et le trafic illicite de drogues | ONU | 1
+06-26 | Journée internationale pour le soutien aux victimes de la torture | ONU | 1
+nth:7:1:5 | Journée internationale des coopératives | ONU | 0
+07-11 | Journée mondiale de la population | ONU | 0
+07-15 | Journée mondiale des compétences des jeunes | ONU | 0
+07-17 | Journée de la justice pénale internationale | ONU | 0
+07-18 | Journée internationale Nelson Mandela | ONU | 0
+07-28 | Journée mondiale contre l'hépatite | OMS | 0
+07-30 | Journée internationale de l'amitié | ONU | 0
+07-30 | Journée mondiale contre la traite des êtres humains | ONU | 1
+08-01..08-07 | Semaine mondiale de l'allaitement maternel | OMS | 0
+08-09 | Journée internationale des peuples autochtones | ONU | 0
+08-12 | Journée internationale de la jeunesse | ONU | 0
+08-19 | Journée mondiale de l'aide humanitaire | ONU | 0
+08-21 | Journée internationale du souvenir des victimes du terrorisme | ONU | 1
+08-23 | Journée internationale du souvenir de la traite négrière et de son abolition | UNESCO | 1
+08-29 | Journée internationale contre les essais nucléaires | ONU | 0
+09-08 | Journée internationale de l'alphabétisation | UNESCO | 0
+09-10 | Journée mondiale de la prévention du suicide | OMS / AIPS | 1
+09-15 | Journée internationale de la démocratie | ONU | 0
+09-16 | Journée internationale de la préservation de la couche d'ozone | ONU | 0
+09-21 | Journée internationale de la paix | ONU | 0
+09-26 | Journée internationale pour l'élimination totale des armes nucléaires | ONU | 0
+09-27 | Journée mondiale du tourisme | OMT | 0
+09-28 | Journée internationale de l'accès universel à l'information | UNESCO | 0
+09-30 | Journée internationale de la traduction | ONU | 0
+10-01 | Journée internationale des personnes âgées | ONU | 0
+10-01 | Journée internationale du café | OIC | 0
+10-02 | Journée internationale de la non-violence | ONU | 0
+nth:10:1:0 | Journée mondiale de l'habitat | ONU | 0
+10-04..10-10 | Semaine mondiale de l'espace | ONU | 0
+10-05 | Journée mondiale des enseignants | UNESCO | 0
+10-07 | Journée mondiale du coton | ONU | 0
+10-09 | Journée mondiale de la poste | UPU | 0
+10-10 | Journée mondiale de la santé mentale | OMS | 1
+nth:10:2:5 | Journée mondiale des oiseaux migrateurs | ONU (PNUE) | 0
+nth:5:2:5 | Journée mondiale des oiseaux migrateurs | ONU (PNUE) | 0
+10-11 | Journée internationale de la fille | ONU | 0
+10-13 | Journée internationale de la réduction des risques de catastrophe | ONU | 0
+10-15 | Journée internationale des femmes rurales | ONU | 0
+10-16 | Journée mondiale de l'alimentation | FAO | 0
+10-17 | Journée internationale pour l'élimination de la pauvreté | ONU | 0
+10-23 | Journée internationale du léopard des neiges | ONU | 0
+10-24 | Journée des Nations Unies | ONU | 0
+10-24 | Journée mondiale d'information sur le développement | ONU | 0
+10-24..10-30 | Semaine du désarmement | ONU | 0
+10-24..10-31 | Semaine mondiale de l'éducation aux médias et à l'information | UNESCO | 0
+10-27 | Journée mondiale du patrimoine audiovisuel | UNESCO | 0
+10-29 | Journée internationale des soins et de l'accompagnement | ONU | 0
+10-31 | Journée mondiale des villes | ONU | 0
+11-02 | Journée internationale de la fin de l'impunité pour les crimes contre les journalistes | ONU | 1
+11-05 | Journée mondiale de sensibilisation aux tsunamis | ONU | 0
+11-06 | Journée internationale pour la protection de l'environnement en temps de guerre | ONU | 0
+11-10 | Journée mondiale de la science au service de la paix et du développement | UNESCO | 0
+11-14 | Journée mondiale du diabète | OMS / FID | 0
+11-16 | Journée internationale de la tolérance | UNESCO | 0
+nth:11:3:6 | Journée mondiale du souvenir des victimes de la route | ONU | 1
+11-19 | Journée mondiale des toilettes | ONU | 0
+11-20 | Journée universelle de l'enfance | ONU | 0
+11-25 | Journée internationale pour l'élimination de la violence à l'égard des femmes | ONU | 1
+11-29 | Journée internationale de solidarité avec le peuple palestinien | ONU | 1
+12-01 | Journée mondiale de lutte contre le sida | OMS / ONUSIDA | 1
+12-02 | Journée internationale pour l'abolition de l'esclavage | ONU | 1
+12-03 | Journée internationale des personnes handicapées | ONU | 0
+12-05 | Journée internationale des volontaires | ONU | 0
+12-05 | Journée mondiale des sols | ONU / FAO | 0
+12-09 | Journée internationale de la lutte contre la corruption | ONU | 0
+12-10 | Journée des droits de l'homme | ONU | 0
+12-11 | Journée internationale de la montagne | ONU | 0
+12-12 | Journée internationale de la couverture santé universelle | ONU | 0
+12-18 | Journée internationale des migrants | ONU | 0
+12-20 | Journée internationale de la solidarité humaine | ONU | 0

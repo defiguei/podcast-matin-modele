@@ -9,7 +9,8 @@ et l'épisode continue. Aucune clé n'est journalisée.
   - OpenStreetMap (Overpass, Nominatim) : lieux, adresses (sans clé)
   - Wikivoyage, Wikipédia : présentation d'un lieu, photos (sans clé)
   - Tavily : recherche web (clé gratuite, secret TAVILY_API_KEY)
-  - calendrier des saints (donnees/saints.json) et jours fériés du pays choisi
+  - prénoms fêtés, saints, journées internationales, fêtes nationales et usages : données de
+    référence intégrées (fetes.py, donnees/*.json), aucun appel réseau ; jours fériés du pays choisi
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from urllib.parse import quote, urlencode
 
 import requests
 
+import fetes
 import pays
 
 RACINE = Path(__file__).resolve().parent
@@ -428,39 +430,15 @@ class Sources:
 
 # ── calendrier ──
 
-def _fetes_wikipedia_brut(sources: "Sources", jour: dt.date) -> list[str]:
-    donnees = sources._json("GET", f"https://fr.wikipedia.org/api/rest_v1/feed/onthisday/holidays/{jour:%m}/{jour:%d}",
-                            delai=25)
-    lignes: list[str] = []
-    for x in donnees.get("holidays") or []:
-        texte = re.sub(r"\s+", " ", str(x.get("text", ""))).strip()
-        if not texte or "†" in texte or texte.lower().startswith(("christianisme", "station dans")):
-            continue          # les saints viennent de leur propre source
-        lignes.append(texte[:220])
-    return lignes[:14]
-
-
 def _methode_fetes(self, jour: dt.date) -> list[str]:
-    """Fêtes nationales et journées internationales du jour (Wikipédia, calendrier des fêtes)."""
-    def chercher() -> list[str]:
-        try:
-            return _fetes_wikipedia_brut(self, jour)
-        except Exception as erreur:
-            journal(f"Fêtes du jour indisponibles : {type(erreur).__name__}")
-            return []
-    return self._memo(f"fetes:{jour.isoformat()}", chercher)
+    """Fêtes nationales, journées internationales et usages du jour, du pays choisi : données de
+    référence intégrées (fetes.py), sans réseau — plus de Wikipédia au moment de fabriquer l'épisode."""
+    return fetes.lignes_du_jour(jour, pays.code())
 
 
 Sources.fetes = _methode_fetes
 
-
-def saints_du_jour(jour: dt.date, chemin: Path | None = None) -> list[str]:
-    chemin = chemin or RACINE / "donnees" / "saints.json"
-    try:
-        donnees = json.loads(chemin.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return []
-    return list((donnees.get("jours") or {}).get(jour.strftime("%m-%d"), []))
+saints_du_jour = fetes.saints_du_jour       # le calendrier des saints vit dans fetes.py
 
 
 def feries(debut: dt.date, jours: int = 7) -> list[tuple[dt.date, str]]:

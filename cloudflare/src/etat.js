@@ -24,7 +24,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-22.3";
+export const VERSION = "2026-10-23.1";
 const MAX_REFAITS = 6;
 const LONGUEURS_VALIDES = ["phrase", "courte", "developpee"];
 const MAX_RECHERCHES = 15;
@@ -35,10 +35,9 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 // Message envoyé après une mise à jour : les nouveautés de cette version…
 const NOUVEAUTES = `✅ <b>Ton podcast est à jour</b> (version ${VERSION}).
 
-• Réglages › Sources : d'où viennent les informations, catégorie par catégorie (où ça cherche, quelles rubriques s'en servent). Une recherche peut être retirée.
-• Tes médias se gèrent là, et tu peux ajouter des flux spécialisés (un magazine, un blog…) qu'une rubrique choisit.
-• Chaque rubrique dit « Où elle cherche » : un modèle en propose, une rubrique libre demande d'en choisir au moins une. Rien d'autre n'est lu.
-• Connexions : « Tester » vérifie aussi une clé déjà enregistrée (modèles Gemini disponibles, crédits Tavily restants, horaires SNCF).`;
+• Fête du prénom : le prénom du jour vient maintenant du calendrier traditionnel (un prénom par jour), et le calendrier des saints est corrigé : mai et juin y étaient inversés.
+• Journées et fêtes du jour : plus d'appel à Wikipédia. Les journées de l'ONU, les fêtes nationales de presque tous les pays, les usages de Suisse, de France et de Belgique et les dates mobiles (fête des mères, heure d'hiver…) sont intégrés au podcast.
+• Une date contestée (Kosovo, Taïwan…) ou un sujet douloureux est annoncé avec sa réserve ; une journée non officielle est présentée comme telle.`;
 
 // … ou, pour qui arrive d'avant l'application (installation neuve, ancienne version
 // réglée par la conversation), sa présentation.

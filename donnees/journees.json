@@ -1,0 +1,4448 @@
+{
+ "source": "Journées ONU et agences (listes de l'ONU), fêtes nationales recoupées avec les listes du ministère néo-zélandais des Affaires étrangères et de Wikipédia, usages de France, Suisse et Belgique, saisis dans outils/fetes/. Fabriqué par outils/construire_fetes.py ; voir docs/SOURCES-FETES.md.",
+ "fixes": {
+  "01-01": [
+   {
+    "nom": "Triomphe de la Révolution",
+    "cat": "nationale",
+    "iso": "CU",
+    "pays": "Cuba",
+    "type": "revolution",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1804)",
+    "cat": "nationale",
+    "iso": "HT",
+    "pays": "Haïti",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1956)",
+    "cat": "nationale",
+    "iso": "SD",
+    "pays": "Soudan",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "01-04": [
+   {
+    "nom": "Journée mondiale du braille",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de l'indépendance (1948)",
+    "cat": "nationale",
+    "iso": "MM",
+    "pays": "Birmanie (Myanmar)",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "01-06": [
+   {
+    "nom": "Épiphanie, fête des Rois (galette)",
+    "cat": "religieuse",
+    "portee": [
+     "FR",
+     "BE",
+     "CH"
+    ],
+    "fiab": "usuelle",
+    "note": "En France, souvent le dimanche suivant le 1er janvier."
+   }
+  ],
+  "01-21": [
+   {
+    "nom": "Journée mondiale du câlin",
+    "cat": "commerciale",
+    "portee": [
+     "monde"
+    ],
+    "fiab": "populaire",
+    "note": "Lancée aux États-Unis en 1986 ; sans reconnaissance officielle."
+   }
+  ],
+  "01-24": [
+   {
+    "nom": "Journée internationale de l'éducation",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "01-26": [
+   {
+    "nom": "Australia Day",
+    "cat": "nationale",
+    "iso": "AU",
+    "pays": "Australie",
+    "type": "fondation",
+    "drapeau": "C",
+    "recoupe": [
+     "MFAT"
+    ],
+    "note": "Date contestée : pour de nombreux Aborigènes, jour de l'arrivée de la colonisation britannique (« Invasion Day »)."
+   },
+   {
+    "nom": "Jour de la République (1950)",
+    "cat": "nationale",
+    "iso": "IN",
+    "pays": "Inde",
+    "type": "republique",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "01-27": [
+   {
+    "nom": "Journée internationale de commémoration des victimes de l'Holocauste",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": true
+   }
+  ],
+  "01-30": [
+   {
+    "nom": "Journée mondiale de lutte contre les maladies tropicales négligées",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false
+   }
+  ],
+  "01-31": [
+   {
+    "nom": "Fête nationale (indépendance 1968)",
+    "cat": "nationale",
+    "iso": "NR",
+    "pays": "Nauru",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "02-02": [
+   {
+    "nom": "Journée mondiale des zones humides",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Chandeleur (crêpes)",
+    "cat": "religieuse",
+    "portee": [
+     "FR",
+     "BE",
+     "CH"
+    ],
+    "fiab": "usuelle"
+   }
+  ],
+  "02-04": [
+   {
+    "nom": "Journée mondiale contre le cancer",
+    "cat": "onu",
+    "org": "OMS / UICC",
+    "sensible": true
+   },
+   {
+    "nom": "Jour de l'indépendance (1948)",
+    "cat": "nationale",
+    "iso": "LK",
+    "pays": "Sri Lanka",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "02-06": [
+   {
+    "nom": "Journée internationale de tolérance zéro à l'égard des mutilations génitales féminines",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": true
+   },
+   {
+    "nom": "Waitangi Day (traité de 1840)",
+    "cat": "nationale",
+    "iso": "NZ",
+    "pays": "Nouvelle-Zélande",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "02-07": [
+   {
+    "nom": "Jour de l'indépendance (1974)",
+    "cat": "nationale",
+    "iso": "GD",
+    "pays": "Grenade",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "02-10": [
+   {
+    "nom": "Journée mondiale des légumineuses",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "02-11": [
+   {
+    "nom": "Journée internationale des femmes et des filles de science",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Victoire de la révolution islamique (1979)",
+    "cat": "nationale",
+    "iso": "IR",
+    "pays": "Iran",
+    "type": "revolution",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   },
+   {
+    "nom": "Jour de la fondation nationale",
+    "cat": "nationale",
+    "iso": "JP",
+    "pays": "Japon",
+    "type": "fondation",
+    "drapeau": "C",
+    "recoupe": [],
+    "note": "Le 23 février (anniversaire de l'empereur) sert de fête nationale dans la diplomatie japonaise."
+   },
+   {
+    "nom": "Anniversaire des accords du Latran (1929)",
+    "cat": "nationale",
+    "iso": "VA",
+    "pays": "Vatican",
+    "type": "fondation",
+    "drapeau": "C",
+    "recoupe": [
+     "Wikipédia"
+    ],
+    "note": "Wikipédia donne cette date ; le Saint-Siège marque aussi l'anniversaire de l'élection du pape régnant."
+   }
+  ],
+  "02-13": [
+   {
+    "nom": "Journée mondiale de la radio",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false
+   }
+  ],
+  "02-14": [
+   {
+    "nom": "Saint-Valentin, fête des amoureux",
+    "cat": "usage",
+    "portee": [
+     "monde"
+    ],
+    "fiab": "usuelle",
+    "note": "Origine religieuse, devenue surtout commerciale."
+   }
+  ],
+  "02-15": [
+   {
+    "nom": "Jour de l'État (Sretenje)",
+    "cat": "nationale",
+    "iso": "RS",
+    "pays": "Serbie",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "02-16": [
+   {
+    "nom": "Rétablissement de l'État lituanien (1918)",
+    "cat": "nationale",
+    "iso": "LT",
+    "pays": "Lituanie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "02-17": [
+   {
+    "nom": "Jour de l'indépendance (2008)",
+    "cat": "nationale",
+    "iso": "XK",
+    "pays": "Kosovo",
+    "type": "independance",
+    "drapeau": "C",
+    "recoupe": [
+     "Wikipédia"
+    ],
+    "note": "Indépendance reconnue par une partie seulement des États ; la Serbie la conteste."
+   }
+  ],
+  "02-18": [
+   {
+    "nom": "Jour de l'indépendance (1965)",
+    "cat": "nationale",
+    "iso": "GM",
+    "pays": "Gambie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "02-20": [
+   {
+    "nom": "Journée mondiale de la justice sociale",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "02-21": [
+   {
+    "nom": "Journée internationale de la langue maternelle",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false
+   }
+  ],
+  "02-22": [
+   {
+    "nom": "Jour de l'indépendance (1979)",
+    "cat": "nationale",
+    "iso": "LC",
+    "pays": "Sainte-Lucie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "02-23": [
+   {
+    "nom": "Fête nationale",
+    "cat": "nationale",
+    "iso": "BN",
+    "pays": "Brunéi",
+    "type": "independance",
+    "drapeau": "C",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ],
+    "note": "Indépendance effective le 1er janvier 1984 ; la fête nationale est célébrée le 23 février."
+   },
+   {
+    "nom": "Jour de la République (Mashramani, 1970)",
+    "cat": "nationale",
+    "iso": "GY",
+    "pays": "Guyana",
+    "type": "republique",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "02-24": [
+   {
+    "nom": "Jour de l'indépendance (1918)",
+    "cat": "nationale",
+    "iso": "EE",
+    "pays": "Estonie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "02-25": [
+   {
+    "nom": "Fête nationale",
+    "cat": "nationale",
+    "iso": "KW",
+    "pays": "Koweït",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ],
+    "note": "L'indépendance date du 19 juin 1961."
+   }
+  ],
+  "02-27": [
+   {
+    "nom": "Jour de l'indépendance (1844)",
+    "cat": "nationale",
+    "iso": "DO",
+    "pays": "République dominicaine",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "03-01": [
+   {
+    "nom": "Journée zéro discrimination",
+    "cat": "onu",
+    "org": "ONUSIDA",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de l'indépendance (1992)",
+    "cat": "nationale",
+    "iso": "BA",
+    "pays": "Bosnie-Herzégovine",
+    "type": "independance",
+    "drapeau": "C",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ],
+    "note": "Date non célébrée dans toute la Bosnie (Republika Srpska) ; le 25 novembre est un autre jour d'État."
+   },
+   {
+    "nom": "Saint-David",
+    "cat": "nationale",
+    "iso": "GB-WLS",
+    "pays": "Pays de Galles",
+    "type": "saint",
+    "drapeau": "C",
+    "recoupe": [],
+    "note": "Le Royaume-Uni n'a pas de fête nationale officielle."
+   }
+  ],
+  "03-02": [
+   {
+    "nom": "Victoire d'Adoua (1896)",
+    "cat": "nationale",
+    "iso": "ET",
+    "pays": "Éthiopie",
+    "type": "unite",
+    "drapeau": "C",
+    "recoupe": [
+     "MFAT"
+    ],
+    "note": "Selon les sources, la fête nationale est le 28 mai (chute du Derg, 1991)."
+   }
+  ],
+  "03-03": [
+   {
+    "nom": "Journée mondiale de la vie sauvage",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de la Libération (1878)",
+    "cat": "nationale",
+    "iso": "BG",
+    "pays": "Bulgarie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "03-06": [
+   {
+    "nom": "Jour de l'indépendance (1957)",
+    "cat": "nationale",
+    "iso": "GH",
+    "pays": "Ghana",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "03-08": [
+   {
+    "nom": "Journée internationale des droits des femmes",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "03-12": [
+   {
+    "nom": "Fête nationale (indépendance 1968)",
+    "cat": "nationale",
+    "iso": "MU",
+    "pays": "Maurice",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "03-14": [
+   {
+    "nom": "Jour du Pi (3,14)",
+    "cat": "commerciale",
+    "portee": [
+     "monde"
+    ],
+    "fiab": "populaire",
+    "note": "Fête des mathématiciens, sans caractère officiel."
+   }
+  ],
+  "03-17": [
+   {
+    "nom": "Saint-Patrick",
+    "cat": "nationale",
+    "iso": "IE",
+    "pays": "Irlande",
+    "type": "saint",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "03-20": [
+   {
+    "nom": "Journée internationale du bonheur",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Journée internationale de la Francophonie",
+    "cat": "onu",
+    "org": "OIF",
+    "sensible": false
+   },
+   {
+    "nom": "Fête de l'indépendance (1956)",
+    "cat": "nationale",
+    "iso": "TN",
+    "pays": "Tunisie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "03-21": [
+   {
+    "nom": "Journée internationale pour l'élimination de la discrimination raciale",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": true
+   },
+   {
+    "nom": "Journée mondiale de la poésie",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false
+   },
+   {
+    "nom": "Journée internationale des forêts",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Journée mondiale de la trisomie 21",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de l'indépendance (1990)",
+    "cat": "nationale",
+    "iso": "NA",
+    "pays": "Namibie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "03-22": [
+   {
+    "nom": "Journée mondiale de l'eau",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "03-23": [
+   {
+    "nom": "Journée météorologique mondiale",
+    "cat": "onu",
+    "org": "OMM",
+    "sensible": false
+   },
+   {
+    "nom": "Jour du Pakistan (résolution de Lahore, 1940)",
+    "cat": "nationale",
+    "iso": "PK",
+    "pays": "Pakistan",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "03-24": [
+   {
+    "nom": "Journée mondiale de la tuberculose",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false
+   }
+  ],
+  "03-25": [
+   {
+    "nom": "Journée internationale de commémoration des victimes de l'esclavage et de la traite transatlantique",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": true
+   },
+   {
+    "nom": "Fête nationale (début de la guerre d'indépendance, 1821)",
+    "cat": "nationale",
+    "iso": "GR",
+    "pays": "Grèce",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "03-26": [
+   {
+    "nom": "Jour de l'indépendance (1971)",
+    "cat": "nationale",
+    "iso": "BD",
+    "pays": "Bangladesh",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "04-01": [
+   {
+    "nom": "Poisson d'avril",
+    "cat": "usage",
+    "portee": [
+     "monde"
+    ],
+    "fiab": "usuelle"
+   }
+  ],
+  "04-02": [
+   {
+    "nom": "Journée mondiale de sensibilisation à l'autisme",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "04-04": [
+   {
+    "nom": "Journée internationale pour la sensibilisation au problème des mines",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": true
+   },
+   {
+    "nom": "Fête de l'indépendance (1960)",
+    "cat": "nationale",
+    "iso": "SN",
+    "pays": "Sénégal",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "04-06": [
+   {
+    "nom": "Journée internationale du sport au service du développement et de la paix",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "04-07": [
+   {
+    "nom": "Journée mondiale de la santé",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false
+   }
+  ],
+  "04-12": [
+   {
+    "nom": "Journée internationale des vols spatiaux habités",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "04-17": [
+   {
+    "nom": "Fête de l'évacuation (1946)",
+    "cat": "nationale",
+    "iso": "SY",
+    "pays": "Syrie",
+    "type": "independance",
+    "drapeau": "C",
+    "recoupe": [
+     "Wikipédia"
+    ],
+    "note": "Régime changé en décembre 2024 : les commémorations officielles ont pu changer ; date à relire."
+   }
+  ],
+  "04-18": [
+   {
+    "nom": "Jour de l'indépendance (1980)",
+    "cat": "nationale",
+    "iso": "ZW",
+    "pays": "Zimbabwe",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "04-22": [
+   {
+    "nom": "Journée internationale de la Terre nourricière",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "04-23": [
+   {
+    "nom": "Journée mondiale du livre et du droit d'auteur",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false
+   },
+   {
+    "nom": "Saint-Georges",
+    "cat": "nationale",
+    "iso": "GB-ENG",
+    "pays": "Angleterre",
+    "type": "saint",
+    "drapeau": "C",
+    "recoupe": [
+     "MFAT"
+    ],
+    "note": "Le Royaume-Uni n'a pas de fête nationale officielle."
+   }
+  ],
+  "04-24": [
+   {
+    "nom": "Semaine mondiale de la vaccination",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false,
+    "semaine": "du 24 au 30 avril"
+   }
+  ],
+  "04-25": [
+   {
+    "nom": "Semaine mondiale de la vaccination",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false,
+    "semaine": "du 24 au 30 avril"
+   },
+   {
+    "nom": "Journée mondiale du paludisme",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false
+   }
+  ],
+  "04-26": [
+   {
+    "nom": "Semaine mondiale de la vaccination",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false,
+    "semaine": "du 24 au 30 avril"
+   },
+   {
+    "nom": "Journée mondiale de la propriété intellectuelle",
+    "cat": "onu",
+    "org": "OMPI",
+    "sensible": false
+   }
+  ],
+  "04-27": [
+   {
+    "nom": "Semaine mondiale de la vaccination",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false,
+    "semaine": "du 24 au 30 avril"
+   },
+   {
+    "nom": "Fête du Roi (Koningsdag)",
+    "cat": "nationale",
+    "iso": "NL",
+    "pays": "Pays-Bas",
+    "type": "monarchie",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ],
+    "note": "Anniversaire du roi Willem-Alexander ; reportée au 26 si le 27 tombe un dimanche."
+   },
+   {
+    "nom": "Jour de l'indépendance (1961)",
+    "cat": "nationale",
+    "iso": "SL",
+    "pays": "Sierra Leone",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1960)",
+    "cat": "nationale",
+    "iso": "TG",
+    "pays": "Togo",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de la Liberté (1994)",
+    "cat": "nationale",
+    "iso": "ZA",
+    "pays": "Afrique du Sud",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "04-28": [
+   {
+    "nom": "Semaine mondiale de la vaccination",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false,
+    "semaine": "du 24 au 30 avril"
+   },
+   {
+    "nom": "Journée mondiale de la sécurité et de la santé au travail",
+    "cat": "onu",
+    "org": "OIT",
+    "sensible": false
+   }
+  ],
+  "04-29": [
+   {
+    "nom": "Semaine mondiale de la vaccination",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false,
+    "semaine": "du 24 au 30 avril"
+   }
+  ],
+  "04-30": [
+   {
+    "nom": "Semaine mondiale de la vaccination",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false,
+    "semaine": "du 24 au 30 avril"
+   },
+   {
+    "nom": "Journée internationale du jazz",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false
+   }
+  ],
+  "05-01": [
+   {
+    "nom": "Jour de la Constitution (1979)",
+    "cat": "nationale",
+    "iso": "MH",
+    "pays": "Îles Marshall",
+    "type": "constitution",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Fête du Travail",
+    "cat": "pays",
+    "portee": [
+     "FR",
+     "BE",
+     "CH"
+    ],
+    "fiab": "usuelle",
+    "note": "Férié en France et en Belgique ; en Suisse seulement dans certains cantons (par exemple Neuchâtel, Jura, Bâle)."
+   }
+  ],
+  "05-03": [
+   {
+    "nom": "Journée mondiale de la liberté de la presse",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false
+   },
+   {
+    "nom": "Fête de la Constitution du 3 mai (1791)",
+    "cat": "nationale",
+    "iso": "PL",
+    "pays": "Pologne",
+    "type": "constitution",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "05-04": [
+   {
+    "nom": "Star Wars Day (« May the 4th »)",
+    "cat": "commerciale",
+    "portee": [
+     "monde"
+    ],
+    "fiab": "populaire",
+    "note": "Jeu de mots anglais, fête de fans."
+   }
+  ],
+  "05-05": [
+   {
+    "nom": "Journée mondiale de l'hygiène des mains",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false
+   }
+  ],
+  "05-08": [
+   {
+    "nom": "Temps du souvenir et de la réconciliation pour les victimes de la Seconde Guerre mondiale",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": true
+   },
+   {
+    "nom": "Anniversaire de l'élection du pape (Léon XIV, 2025)",
+    "cat": "nationale",
+    "iso": "VA",
+    "pays": "Vatican",
+    "type": "autre",
+    "drapeau": "C",
+    "recoupe": [],
+    "note": "Selon la liste du ministère néo-zélandais, la fête du Saint-Siège est l'anniversaire de l'élection du pape régnant (13 mars du temps de François) ; date non confirmée pour Léon XIV."
+   },
+   {
+    "nom": "Fête de la Région de Bruxelles-Capitale (Iris)",
+    "cat": "pays",
+    "portee": [
+     "BE"
+    ],
+    "fiab": "usuelle"
+   }
+  ],
+  "05-09": [
+   {
+    "nom": "Journée de l'Europe",
+    "cat": "onu",
+    "org": "Union européenne",
+    "sensible": false
+   }
+  ],
+  "05-15": [
+   {
+    "nom": "Journée internationale des familles",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de l'indépendance (1811)",
+    "cat": "nationale",
+    "iso": "PY",
+    "pays": "Paraguay",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "05-17": [
+   {
+    "nom": "Journée mondiale des télécommunications et de la société de l'information",
+    "cat": "onu",
+    "org": "UIT",
+    "sensible": false
+   },
+   {
+    "nom": "Fête de la Constitution (1814)",
+    "cat": "nationale",
+    "iso": "NO",
+    "pays": "Norvège",
+    "type": "constitution",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "05-20": [
+   {
+    "nom": "Journée mondiale des abeilles",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Fête nationale (1972)",
+    "cat": "nationale",
+    "iso": "CM",
+    "pays": "Cameroun",
+    "type": "unite",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ],
+    "note": "L'indépendance du 1er janvier 1960 n'est pas célébrée."
+   },
+   {
+    "nom": "Restauration de l'indépendance (2002)",
+    "cat": "nationale",
+    "iso": "TL",
+    "pays": "Timor oriental",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "05-21": [
+   {
+    "nom": "Journée mondiale de la diversité culturelle pour le dialogue et le développement",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de l'indépendance (2006)",
+    "cat": "nationale",
+    "iso": "ME",
+    "pays": "Monténégro",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "05-22": [
+   {
+    "nom": "Journée internationale de la diversité biologique",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Fête de l'unité (1990)",
+    "cat": "nationale",
+    "iso": "YE",
+    "pays": "Yémen",
+    "type": "unite",
+    "drapeau": "C",
+    "recoupe": [],
+    "note": "Certaines listes citent le 30 novembre (indépendance du Sud-Yémen, 1967)."
+   }
+  ],
+  "05-24": [
+   {
+    "nom": "Jour de l'indépendance (1991)",
+    "cat": "nationale",
+    "iso": "ER",
+    "pays": "Érythrée",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "05-25": [
+   {
+    "nom": "Révolution de Mai (1810)",
+    "cat": "nationale",
+    "iso": "AR",
+    "pays": "Argentine",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1946)",
+    "cat": "nationale",
+    "iso": "JO",
+    "pays": "Jordanie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Towel Day (jour de la serviette)",
+    "cat": "commerciale",
+    "portee": [
+     "monde"
+    ],
+    "fiab": "populaire",
+    "note": "Hommage des fans à l'auteur Douglas Adams."
+   }
+  ],
+  "05-26": [
+   {
+    "nom": "Jour de l'indépendance (1918)",
+    "cat": "nationale",
+    "iso": "GE",
+    "pays": "Géorgie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1966)",
+    "cat": "nationale",
+    "iso": "GY",
+    "pays": "Guyana",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "05-28": [
+   {
+    "nom": "Jour de la chute du Derg (1991)",
+    "cat": "nationale",
+    "iso": "ET",
+    "pays": "Éthiopie",
+    "type": "revolution",
+    "drapeau": "C",
+    "recoupe": [],
+    "note": "Fête nationale officielle selon la loi éthiopienne ; certaines listes citent plutôt le 2 mars."
+   },
+   {
+    "nom": "Jour de la République (1918)",
+    "cat": "nationale",
+    "iso": "AM",
+    "pays": "Arménie",
+    "type": "republique",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de la République (1918)",
+    "cat": "nationale",
+    "iso": "AZ",
+    "pays": "Azerbaïdjan",
+    "type": "republique",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "05-29": [
+   {
+    "nom": "Journée internationale des Casques bleus",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "05-30": [
+   {
+    "nom": "Jour de l'État (Jour de la Croatie)",
+    "cat": "nationale",
+    "iso": "HR",
+    "pays": "Croatie",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "05-31": [
+   {
+    "nom": "Journée mondiale sans tabac",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false
+   }
+  ],
+  "06-01": [
+   {
+    "nom": "Journée mondiale des parents",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de l'indépendance (1962)",
+    "cat": "nationale",
+    "iso": "WS",
+    "pays": "Samoa",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "06-02": [
+   {
+    "nom": "Fête de la République (1946)",
+    "cat": "nationale",
+    "iso": "IT",
+    "pays": "Italie",
+    "type": "republique",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "06-05": [
+   {
+    "nom": "Journée mondiale de l'environnement",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de la Constitution (non férié)",
+    "cat": "nationale",
+    "iso": "DK",
+    "pays": "Danemark",
+    "type": "constitution",
+    "drapeau": "C",
+    "recoupe": [],
+    "note": "Le Danemark n'a pas de fête nationale officielle."
+   }
+  ],
+  "06-06": [
+   {
+    "nom": "Fête nationale",
+    "cat": "nationale",
+    "iso": "SE",
+    "pays": "Suède",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "06-07": [
+   {
+    "nom": "Journée mondiale de la sécurité sanitaire des aliments",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "06-08": [
+   {
+    "nom": "Journée mondiale de l'océan",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "06-10": [
+   {
+    "nom": "Jour du Portugal, de Camões et des communautés portugaises",
+    "cat": "nationale",
+    "iso": "PT",
+    "pays": "Portugal",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "06-12": [
+   {
+    "nom": "Journée mondiale contre le travail des enfants",
+    "cat": "onu",
+    "org": "OIT",
+    "sensible": true
+   },
+   {
+    "nom": "Jour de l'indépendance (1898)",
+    "cat": "nationale",
+    "iso": "PH",
+    "pays": "Philippines",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de la Russie",
+    "cat": "nationale",
+    "iso": "RU",
+    "pays": "Russie",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "06-14": [
+   {
+    "nom": "Journée mondiale du donneur de sang",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false
+   }
+  ],
+  "06-15": [
+   {
+    "nom": "Journée mondiale de sensibilisation à la maltraitance des personnes âgées",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": true
+   }
+  ],
+  "06-17": [
+   {
+    "nom": "Journée mondiale de lutte contre la désertification et la sécheresse",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Fête nationale (république, 1944)",
+    "cat": "nationale",
+    "iso": "IS",
+    "pays": "Islande",
+    "type": "republique",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "06-18": [
+   {
+    "nom": "Fête nationale",
+    "cat": "nationale",
+    "iso": "SC",
+    "pays": "Seychelles",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   },
+   {
+    "nom": "Journée nationale commémorative de l'appel du 18 juin 1940",
+    "cat": "pays",
+    "portee": [
+     "FR"
+    ],
+    "fiab": "officielle"
+   }
+  ],
+  "06-19": [
+   {
+    "nom": "Journée internationale pour l'élimination de la violence sexuelle en temps de conflit",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": true
+   }
+  ],
+  "06-20": [
+   {
+    "nom": "Journée mondiale des réfugiés",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "06-21": [
+   {
+    "nom": "Journée internationale du yoga",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Fête de la musique",
+    "cat": "usage",
+    "portee": [
+     "FR",
+     "BE",
+     "CH"
+    ],
+    "fiab": "usuelle",
+    "note": "Née en France en 1982 ; concerts gratuits dans la rue, aussi en Belgique et en Suisse."
+   }
+  ],
+  "06-23": [
+   {
+    "nom": "Journée des Nations Unies pour la fonction publique",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Fête nationale (anniversaire du grand-duc)",
+    "cat": "nationale",
+    "iso": "LU",
+    "pays": "Luxembourg",
+    "type": "monarchie",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "06-24": [
+   {
+    "nom": "Fête nationale du Québec (Saint-Jean-Baptiste)",
+    "cat": "nationale",
+    "iso": "CA-QC",
+    "pays": "Québec",
+    "type": "saint",
+    "drapeau": "S",
+    "recoupe": [],
+    "note": "Distincte de la fête du Canada."
+   }
+  ],
+  "06-25": [
+   {
+    "nom": "Journée internationale des gens de mer",
+    "cat": "onu",
+    "org": "OMI",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de l'indépendance (1975)",
+    "cat": "nationale",
+    "iso": "MZ",
+    "pays": "Mozambique",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Fête nationale (1991)",
+    "cat": "nationale",
+    "iso": "SI",
+    "pays": "Slovénie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "06-26": [
+   {
+    "nom": "Journée internationale contre l'abus et le trafic illicite de drogues",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": true
+   },
+   {
+    "nom": "Journée internationale pour le soutien aux victimes de la torture",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": true
+   },
+   {
+    "nom": "Fête de l'indépendance (1960)",
+    "cat": "nationale",
+    "iso": "MG",
+    "pays": "Madagascar",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (ex-Somaliland britannique, 1960)",
+    "cat": "nationale",
+    "iso": "SO",
+    "pays": "Somalie",
+    "type": "independance",
+    "drapeau": "C",
+    "recoupe": [
+     "Wikipédia"
+    ],
+    "note": "Le 1er juillet (union avec l'ex-Somalie italienne) est aussi célébré ; le Somaliland fête le 18 mai."
+   }
+  ],
+  "06-27": [
+   {
+    "nom": "Fête de l'indépendance (1977)",
+    "cat": "nationale",
+    "iso": "DJ",
+    "pays": "Djibouti",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "06-29": [
+   {
+    "nom": "Jour de l'indépendance (1976)",
+    "cat": "nationale",
+    "iso": "SC",
+    "pays": "Seychelles",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "06-30": [
+   {
+    "nom": "Jour de l'indépendance (1960)",
+    "cat": "nationale",
+    "iso": "CD",
+    "pays": "RD Congo",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "07-01": [
+   {
+    "nom": "Jour de l'indépendance (1962)",
+    "cat": "nationale",
+    "iso": "BI",
+    "pays": "Burundi",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Fête du Canada",
+    "cat": "nationale",
+    "iso": "CA",
+    "pays": "Canada",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1962)",
+    "cat": "nationale",
+    "iso": "RW",
+    "pays": "Rwanda",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "07-03": [
+   {
+    "nom": "Fête de l'indépendance (libération de Minsk, 1944)",
+    "cat": "nationale",
+    "iso": "BY",
+    "pays": "Biélorussie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "07-04": [
+   {
+    "nom": "Independence Day",
+    "cat": "nationale",
+    "iso": "US",
+    "pays": "États-Unis",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "07-05": [
+   {
+    "nom": "Jour de l'indépendance (1975)",
+    "cat": "nationale",
+    "iso": "CV",
+    "pays": "Cap-Vert",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Fête de l'indépendance (1962)",
+    "cat": "nationale",
+    "iso": "DZ",
+    "pays": "Algérie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1811)",
+    "cat": "nationale",
+    "iso": "VE",
+    "pays": "Venezuela",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "07-06": [
+   {
+    "nom": "Jour de l'indépendance (1975)",
+    "cat": "nationale",
+    "iso": "KM",
+    "pays": "Comores",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1964)",
+    "cat": "nationale",
+    "iso": "MW",
+    "pays": "Malawi",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "07-07": [
+   {
+    "nom": "Jour de l'indépendance (1978)",
+    "cat": "nationale",
+    "iso": "SB",
+    "pays": "Îles Salomon",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "07-09": [
+   {
+    "nom": "Jour de l'indépendance (1816)",
+    "cat": "nationale",
+    "iso": "AR",
+    "pays": "Argentine",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (2011)",
+    "cat": "nationale",
+    "iso": "SS",
+    "pays": "Soudan du Sud",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "07-10": [
+   {
+    "nom": "Jour de l'indépendance (1973)",
+    "cat": "nationale",
+    "iso": "BS",
+    "pays": "Bahamas",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "07-11": [
+   {
+    "nom": "Journée mondiale de la population",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de la révolution populaire (1921, Naadam)",
+    "cat": "nationale",
+    "iso": "MN",
+    "pays": "Mongolie",
+    "type": "revolution",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   },
+   {
+    "nom": "Fête de la Communauté flamande",
+    "cat": "pays",
+    "portee": [
+     "BE"
+    ],
+    "fiab": "usuelle",
+    "note": "Fête de la Flandre, surtout célébrée au nord du pays."
+   }
+  ],
+  "07-12": [
+   {
+    "nom": "Jour de l'indépendance (1979)",
+    "cat": "nationale",
+    "iso": "KI",
+    "pays": "Kiribati",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1975)",
+    "cat": "nationale",
+    "iso": "ST",
+    "pays": "Sao Tomé-et-Principe",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "07-13": [
+   {
+    "nom": "Jour de l'État (1878)",
+    "cat": "nationale",
+    "iso": "ME",
+    "pays": "Monténégro",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "07-14": [
+   {
+    "nom": "Fête nationale (prise de la Bastille, 1789 ; fête de la Fédération, 1790)",
+    "cat": "nationale",
+    "iso": "FR",
+    "pays": "France",
+    "type": "revolution",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "07-15": [
+   {
+    "nom": "Journée mondiale des compétences des jeunes",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "07-17": [
+   {
+    "nom": "Journée de la justice pénale internationale",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Journée mondiale des emojis",
+    "cat": "commerciale",
+    "portee": [
+     "monde"
+    ],
+    "fiab": "populaire",
+    "note": "Lancée en 2014 par un site spécialisé."
+   }
+  ],
+  "07-18": [
+   {
+    "nom": "Journée internationale Nelson Mandela",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "07-20": [
+   {
+    "nom": "Jour de l'indépendance (1810)",
+    "cat": "nationale",
+    "iso": "CO",
+    "pays": "Colombie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "07-21": [
+   {
+    "nom": "Fête nationale (serment de Léopold Ier, 1831)",
+    "cat": "nationale",
+    "iso": "BE",
+    "pays": "Belgique",
+    "type": "monarchie",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "07-23": [
+   {
+    "nom": "Fête de la Révolution (1952)",
+    "cat": "nationale",
+    "iso": "EG",
+    "pays": "Égypte",
+    "type": "revolution",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "07-26": [
+   {
+    "nom": "Jour de l'indépendance (1847)",
+    "cat": "nationale",
+    "iso": "LR",
+    "pays": "Liberia",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1965)",
+    "cat": "nationale",
+    "iso": "MV",
+    "pays": "Maldives",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "07-28": [
+   {
+    "nom": "Journée mondiale contre l'hépatite",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false
+   },
+   {
+    "nom": "Fêtes patriotiques, jour de l'indépendance (1821)",
+    "cat": "nationale",
+    "iso": "PE",
+    "pays": "Pérou",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "07-30": [
+   {
+    "nom": "Journée internationale de l'amitié",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Journée mondiale contre la traite des êtres humains",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": true
+   },
+   {
+    "nom": "Fête du Trône",
+    "cat": "nationale",
+    "iso": "MA",
+    "pays": "Maroc",
+    "type": "monarchie",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1980)",
+    "cat": "nationale",
+    "iso": "VU",
+    "pays": "Vanuatu",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "08-01": [
+   {
+    "nom": "Semaine mondiale de l'allaitement maternel",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false,
+    "semaine": "du 1er au 7 août"
+   },
+   {
+    "nom": "Fête de l'indépendance (1960)",
+    "cat": "nationale",
+    "iso": "BJ",
+    "pays": "Bénin",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Fête nationale (Pacte fédéral de 1291)",
+    "cat": "nationale",
+    "iso": "CH",
+    "pays": "Suisse",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "08-02": [
+   {
+    "nom": "Semaine mondiale de l'allaitement maternel",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false,
+    "semaine": "du 1er au 7 août"
+   }
+  ],
+  "08-03": [
+   {
+    "nom": "Semaine mondiale de l'allaitement maternel",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false,
+    "semaine": "du 1er au 7 août"
+   },
+   {
+    "nom": "Fête de l'indépendance (1960)",
+    "cat": "nationale",
+    "iso": "NE",
+    "pays": "Niger",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "08-04": [
+   {
+    "nom": "Semaine mondiale de l'allaitement maternel",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false,
+    "semaine": "du 1er au 7 août"
+   }
+  ],
+  "08-05": [
+   {
+    "nom": "Semaine mondiale de l'allaitement maternel",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false,
+    "semaine": "du 1er au 7 août"
+   },
+   {
+    "nom": "Fête de l'indépendance (1960)",
+    "cat": "nationale",
+    "iso": "BF",
+    "pays": "Burkina Faso",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "08-06": [
+   {
+    "nom": "Semaine mondiale de l'allaitement maternel",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false,
+    "semaine": "du 1er au 7 août"
+   },
+   {
+    "nom": "Jour de l'indépendance (1825)",
+    "cat": "nationale",
+    "iso": "BO",
+    "pays": "Bolivie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1962)",
+    "cat": "nationale",
+    "iso": "JM",
+    "pays": "Jamaïque",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "08-07": [
+   {
+    "nom": "Semaine mondiale de l'allaitement maternel",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": false,
+    "semaine": "du 1er au 7 août"
+   },
+   {
+    "nom": "Fête de l'indépendance (1960)",
+    "cat": "nationale",
+    "iso": "CI",
+    "pays": "Côte d'Ivoire",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "08-09": [
+   {
+    "nom": "Journée internationale des peuples autochtones",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Fête nationale (1965)",
+    "cat": "nationale",
+    "iso": "SG",
+    "pays": "Singapour",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "08-10": [
+   {
+    "nom": "Premier cri d'indépendance (1809)",
+    "cat": "nationale",
+    "iso": "EC",
+    "pays": "Équateur",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ],
+    "note": "La bataille de Pichincha (24 mai 1822) est la date de l'indépendance effective."
+   }
+  ],
+  "08-11": [
+   {
+    "nom": "Fête de l'indépendance (1960)",
+    "cat": "nationale",
+    "iso": "TD",
+    "pays": "Tchad",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "08-12": [
+   {
+    "nom": "Journée internationale de la jeunesse",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "08-14": [
+   {
+    "nom": "Jour de l'indépendance (1947)",
+    "cat": "nationale",
+    "iso": "PK",
+    "pays": "Pakistan",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "08-15": [
+   {
+    "nom": "Fête de l'indépendance (1960)",
+    "cat": "nationale",
+    "iso": "CG",
+    "pays": "Congo",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1947)",
+    "cat": "nationale",
+    "iso": "IN",
+    "pays": "Inde",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de la libération (1945)",
+    "cat": "nationale",
+    "iso": "KR",
+    "pays": "Corée du Sud",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Fête nationale",
+    "cat": "nationale",
+    "iso": "LI",
+    "pays": "Liechtenstein",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "08-17": [
+   {
+    "nom": "Fête de l'indépendance (1960)",
+    "cat": "nationale",
+    "iso": "GA",
+    "pays": "Gabon",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1945)",
+    "cat": "nationale",
+    "iso": "ID",
+    "pays": "Indonésie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "08-19": [
+   {
+    "nom": "Journée mondiale de l'aide humanitaire",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de l'indépendance (1919)",
+    "cat": "nationale",
+    "iso": "AF",
+    "pays": "Afghanistan",
+    "type": "independance",
+    "drapeau": "C",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ],
+    "note": "Depuis 2021, les autorités en place mettent surtout en avant le 15 août (prise de Kaboul)."
+   }
+  ],
+  "08-20": [
+   {
+    "nom": "Fête de la Saint-Étienne (fondation de l'État)",
+    "cat": "nationale",
+    "iso": "HU",
+    "pays": "Hongrie",
+    "type": "saint",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "08-21": [
+   {
+    "nom": "Journée internationale du souvenir des victimes du terrorisme",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": true
+   }
+  ],
+  "08-23": [
+   {
+    "nom": "Journée internationale du souvenir de la traite négrière et de son abolition",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": true
+   }
+  ],
+  "08-24": [
+   {
+    "nom": "Jour de l'indépendance (1991)",
+    "cat": "nationale",
+    "iso": "UA",
+    "pays": "Ukraine",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "08-25": [
+   {
+    "nom": "Jour de l'indépendance (1825)",
+    "cat": "nationale",
+    "iso": "UY",
+    "pays": "Uruguay",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "08-27": [
+   {
+    "nom": "Jour de l'indépendance (1991)",
+    "cat": "nationale",
+    "iso": "MD",
+    "pays": "Moldavie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "08-29": [
+   {
+    "nom": "Journée internationale contre les essais nucléaires",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "08-31": [
+   {
+    "nom": "Jour de l'indépendance (1991)",
+    "cat": "nationale",
+    "iso": "KG",
+    "pays": "Kirghizistan",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (Merdeka, 1957)",
+    "cat": "nationale",
+    "iso": "MY",
+    "pays": "Malaisie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1962)",
+    "cat": "nationale",
+    "iso": "TT",
+    "pays": "Trinité-et-Tobago",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "09-01": [
+   {
+    "nom": "Jour de la Constitution (1992)",
+    "cat": "nationale",
+    "iso": "SK",
+    "pays": "Slovaquie",
+    "type": "constitution",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1991)",
+    "cat": "nationale",
+    "iso": "UZ",
+    "pays": "Ouzbékistan",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "09-02": [
+   {
+    "nom": "Fête nationale (1945)",
+    "cat": "nationale",
+    "iso": "VN",
+    "pays": "Viêt Nam",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "09-03": [
+   {
+    "nom": "Fête nationale (fondation, saint Marin)",
+    "cat": "nationale",
+    "iso": "SM",
+    "pays": "Saint-Marin",
+    "type": "saint",
+    "drapeau": "S",
+    "recoupe": []
+   }
+  ],
+  "09-06": [
+   {
+    "nom": "Jour de l'indépendance (1968)",
+    "cat": "nationale",
+    "iso": "SZ",
+    "pays": "Eswatini",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "09-07": [
+   {
+    "nom": "Jour de l'indépendance (1822)",
+    "cat": "nationale",
+    "iso": "BR",
+    "pays": "Brésil",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "09-08": [
+   {
+    "nom": "Journée internationale de l'alphabétisation",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false
+   },
+   {
+    "nom": "Fête nationale (Notre-Dame de Meritxell)",
+    "cat": "nationale",
+    "iso": "AD",
+    "pays": "Andorre",
+    "type": "saint",
+    "drapeau": "S",
+    "recoupe": []
+   },
+   {
+    "nom": "Jour de l'indépendance (1991)",
+    "cat": "nationale",
+    "iso": "MK",
+    "pays": "Macédoine du Nord",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "09-09": [
+   {
+    "nom": "Fondation de la RPDC (1948)",
+    "cat": "nationale",
+    "iso": "KP",
+    "pays": "Corée du Nord",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1991)",
+    "cat": "nationale",
+    "iso": "TJ",
+    "pays": "Tadjikistan",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "09-10": [
+   {
+    "nom": "Journée mondiale de la prévention du suicide",
+    "cat": "onu",
+    "org": "OMS / AIPS",
+    "sensible": true
+   }
+  ],
+  "09-15": [
+   {
+    "nom": "Journée internationale de la démocratie",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de l'indépendance (1821)",
+    "cat": "nationale",
+    "iso": "CR",
+    "pays": "Costa Rica",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1821)",
+    "cat": "nationale",
+    "iso": "GT",
+    "pays": "Guatemala",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1821)",
+    "cat": "nationale",
+    "iso": "HN",
+    "pays": "Honduras",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1821)",
+    "cat": "nationale",
+    "iso": "NI",
+    "pays": "Nicaragua",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1821)",
+    "cat": "nationale",
+    "iso": "SV",
+    "pays": "Salvador",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "09-16": [
+   {
+    "nom": "Journée internationale de la préservation de la couche d'ozone",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de la Malaisie (1963)",
+    "cat": "nationale",
+    "iso": "MY",
+    "pays": "Malaisie",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1810)",
+    "cat": "nationale",
+    "iso": "MX",
+    "pays": "Mexique",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1975)",
+    "cat": "nationale",
+    "iso": "PG",
+    "pays": "Papouasie-Nouvelle-Guinée",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "09-18": [
+   {
+    "nom": "Fête nationale (1810)",
+    "cat": "nationale",
+    "iso": "CL",
+    "pays": "Chili",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "09-19": [
+   {
+    "nom": "Jour de l'indépendance (1983)",
+    "cat": "nationale",
+    "iso": "KN",
+    "pays": "Saint-Christophe-et-Niévès",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Journée « Parle comme un pirate »",
+    "cat": "commerciale",
+    "portee": [
+     "monde"
+    ],
+    "fiab": "populaire",
+    "note": "Créée en 1995 par deux Américains."
+   }
+  ],
+  "09-20": [
+   {
+    "nom": "Jour de la Constitution (2015)",
+    "cat": "nationale",
+    "iso": "NP",
+    "pays": "Népal",
+    "type": "constitution",
+    "drapeau": "C",
+    "recoupe": [],
+    "note": "La liste du ministère néo-zélandais donne le 7 juillet, sans explication ; la fête nationale a changé depuis la fin de la monarchie. À relire."
+   }
+  ],
+  "09-21": [
+   {
+    "nom": "Journée internationale de la paix",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de l'indépendance (1991)",
+    "cat": "nationale",
+    "iso": "AM",
+    "pays": "Arménie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1981)",
+    "cat": "nationale",
+    "iso": "BZ",
+    "pays": "Belize",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1964)",
+    "cat": "nationale",
+    "iso": "MT",
+    "pays": "Malte",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "09-22": [
+   {
+    "nom": "Fête de l'indépendance (1960)",
+    "cat": "nationale",
+    "iso": "ML",
+    "pays": "Mali",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "09-23": [
+   {
+    "nom": "Fête nationale (unification du royaume, 1932)",
+    "cat": "nationale",
+    "iso": "SA",
+    "pays": "Arabie saoudite",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "09-24": [
+   {
+    "nom": "Jour de l'indépendance (1973)",
+    "cat": "nationale",
+    "iso": "GW",
+    "pays": "Guinée-Bissau",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "09-26": [
+   {
+    "nom": "Journée internationale pour l'élimination totale des armes nucléaires",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "09-27": [
+   {
+    "nom": "Journée mondiale du tourisme",
+    "cat": "onu",
+    "org": "OMT",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de l'indépendance (1991)",
+    "cat": "nationale",
+    "iso": "TM",
+    "pays": "Turkménistan",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Fête de la Communauté française (Fédération Wallonie-Bruxelles)",
+    "cat": "pays",
+    "portee": [
+     "BE"
+    ],
+    "fiab": "usuelle"
+   }
+  ],
+  "09-28": [
+   {
+    "nom": "Journée internationale de l'accès universel à l'information",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false
+   }
+  ],
+  "09-30": [
+   {
+    "nom": "Journée internationale de la traduction",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de l'indépendance (1966)",
+    "cat": "nationale",
+    "iso": "BW",
+    "pays": "Botswana",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "10-01": [
+   {
+    "nom": "Journée internationale des personnes âgées",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Journée internationale du café",
+    "cat": "onu",
+    "org": "OIC",
+    "sensible": false
+   },
+   {
+    "nom": "Fête nationale (fondation de la République populaire, 1949)",
+    "cat": "nationale",
+    "iso": "CN",
+    "pays": "Chine",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1960)",
+    "cat": "nationale",
+    "iso": "CY",
+    "pays": "Chypre",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1960)",
+    "cat": "nationale",
+    "iso": "NG",
+    "pays": "Nigeria",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1994)",
+    "cat": "nationale",
+    "iso": "PW",
+    "pays": "Palaos",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1978)",
+    "cat": "nationale",
+    "iso": "TV",
+    "pays": "Tuvalu",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "10-02": [
+   {
+    "nom": "Journée internationale de la non-violence",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Fête de l'indépendance (1958)",
+    "cat": "nationale",
+    "iso": "GN",
+    "pays": "Guinée",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "10-03": [
+   {
+    "nom": "Jour de l'unité allemande (1990)",
+    "cat": "nationale",
+    "iso": "DE",
+    "pays": "Allemagne",
+    "type": "unite",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Fête nationale (indépendance, 1932)",
+    "cat": "nationale",
+    "iso": "IQ",
+    "pays": "Irak",
+    "type": "independance",
+    "drapeau": "C",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ],
+    "note": "La date de la fête nationale irakienne a changé à plusieurs reprises depuis 1958."
+   },
+   {
+    "nom": "Fête de la fondation nationale (Gaecheonjeol)",
+    "cat": "nationale",
+    "iso": "KR",
+    "pays": "Corée du Sud",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "10-04": [
+   {
+    "nom": "Semaine mondiale de l'espace",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false,
+    "semaine": "du 4 au 10 octobre"
+   },
+   {
+    "nom": "Jour de l'indépendance (1966)",
+    "cat": "nationale",
+    "iso": "LS",
+    "pays": "Lesotho",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "10-05": [
+   {
+    "nom": "Semaine mondiale de l'espace",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false,
+    "semaine": "du 4 au 10 octobre"
+   },
+   {
+    "nom": "Journée mondiale des enseignants",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false
+   }
+  ],
+  "10-06": [
+   {
+    "nom": "Semaine mondiale de l'espace",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false,
+    "semaine": "du 4 au 10 octobre"
+   }
+  ],
+  "10-07": [
+   {
+    "nom": "Semaine mondiale de l'espace",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false,
+    "semaine": "du 4 au 10 octobre"
+   },
+   {
+    "nom": "Journée mondiale du coton",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "10-08": [
+   {
+    "nom": "Semaine mondiale de l'espace",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false,
+    "semaine": "du 4 au 10 octobre"
+   }
+  ],
+  "10-09": [
+   {
+    "nom": "Semaine mondiale de l'espace",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false,
+    "semaine": "du 4 au 10 octobre"
+   },
+   {
+    "nom": "Journée mondiale de la poste",
+    "cat": "onu",
+    "org": "UPU",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de l'indépendance (1962)",
+    "cat": "nationale",
+    "iso": "UG",
+    "pays": "Ouganda",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "10-10": [
+   {
+    "nom": "Semaine mondiale de l'espace",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false,
+    "semaine": "du 4 au 10 octobre"
+   },
+   {
+    "nom": "Journée mondiale de la santé mentale",
+    "cat": "onu",
+    "org": "OMS",
+    "sensible": true
+   },
+   {
+    "nom": "Début de la guerre d'indépendance (1868)",
+    "cat": "nationale",
+    "iso": "CU",
+    "pays": "Cuba",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour des Fidji (indépendance, 1970)",
+    "cat": "nationale",
+    "iso": "FJ",
+    "pays": "Fidji",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Double Dix (fête nationale de la République de Chine)",
+    "cat": "nationale",
+    "iso": "TW",
+    "pays": "Taïwan",
+    "type": "republique",
+    "drapeau": "C",
+    "recoupe": [],
+    "note": "Statut politique contesté : la Chine populaire ne reconnaît pas ce statut."
+   }
+  ],
+  "10-11": [
+   {
+    "nom": "Journée internationale de la fille",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "10-12": [
+   {
+    "nom": "Fête nationale (Fiesta Nacional de España)",
+    "cat": "nationale",
+    "iso": "ES",
+    "pays": "Espagne",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1968)",
+    "cat": "nationale",
+    "iso": "GQ",
+    "pays": "Guinée équatoriale",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "10-13": [
+   {
+    "nom": "Journée internationale de la réduction des risques de catastrophe",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "10-15": [
+   {
+    "nom": "Journée internationale des femmes rurales",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "10-16": [
+   {
+    "nom": "Journée mondiale de l'alimentation",
+    "cat": "onu",
+    "org": "FAO",
+    "sensible": false
+   }
+  ],
+  "10-17": [
+   {
+    "nom": "Journée internationale pour l'élimination de la pauvreté",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "10-18": [
+   {
+    "nom": "Rétablissement de l'indépendance (1991)",
+    "cat": "nationale",
+    "iso": "AZ",
+    "pays": "Azerbaïdjan",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "10-23": [
+   {
+    "nom": "Journée internationale du léopard des neiges",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Journée de la mole (Mole Day)",
+    "cat": "commerciale",
+    "portee": [
+     "monde"
+    ],
+    "fiab": "populaire",
+    "note": "Hommage au nombre d'Avogadro (6,02 x 10^23) ; fête de profs de chimie."
+   }
+  ],
+  "10-24": [
+   {
+    "nom": "Journée des Nations Unies",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Journée mondiale d'information sur le développement",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Semaine du désarmement",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false,
+    "semaine": "du 24 au 30 octobre"
+   },
+   {
+    "nom": "Semaine mondiale de l'éducation aux médias et à l'information",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false,
+    "semaine": "du 24 au 31 octobre"
+   },
+   {
+    "nom": "Jour de l'indépendance (1964)",
+    "cat": "nationale",
+    "iso": "ZM",
+    "pays": "Zambie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "10-25": [
+   {
+    "nom": "Semaine du désarmement",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false,
+    "semaine": "du 24 au 30 octobre"
+   },
+   {
+    "nom": "Semaine mondiale de l'éducation aux médias et à l'information",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false,
+    "semaine": "du 24 au 31 octobre"
+   }
+  ],
+  "10-26": [
+   {
+    "nom": "Semaine du désarmement",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false,
+    "semaine": "du 24 au 30 octobre"
+   },
+   {
+    "nom": "Semaine mondiale de l'éducation aux médias et à l'information",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false,
+    "semaine": "du 24 au 31 octobre"
+   },
+   {
+    "nom": "Fête nationale (neutralité, 1955)",
+    "cat": "nationale",
+    "iso": "AT",
+    "pays": "Autriche",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "10-27": [
+   {
+    "nom": "Semaine du désarmement",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false,
+    "semaine": "du 24 au 30 octobre"
+   },
+   {
+    "nom": "Semaine mondiale de l'éducation aux médias et à l'information",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false,
+    "semaine": "du 24 au 31 octobre"
+   },
+   {
+    "nom": "Journée mondiale du patrimoine audiovisuel",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de l'indépendance (1979)",
+    "cat": "nationale",
+    "iso": "VC",
+    "pays": "Saint-Vincent-et-les-Grenadines",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "10-28": [
+   {
+    "nom": "Semaine du désarmement",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false,
+    "semaine": "du 24 au 30 octobre"
+   },
+   {
+    "nom": "Semaine mondiale de l'éducation aux médias et à l'information",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false,
+    "semaine": "du 24 au 31 octobre"
+   },
+   {
+    "nom": "Jour du « Non » (Ohi, 1940)",
+    "cat": "nationale",
+    "iso": "GR",
+    "pays": "Grèce",
+    "type": "unite",
+    "drapeau": "S",
+    "recoupe": []
+   },
+   {
+    "nom": "Jour de l'État tchécoslovaque (1918)",
+    "cat": "nationale",
+    "iso": "CZ",
+    "pays": "Tchéquie",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "10-29": [
+   {
+    "nom": "Semaine du désarmement",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false,
+    "semaine": "du 24 au 30 octobre"
+   },
+   {
+    "nom": "Semaine mondiale de l'éducation aux médias et à l'information",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false,
+    "semaine": "du 24 au 31 octobre"
+   },
+   {
+    "nom": "Journée internationale des soins et de l'accompagnement",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Fête de la République (1923)",
+    "cat": "nationale",
+    "iso": "TR",
+    "pays": "Turquie",
+    "type": "republique",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "10-30": [
+   {
+    "nom": "Semaine du désarmement",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false,
+    "semaine": "du 24 au 30 octobre"
+   },
+   {
+    "nom": "Semaine mondiale de l'éducation aux médias et à l'information",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false,
+    "semaine": "du 24 au 31 octobre"
+   }
+  ],
+  "10-31": [
+   {
+    "nom": "Semaine mondiale de l'éducation aux médias et à l'information",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false,
+    "semaine": "du 24 au 31 octobre"
+   },
+   {
+    "nom": "Journée mondiale des villes",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Halloween",
+    "cat": "usage",
+    "portee": [
+     "monde"
+    ],
+    "fiab": "usuelle",
+    "note": "Fête d'origine anglo-saxonne, populaire surtout en France."
+   }
+  ],
+  "11-01": [
+   {
+    "nom": "Anniversaire de la Révolution (1954)",
+    "cat": "nationale",
+    "iso": "DZ",
+    "pays": "Algérie",
+    "type": "revolution",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ],
+    "note": "Deuxième fête nationale ; certaines listes officielles la présentent comme fête nationale."
+   },
+   {
+    "nom": "Jour de l'indépendance (1981)",
+    "cat": "nationale",
+    "iso": "AG",
+    "pays": "Antigua-et-Barbuda",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "11-02": [
+   {
+    "nom": "Journée internationale de la fin de l'impunité pour les crimes contre les journalistes",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": true
+   }
+  ],
+  "11-03": [
+   {
+    "nom": "Jour de l'indépendance (1978)",
+    "cat": "nationale",
+    "iso": "DM",
+    "pays": "Dominique",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Fête nationale (1986)",
+    "cat": "nationale",
+    "iso": "FM",
+    "pays": "Micronésie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Séparation de la Colombie (1903)",
+    "cat": "nationale",
+    "iso": "PA",
+    "pays": "Panama",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "11-04": [
+   {
+    "nom": "Fête nationale",
+    "cat": "nationale",
+    "iso": "TO",
+    "pays": "Tonga",
+    "type": "fondation",
+    "drapeau": "C",
+    "recoupe": [
+     "MFAT"
+    ],
+    "note": "Selon les sources, l'indépendance du 4 juin 1970 (fête de l'Émancipation) est aussi célébrée."
+   }
+  ],
+  "11-05": [
+   {
+    "nom": "Journée mondiale de sensibilisation aux tsunamis",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "11-06": [
+   {
+    "nom": "Journée internationale pour la protection de l'environnement en temps de guerre",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "11-09": [
+   {
+    "nom": "Fête de l'indépendance (1953)",
+    "cat": "nationale",
+    "iso": "KH",
+    "pays": "Cambodge",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "11-10": [
+   {
+    "nom": "Journée mondiale de la science au service de la paix et du développement",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false
+   }
+  ],
+  "11-11": [
+   {
+    "nom": "Jour de l'indépendance (1975)",
+    "cat": "nationale",
+    "iso": "AO",
+    "pays": "Angola",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1918)",
+    "cat": "nationale",
+    "iso": "PL",
+    "pays": "Pologne",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Armistice de 1918",
+    "cat": "pays",
+    "portee": [
+     "BE",
+     "FR"
+    ],
+    "fiab": "officielle",
+    "note": "Férié en France et en Belgique."
+   }
+  ],
+  "11-14": [
+   {
+    "nom": "Journée mondiale du diabète",
+    "cat": "onu",
+    "org": "OMS / FID",
+    "sensible": false
+   }
+  ],
+  "11-15": [
+   {
+    "nom": "Déclaration d'indépendance (1988)",
+    "cat": "nationale",
+    "iso": "PS",
+    "pays": "Palestine",
+    "type": "independance",
+    "drapeau": "C",
+    "recoupe": [
+     "Wikipédia"
+    ],
+    "note": "Statut d'État reconnu par une partie seulement des pays."
+   },
+   {
+    "nom": "Fête de la Dynastie (fête du Roi)",
+    "cat": "pays",
+    "portee": [
+     "BE"
+    ],
+    "fiab": "usuelle"
+   }
+  ],
+  "11-16": [
+   {
+    "nom": "Journée internationale de la tolérance",
+    "cat": "onu",
+    "org": "UNESCO",
+    "sensible": false
+   }
+  ],
+  "11-18": [
+   {
+    "nom": "Fête de l'indépendance (1955)",
+    "cat": "nationale",
+    "iso": "MA",
+    "pays": "Maroc",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Proclamation de l'indépendance (1918)",
+    "cat": "nationale",
+    "iso": "LV",
+    "pays": "Lettonie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Fête nationale",
+    "cat": "nationale",
+    "iso": "OM",
+    "pays": "Oman",
+    "type": "monarchie",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "11-19": [
+   {
+    "nom": "Journée mondiale des toilettes",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Fête nationale",
+    "cat": "nationale",
+    "iso": "MC",
+    "pays": "Monaco",
+    "type": "monarchie",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "11-20": [
+   {
+    "nom": "Journée universelle de l'enfance",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "11-22": [
+   {
+    "nom": "Jour de l'indépendance (1943)",
+    "cat": "nationale",
+    "iso": "LB",
+    "pays": "Liban",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "11-25": [
+   {
+    "nom": "Journée internationale pour l'élimination de la violence à l'égard des femmes",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": true
+   },
+   {
+    "nom": "Jour de l'indépendance (1975)",
+    "cat": "nationale",
+    "iso": "SR",
+    "pays": "Suriname",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "11-28": [
+   {
+    "nom": "Jour de l'indépendance (1912)",
+    "cat": "nationale",
+    "iso": "AL",
+    "pays": "Albanie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1960)",
+    "cat": "nationale",
+    "iso": "MR",
+    "pays": "Mauritanie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Proclamation de l'indépendance (1975)",
+    "cat": "nationale",
+    "iso": "TL",
+    "pays": "Timor oriental",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "11-29": [
+   {
+    "nom": "Journée internationale de solidarité avec le peuple palestinien",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": true
+   }
+  ],
+  "11-30": [
+   {
+    "nom": "Jour de l'indépendance (1966)",
+    "cat": "nationale",
+    "iso": "BB",
+    "pays": "Barbade",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Saint-André",
+    "cat": "nationale",
+    "iso": "GB-SCT",
+    "pays": "Écosse",
+    "type": "saint",
+    "drapeau": "C",
+    "recoupe": [],
+    "note": "Le Royaume-Uni n'a pas de fête nationale officielle."
+   }
+  ],
+  "12-01": [
+   {
+    "nom": "Journée mondiale de lutte contre le sida",
+    "cat": "onu",
+    "org": "OMS / ONUSIDA",
+    "sensible": true
+   },
+   {
+    "nom": "Fête nationale (proclamation de la République, 1958)",
+    "cat": "nationale",
+    "iso": "CF",
+    "pays": "Centrafrique",
+    "type": "republique",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Restauration de l'indépendance (1640)",
+    "cat": "nationale",
+    "iso": "PT",
+    "pays": "Portugal",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Grande Union (1918)",
+    "cat": "nationale",
+    "iso": "RO",
+    "pays": "Roumanie",
+    "type": "unite",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "12-02": [
+   {
+    "nom": "Journée internationale pour l'abolition de l'esclavage",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": true
+   },
+   {
+    "nom": "Fête nationale (1971)",
+    "cat": "nationale",
+    "iso": "AE",
+    "pays": "Émirats arabes unis",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Fête nationale (1975)",
+    "cat": "nationale",
+    "iso": "LA",
+    "pays": "Laos",
+    "type": "republique",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "12-03": [
+   {
+    "nom": "Journée internationale des personnes handicapées",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "12-05": [
+   {
+    "nom": "Journée internationale des volontaires",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Journée mondiale des sols",
+    "cat": "onu",
+    "org": "ONU / FAO",
+    "sensible": false
+   },
+   {
+    "nom": "Fête nationale (anniversaire du roi Bhumibol)",
+    "cat": "nationale",
+    "iso": "TH",
+    "pays": "Thaïlande",
+    "type": "monarchie",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT"
+    ]
+   }
+  ],
+  "12-06": [
+   {
+    "nom": "Jour de l'indépendance (1917)",
+    "cat": "nationale",
+    "iso": "FI",
+    "pays": "Finlande",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Saint-Nicolas",
+    "cat": "usage",
+    "portee": [
+     "FR",
+     "BE",
+     "CH"
+    ],
+    "fiab": "usuelle",
+    "note": "Fêté surtout en Lorraine, en Belgique et à Fribourg."
+   }
+  ],
+  "12-09": [
+   {
+    "nom": "Journée internationale de la lutte contre la corruption",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Jour de l'indépendance (Tanganyika, 1961)",
+    "cat": "nationale",
+    "iso": "TZ",
+    "pays": "Tanzanie",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "12-10": [
+   {
+    "nom": "Journée des droits de l'homme",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "12-11": [
+   {
+    "nom": "Journée internationale de la montagne",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Fête nationale (proclamation de la République, 1958)",
+    "cat": "nationale",
+    "iso": "BF",
+    "pays": "Burkina Faso",
+    "type": "republique",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   }
+  ],
+  "12-12": [
+   {
+    "nom": "Journée internationale de la couverture santé universelle",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Jamhuri Day (1963)",
+    "cat": "nationale",
+    "iso": "KE",
+    "pays": "Kenya",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Escalade (Genève)",
+    "cat": "pays",
+    "portee": [
+     "CH"
+    ],
+    "fiab": "usuelle",
+    "note": "Week-end le plus proche du 12 décembre (échec de l'attaque de 1602)."
+   }
+  ],
+  "12-16": [
+   {
+    "nom": "Jour de la Victoire (1971)",
+    "cat": "nationale",
+    "iso": "BD",
+    "pays": "Bangladesh",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Fête nationale",
+    "cat": "nationale",
+    "iso": "BH",
+    "pays": "Bahreïn",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   },
+   {
+    "nom": "Jour de l'indépendance (1991)",
+    "cat": "nationale",
+    "iso": "KZ",
+    "pays": "Kazakhstan",
+    "type": "independance",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "12-17": [
+   {
+    "nom": "Fête nationale (couronnement de la dynastie, 1907)",
+    "cat": "nationale",
+    "iso": "BT",
+    "pays": "Bhoutan",
+    "type": "monarchie",
+    "drapeau": "S",
+    "recoupe": []
+   }
+  ],
+  "12-18": [
+   {
+    "nom": "Journée internationale des migrants",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   },
+   {
+    "nom": "Fête nationale",
+    "cat": "nationale",
+    "iso": "QA",
+    "pays": "Qatar",
+    "type": "fondation",
+    "drapeau": "S",
+    "recoupe": [
+     "MFAT",
+     "Wikipédia"
+    ]
+   }
+  ],
+  "12-20": [
+   {
+    "nom": "Journée internationale de la solidarité humaine",
+    "cat": "onu",
+    "org": "ONU",
+    "sensible": false
+   }
+  ],
+  "12-24": [
+   {
+    "nom": "Jour de l'indépendance (1951)",
+    "cat": "nationale",
+    "iso": "LY",
+    "pays": "Libye",
+    "type": "independance",
+    "drapeau": "C",
+    "recoupe": [
+     "Wikipédia"
+    ],
+    "note": "La liste du ministère néo-zélandais donne encore le 1er septembre (coup d'État de 1969) ; Wikipédia retient l'indépendance de 1951."
+   },
+   {
+    "nom": "Réveillon de Noël",
+    "cat": "usage",
+    "portee": [
+     "FR",
+     "BE",
+     "CH"
+    ],
+    "fiab": "usuelle"
+   }
+  ],
+  "12-31": [
+   {
+    "nom": "Saint-Sylvestre",
+    "cat": "usage",
+    "portee": [
+     "FR",
+     "BE",
+     "CH"
+    ],
+    "fiab": "usuelle"
+   }
+  ]
+ },
+ "regles": [
+  {
+   "regle": "nth:2:2:1",
+   "nom": "Journée mondiale pour un Internet plus sûr",
+   "cat": "onu",
+   "org": "Union européenne / Insafe",
+   "sensible": false
+  },
+  {
+   "regle": "nth:7:1:5",
+   "nom": "Journée internationale des coopératives",
+   "cat": "onu",
+   "org": "ONU",
+   "sensible": false
+  },
+  {
+   "regle": "nth:10:1:0",
+   "nom": "Journée mondiale de l'habitat",
+   "cat": "onu",
+   "org": "ONU",
+   "sensible": false
+  },
+  {
+   "regle": "nth:10:2:5",
+   "nom": "Journée mondiale des oiseaux migrateurs",
+   "cat": "onu",
+   "org": "ONU (PNUE)",
+   "sensible": false
+  },
+  {
+   "regle": "nth:5:2:5",
+   "nom": "Journée mondiale des oiseaux migrateurs",
+   "cat": "onu",
+   "org": "ONU (PNUE)",
+   "sensible": false
+  },
+  {
+   "regle": "nth:11:3:6",
+   "nom": "Journée mondiale du souvenir des victimes de la route",
+   "cat": "onu",
+   "org": "ONU",
+   "sensible": true
+  },
+  {
+   "regle": "paques:-47",
+   "nom": "Mardi gras",
+   "cat": "religieuse",
+   "portee": [
+    "FR",
+    "BE",
+    "CH"
+   ],
+   "fiab": "usuelle",
+   "note": "Jour de carnaval ; beignets, crêpes ou bugnes selon les régions."
+  },
+  {
+   "regle": "paques:-46",
+   "nom": "Mercredi des Cendres, début du Carême",
+   "cat": "religieuse",
+   "portee": [
+    "FR",
+    "BE",
+    "CH"
+   ],
+   "fiab": "usuelle"
+  },
+  {
+   "regle": "nth:3:-1:6",
+   "nom": "Passage à l'heure d'été (on avance les montres d'une heure)",
+   "cat": "usage",
+   "portee": [
+    "FR",
+    "BE",
+    "CH"
+   ],
+   "fiab": "officielle",
+   "note": "Dernier dimanche de mars, 2 h → 3 h."
+  },
+  {
+   "regle": "paques:-7",
+   "nom": "Dimanche des Rameaux",
+   "cat": "religieuse",
+   "portee": [
+    "FR",
+    "BE",
+    "CH"
+   ],
+   "fiab": "usuelle"
+  },
+  {
+   "regle": "paques:+0",
+   "nom": "Pâques",
+   "cat": "religieuse",
+   "portee": [
+    "FR",
+    "BE",
+    "CH"
+   ],
+   "fiab": "usuelle"
+  },
+  {
+   "regle": "nth:4:-1:6",
+   "nom": "Journée nationale du souvenir des victimes et des héros de la Déportation",
+   "cat": "pays",
+   "portee": [
+    "FR"
+   ],
+   "fiab": "officielle",
+   "note": "Dernier dimanche d'avril."
+  },
+  {
+   "regle": "paques:+39",
+   "nom": "Ascension",
+   "cat": "religieuse",
+   "portee": [
+    "FR",
+    "BE",
+    "CH"
+   ],
+   "fiab": "usuelle"
+  },
+  {
+   "regle": "fete_meres_fr",
+   "nom": "Fête des mères",
+   "cat": "usage",
+   "portee": [
+    "FR"
+   ],
+   "fiab": "usuelle",
+   "note": "Dernier dimanche de mai, sauf s'il tombe le jour de la Pentecôte (alors le premier dimanche de juin)."
+  },
+  {
+   "regle": "nth:5:2:6",
+   "nom": "Fête des mères",
+   "cat": "usage",
+   "portee": [
+    "BE",
+    "CH"
+   ],
+   "fiab": "usuelle",
+   "note": "Deuxième dimanche de mai."
+  },
+  {
+   "regle": "paques:+49",
+   "nom": "Pentecôte",
+   "cat": "religieuse",
+   "portee": [
+    "FR",
+    "BE",
+    "CH"
+   ],
+   "fiab": "usuelle"
+  },
+  {
+   "regle": "nth:6:3:6",
+   "nom": "Fête des pères",
+   "cat": "usage",
+   "portee": [
+    "FR"
+   ],
+   "fiab": "usuelle",
+   "note": "Troisième dimanche de juin."
+  },
+  {
+   "regle": "nth:6:2:6",
+   "nom": "Fête des pères",
+   "cat": "usage",
+   "portee": [
+    "BE"
+   ],
+   "fiab": "usuelle",
+   "note": "Deuxième dimanche de juin."
+  },
+  {
+   "regle": "nth:6:1:6",
+   "nom": "Fête des pères",
+   "cat": "usage",
+   "portee": [
+    "CH"
+   ],
+   "fiab": "usuelle",
+   "note": "Premier dimanche de juin."
+  },
+  {
+   "regle": "nth:8:1:4",
+   "nom": "Journée internationale de la bière",
+   "cat": "commerciale",
+   "portee": [
+    "monde"
+   ],
+   "fiab": "populaire",
+   "note": "Premier vendredi d'août."
+  },
+  {
+   "regle": "nth:9:1:3",
+   "nom": "Jeûne genevois",
+   "cat": "pays",
+   "portee": [
+    "CH"
+   ],
+   "fiab": "usuelle",
+   "note": "Jeudi suivant le premier dimanche de septembre (canton de Genève)."
+  },
+  {
+   "regle": "nth:9:3:6",
+   "nom": "Jeûne fédéral",
+   "cat": "pays",
+   "portee": [
+    "CH"
+   ],
+   "fiab": "officielle",
+   "note": "Troisième dimanche de septembre."
+  },
+  {
+   "regle": "nth:9:3:5",
+   "nom": "Journées européennes du patrimoine",
+   "cat": "usage",
+   "portee": [
+    "FR",
+    "BE"
+   ],
+   "fiab": "officielle",
+   "note": "Troisième week-end de septembre."
+  },
+  {
+   "regle": "nth:9:3:6",
+   "nom": "Fête de la Wallonie",
+   "cat": "pays",
+   "portee": [
+    "BE"
+   ],
+   "fiab": "usuelle",
+   "note": "Troisième dimanche de septembre."
+  },
+  {
+   "regle": "nth:10:-1:6",
+   "nom": "Passage à l'heure d'hiver (on recule les montres d'une heure)",
+   "cat": "usage",
+   "portee": [
+    "FR",
+    "BE",
+    "CH"
+   ],
+   "fiab": "officielle",
+   "note": "Dernier dimanche d'octobre, 3 h → 2 h."
+  },
+  {
+   "regle": "nth:11:3:3",
+   "nom": "Arrivée du Beaujolais nouveau",
+   "cat": "usage",
+   "portee": [
+    "FR",
+    "BE",
+    "CH"
+   ],
+   "fiab": "usuelle",
+   "note": "Troisième jeudi de novembre."
+  },
+  {
+   "regle": "nth:11:4:3+1",
+   "nom": "Black Friday",
+   "cat": "commerciale",
+   "portee": [
+    "monde"
+   ],
+   "fiab": "populaire",
+   "note": "Lendemain de Thanksgiving (4e jeudi de novembre) aux États-Unis ; opération commerciale."
+  }
+ ]
+}

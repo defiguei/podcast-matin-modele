@@ -1,0 +1,3663 @@
+{
+ "source": "Calendrier traditionnel des prénoms (almanach des PTT, tel que repris par les calendriers français, belges et suisses romands), saisi dans outils/fetes/prenoms.txt ; prénoms secondaires déduits du calendrier des saints (data.gouv.fr, Licence Ouverte, corrigé). Fabriqué par outils/construire_fetes.py.",
+ "jours": {
+  "01-01": {
+   "principal": [
+    "Marie"
+   ],
+   "fete": "Jour de l'an (sainte Marie, Mère de Dieu)",
+   "aussi": [
+    "Odilon"
+   ],
+   "accord": true
+  },
+  "01-02": {
+   "principal": [
+    "Basile"
+   ],
+   "fete": "",
+   "aussi": [
+    "Adélard",
+    "Grégoire",
+    "Macaire"
+   ],
+   "accord": true
+  },
+  "01-03": {
+   "principal": [
+    "Geneviève"
+   ],
+   "fete": "",
+   "aussi": [
+    "Daniel"
+   ],
+   "accord": true
+  },
+  "01-04": {
+   "principal": [
+    "Odilon"
+   ],
+   "fete": "",
+   "aussi": [
+    "Grégoire",
+    "Marcien",
+    "Robert"
+   ],
+   "accord": false
+  },
+  "01-05": {
+   "principal": [
+    "Édouard"
+   ],
+   "fete": "",
+   "aussi": [
+    "Télesphore"
+   ],
+   "accord": false
+  },
+  "01-06": {
+   "principal": [
+    "Mélaine"
+   ],
+   "fete": "Épiphanie (selon les années, le dimanche le plus proche)",
+   "aussi": [
+    "Balthazar",
+    "Gaspard",
+    "Guérin"
+   ],
+   "accord": true
+  },
+  "01-07": {
+   "principal": [
+    "Raymond"
+   ],
+   "fete": "",
+   "aussi": [
+    "Aldric",
+    "Canut",
+    "Reynold"
+   ],
+   "accord": true
+  },
+  "01-08": {
+   "principal": [
+    "Lucien"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "01-09": {
+   "principal": [
+    "Alix"
+   ],
+   "fete": "",
+   "aussi": [
+    "Adrien",
+    "Julien"
+   ],
+   "accord": false
+  },
+  "01-10": {
+   "principal": [
+    "Guillaume"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "01-11": {
+   "principal": [
+    "Paulin"
+   ],
+   "fete": "",
+   "aussi": [
+    "Théodose"
+   ],
+   "accord": false
+  },
+  "01-12": {
+   "principal": [
+    "Tatiana"
+   ],
+   "fete": "",
+   "aussi": [
+    "Arcade"
+   ],
+   "accord": true
+  },
+  "01-13": {
+   "principal": [
+    "Yvette"
+   ],
+   "fete": "",
+   "aussi": [
+    "Hilaire",
+    "Léonce"
+   ],
+   "accord": false
+  },
+  "01-14": {
+   "principal": [
+    "Nina"
+   ],
+   "fete": "",
+   "aussi": [
+    "Engelmar",
+    "Félix"
+   ],
+   "accord": false
+  },
+  "01-15": {
+   "principal": [
+    "Rémi"
+   ],
+   "fete": "",
+   "aussi": [
+    "Paul"
+   ],
+   "accord": false
+  },
+  "01-16": {
+   "principal": [
+    "Marcel"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "01-17": {
+   "principal": [
+    "Roseline"
+   ],
+   "fete": "",
+   "aussi": [
+    "Antoine",
+    "Sulpice"
+   ],
+   "accord": false
+  },
+  "01-18": {
+   "principal": [
+    "Prisca"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "01-19": {
+   "principal": [
+    "Marius"
+   ],
+   "fete": "",
+   "aussi": [
+    "Canut"
+   ],
+   "accord": false
+  },
+  "01-20": {
+   "principal": [
+    "Sébastien"
+   ],
+   "fete": "",
+   "aussi": [
+    "Fabien"
+   ],
+   "accord": true
+  },
+  "01-21": {
+   "principal": [
+    "Agnès"
+   ],
+   "fete": "",
+   "aussi": [
+    "Fructueux"
+   ],
+   "accord": true
+  },
+  "01-22": {
+   "principal": [
+    "Vincent"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "01-23": {
+   "principal": [
+    "Barnard"
+   ],
+   "fete": "",
+   "aussi": [
+    "Ildefonse"
+   ],
+   "accord": true
+  },
+  "01-24": {
+   "principal": [
+    "François"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "01-25": {
+   "principal": [
+    "Paul"
+   ],
+   "fete": "Conversion de saint Paul",
+   "aussi": [],
+   "accord": true
+  },
+  "01-26": {
+   "principal": [
+    "Timothée"
+   ],
+   "fete": "",
+   "aussi": [
+    "Tite"
+   ],
+   "accord": true
+  },
+  "01-27": {
+   "principal": [
+    "Angèle"
+   ],
+   "fete": "",
+   "aussi": [
+    "Julien"
+   ],
+   "accord": true
+  },
+  "01-28": {
+   "principal": [
+    "Thomas"
+   ],
+   "fete": "",
+   "aussi": [
+    "Callinique"
+   ],
+   "accord": false
+  },
+  "01-29": {
+   "principal": [
+    "Gildas"
+   ],
+   "fete": "",
+   "aussi": [
+    "Valère",
+    "Sulpice"
+   ],
+   "accord": true
+  },
+  "01-30": {
+   "principal": [
+    "Martine"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "01-31": {
+   "principal": [
+    "Marcelle"
+   ],
+   "fete": "",
+   "aussi": [
+    "Cyrus",
+    "Eusèbe",
+    "Jean"
+   ],
+   "accord": true
+  },
+  "02-01": {
+   "principal": [
+    "Ella"
+   ],
+   "fete": "",
+   "aussi": [
+    "Jean",
+    "Sévère"
+   ],
+   "accord": false
+  },
+  "02-02": {
+   "principal": [],
+   "fete": "Chandeleur (présentation du Seigneur)",
+   "aussi": [
+    "Adalbaud"
+   ],
+   "accord": false
+  },
+  "02-03": {
+   "principal": [
+    "Blaise"
+   ],
+   "fete": "",
+   "aussi": [
+    "Anschaire"
+   ],
+   "accord": true
+  },
+  "02-04": {
+   "principal": [
+    "Véronique"
+   ],
+   "fete": "",
+   "aussi": [
+    "André",
+    "Gilbert"
+   ],
+   "accord": false
+  },
+  "02-05": {
+   "principal": [
+    "Agathe"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "02-06": {
+   "principal": [
+    "Gaston"
+   ],
+   "fete": "",
+   "aussi": [
+    "Paul"
+   ],
+   "accord": false
+  },
+  "02-07": {
+   "principal": [
+    "Eugénie"
+   ],
+   "fete": "",
+   "aussi": [
+    "Chryseuil"
+   ],
+   "accord": false
+  },
+  "02-08": {
+   "principal": [
+    "Jacqueline"
+   ],
+   "fete": "",
+   "aussi": [
+    "Jean",
+    "Jérôme"
+   ],
+   "accord": false
+  },
+  "02-09": {
+   "principal": [
+    "Apolline"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "02-10": {
+   "principal": [
+    "Arnaud"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": false
+  },
+  "02-11": {
+   "principal": [],
+   "fete": "Notre-Dame de Lourdes",
+   "aussi": [
+    "Adolphe"
+   ],
+   "accord": false
+  },
+  "02-12": {
+   "principal": [
+    "Félix"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": false
+  },
+  "02-13": {
+   "principal": [
+    "Béatrice"
+   ],
+   "fete": "",
+   "aussi": [
+    "Polyeucte"
+   ],
+   "accord": true
+  },
+  "02-14": {
+   "principal": [
+    "Valentin"
+   ],
+   "fete": "Saint-Valentin",
+   "aussi": [
+    "Méthode"
+   ],
+   "accord": true
+  },
+  "02-15": {
+   "principal": [
+    "Claude"
+   ],
+   "fete": "",
+   "aussi": [
+    "Faustin",
+    "Jovite"
+   ],
+   "accord": false
+  },
+  "02-16": {
+   "principal": [
+    "Julienne"
+   ],
+   "fete": "",
+   "aussi": [
+    "Onésime"
+   ],
+   "accord": true
+  },
+  "02-17": {
+   "principal": [
+    "Alexis"
+   ],
+   "fete": "",
+   "aussi": [
+    "Polychrone",
+    "Théodule"
+   ],
+   "accord": false
+  },
+  "02-18": {
+   "principal": [
+    "Bernadette"
+   ],
+   "fete": "",
+   "aussi": [
+    "Claude",
+    "Flavien",
+    "Fructule"
+   ],
+   "accord": false
+  },
+  "02-19": {
+   "principal": [
+    "Gabin"
+   ],
+   "fete": "",
+   "aussi": [
+    "Boniface",
+    "Conrad"
+   ],
+   "accord": true
+  },
+  "02-20": {
+   "principal": [
+    "Aimée"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "02-21": {
+   "principal": [
+    "Pierre"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "02-22": {
+   "principal": [
+    "Isabelle"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": false
+  },
+  "02-23": {
+   "principal": [
+    "Lazare"
+   ],
+   "fete": "",
+   "aussi": [
+    "Polycarpe"
+   ],
+   "accord": true
+  },
+  "02-24": {
+   "principal": [
+    "Modeste"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "02-25": {
+   "principal": [
+    "Roméo"
+   ],
+   "fete": "",
+   "aussi": [
+    "Césaire",
+    "Tarasius"
+   ],
+   "accord": false
+  },
+  "02-26": {
+   "principal": [
+    "Nestor"
+   ],
+   "fete": "",
+   "aussi": [
+    "Alexandre"
+   ],
+   "accord": true
+  },
+  "02-27": {
+   "principal": [
+    "Honorine"
+   ],
+   "fete": "",
+   "aussi": [
+    "Gabriel"
+   ],
+   "accord": true
+  },
+  "02-28": {
+   "principal": [
+    "Romain"
+   ],
+   "fete": "",
+   "aussi": [
+    "Hilaire",
+    "Théophile"
+   ],
+   "accord": true
+  },
+  "02-29": {
+   "principal": [
+    "Auguste"
+   ],
+   "fete": "Jour du 29 février (année bissextile)",
+   "aussi": [
+    "Oswald"
+   ],
+   "accord": false
+  },
+  "03-01": {
+   "principal": [
+    "Aubin"
+   ],
+   "fete": "",
+   "aussi": [
+    "Albin",
+    "Charles",
+    "Guénolé"
+   ],
+   "accord": false
+  },
+  "03-02": {
+   "principal": [
+    "Charles"
+   ],
+   "fete": "",
+   "aussi": [
+    "Siméon"
+   ],
+   "accord": false
+  },
+  "03-03": {
+   "principal": [
+    "Guénolé"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": false
+  },
+  "03-04": {
+   "principal": [
+    "Casimir"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "03-05": {
+   "principal": [
+    "Olive"
+   ],
+   "fete": "",
+   "aussi": [
+    "Eusèbe",
+    "Jean-Joseph",
+    "Théophile"
+   ],
+   "accord": true
+  },
+  "03-06": {
+   "principal": [
+    "Colette"
+   ],
+   "fete": "",
+   "aussi": [
+    "Chrodegang",
+    "Fridolin"
+   ],
+   "accord": true
+  },
+  "03-07": {
+   "principal": [
+    "Félicité"
+   ],
+   "fete": "",
+   "aussi": [
+    "Révocat",
+    "Saturnin",
+    "Secondule"
+   ],
+   "accord": true
+  },
+  "03-08": {
+   "principal": [
+    "Jean"
+   ],
+   "fete": "",
+   "aussi": [
+    "Julien"
+   ],
+   "accord": true
+  },
+  "03-09": {
+   "principal": [
+    "Françoise"
+   ],
+   "fete": "",
+   "aussi": [
+    "Dominique",
+    "Grégoire"
+   ],
+   "accord": true
+  },
+  "03-10": {
+   "principal": [
+    "Vivien"
+   ],
+   "fete": "",
+   "aussi": [
+    "Crescent",
+    "Droctovée"
+   ],
+   "accord": false
+  },
+  "03-11": {
+   "principal": [
+    "Rosine"
+   ],
+   "fete": "",
+   "aussi": [
+    "Euloge",
+    "Euthyme"
+   ],
+   "accord": false
+  },
+  "03-12": {
+   "principal": [
+    "Justine"
+   ],
+   "fete": "",
+   "aussi": [
+    "Maximilien"
+   ],
+   "accord": false
+  },
+  "03-13": {
+   "principal": [
+    "Rodrigue"
+   ],
+   "fete": "",
+   "aussi": [
+    "Roderick"
+   ],
+   "accord": false
+  },
+  "03-14": {
+   "principal": [
+    "Mathilde"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "03-15": {
+   "principal": [
+    "Louise"
+   ],
+   "fete": "",
+   "aussi": [
+    "Longin"
+   ],
+   "accord": true
+  },
+  "03-16": {
+   "principal": [
+    "Bénédicte"
+   ],
+   "fete": "",
+   "aussi": [
+    "Héribert"
+   ],
+   "accord": false
+  },
+  "03-17": {
+   "principal": [
+    "Patrick"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "03-18": {
+   "principal": [
+    "Cyrille"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "03-19": {
+   "principal": [
+    "Joseph"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "03-20": {
+   "principal": [
+    "Herbert"
+   ],
+   "fete": "",
+   "aussi": [
+    "Rémy",
+    "Wulfran"
+   ],
+   "accord": true
+  },
+  "03-21": {
+   "principal": [
+    "Clémence"
+   ],
+   "fete": "",
+   "aussi": [
+    "Birillus",
+    "Endée",
+    "Philémon"
+   ],
+   "accord": false
+  },
+  "03-22": {
+   "principal": [
+    "Léa"
+   ],
+   "fete": "",
+   "aussi": [
+    "Octavien"
+   ],
+   "accord": true
+  },
+  "03-23": {
+   "principal": [
+    "Victorien"
+   ],
+   "fete": "",
+   "aussi": [
+    "Toribio"
+   ],
+   "accord": true
+  },
+  "03-24": {
+   "principal": [
+    "Karine"
+   ],
+   "fete": "",
+   "aussi": [
+    "Pigmène",
+    "Romule"
+   ],
+   "accord": false
+  },
+  "03-25": {
+   "principal": [],
+   "fete": "Annonciation",
+   "aussi": [
+    "Dismas",
+    "Humbert"
+   ],
+   "accord": false
+  },
+  "03-26": {
+   "principal": [
+    "Larissa"
+   ],
+   "fete": "",
+   "aussi": [
+    "Bathuse",
+    "Dizier",
+    "Emmanuel"
+   ],
+   "accord": false
+  },
+  "03-27": {
+   "principal": [
+    "Habib"
+   ],
+   "fete": "",
+   "aussi": [
+    "Jean",
+    "Rupert"
+   ],
+   "accord": false
+  },
+  "03-28": {
+   "principal": [
+    "Gontran"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "03-29": {
+   "principal": [
+    "Gwladys"
+   ],
+   "fete": "",
+   "aussi": [
+    "Ludolphe"
+   ],
+   "accord": false
+  },
+  "03-30": {
+   "principal": [
+    "Amédée"
+   ],
+   "fete": "",
+   "aussi": [
+    "Jean"
+   ],
+   "accord": true
+  },
+  "03-31": {
+   "principal": [
+    "Benjamin"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "04-01": {
+   "principal": [
+    "Hugues"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "04-02": {
+   "principal": [
+    "Sandrine"
+   ],
+   "fete": "",
+   "aussi": [
+    "François",
+    "Urbain"
+   ],
+   "accord": false
+  },
+  "04-03": {
+   "principal": [
+    "Richard"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "04-04": {
+   "principal": [
+    "Isidore"
+   ],
+   "fete": "",
+   "aussi": [
+    "Benoît"
+   ],
+   "accord": true
+  },
+  "04-05": {
+   "principal": [
+    "Irène"
+   ],
+   "fete": "",
+   "aussi": [
+    "Gérard",
+    "Vincent"
+   ],
+   "accord": false
+  },
+  "04-06": {
+   "principal": [
+    "Marcellin"
+   ],
+   "fete": "",
+   "aussi": [
+    "Amand"
+   ],
+   "accord": true
+  },
+  "04-07": {
+   "principal": [
+    "Jean-Baptiste"
+   ],
+   "fete": "",
+   "aussi": [
+    "Hégésippe",
+    "Jean"
+   ],
+   "accord": true
+  },
+  "04-08": {
+   "principal": [
+    "Julie"
+   ],
+   "fete": "",
+   "aussi": [
+    "Hérodion"
+   ],
+   "accord": true
+  },
+  "04-09": {
+   "principal": [
+    "Gautier"
+   ],
+   "fete": "",
+   "aussi": [
+    "Marcel"
+   ],
+   "accord": true
+  },
+  "04-10": {
+   "principal": [
+    "Fulbert"
+   ],
+   "fete": "",
+   "aussi": [
+    "Badème",
+    "Ezéchiel"
+   ],
+   "accord": true
+  },
+  "04-11": {
+   "principal": [
+    "Stanislas"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "04-12": {
+   "principal": [
+    "Jules"
+   ],
+   "fete": "",
+   "aussi": [
+    "Wigbert"
+   ],
+   "accord": true
+  },
+  "04-13": {
+   "principal": [
+    "Ida"
+   ],
+   "fete": "",
+   "aussi": [
+    "Hermenegild",
+    "Martin"
+   ],
+   "accord": false
+  },
+  "04-14": {
+   "principal": [
+    "Maxime"
+   ],
+   "fete": "",
+   "aussi": [
+    "Valérien"
+   ],
+   "accord": true
+  },
+  "04-15": {
+   "principal": [
+    "Paterne"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "04-16": {
+   "principal": [
+    "Benoît-Joseph"
+   ],
+   "fete": "",
+   "aussi": [
+    "Crémence",
+    "Drogon"
+   ],
+   "accord": true
+  },
+  "04-17": {
+   "principal": [
+    "Anicet"
+   ],
+   "fete": "",
+   "aussi": [
+    "Hermogène",
+    "Wandon"
+   ],
+   "accord": true
+  },
+  "04-18": {
+   "principal": [
+    "Parfait"
+   ],
+   "fete": "",
+   "aussi": [
+    "Eleuthère"
+   ],
+   "accord": true
+  },
+  "04-19": {
+   "principal": [
+    "Emma"
+   ],
+   "fete": "",
+   "aussi": [
+    "Expédit",
+    "Ursmer"
+   ],
+   "accord": false
+  },
+  "04-20": {
+   "principal": [
+    "Odette"
+   ],
+   "fete": "",
+   "aussi": [
+    "Théodore",
+    "Théotime"
+   ],
+   "accord": false
+  },
+  "04-21": {
+   "principal": [
+    "Anselme"
+   ],
+   "fete": "",
+   "aussi": [
+    "Conrad"
+   ],
+   "accord": true
+  },
+  "04-22": {
+   "principal": [
+    "Alexandre"
+   ],
+   "fete": "",
+   "aussi": [
+    "Caïus",
+    "Soter"
+   ],
+   "accord": true
+  },
+  "04-23": {
+   "principal": [
+    "Georges"
+   ],
+   "fete": "",
+   "aussi": [
+    "Fortunat"
+   ],
+   "accord": true
+  },
+  "04-24": {
+   "principal": [
+    "Fidèle"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "04-25": {
+   "principal": [
+    "Marc"
+   ],
+   "fete": "",
+   "aussi": [
+    "Phébade"
+   ],
+   "accord": true
+  },
+  "04-26": {
+   "principal": [
+    "Alida"
+   ],
+   "fete": "",
+   "aussi": [
+    "Clet",
+    "Marcellin"
+   ],
+   "accord": false
+  },
+  "04-27": {
+   "principal": [
+    "Zita"
+   ],
+   "fete": "",
+   "aussi": [
+    "Anthime"
+   ],
+   "accord": true
+  },
+  "04-28": {
+   "principal": [
+    "Valérie"
+   ],
+   "fete": "",
+   "aussi": [
+    "Pierre",
+    "Vital"
+   ],
+   "accord": false
+  },
+  "04-29": {
+   "principal": [
+    "Catherine"
+   ],
+   "fete": "",
+   "aussi": [
+    "Pierre"
+   ],
+   "accord": true
+  },
+  "04-30": {
+   "principal": [
+    "Robert"
+   ],
+   "fete": "",
+   "aussi": [
+    "Pie"
+   ],
+   "accord": false
+  },
+  "05-01": {
+   "principal": [],
+   "fete": "Fête du Travail",
+   "aussi": [
+    "Joseph",
+    "Sigismond"
+   ],
+   "accord": false
+  },
+  "05-02": {
+   "principal": [
+    "Boris"
+   ],
+   "fete": "",
+   "aussi": [
+    "Athanase",
+    "Célestin"
+   ],
+   "accord": false
+  },
+  "05-03": {
+   "principal": [
+    "Philippe",
+    "Jacques"
+   ],
+   "fete": "",
+   "aussi": [
+    "Alexandre",
+    "Juvénal"
+   ],
+   "accord": true
+  },
+  "05-04": {
+   "principal": [
+    "Sylvain"
+   ],
+   "fete": "",
+   "aussi": [
+    "Florian",
+    "Godard",
+    "Silvain"
+   ],
+   "accord": false
+  },
+  "05-05": {
+   "principal": [
+    "Judith"
+   ],
+   "fete": "",
+   "aussi": [
+    "Ange",
+    "Pérégrin"
+   ],
+   "accord": false
+  },
+  "05-06": {
+   "principal": [
+    "Prudence"
+   ],
+   "fete": "",
+   "aussi": [
+    "Héliodore"
+   ],
+   "accord": false
+  },
+  "05-07": {
+   "principal": [
+    "Gisèle"
+   ],
+   "fete": "",
+   "aussi": [
+    "Sérène",
+    "Villain"
+   ],
+   "accord": false
+  },
+  "05-08": {
+   "principal": [
+    "Désiré"
+   ],
+   "fete": "",
+   "aussi": [
+    "Hellade",
+    "Wiron"
+   ],
+   "accord": true
+  },
+  "05-09": {
+   "principal": [
+    "Pacôme"
+   ],
+   "fete": "",
+   "aussi": [
+    "Béat",
+    "Géronce"
+   ],
+   "accord": false
+  },
+  "05-10": {
+   "principal": [
+    "Solange"
+   ],
+   "fete": "",
+   "aussi": [
+    "Antonin",
+    "Isidore"
+   ],
+   "accord": true
+  },
+  "05-11": {
+   "principal": [
+    "Estelle"
+   ],
+   "fete": "",
+   "aussi": [
+    "Gengoul",
+    "Mayeul",
+    "Mamert"
+   ],
+   "accord": false
+  },
+  "05-12": {
+   "principal": [
+    "Achille"
+   ],
+   "fete": "",
+   "aussi": [
+    "Achilée",
+    "Nérée",
+    "Pancrace"
+   ],
+   "accord": false
+  },
+  "05-13": {
+   "principal": [
+    "Rolande"
+   ],
+   "fete": "",
+   "aussi": [
+    "Mael",
+    "Servais"
+   ],
+   "accord": false
+  },
+  "05-14": {
+   "principal": [
+    "Matthias"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "05-15": {
+   "principal": [
+    "Denise"
+   ],
+   "fete": "",
+   "aussi": [
+    "Crésiphon"
+   ],
+   "accord": true
+  },
+  "05-16": {
+   "principal": [
+    "Honoré"
+   ],
+   "fete": "",
+   "aussi": [
+    "Honorat",
+    "Jean",
+    "Ubald"
+   ],
+   "accord": false
+  },
+  "05-17": {
+   "principal": [
+    "Pascal"
+   ],
+   "fete": "",
+   "aussi": [
+    "Adrion",
+    "Héradius"
+   ],
+   "accord": true
+  },
+  "05-18": {
+   "principal": [
+    "Éric"
+   ],
+   "fete": "",
+   "aussi": [
+    "Félix",
+    "Jean",
+    "Venance"
+   ],
+   "accord": true
+  },
+  "05-19": {
+   "principal": [
+    "Yves"
+   ],
+   "fete": "",
+   "aussi": [
+    "Pierre"
+   ],
+   "accord": true
+  },
+  "05-20": {
+   "principal": [
+    "Bernardin"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "05-21": {
+   "principal": [
+    "Constantin"
+   ],
+   "fete": "",
+   "aussi": [
+    "Nicostrate",
+    "Théopompe"
+   ],
+   "accord": true
+  },
+  "05-22": {
+   "principal": [
+    "Émile"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "05-23": {
+   "principal": [
+    "Didier"
+   ],
+   "fete": "",
+   "aussi": [
+    "Eutyche",
+    "Mercurial",
+    "Yves"
+   ],
+   "accord": false
+  },
+  "05-24": {
+   "principal": [
+    "Donatien"
+   ],
+   "fete": "",
+   "aussi": [
+    "Rogatien"
+   ],
+   "accord": true
+  },
+  "05-25": {
+   "principal": [
+    "Sophie"
+   ],
+   "fete": "",
+   "aussi": [
+    "Bède",
+    "Grégoire",
+    "Injurieux"
+   ],
+   "accord": false
+  },
+  "05-26": {
+   "principal": [
+    "Béranger"
+   ],
+   "fete": "",
+   "aussi": [
+    "Bérenger",
+    "Philippe"
+   ],
+   "accord": false
+  },
+  "05-27": {
+   "principal": [
+    "Augustin"
+   ],
+   "fete": "",
+   "aussi": [
+    "Ranulphe"
+   ],
+   "accord": true
+  },
+  "05-28": {
+   "principal": [
+    "Germain"
+   ],
+   "fete": "",
+   "aussi": [
+    "Chéron"
+   ],
+   "accord": true
+  },
+  "05-29": {
+   "principal": [
+    "Aymar"
+   ],
+   "fete": "",
+   "aussi": [
+    "Conon",
+    "Martyrius",
+    "Maximin"
+   ],
+   "accord": false
+  },
+  "05-30": {
+   "principal": [
+    "Ferdinand"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "05-31": {
+   "principal": [],
+   "fete": "Visitation de la Vierge Marie",
+   "aussi": [],
+   "accord": false
+  },
+  "06-01": {
+   "principal": [
+    "Justin"
+   ],
+   "fete": "",
+   "aussi": [
+    "Caprais",
+    "Clair",
+    "Marcellin"
+   ],
+   "accord": true
+  },
+  "06-02": {
+   "principal": [
+    "Blandine"
+   ],
+   "fete": "",
+   "aussi": [
+    "Erasme",
+    "Eugène",
+    "Marcellin"
+   ],
+   "accord": true
+  },
+  "06-03": {
+   "principal": [
+    "Kévin"
+   ],
+   "fete": "",
+   "aussi": [
+    "Charles"
+   ],
+   "accord": true
+  },
+  "06-04": {
+   "principal": [
+    "Clotilde"
+   ],
+   "fete": "",
+   "aussi": [
+    "François",
+    "Métrophane",
+    "Quirin"
+   ],
+   "accord": false
+  },
+  "06-05": {
+   "principal": [
+    "Igor"
+   ],
+   "fete": "",
+   "aussi": [
+    "Boniface",
+    "Dorothée"
+   ],
+   "accord": false
+  },
+  "06-06": {
+   "principal": [
+    "Norbert"
+   ],
+   "fete": "",
+   "aussi": [
+    "Bertrand",
+    "Marcellin"
+   ],
+   "accord": true
+  },
+  "06-07": {
+   "principal": [
+    "Gilbert"
+   ],
+   "fete": "",
+   "aussi": [
+    "Mériadec"
+   ],
+   "accord": false
+  },
+  "06-08": {
+   "principal": [
+    "Médard"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "06-09": {
+   "principal": [
+    "Diane"
+   ],
+   "fete": "",
+   "aussi": [
+    "Cumian",
+    "Ephrem",
+    "Félicien"
+   ],
+   "accord": false
+  },
+  "06-10": {
+   "principal": [
+    "Landry"
+   ],
+   "fete": "",
+   "aussi": [
+    "Bogomile",
+    "Gétule"
+   ],
+   "accord": true
+  },
+  "06-11": {
+   "principal": [
+    "Barnabé"
+   ],
+   "fete": "",
+   "aussi": [
+    "Hérébald"
+   ],
+   "accord": true
+  },
+  "06-12": {
+   "principal": [
+    "Guy"
+   ],
+   "fete": "",
+   "aussi": [
+    "Gaspard",
+    "Gerbaud"
+   ],
+   "accord": true
+  },
+  "06-13": {
+   "principal": [
+    "Antoine"
+   ],
+   "fete": "",
+   "aussi": [
+    "Fandilas",
+    "Pérégrin",
+    "Triphyllius"
+   ],
+   "accord": true
+  },
+  "06-14": {
+   "principal": [
+    "Élisée"
+   ],
+   "fete": "",
+   "aussi": [
+    "Rufin",
+    "Valère"
+   ],
+   "accord": true
+  },
+  "06-15": {
+   "principal": [
+    "Germaine"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "06-16": {
+   "principal": [
+    "Jean-François"
+   ],
+   "fete": "",
+   "aussi": [
+    "Cyr",
+    "Simplice"
+   ],
+   "accord": false
+  },
+  "06-17": {
+   "principal": [
+    "Hervé"
+   ],
+   "fete": "",
+   "aussi": [
+    "Raynier"
+   ],
+   "accord": true
+  },
+  "06-18": {
+   "principal": [
+    "Léonce"
+   ],
+   "fete": "",
+   "aussi": [
+    "Amand"
+   ],
+   "accord": true
+  },
+  "06-19": {
+   "principal": [
+    "Romuald"
+   ],
+   "fete": "",
+   "aussi": [
+    "Gervais",
+    "Innocent"
+   ],
+   "accord": true
+  },
+  "06-20": {
+   "principal": [
+    "Silvère"
+   ],
+   "fete": "",
+   "aussi": [
+    "Sylvère"
+   ],
+   "accord": false
+  },
+  "06-21": {
+   "principal": [
+    "Rodolphe"
+   ],
+   "fete": "",
+   "aussi": [
+    "Aloysius",
+    "Démétrie",
+    "Eusèbe"
+   ],
+   "accord": false
+  },
+  "06-22": {
+   "principal": [
+    "Alban"
+   ],
+   "fete": "",
+   "aussi": [
+    "Jean",
+    "Paulin",
+    "Thomas"
+   ],
+   "accord": false
+  },
+  "06-23": {
+   "principal": [
+    "Audrey"
+   ],
+   "fete": "",
+   "aussi": [
+    "Libert"
+   ],
+   "accord": false
+  },
+  "06-24": {
+   "principal": [
+    "Jean-Baptiste"
+   ],
+   "fete": "Nativité de saint Jean-Baptiste",
+   "aussi": [],
+   "accord": false
+  },
+  "06-25": {
+   "principal": [
+    "Prosper"
+   ],
+   "fete": "",
+   "aussi": [
+    "Adalbert",
+    "Gallican",
+    "Guillaume"
+   ],
+   "accord": true
+  },
+  "06-26": {
+   "principal": [
+    "Anthelme"
+   ],
+   "fete": "",
+   "aussi": [
+    "Baboléin",
+    "Maxence"
+   ],
+   "accord": true
+  },
+  "06-27": {
+   "principal": [
+    "Fernand"
+   ],
+   "fete": "",
+   "aussi": [
+    "Cyrille",
+    "Ferdinand",
+    "Ladislas"
+   ],
+   "accord": false
+  },
+  "06-28": {
+   "principal": [
+    "Irénée"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "06-29": {
+   "principal": [
+    "Pierre",
+    "Paul"
+   ],
+   "fete": "Saints Pierre et Paul",
+   "aussi": [],
+   "accord": true
+  },
+  "06-30": {
+   "principal": [
+    "Martial"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "07-01": {
+   "principal": [
+    "Thierry"
+   ],
+   "fete": "",
+   "aussi": [
+    "Domitien",
+    "Gall",
+    "Théodoric"
+   ],
+   "accord": true
+  },
+  "07-02": {
+   "principal": [
+    "Martinien"
+   ],
+   "fete": "",
+   "aussi": [
+    "Othon"
+   ],
+   "accord": true
+  },
+  "07-03": {
+   "principal": [
+    "Thomas"
+   ],
+   "fete": "",
+   "aussi": [
+    "Anatole"
+   ],
+   "accord": true
+  },
+  "07-04": {
+   "principal": [
+    "Florent"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": false
+  },
+  "07-05": {
+   "principal": [
+    "Antoine"
+   ],
+   "fete": "",
+   "aussi": [
+    "Antoine-Marie",
+    "Blanche",
+    "Modivène"
+   ],
+   "accord": true
+  },
+  "07-06": {
+   "principal": [
+    "Mariette"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": false
+  },
+  "07-07": {
+   "principal": [
+    "Raoul"
+   ],
+   "fete": "",
+   "aussi": [
+    "Félix",
+    "Prosper"
+   ],
+   "accord": false
+  },
+  "07-08": {
+   "principal": [
+    "Thibaut"
+   ],
+   "fete": "",
+   "aussi": [
+    "Edgar",
+    "Procope",
+    "Withburge"
+   ],
+   "accord": false
+  },
+  "07-09": {
+   "principal": [
+    "Amandine"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": false
+  },
+  "07-10": {
+   "principal": [
+    "Ulrich"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": false
+  },
+  "07-11": {
+   "principal": [
+    "Benoît"
+   ],
+   "fete": "",
+   "aussi": [
+    "Hidulphe",
+    "Jean",
+    "Pie"
+   ],
+   "accord": true
+  },
+  "07-12": {
+   "principal": [
+    "Olivier"
+   ],
+   "fete": "",
+   "aussi": [
+    "Jean",
+    "Nabor"
+   ],
+   "accord": false
+  },
+  "07-13": {
+   "principal": [
+    "Henri",
+    "Joël"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "07-14": {
+   "principal": [
+    "Camille"
+   ],
+   "fete": "Fête nationale française",
+   "aussi": [],
+   "accord": true
+  },
+  "07-15": {
+   "principal": [
+    "Donald"
+   ],
+   "fete": "",
+   "aussi": [
+    "Bonaventure"
+   ],
+   "accord": true
+  },
+  "07-16": {
+   "principal": [],
+   "fete": "Notre-Dame du Mont-Carmel",
+   "aussi": [],
+   "accord": false
+  },
+  "07-17": {
+   "principal": [
+    "Charlotte"
+   ],
+   "fete": "",
+   "aussi": [
+    "Alexis",
+    "Ennode",
+    "Léon"
+   ],
+   "accord": false
+  },
+  "07-18": {
+   "principal": [
+    "Frédéric"
+   ],
+   "fete": "",
+   "aussi": [
+    "Arnoul"
+   ],
+   "accord": true
+  },
+  "07-19": {
+   "principal": [
+    "Arsène"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "07-20": {
+   "principal": [
+    "Marina"
+   ],
+   "fete": "",
+   "aussi": [
+    "Joseph"
+   ],
+   "accord": false
+  },
+  "07-21": {
+   "principal": [
+    "Victor"
+   ],
+   "fete": "",
+   "aussi": [
+    "Laurent"
+   ],
+   "accord": false
+  },
+  "07-22": {
+   "principal": [
+    "Marie-Madeleine"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "07-23": {
+   "principal": [
+    "Brigitte"
+   ],
+   "fete": "",
+   "aussi": [
+    "Apollinaire"
+   ],
+   "accord": true
+  },
+  "07-24": {
+   "principal": [
+    "Christine"
+   ],
+   "fete": "",
+   "aussi": [
+    "Wulfhad"
+   ],
+   "accord": true
+  },
+  "07-25": {
+   "principal": [
+    "Jacques"
+   ],
+   "fete": "",
+   "aussi": [
+    "Christophe"
+   ],
+   "accord": true
+  },
+  "07-26": {
+   "principal": [
+    "Anne"
+   ],
+   "fete": "",
+   "aussi": [
+    "Joachim"
+   ],
+   "accord": true
+  },
+  "07-27": {
+   "principal": [
+    "Nathalie"
+   ],
+   "fete": "",
+   "aussi": [
+    "Désiré",
+    "Panthaléon"
+   ],
+   "accord": false
+  },
+  "07-28": {
+   "principal": [
+    "Samson"
+   ],
+   "fete": "",
+   "aussi": [
+    "Botwin",
+    "Nazaire",
+    "Victor"
+   ],
+   "accord": true
+  },
+  "07-29": {
+   "principal": [
+    "Marthe"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "07-30": {
+   "principal": [
+    "Juliette"
+   ],
+   "fete": "",
+   "aussi": [
+    "Pierre"
+   ],
+   "accord": true
+  },
+  "07-31": {
+   "principal": [
+    "Ignace"
+   ],
+   "fete": "",
+   "aussi": [
+    "Germain"
+   ],
+   "accord": true
+  },
+  "08-01": {
+   "principal": [
+    "Alphonse"
+   ],
+   "fete": "",
+   "aussi": [
+    "Alphonse-Marie",
+    "Exupère"
+   ],
+   "accord": true
+  },
+  "08-02": {
+   "principal": [
+    "Julien"
+   ],
+   "fete": "",
+   "aussi": [
+    "Eusèbe"
+   ],
+   "accord": false
+  },
+  "08-03": {
+   "principal": [
+    "Lydie"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "08-04": {
+   "principal": [
+    "Jean-Marie"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "08-05": {
+   "principal": [
+    "Abel"
+   ],
+   "fete": "",
+   "aussi": [
+    "Memmius",
+    "Oswald"
+   ],
+   "accord": true
+  },
+  "08-06": {
+   "principal": [],
+   "fete": "Transfiguration",
+   "aussi": [
+    "Sixte"
+   ],
+   "accord": false
+  },
+  "08-07": {
+   "principal": [
+    "Gaétan"
+   ],
+   "fete": "",
+   "aussi": [
+    "Albert",
+    "Donat"
+   ],
+   "accord": true
+  },
+  "08-08": {
+   "principal": [
+    "Dominique"
+   ],
+   "fete": "",
+   "aussi": [
+    "Cyriaque"
+   ],
+   "accord": true
+  },
+  "08-09": {
+   "principal": [
+    "Amour"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "08-10": {
+   "principal": [
+    "Laurent"
+   ],
+   "fete": "",
+   "aussi": [
+    "Blain",
+    "Deusdedit"
+   ],
+   "accord": true
+  },
+  "08-11": {
+   "principal": [
+    "Claire"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "08-12": {
+   "principal": [
+    "Clarisse"
+   ],
+   "fete": "",
+   "aussi": [
+    "Euplius"
+   ],
+   "accord": false
+  },
+  "08-13": {
+   "principal": [
+    "Hippolyte"
+   ],
+   "fete": "",
+   "aussi": [
+    "Jean"
+   ],
+   "accord": false
+  },
+  "08-14": {
+   "principal": [
+    "Evrard"
+   ],
+   "fete": "",
+   "aussi": [
+    "Eusèbe",
+    "Hippolyte",
+    "Maximien"
+   ],
+   "accord": false
+  },
+  "08-15": {
+   "principal": [],
+   "fete": "Assomption (fête de Marie)",
+   "aussi": [
+    "Alfred",
+    "Eusèbe",
+    "Tarcisius"
+   ],
+   "accord": false
+  },
+  "08-16": {
+   "principal": [
+    "Armel"
+   ],
+   "fete": "",
+   "aussi": [
+    "Armagillus",
+    "Etienne",
+    "Frimbaud"
+   ],
+   "accord": false
+  },
+  "08-17": {
+   "principal": [
+    "Hyacinthe"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "08-18": {
+   "principal": [
+    "Hélène"
+   ],
+   "fete": "",
+   "aussi": [
+    "Agapet"
+   ],
+   "accord": true
+  },
+  "08-19": {
+   "principal": [
+    "Jean"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "08-20": {
+   "principal": [
+    "Bernard"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "08-21": {
+   "principal": [
+    "Christophe"
+   ],
+   "fete": "",
+   "aussi": [
+    "Pie"
+   ],
+   "accord": false
+  },
+  "08-22": {
+   "principal": [
+    "Fabrice"
+   ],
+   "fete": "",
+   "aussi": [
+    "Philibert",
+    "Symphorien"
+   ],
+   "accord": true
+  },
+  "08-23": {
+   "principal": [
+    "Rose"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "08-24": {
+   "principal": [
+    "Barthélemy"
+   ],
+   "fete": "",
+   "aussi": [
+    "Ouen"
+   ],
+   "accord": true
+  },
+  "08-25": {
+   "principal": [
+    "Louis"
+   ],
+   "fete": "",
+   "aussi": [
+    "Joseph"
+   ],
+   "accord": true
+  },
+  "08-26": {
+   "principal": [
+    "Natacha"
+   ],
+   "fete": "",
+   "aussi": [
+    "Zéphirin"
+   ],
+   "accord": false
+  },
+  "08-27": {
+   "principal": [
+    "Monique"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "08-28": {
+   "principal": [
+    "Augustin"
+   ],
+   "fete": "",
+   "aussi": [
+    "Julien"
+   ],
+   "accord": true
+  },
+  "08-29": {
+   "principal": [
+    "Sabine"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "08-30": {
+   "principal": [
+    "Fiacre"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "08-31": {
+   "principal": [
+    "Aristide"
+   ],
+   "fete": "",
+   "aussi": [
+    "Raymond"
+   ],
+   "accord": true
+  },
+  "09-01": {
+   "principal": [
+    "Gilles"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "09-02": {
+   "principal": [
+    "Ingrid"
+   ],
+   "fete": "",
+   "aussi": [
+    "Agricole",
+    "Concorde",
+    "Elpide"
+   ],
+   "accord": false
+  },
+  "09-03": {
+   "principal": [
+    "Grégoire"
+   ],
+   "fete": "",
+   "aussi": [
+    "Siméon"
+   ],
+   "accord": true
+  },
+  "09-04": {
+   "principal": [
+    "Rosalie"
+   ],
+   "fete": "",
+   "aussi": [
+    "Boniface",
+    "Calétric",
+    "Vitalique"
+   ],
+   "accord": true
+  },
+  "09-05": {
+   "principal": [
+    "Raïssa"
+   ],
+   "fete": "",
+   "aussi": [
+    "Bertin",
+    "Laurent"
+   ],
+   "accord": false
+  },
+  "09-06": {
+   "principal": [
+    "Bertrand"
+   ],
+   "fete": "",
+   "aussi": [
+    "Eustache"
+   ],
+   "accord": true
+  },
+  "09-07": {
+   "principal": [
+    "Reine"
+   ],
+   "fete": "",
+   "aussi": [
+    "Cloud"
+   ],
+   "accord": true
+  },
+  "09-08": {
+   "principal": [],
+   "fete": "Nativité de la Vierge Marie",
+   "aussi": [
+    "Adrien"
+   ],
+   "accord": false
+  },
+  "09-09": {
+   "principal": [
+    "Alain"
+   ],
+   "fete": "",
+   "aussi": [
+    "Gorgon",
+    "Omer",
+    "Pierre"
+   ],
+   "accord": false
+  },
+  "09-10": {
+   "principal": [
+    "Inès"
+   ],
+   "fete": "",
+   "aussi": [
+    "Aubert",
+    "Nicolas"
+   ],
+   "accord": false
+  },
+  "09-11": {
+   "principal": [
+    "Adelphe"
+   ],
+   "fete": "",
+   "aussi": [
+    "Patient",
+    "Protus"
+   ],
+   "accord": true
+  },
+  "09-12": {
+   "principal": [
+    "Apollinaire"
+   ],
+   "fete": "",
+   "aussi": [
+    "Autonome",
+    "Curonote",
+    "Théodule"
+   ],
+   "accord": false
+  },
+  "09-13": {
+   "principal": [
+    "Aimé"
+   ],
+   "fete": "",
+   "aussi": [
+    "Israël",
+    "Jean",
+    "Macrobe"
+   ],
+   "accord": true
+  },
+  "09-14": {
+   "principal": [],
+   "fete": "Croix glorieuse",
+   "aussi": [
+    "Céréal",
+    "Général",
+    "Materne"
+   ],
+   "accord": false
+  },
+  "09-15": {
+   "principal": [
+    "Roland"
+   ],
+   "fete": "",
+   "aussi": [
+    "Alfred",
+    "Nicomède"
+   ],
+   "accord": false
+  },
+  "09-16": {
+   "principal": [
+    "Édith"
+   ],
+   "fete": "",
+   "aussi": [
+    "Corneille",
+    "Cyprien",
+    "Victor"
+   ],
+   "accord": true
+  },
+  "09-17": {
+   "principal": [
+    "Renaud"
+   ],
+   "fete": "",
+   "aussi": [
+    "Lambert"
+   ],
+   "accord": false
+  },
+  "09-18": {
+   "principal": [
+    "Nadège"
+   ],
+   "fete": "",
+   "aussi": [
+    "Hygbald",
+    "Joseph"
+   ],
+   "accord": false
+  },
+  "09-19": {
+   "principal": [
+    "Émilie"
+   ],
+   "fete": "",
+   "aussi": [
+    "Janvier",
+    "Théodore"
+   ],
+   "accord": true
+  },
+  "09-20": {
+   "principal": [
+    "Davy"
+   ],
+   "fete": "",
+   "aussi": [
+    "André",
+    "Eustache",
+    "Jacques"
+   ],
+   "accord": false
+  },
+  "09-21": {
+   "principal": [
+    "Matthieu"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "09-22": {
+   "principal": [
+    "Maurice"
+   ],
+   "fete": "",
+   "aussi": [
+    "Thomas"
+   ],
+   "accord": false
+  },
+  "09-23": {
+   "principal": [
+    "Constant"
+   ],
+   "fete": "",
+   "aussi": [
+    "Constance",
+    "Lin"
+   ],
+   "accord": false
+  },
+  "09-24": {
+   "principal": [
+    "Thècle"
+   ],
+   "fete": "",
+   "aussi": [
+    "Cuniald",
+    "Isarne"
+   ],
+   "accord": false
+  },
+  "09-25": {
+   "principal": [
+    "Hermann"
+   ],
+   "fete": "",
+   "aussi": [
+    "Cléophas",
+    "Firmin"
+   ],
+   "accord": true
+  },
+  "09-26": {
+   "principal": [
+    "Côme"
+   ],
+   "fete": "",
+   "aussi": [
+    "Damien"
+   ],
+   "accord": true
+  },
+  "09-27": {
+   "principal": [
+    "Vincent"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "09-28": {
+   "principal": [
+    "Venceslas"
+   ],
+   "fete": "",
+   "aussi": [
+    "Annemond",
+    "Wanceslas"
+   ],
+   "accord": false
+  },
+  "09-29": {
+   "principal": [
+    "Michel",
+    "Gabriel",
+    "Raphaël"
+   ],
+   "fete": "Saints archanges",
+   "aussi": [
+    "Gudélie"
+   ],
+   "accord": true
+  },
+  "09-30": {
+   "principal": [
+    "Jérôme"
+   ],
+   "fete": "",
+   "aussi": [
+    "Grégoire",
+    "Léopard"
+   ],
+   "accord": true
+  },
+  "10-01": {
+   "principal": [
+    "Thérèse"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "10-02": {
+   "principal": [
+    "Léger"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "10-03": {
+   "principal": [
+    "Gérard"
+   ],
+   "fete": "",
+   "aussi": [
+    "Ewald"
+   ],
+   "accord": true
+  },
+  "10-04": {
+   "principal": [
+    "François"
+   ],
+   "fete": "",
+   "aussi": [
+    "Aurée"
+   ],
+   "accord": true
+  },
+  "10-05": {
+   "principal": [
+    "Fleur"
+   ],
+   "fete": "",
+   "aussi": [
+    "Placide"
+   ],
+   "accord": false
+  },
+  "10-06": {
+   "principal": [
+    "Bruno"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "10-07": {
+   "principal": [
+    "Serge"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "10-08": {
+   "principal": [
+    "Pélagie"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "10-09": {
+   "principal": [
+    "Denis"
+   ],
+   "fete": "",
+   "aussi": [
+    "Dominin",
+    "Eleuthère",
+    "Jean"
+   ],
+   "accord": true
+  },
+  "10-10": {
+   "principal": [
+    "Ghislain"
+   ],
+   "fete": "",
+   "aussi": [
+    "François",
+    "Gédéon"
+   ],
+   "accord": false
+  },
+  "10-11": {
+   "principal": [
+    "Firmin"
+   ],
+   "fete": "",
+   "aussi": [
+    "Anastase"
+   ],
+   "accord": true
+  },
+  "10-12": {
+   "principal": [
+    "Wilfried"
+   ],
+   "fete": "",
+   "aussi": [
+    "Pantale",
+    "Séraphin"
+   ],
+   "accord": true
+  },
+  "10-13": {
+   "principal": [
+    "Géraud"
+   ],
+   "fete": "",
+   "aussi": [
+    "Théophile"
+   ],
+   "accord": true
+  },
+  "10-14": {
+   "principal": [
+    "Juste"
+   ],
+   "fete": "",
+   "aussi": [
+    "Calixte"
+   ],
+   "accord": true
+  },
+  "10-15": {
+   "principal": [
+    "Thérèse"
+   ],
+   "fete": "",
+   "aussi": [
+    "Agilée"
+   ],
+   "accord": true
+  },
+  "10-16": {
+   "principal": [
+    "Edwige"
+   ],
+   "fete": "",
+   "aussi": [
+    "Bertrand",
+    "Gall",
+    "Gérard"
+   ],
+   "accord": true
+  },
+  "10-17": {
+   "principal": [
+    "Baudouin"
+   ],
+   "fete": "",
+   "aussi": [
+    "Ignace"
+   ],
+   "accord": false
+  },
+  "10-18": {
+   "principal": [
+    "Luc"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "10-19": {
+   "principal": [
+    "René"
+   ],
+   "fete": "",
+   "aussi": [
+    "Isaac",
+    "Jean",
+    "Paul"
+   ],
+   "accord": true
+  },
+  "10-20": {
+   "principal": [
+    "Adeline"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "10-21": {
+   "principal": [
+    "Céline"
+   ],
+   "fete": "",
+   "aussi": [
+    "Hilarion"
+   ],
+   "accord": true
+  },
+  "10-22": {
+   "principal": [
+    "Élodie"
+   ],
+   "fete": "",
+   "aussi": [
+    "Philippe",
+    "Vallier"
+   ],
+   "accord": false
+  },
+  "10-23": {
+   "principal": [
+    "Jean"
+   ],
+   "fete": "",
+   "aussi": [
+    "Hyacinthe"
+   ],
+   "accord": true
+  },
+  "10-24": {
+   "principal": [
+    "Florentin"
+   ],
+   "fete": "",
+   "aussi": [
+    "Antoine-Marie"
+   ],
+   "accord": false
+  },
+  "10-25": {
+   "principal": [
+    "Crépin"
+   ],
+   "fete": "",
+   "aussi": [
+    "Chrysanthe"
+   ],
+   "accord": true
+  },
+  "10-26": {
+   "principal": [
+    "Dimitri"
+   ],
+   "fete": "",
+   "aussi": [
+    "Evariste",
+    "Rustique"
+   ],
+   "accord": false
+  },
+  "10-27": {
+   "principal": [
+    "Émeline"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": false
+  },
+  "10-28": {
+   "principal": [
+    "Simon",
+    "Jude"
+   ],
+   "fete": "",
+   "aussi": [
+    "Cyrille"
+   ],
+   "accord": true
+  },
+  "10-29": {
+   "principal": [
+    "Narcisse"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "10-30": {
+   "principal": [
+    "Bienvenue"
+   ],
+   "fete": "",
+   "aussi": [
+    "Alphonse"
+   ],
+   "accord": false
+  },
+  "10-31": {
+   "principal": [
+    "Quentin"
+   ],
+   "fete": "",
+   "aussi": [
+    "Foillan"
+   ],
+   "accord": true
+  },
+  "11-01": {
+   "principal": [],
+   "fete": "Toussaint",
+   "aussi": [
+    "Austremoine",
+    "Floribert",
+    "Mathurin"
+   ],
+   "accord": false
+  },
+  "11-02": {
+   "principal": [],
+   "fete": "Commémoration des défunts",
+   "aussi": [
+    "Anempodiste",
+    "Elpidephore"
+   ],
+   "accord": false
+  },
+  "11-03": {
+   "principal": [
+    "Hubert"
+   ],
+   "fete": "",
+   "aussi": [
+    "Gwénaël",
+    "Martin"
+   ],
+   "accord": true
+  },
+  "11-04": {
+   "principal": [
+    "Charles"
+   ],
+   "fete": "",
+   "aussi": [
+    "Porphyre"
+   ],
+   "accord": true
+  },
+  "11-05": {
+   "principal": [
+    "Sylvie"
+   ],
+   "fete": "",
+   "aussi": [
+    "Zacharie"
+   ],
+   "accord": false
+  },
+  "11-06": {
+   "principal": [
+    "Bertille"
+   ],
+   "fete": "",
+   "aussi": [
+    "Léonard"
+   ],
+   "accord": false
+  },
+  "11-07": {
+   "principal": [
+    "Carine"
+   ],
+   "fete": "",
+   "aussi": [
+    "Ernest",
+    "Florent",
+    "Willibrord"
+   ],
+   "accord": true
+  },
+  "11-08": {
+   "principal": [
+    "Geoffroy"
+   ],
+   "fete": "",
+   "aussi": [
+    "Maur"
+   ],
+   "accord": true
+  },
+  "11-09": {
+   "principal": [
+    "Théodore"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "11-10": {
+   "principal": [
+    "Léon"
+   ],
+   "fete": "",
+   "aussi": [
+    "André",
+    "Tryphon"
+   ],
+   "accord": true
+  },
+  "11-11": {
+   "principal": [
+    "Martin"
+   ],
+   "fete": "",
+   "aussi": [
+    "Théodore"
+   ],
+   "accord": true
+  },
+  "11-12": {
+   "principal": [
+    "Christian"
+   ],
+   "fete": "",
+   "aussi": [
+    "Christin",
+    "Josaphat"
+   ],
+   "accord": false
+  },
+  "11-13": {
+   "principal": [
+    "Brice"
+   ],
+   "fete": "",
+   "aussi": [
+    "Didace",
+    "Nicolas"
+   ],
+   "accord": true
+  },
+  "11-14": {
+   "principal": [
+    "Sidoine"
+   ],
+   "fete": "",
+   "aussi": [
+    "Saens",
+    "Sérapion"
+   ],
+   "accord": false
+  },
+  "11-15": {
+   "principal": [
+    "Albert"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "11-16": {
+   "principal": [
+    "Marguerite"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "11-17": {
+   "principal": [
+    "Élisabeth"
+   ],
+   "fete": "",
+   "aussi": [
+    "Aignan",
+    "Grégoire"
+   ],
+   "accord": true
+  },
+  "11-18": {
+   "principal": [
+    "Aude"
+   ],
+   "fete": "",
+   "aussi": [
+    "Hésyque",
+    "Mummole",
+    "Pierre"
+   ],
+   "accord": false
+  },
+  "11-19": {
+   "principal": [
+    "Tanguy"
+   ],
+   "fete": "",
+   "aussi": [
+    "Exupère"
+   ],
+   "accord": false
+  },
+  "11-20": {
+   "principal": [
+    "Edmond"
+   ],
+   "fete": "",
+   "aussi": [
+    "Félix",
+    "Octave"
+   ],
+   "accord": true
+  },
+  "11-21": {
+   "principal": [],
+   "fete": "Présentation de la Vierge Marie",
+   "aussi": [],
+   "accord": false
+  },
+  "11-22": {
+   "principal": [
+    "Cécile"
+   ],
+   "fete": "",
+   "aussi": [
+    "Philémon"
+   ],
+   "accord": true
+  },
+  "11-23": {
+   "principal": [
+    "Clément"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "11-24": {
+   "principal": [
+    "Flora"
+   ],
+   "fete": "",
+   "aussi": [
+    "Chrysogone",
+    "Romain"
+   ],
+   "accord": true
+  },
+  "11-25": {
+   "principal": [
+    "Catherine"
+   ],
+   "fete": "",
+   "aussi": [
+    "Moïse"
+   ],
+   "accord": true
+  },
+  "11-26": {
+   "principal": [
+    "Delphine"
+   ],
+   "fete": "",
+   "aussi": [
+    "Conrad",
+    "Gautier"
+   ],
+   "accord": true
+  },
+  "11-27": {
+   "principal": [
+    "Séverin"
+   ],
+   "fete": "",
+   "aussi": [
+    "Maxime"
+   ],
+   "accord": true
+  },
+  "11-28": {
+   "principal": [
+    "Jacques"
+   ],
+   "fete": "",
+   "aussi": [
+    "Sosthène"
+   ],
+   "accord": true
+  },
+  "11-29": {
+   "principal": [
+    "Saturnin"
+   ],
+   "fete": "",
+   "aussi": [
+    "Hilaire"
+   ],
+   "accord": true
+  },
+  "11-30": {
+   "principal": [
+    "André"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "12-01": {
+   "principal": [
+    "Florence"
+   ],
+   "fete": "",
+   "aussi": [
+    "Diodore",
+    "Eloi"
+   ],
+   "accord": false
+  },
+  "12-02": {
+   "principal": [
+    "Viviane"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "12-03": {
+   "principal": [
+    "François-Xavier"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "12-04": {
+   "principal": [
+    "Barbara"
+   ],
+   "fete": "",
+   "aussi": [
+    "Jean"
+   ],
+   "accord": false
+  },
+  "12-05": {
+   "principal": [
+    "Gérald"
+   ],
+   "fete": "",
+   "aussi": [
+    "Gérard",
+    "Nicet",
+    "Sabbas"
+   ],
+   "accord": false
+  },
+  "12-06": {
+   "principal": [
+    "Nicolas"
+   ],
+   "fete": "Saint-Nicolas",
+   "aussi": [],
+   "accord": true
+  },
+  "12-07": {
+   "principal": [
+    "Ambroise"
+   ],
+   "fete": "",
+   "aussi": [
+    "Agathon"
+   ],
+   "accord": true
+  },
+  "12-08": {
+   "principal": [],
+   "fete": "Immaculée Conception",
+   "aussi": [
+    "Romaric"
+   ],
+   "accord": false
+  },
+  "12-09": {
+   "principal": [
+    "Pierre"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "12-10": {
+   "principal": [
+    "Romaric"
+   ],
+   "fete": "",
+   "aussi": [
+    "Miltiade"
+   ],
+   "accord": false
+  },
+  "12-11": {
+   "principal": [
+    "Daniel"
+   ],
+   "fete": "",
+   "aussi": [
+    "Damasse"
+   ],
+   "accord": true
+  },
+  "12-12": {
+   "principal": [
+    "Jeanne"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "12-13": {
+   "principal": [
+    "Lucie"
+   ],
+   "fete": "",
+   "aussi": [
+    "Josse"
+   ],
+   "accord": true
+  },
+  "12-14": {
+   "principal": [
+    "Odile"
+   ],
+   "fete": "",
+   "aussi": [
+    "Jean"
+   ],
+   "accord": false
+  },
+  "12-15": {
+   "principal": [
+    "Ninon"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "12-16": {
+   "principal": [
+    "Alice"
+   ],
+   "fete": "",
+   "aussi": [
+    "Adon"
+   ],
+   "accord": false
+  },
+  "12-17": {
+   "principal": [
+    "Gaël"
+   ],
+   "fete": "",
+   "aussi": [
+    "Calanique",
+    "Judicaël"
+   ],
+   "accord": false
+  },
+  "12-18": {
+   "principal": [
+    "Gatien"
+   ],
+   "fete": "",
+   "aussi": [
+    "Zozime"
+   ],
+   "accord": true
+  },
+  "12-19": {
+   "principal": [
+    "Urbain"
+   ],
+   "fete": "",
+   "aussi": [
+    "Nemèse"
+   ],
+   "accord": true
+  },
+  "12-20": {
+   "principal": [
+    "Théophile"
+   ],
+   "fete": "",
+   "aussi": [
+    "Ammon"
+   ],
+   "accord": true
+  },
+  "12-21": {
+   "principal": [
+    "Pierre"
+   ],
+   "fete": "",
+   "aussi": [
+    "Dioscore",
+    "Honorat",
+    "Thémistocle"
+   ],
+   "accord": true
+  },
+  "12-22": {
+   "principal": [
+    "Françoise-Xavière"
+   ],
+   "fete": "",
+   "aussi": [
+    "Flavien",
+    "Zénon"
+   ],
+   "accord": true
+  },
+  "12-23": {
+   "principal": [
+    "Armand"
+   ],
+   "fete": "",
+   "aussi": [
+    "Servule"
+   ],
+   "accord": false
+  },
+  "12-24": {
+   "principal": [
+    "Adèle"
+   ],
+   "fete": "",
+   "aussi": [
+    "Delphin",
+    "Métrobe"
+   ],
+   "accord": true
+  },
+  "12-25": {
+   "principal": [],
+   "fete": "Noël",
+   "aussi": [],
+   "accord": false
+  },
+  "12-26": {
+   "principal": [
+    "Étienne"
+   ],
+   "fete": "",
+   "aussi": [
+    "Denys"
+   ],
+   "accord": true
+  },
+  "12-27": {
+   "principal": [
+    "Jean"
+   ],
+   "fete": "",
+   "aussi": [],
+   "accord": true
+  },
+  "12-28": {
+   "principal": [
+    "Gaspard"
+   ],
+   "fete": "",
+   "aussi": [
+    "Innocents"
+   ],
+   "accord": false
+  },
+  "12-29": {
+   "principal": [
+    "David"
+   ],
+   "fete": "",
+   "aussi": [
+    "Thomas"
+   ],
+   "accord": true
+  },
+  "12-30": {
+   "principal": [
+    "Roger"
+   ],
+   "fete": "",
+   "aussi": [
+    "Sabin"
+   ],
+   "accord": false
+  },
+  "12-31": {
+   "principal": [
+    "Sylvestre"
+   ],
+   "fete": "",
+   "aussi": [
+    "Potentin"
+   ],
+   "accord": true
+  }
+ }
+}

@@ -72,7 +72,7 @@ Tes épisodes (audio, pochette, texte) et les mini-podcasts d'idées sont gardé
 | CFF, SNCB, SNCF | Trains en temps réel | SNCF seulement |
 | OpenStreetMap | Musées, piscines, aires de jeux, points de vue… autour d'un lieu | Aucune |
 | Wikivoyage, Wikipédia | Présentation d'un lieu, photos | Aucune |
-| Calendrier des saints, fêtes du jour | Prénoms fêtés, journées internationales | Aucune |
+| Calendrier des prénoms, journées et fêtes (intégrés au podcast) | Prénom fêté, journées internationales, fêtes nationales, usages | Aucune, aucun appel réseau |
 | Jours fériés | Calculés (Vaud, France) ou téléchargés (autres cantons, Belgique) | Aucune |
 | Actualités | Google Actualités et les médias de ton pays, plus tes flux RSS | Aucune |
 

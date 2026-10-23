@@ -322,6 +322,67 @@ saints = json.loads((PROJET / "donnees" / "saints.json").read_text(encoding="utf
 verifier(saints and f"Saints et fêtes du jour (calendrier des saints) : {', '.join(saints)}" in c1.texte, f"saint du 15 octobre : {saints}")
 verifier(isinstance(sources.saints_du_jour(dt.date(2028, 2, 29)), list), "29 février sans erreur")
 
+# ───────────── 5 ter. prénoms, saints, journées et fêtes (données de référence) ─────────────
+import fetes  # noqa: E402
+import subprocess  # noqa: E402
+
+print("\n5 ter. Prénoms, saints, journées et fêtes nationales (données de référence, sans réseau)")
+dpm = fetes.prenoms_du_jour
+verifier(dpm(dt.date(2026, 10, 23))["principal"] == ["Jean"], f"23 octobre : Jean ({dpm(dt.date(2026, 10, 23))})")
+verifier(dpm(dt.date(2026, 6, 24))["principal"] == ["Jean-Baptiste"], "24 juin : Jean-Baptiste")
+verifier(dpm(dt.date(2026, 4, 28))["principal"] == ["Valérie"], "28 avril : Valérie")
+verifier(dpm(dt.date(2028, 2, 29))["principal"] == ["Auguste"], "29 février : Auguste")
+verifier(dpm(dt.date(2026, 6, 29))["principal"] == ["Pierre", "Paul"], "29 juin : Pierre et Paul")
+verifier(dpm(dt.date(2026, 11, 1))["principal"] == [] and "Toussaint" in dpm(dt.date(2026, 11, 1))["fete"],
+         "Toussaint : pas de prénom fixe, la fête est nommée")
+tous_saints = json.loads((PROJET / "donnees" / "saints.json").read_text(encoding="utf-8"))["jours"]
+verifier(len(tous_saints) == 366 and "06-31" not in tous_saints, "calendrier des saints : 366 jours, pas de 31 juin")
+verifier(any("Jean le Baptiste" in s for s in sources.saints_du_jour(dt.date(2026, 6, 24))),
+         "24 juin : Jean-Baptiste (mai et juin n'étaient plus inversés dans le calendrier des saints)")
+verifier(any("Joseph" in s for s in sources.saints_du_jour(dt.date(2026, 5, 1))), "1er mai : saint Joseph")
+verifier(any("Pierre" in s for s in sources.saints_du_jour(dt.date(2026, 6, 29))), "29 juin : saint Pierre")
+verifier(sources.saints_du_jour(dt.date(2026, 5, 24)) == ["St-Donatien", "St-Rogatien"], "24 mai : Donatien et Rogatien")
+r_p0 = {"id": "R9", "titre": "Fête du prénom", "consigne": "Prénoms fêtés", "etat": "active", "importance": "normale",
+        "recherche": {"fiche": {}, "sources": ["saints"], "requetes": []}}
+cp0 = moteur.collecter(r_p0, moteur.plan_par_defaut(r_p0, "Yverdon-les-Bains"), FaussesSources(), dt.date(2026, 10, 23), "Yverdon-les-Bains")
+verifier("Prénom fêté aujourd'hui (calendrier traditionnel français) : Jean" in cp0.texte
+         and "Saints et fêtes du jour (calendrier des saints) : St-Hyacinthe, St-Jean de Capistran" in cp0.texte,
+         "rubrique prénom : prénom traditionnel puis saints du jour")
+# journées : mobiles, par pays, prudence
+verifier(fetes.date_regle("fete_meres_fr", 2023) == dt.date(2023, 6, 4) and fetes.date_regle("fete_meres_fr", 2026) == dt.date(2026, 5, 31),
+         "fête des mères en France : le dernier dimanche de mai, sauf Pentecôte (4 juin 2023, 31 mai 2026)")
+verifier(fetes.date_regle("nth:11:4:3+1", 2026) == dt.date(2026, 11, 27), "Black Friday 2026 : 27 novembre")
+verifier(fetes.date_regle("nth:10:-1:6", 2026) == dt.date(2026, 10, 25), "passage à l'heure d'hiver 2026 : 25 octobre")
+verifier(fetes.date_regle("paques:-47", 2026) == dt.date(2026, 2, 17), "Mardi gras 2026 : 17 février")
+mere_fr = [e["nom"] for e in fetes.journees_du_jour(dt.date(2026, 5, 31), "FR")["pays"]]
+mere_ch = [e["nom"] for e in fetes.journees_du_jour(dt.date(2026, 5, 10), "CH")["pays"]]
+verifier("Fête des mères" in mere_fr and "Fête des mères" in mere_ch
+         and "Fête des mères" not in [e["nom"] for e in fetes.journees_du_jour(dt.date(2026, 5, 10), "FR")["pays"]],
+         "fête des mères : une date par pays (31 mai en France, 10 mai en Suisse)")
+aout = fetes.journees_du_jour(dt.date(2026, 8, 1), "CH")["nationales"]
+verifier(aout and aout[0]["iso"] == "CH", f"1er août : la Suisse d'abord ({[e['iso'] for e in aout]})")
+kosovo = " ".join(fetes.lignes_du_jour(dt.date(2026, 2, 17), "CH"))
+verifier("Kosovo" in kosovo and "contesté" in kosovo, "fête nationale contestée : annoncée avec sa réserve")
+verifier("[sujet sensible" in " ".join(fetes.lignes_du_jour(dt.date(2026, 11, 25), "CH")), "journée à sujet douloureux : signalée")
+verifier("Semaine mondiale de l'allaitement maternel (OMS), du 1er au 7 août" in " ".join(fetes.lignes_du_jour(dt.date(2026, 8, 3), "FR")),
+         "semaine internationale : dite avec ses dates")
+verifier("(à présenter comme telles)" in " ".join(fetes.lignes_du_jour(dt.date(2026, 10, 23), "CH")), "journée non officielle : à présenter comme telle")
+verifier(all(fetes.lignes_du_jour(dt.date(2027, m, d), "BE") is not None for m, d in [(1, 1), (12, 31), (7, 21)]), "tous les jours se lisent")
+
+
+class SansReseau(FaussesSources):
+    def _json(self, *a, **k):
+        raise AssertionError("les fêtes ne doivent faire aucun appel réseau")
+
+
+verifier(any("Zambie" in x for x in SansReseau().fetes(dt.date(2026, 10, 24))), "fêtes du jour : aucun appel réseau")
+ci_off = moteur.collecter({**r_p0, "recherche": {"fiche": {}, "sources": ["fetes"], "requetes": []}},
+                          moteur.plan_par_defaut(r_p0, "Yverdon-les-Bains"), SansReseau(), dt.date(2026, 10, 24), "Yverdon-les-Bains")
+verifier("données de référence du podcast" in ci_off.texte and "Journée des Nations Unies" in ci_off.texte, "rubrique « journées » : lit les données intégrées")
+# Les fichiers fabriqués correspondent aux tables, et chaque mois du calendrier des prénoms concorde avec celui des saints.
+fabrication = subprocess.run([sys.executable, str(PROJET / "outils" / "construire_fetes.py"), "--verifier"], capture_output=True, text=True)
+verifier(fabrication.returncode == 0, f"données de fêtes à jour et cohérentes : {(fabrication.stdout + fabrication.stderr).strip()[-300:]}")
+
 # ───────────────────────── 5 bis. suivi d'un train ──────────────────────────
 import trains  # noqa: E402
 

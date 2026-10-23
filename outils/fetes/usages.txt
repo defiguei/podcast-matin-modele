@@ -1,0 +1,55 @@
+# Usages propres aux pays de l'auditeur (France, Suisse, Belgique) et fêtes populaires.
+# Format : date | portée | catégorie | nom | fiabilité | note
+#   date       = MM-JJ | nth:MOIS:N:JOUR (N=-1 : dernier ; JOUR 0=lundi … 6=dimanche)
+#                | paques:+N (N jours après Pâques, négatif avant) | fete_meres_fr
+#   portée     = monde | FR | CH | BE (plusieurs possibles, séparés par des virgules)
+#   catégorie  = pays (fête de pays ou de région) | religieuse | usage | commerciale
+#   fiabilité  = officielle (loi ou décret) | usuelle (tradition bien établie) |
+#                populaire (non officielle, origine privée ou commerciale : à présenter comme telle)
+# Les jours fériés légaux sont dans le code (pays.py) et lus par la source « Jours fériés » ;
+# ce fichier n'en reprend que ce qui aide à raconter la journée.
+01-06 | FR,BE,CH | religieuse | Épiphanie, fête des Rois (galette) | usuelle | En France, souvent le dimanche suivant le 1er janvier.
+01-21 | monde | commerciale | Journée mondiale du câlin | populaire | Lancée aux États-Unis en 1986 ; sans reconnaissance officielle.
+02-02 | FR,BE,CH | religieuse | Chandeleur (crêpes) | usuelle |
+02-14 | monde | usage | Saint-Valentin, fête des amoureux | usuelle | Origine religieuse, devenue surtout commerciale.
+paques:-47 | FR,BE,CH | religieuse | Mardi gras | usuelle | Jour de carnaval ; beignets, crêpes ou bugnes selon les régions.
+paques:-46 | FR,BE,CH | religieuse | Mercredi des Cendres, début du Carême | usuelle |
+03-14 | monde | commerciale | Jour du Pi (3,14) | populaire | Fête des mathématiciens, sans caractère officiel.
+nth:3:-1:6 | FR,BE,CH | usage | Passage à l'heure d'été (on avance les montres d'une heure) | officielle | Dernier dimanche de mars, 2 h → 3 h.
+paques:-7 | FR,BE,CH | religieuse | Dimanche des Rameaux | usuelle |
+paques:+0 | FR,BE,CH | religieuse | Pâques | usuelle |
+04-01 | monde | usage | Poisson d'avril | usuelle |
+nth:4:-1:6 | FR | pays | Journée nationale du souvenir des victimes et des héros de la Déportation | officielle | Dernier dimanche d'avril.
+05-01 | FR,BE,CH | pays | Fête du Travail | usuelle | Férié en France et en Belgique ; en Suisse seulement dans certains cantons (par exemple Neuchâtel, Jura, Bâle).
+05-04 | monde | commerciale | Star Wars Day (« May the 4th ») | populaire | Jeu de mots anglais, fête de fans.
+05-08 | BE | pays | Fête de la Région de Bruxelles-Capitale (Iris) | usuelle |
+paques:+39 | FR,BE,CH | religieuse | Ascension | usuelle |
+fete_meres_fr | FR | usage | Fête des mères | usuelle | Dernier dimanche de mai, sauf s'il tombe le jour de la Pentecôte (alors le premier dimanche de juin).
+nth:5:2:6 | BE,CH | usage | Fête des mères | usuelle | Deuxième dimanche de mai.
+05-25 | monde | commerciale | Towel Day (jour de la serviette) | populaire | Hommage des fans à l'auteur Douglas Adams.
+paques:+49 | FR,BE,CH | religieuse | Pentecôte | usuelle |
+06-18 | FR | pays | Journée nationale commémorative de l'appel du 18 juin 1940 | officielle |
+06-21 | FR,BE,CH | usage | Fête de la musique | usuelle | Née en France en 1982 ; concerts gratuits dans la rue, aussi en Belgique et en Suisse.
+nth:6:3:6 | FR | usage | Fête des pères | usuelle | Troisième dimanche de juin.
+nth:6:2:6 | BE | usage | Fête des pères | usuelle | Deuxième dimanche de juin.
+nth:6:1:6 | CH | usage | Fête des pères | usuelle | Premier dimanche de juin.
+07-11 | BE | pays | Fête de la Communauté flamande | usuelle | Fête de la Flandre, surtout célébrée au nord du pays.
+07-17 | monde | commerciale | Journée mondiale des emojis | populaire | Lancée en 2014 par un site spécialisé.
+nth:8:1:4 | monde | commerciale | Journée internationale de la bière | populaire | Premier vendredi d'août.
+nth:9:1:3 | CH | pays | Jeûne genevois | usuelle | Jeudi suivant le premier dimanche de septembre (canton de Genève).
+nth:9:3:6 | CH | pays | Jeûne fédéral | officielle | Troisième dimanche de septembre.
+nth:9:3:5 | FR,BE | usage | Journées européennes du patrimoine | officielle | Troisième week-end de septembre.
+nth:9:3:6 | BE | pays | Fête de la Wallonie | usuelle | Troisième dimanche de septembre.
+09-19 | monde | commerciale | Journée « Parle comme un pirate » | populaire | Créée en 1995 par deux Américains.
+09-27 | BE | pays | Fête de la Communauté française (Fédération Wallonie-Bruxelles) | usuelle |
+nth:10:-1:6 | FR,BE,CH | usage | Passage à l'heure d'hiver (on recule les montres d'une heure) | officielle | Dernier dimanche d'octobre, 3 h → 2 h.
+10-23 | monde | commerciale | Journée de la mole (Mole Day) | populaire | Hommage au nombre d'Avogadro (6,02 x 10^23) ; fête de profs de chimie.
+10-31 | monde | usage | Halloween | usuelle | Fête d'origine anglo-saxonne, populaire surtout en France.
+11-11 | BE,FR | pays | Armistice de 1918 | officielle | Férié en France et en Belgique.
+11-15 | BE | pays | Fête de la Dynastie (fête du Roi) | usuelle |
+nth:11:3:3 | FR,BE,CH | usage | Arrivée du Beaujolais nouveau | usuelle | Troisième jeudi de novembre.
+nth:11:4:3+1 | monde | commerciale | Black Friday | populaire | Lendemain de Thanksgiving (4e jeudi de novembre) aux États-Unis ; opération commerciale.
+12-06 | FR,BE,CH | usage | Saint-Nicolas | usuelle | Fêté surtout en Lorraine, en Belgique et à Fribourg.
+12-12 | CH | pays | Escalade (Genève) | usuelle | Week-end le plus proche du 12 décembre (échec de l'attaque de 1602).
+12-24 | FR,BE,CH | usage | Réveillon de Noël | usuelle |
+12-31 | FR,BE,CH | usage | Saint-Sylvestre | usuelle |
