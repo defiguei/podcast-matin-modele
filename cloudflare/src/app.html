@@ -567,7 +567,8 @@ appliquerVitesse();
 function episodeParCle(cle) {
   return (S.d && S.d.episodes || []).find((e) => e.cle === cle)
     || Object.values(S.archives).flat().find((e) => e.cle === cle)
-    || (S.d && S.d.resultats && S.d.resultats.episode && S.d.resultats.episode.cle === cle ? S.d.resultats.episode : null) || null;
+    || (S.d && S.d.resultats && S.d.resultats.episode && S.d.resultats.episode.cle === cle ? S.d.resultats.episode : null)
+    || (S.rub && S.rub.resume && S.rub.resume.cle === cle ? S.rub.resume : null) || null;
 }
 
 // Un mois plus ancien que les épisodes récents : demandé au bot, gardé pour la session.
@@ -1128,7 +1129,7 @@ function pastille(genre, taille = 20, mini = false) {
 }
 
 function resumeIntegree(cle) {
-  const r = S.d.reglages, lus = r.agendas.length - r.agenda.exclus.length;
+  const r = S.d.reglages, lus = r.agendas.filter((a) => !r.agenda.exclus.includes(a.id)).length;
   switch (cle) {
     case "ouverture": return "Salutation et programme";
     case "agenda": return `${r.agenda.jours} jours à l'avance${r.agendas.length ? ` · ${lus} agenda${lus > 1 ? "s" : ""}` : ""}`;
@@ -1384,12 +1385,39 @@ function vueFiche() {
       : `Un moment à elle, avec son chapitre${avant ? `, après « ${h(avant)} »` : ""}. L'ordre se change dans « Ton épisode ».`}</p>
   </section>`}
   ${blocOuCherche(F, f, r)}
+  ${r && !ponctuelle ? blocResume(r.id) : ""}
   <div class="bloc">
     ${ponctuelle ? "" : interrupteur("Prioritaire", f.prioritaire, 'data-bascule="prioritaire"')}
     ${interrupteur("Active", f.active, 'data-bascule="active"')}
   </div>
   ${ponctuelle && F.id ? `<button type="button" class="bouton gris" data-action="garder">Mettre cette idée dans mes épisodes</button>` : ""}
   <div class="barre"><button type="button" class="bouton plein" data-action="enregistrer">${libelleBouton}</button></div>`;
+}
+
+// ───────────────────────── résumé d'une rubrique ─────────────────────────
+// Ce que la rubrique a raconté dans les derniers épisodes (gardé par le bot), un podcast qui le résume,
+// et les textes et sources de chaque passage.
+function blocResume(id) {
+  const R = S.rub && S.rub.id === id ? S.rub : null;
+  if (!R) return `<section class="section-fiche"><h2>Ce qu'elle a raconté</h2>
+    <button type="button" class="bouton gris" data-action="rub-ouvrir" data-id="${h(id)}">Voir le résumé de la rubrique</button></section>`;
+  if (!R.entrees.length) return `<section class="section-fiche"><h2>Ce qu'elle a raconté</h2>
+    <p class="aide">Rien de gardé pour l'instant : le résumé se remplit à partir du prochain épisode où elle passe.</p></section>`;
+  const sujets = R.entrees.map((x) => {
+    const titres = [...new Set(x.sources.map((s) => s.titre))].slice(0, 5);
+    const debut = x.texte.replace(/^[^:]{1,30} : /, "").split(/(?<=[.!?])\s/)[0].slice(0, 140);
+    return `<li><b>${h(dateCourteLocale(x.date))}</b> · ${titres.length ? titres.map(h).join(" ; ") : h(debut)}</li>`;
+  }).join("");
+  return `<section class="section-fiche"><h2>Ce qu'elle a raconté</h2>
+    <p class="aide">${R.entrees.length} passage${R.entrees.length > 1 ? "s" : ""} gardé${R.entrees.length > 1 ? "s" : ""} (les 30 derniers).</p>
+    <ul style="margin:0 0 10px;padding-left:18px;line-height:1.5">${sujets}</ul>
+    ${R.resume ? `<button type="button" class="bouton gris" data-lire="${h(R.resume.cle)}">▶ Écouter la dernière synthèse${R.resume.duree ? ` (${Math.max(1, Math.round(R.resume.duree / 60))} min)` : ""}</button>` : ""}
+    <button type="button" class="bouton gris" data-action="rub-podcast" data-id="${h(id)}">🎧 ${R.resume ? "Refaire" : "Faire"} un podcast qui résume</button>
+    <button type="button" class="bouton gris" data-action="rub-textes">${R.voir ? "Masquer" : "Afficher"} les textes et sources</button>
+    ${R.voir ? R.entrees.map((x) => `<div class="sous-bloc"><b>${h(dateLongue(x.date))}</b>
+      <div class="transcription">${h(x.texte)}</div>
+      ${x.sources.length ? `<ul style="margin:6px 0 0;padding-left:18px">${x.sources.map((s) => `<li><button type="button" class="lien" style="min-height:32px;padding:0;text-align:left" data-lien="${h(s.url)}">${h(s.titre || s.url)}</button></li>`).join("")}</ul>` : ""}</div>`).join("") : ""}
+  </section>`;
 }
 
 // ─────────────────────────────── sources ────────────────────────────────
@@ -1695,7 +1723,6 @@ function vuePlanning() {
     const etiquette = `${dateLongue(date)} : ${c.heure ? `épisode à ${heure(c.heure)}` : "pas d'épisode"}${c.ferie ? ", férié" : ""}`;
     return `<button type="button" class="${classes.join(" ")}" data-jourcal="${date}" aria-label="${h(etiquette)}">${Number(date.slice(8))}</button>`;
   };
-  const regions = [...d.listes.regions].sort((a, b) => a[1].localeCompare(b[1], "fr", { sensitivity: "base" }));
   return `
   <h1>Planning</h1>
   <section class="carte" aria-labelledby="t-mois">
@@ -1720,9 +1747,6 @@ function vuePlanning() {
       <button type="button" class="mini-inter" role="switch" aria-checked="${Boolean(pl.jours[j])}" data-jour-actif="${j}" aria-label="Épisode le ${long}"><span class="rail"><span></span></span></button></div>`).join("")}
   </section>
   <section class="bloc">
-    <div class="reglage"><span>Jours fériés de</span>
-      <select class="compacte" style="max-width:190px" data-region aria-label="Pays ou canton des jours fériés">
-        ${regions.map(([c, n]) => `<option value="${c}" ${pl.feries_region === c ? "selected" : ""}>${h(n)}</option>`).join("")}</select></div>
     <div class="reglage"><span>Un jour férié</span>
       <select class="compacte" data-regler="planning.feries" aria-label="Jours fériés">
         ${[["normal", "comme d'habitude"], ["dimanche", "heure du dimanche"], ["aucun", "pas d'épisode"]].map(([v, n]) => `<option value="${v}" ${pl.feries === v ? "selected" : ""}>${n}</option>`).join("")}</select></div>
@@ -1936,17 +1960,23 @@ function vueReglage() {
   const titre = (SECTIONS.find((s) => s[0] === cle) || [])[1] || "Réglages";
   const corps = {
     moi: () => `<section class="bloc">
-        <div class="reglage"><span>Ton prénom</span><input class="compacte" style="width:160px" maxlength="40" value="${h(r.voix.prenom)}" data-regler-texte="voix.prenom" placeholder="—" aria-label="Ton prénom"></div>
-        <div class="reglage"><span>Ta ville</span><input class="compacte" style="width:170px" maxlength="60" value="${h(r.actus.ville)}" data-regler-texte="actus.ville" placeholder="Ex. Yverdon-les-Bains" aria-label="Ta ville"></div>
-        <div class="reglage"><span>Pays</span>${choix("pays", d.pays, d.listes.pays)}</div>
+        <div class="reglage"><span>Ton prénom</span><input class="compacte" style="width:160px" maxlength="40" value="${h(r.voix.prenom)}" data-regler-texte="voix.prenom" placeholder="Facultatif" aria-label="Ton prénom"></div>
         ${interrupteur("Les animateurs te tutoient", r.voix.tutoiement, 'data-regler-bool="voix.tutoiement"')}
+        <div class="reglage"><span>Pays</span>${choix("pays", d.pays, d.listes.pays)}</div>
+        ${d.pays === "CH" ? `<div class="reglage"><span>Canton<br><span class="aide">jours fériés</span></span>
+          <select class="compacte" style="max-width:190px" data-region aria-label="Canton des jours fériés">
+          ${d.listes.regions.map(([c, n]) => `<option value="${c}" ${d.planning.feries_region === c ? "selected" : ""}>${h(n.replace("Suisse · ", ""))}</option>`).join("")}</select></div>` : ""}
+        <div class="reglage"><span>Ta ville</span><input class="compacte" style="width:170px" maxlength="60" value="${h(r.actus.ville)}" data-regler-texte="actus.ville" placeholder="Facultatif" aria-label="Ta ville"></div>
       </section>
-      <p class="aide">Ta ville sert à l'actu locale, à la météo, aux trains et à repérer tes déplacements. Le pays règle le fuseau horaire, la devise, les jours fériés et les médias proposés par défaut.</p>`,
+      <p class="aide">Le prénom et la ville sont facultatifs. Le pays règle l'heure, la devise, les jours fériés, les fêtes nationales mises en avant et les médias proposés par défaut ; « Pas renseigné » les laisse de côté. La ville sert à l'actu locale, à la météo, aux trains et à repérer tes déplacements.</p>`,
     voix: () => vueVoix(),
     sources: () => vueSources(),
     connexions: () => vueConnexions(),
     style: () => `<section class="bloc">
-        <div class="reglage"><span>Durée visée</span>${pas("format.duree_minutes", r.format.duree_minutes, 2, 12, 0.5, " min")}</div>
+        <div class="reglage"><span>Durée visée</span><output id="duree-valeur" style="font-weight:600;font-variant-numeric:tabular-nums">${h(nombre(r.format.duree_minutes))} min</output></div>
+        <input type="range" class="avance" min="2" max="12" step="0.5" value="${r.format.duree_minutes}" data-duree aria-label="Durée visée en minutes" style="margin:6px 0 10px">
+        <div class="puces-choix">${[3, 5, 8, 10, 12].map((v) => `<button type="button" data-pas="format.duree_minutes" data-valeur="${v}" aria-pressed="${Number(r.format.duree_minutes) === v}">${v} min</button>`).join("")}</div>
+        <p class="aide">Glisse le curseur ou touche une durée. Gemini écrit parfois plus court que demandé : le podcast mesure ce qu'il écrit vraiment et demande un peu plus la fois suivante, tout seul.</p>
       </section>
       <div class="champ"><span class="etiquette">Ton</span><div class="segments" style="grid-template-columns:repeat(2,minmax(0,1fr))">
         ${Object.entries(d.listes.tons).map(([v, n]) => `<button type="button" data-valeur-segment="${v}" data-chemin="format.ton" aria-pressed="${r.format.ton === v}">${h(n)}</button>`).join("")}</div></div>
@@ -2124,9 +2154,11 @@ function blocAjoutAgenda() {
     <p class="aide">Colle l'adresse secrète de ton agenda.<br><b>Google Agenda</b> (sur ordinateur) : ⚙️ Paramètres › ton agenda › Intégrer l'agenda › « Adresse secrète au format iCal ».<br><b>Outlook</b> : Paramètres › Calendrier › Calendriers partagés › Publier un calendrier › lien ICS.</p>
     <div class="ajout"><input class="saisie" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://…/basic.ics" data-nouveau="agenda-url" aria-label="Adresse iCal de l'agenda">
       <button type="button" class="bouton gris" data-action="agenda-ajouter">Ajouter</button></div>
-    ${c.agendas.length ? `<div class="bloc" style="background:var(--carte-2)">${c.agendas.map((a) => `<div class="reglage"><span>${h(a.nom)} <span class="aide">${a.nb} évén.</span></span>
+    ${S.d.reglages.agendas.length ? `<div class="bloc" style="background:var(--carte-2)">${S.d.reglages.agendas.map((a) => `<div class="reglage"><span>${h(a.nom)} <span class="aide">${a.nb} évén.${c.agendas.some((x) => x.id === a.id) ? "" : " · secret GitHub"}</span></span>
       <button type="button" class="lien" style="color:var(--rouge)" data-agenda-retirer="${h(a.id)}">Retirer</button></div>`).join("")}</div>` : ""}
-    ${c.agendas_github ? `<p class="aide">Les agendas du secret GitHub CALENDAR_ICS_URL restent lus aussi.</p>` : ""}
+    ${(S.d.reglages.agendas_retires || []).length ? `<p class="aide" style="margin-top:8px">Retirés (plus lus) :</p><div class="bloc" style="background:var(--carte-2)">${S.d.reglages.agendas_retires.map((a) => `<div class="reglage"><span>${h(a.nom)}</span>
+      <button type="button" class="lien" data-agenda-remettre="${h(a.id)}">Remettre</button></div>`).join("")}</div>` : ""}
+    ${c.agendas_github ? `<p class="aide">Un agenda du secret GitHub CALENDAR_ICS_URL se retire ici aussi : il n'est plus lu, mais reste dans le secret.</p>` : ""}
   </section>`;
 }
 
@@ -2147,10 +2179,13 @@ function vueBienvenue() {
       ${suite("C'est parti")}`,
     toi: () => `<span class="surtitre">1 · Toi</span><h1>Qui écoute ?</h1>
       <section class="bloc">
-        <div class="reglage"><span>Ton prénom</span><input class="compacte" style="width:160px" maxlength="40" value="${h(r.voix.prenom)}" data-regler-texte="voix.prenom" placeholder="—" aria-label="Ton prénom"></div>
-        <div class="reglage"><span>Ta ville</span><input class="compacte" style="width:170px" maxlength="60" value="${h(r.actus.ville)}" data-regler-texte="actus.ville" placeholder="Ex. Lausanne" aria-label="Ta ville"></div>
-        <div class="reglage"><span>Pays</span>${choix("pays", d.pays, d.listes.pays)}</div>
+        <div class="reglage"><span>Ton prénom</span><input class="compacte" style="width:160px" maxlength="40" value="${h(r.voix.prenom)}" data-regler-texte="voix.prenom" placeholder="Facultatif" aria-label="Ton prénom"></div>
         ${interrupteur("Les animateurs te tutoient", r.voix.tutoiement, 'data-regler-bool="voix.tutoiement"')}
+        <div class="reglage"><span>Pays</span>${choix("pays", d.pays, d.listes.pays)}</div>
+        ${d.pays === "CH" ? `<div class="reglage"><span>Canton<br><span class="aide">jours fériés</span></span>
+          <select class="compacte" style="max-width:190px" data-region aria-label="Canton des jours fériés">
+          ${d.listes.regions.map(([c, n]) => `<option value="${c}" ${d.planning.feries_region === c ? "selected" : ""}>${h(n.replace("Suisse · ", ""))}</option>`).join("")}</select></div>` : ""}
+        <div class="reglage"><span>Ta ville</span><input class="compacte" style="width:170px" maxlength="60" value="${h(r.actus.ville)}" data-regler-texte="actus.ville" placeholder="Facultatif" aria-label="Ta ville"></div>
       </section>
       <p class="aide">La ville sert à l'actu locale, à la météo et aux trains ; le pays règle l'heure, les jours fériés et les médias.</p>${suite()}`,
     heure: () => `<span class="surtitre">2 · L'heure</span><h1>Quand arrive l'épisode ?</h1>
@@ -2260,7 +2295,8 @@ function vueIntegree() {
     ${info.fixe ? `<p class="aide">${h(info.fixe)}</p>` : `<div class="bloc">${interrupteur("Dans mes épisodes", x.actif, `data-actif-integree="${h(cle)}"`)}</div>
     <p class="aide">${avant ? `Après « ${h(avant)} ». ` : ""}${SI_CONTENU.includes(cle) ? "Elle ne passe que s'il y a de quoi en parler. " : ""}L'ordre se change dans « Ton épisode ».</p>`}
   </section>
-  ${corps ? `<section class="section-fiche"><h2>${cle === "actualites" ? "Ce qu'elle lit" : "Réglages"}</h2>${corps()}</section>` : ""}`;
+  ${corps ? `<section class="section-fiche"><h2>${cle === "actualites" ? "Ce qu'elle lit" : "Réglages"}</h2>${corps()}</section>` : ""}
+  ${cle !== "ouverture" && cle !== "cloture" ? blocResume(cle) : ""}`;
 }
 
 async function regler(chemin, valeur) {
@@ -2335,6 +2371,7 @@ document.addEventListener("click", (ev) => {
   });
   if (ds.appareilRetirer) return confirmer("Retirer cet appareil ? Il devra entrer un nouveau code.", () => changer("appareil_retirer", { id: ds.appareilRetirer }));
   if (ds.agendaRetirer) return confirmer("Retirer cet agenda ?", () => changer("agenda_retirer", { id: ds.agendaRetirer }));
+  if (ds.agendaRemettre) return changer("agenda_remettre", { id: ds.agendaRemettre });
   if (ds.bienvenue) return bienvenueSuivante(Number(ds.bienvenue));
   if (ds.bienvenueWeekend !== undefined) { B.weekendActif = !B.weekendActif; vibrer("choix"); return dessiner(); }
   if (ds.episode) { S.episode = ds.episode; return aller("episode"); }
@@ -2411,6 +2448,9 @@ document.addEventListener("click", (ev) => {
     case "condition": S.fiche.f.condition = { texte: "", moment: "jour_meme", n: 1 }; S.fiche.modifie = true; return dessiner();
     case "sans-condition": S.fiche.f.condition = null; S.fiche.modifie = true; return dessiner();
     case "recherche": S.fiche.recherche = true; return dessiner();
+    case "rub-ouvrir": return demander("rubrique_resume", { id: ds.id }).then((j) => { if (j.ok) { S.rub = { ...j.rubrique, voir: false }; dessiner(); } });
+    case "rub-textes": if (S.rub) { S.rub.voir = !S.rub.voir; dessiner(); } return;
+    case "rub-podcast": return changer("resume_podcast", { id: ds.id }, () => {});
     case "annuler": return changer("annuler");
     case "parler-confirmer": return repondreConfirmation(true);
     case "parler-abandonner": return repondreConfirmation(false);
@@ -2479,11 +2519,13 @@ document.addEventListener("input", (ev) => {
   if (!t.dataset) return;
   if (t.dataset.champ && S.fiche && t.tagName !== "SELECT") return saisirChamp(t);
   if (t.dataset.avance && L.cle === t.dataset.avance) { audio.currentTime = Number(t.value); return; }
+  if (t.dataset.duree !== undefined) { const o = document.getElementById("duree-valeur"); if (o) o.textContent = `${nombre(Number(t.value))} min`; return; }
 });
 document.addEventListener("change", (ev) => {
   const t = ev.target;
   if (!t.dataset) return;
   if (t.dataset.bulle) return ajouterBulle(t);
+  if (t.dataset.duree !== undefined) return regler("format.duree_minutes", Number(t.value));
   if (t.dataset.region !== undefined) return changer("feries", { region: t.value });
   if (t.dataset.nomVoix) return changer("nom_voix", { voix: t.dataset.nomVoix, nom: t.value });
   if (t.dataset.voixJour) {

@@ -9,7 +9,7 @@ import {
   JOURS, NOMS_JOURS, COURTS_JOURS, LONGUEURS, SOURCES, RUBRIQUES, etatRegle, prochainPassage, decrirePeriode,
   heurePrevue, prochainEpisode, ajouterJours, dateCourte, nomRubrique, dateOuNull, nettoyerListe,
   VOIX, VOIX_CONSEILLEES, VITESSES, TONS, CITER, TRANSPORTS, fluxActus, profilPays, PAYS, DELAIS_RATTRAPAGE,
-  DEVISES, REGIONS_FERIES, MODES_VOIX, sourcesAuto, estFerie, nomFerie, animateursDuJour, placesDuJour, normaliserTexte,
+  DEVISES, CANTONS, MODES_VOIX, sourcesAuto, estFerie, nomFerie, animateursDuJour, placesDuJour, normaliserTexte,
   jourDeSemaine, MODELES_RUBRIQUES, catalogueRubriques, nouvelleRegle, modifierRegle,
   INFOS_SOURCES, sourceConnue, sourcesUtilisables, nomSource,
 } from "./config.js";
@@ -47,7 +47,7 @@ export async function lienAudio(secret, cle, maintenant = Date.now()) {
 
 export async function verifierAudio(secret, params, maintenant = Date.now()) {
   const cle = params.get("c") || "", expiration = Number(params.get("e")), signature = params.get("s") || "";
-  if (!/^((img:)?ep:\d{4}-\d{2}-\d{2}(:\d+)?|voix:[A-Za-z]+|idees:dernier)$/.test(cle) || !expiration || expiration < maintenant / 1000) return null;
+  if (!/^((img:)?ep:\d{4}-\d{2}-\d{2}(:\d+)?|voix:[A-Za-z]+|idees:dernier|resume:[A-Za-z0-9_]{1,24})$/.test(cle) || !expiration || expiration < maintenant / 1000) return null;
   return egal(await signerAudio(secret, cle, expiration), signature) ? cle : null;
 }
 
@@ -230,7 +230,8 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
       actus: { ville: config.actus.ville, sujets_preferes: config.actus.sujets_preferes, sujets_a_eviter: config.actus.sujets_a_eviter,
                fraicheur_heures: config.actus.fraicheur_heures, citer_sources: config.actus.citer_sources,
                locale_articles: config.actus.locale_articles, flux: fluxActus(config), flux_defaut: !config.actus.flux },
-      agenda: config.agenda, agendas: etat.agendas || [], agendas_vus: etat.agendas_vus || null,
+      agenda: config.agenda, agendas: (etat.agendas || []).filter((x) => !(config.agenda.retires || []).includes(x.id)),
+      agendas_retires: (etat.agendas || []).filter((x) => (config.agenda.retires || []).includes(x.id)), agendas_vus: etat.agendas_vus || null,
       consignes: config.consignes, a_approfondir: config.a_approfondir.map((a) => a.sujet),
       livraison: config.livraison || { telegram: true },
       sources: sourcesVisibles(config),
@@ -257,7 +258,7 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
     listes: { sources: SOURCES, longueurs: LONGUEURS, jours: JOURS.map((j) => [j, COURTS_JOURS[j], NOMS_JOURS[j]]),
               voix: VOIX.map(([nom, description, genre]) => ({ nom, description, genre, conseillee: VOIX_CONSEILLEES.includes(nom) })),
               vitesses: VITESSES, tons: TONS, citer: CITER, transports: Object.fromEntries(Object.entries(TRANSPORTS).filter(([k]) => k !== "peu_importe")),
-              delais: DELAIS_RATTRAPAGE, devises: DEVISES, regions: REGIONS_FERIES, modes_voix: MODES_VOIX,
+              delais: DELAIS_RATTRAPAGE, devises: DEVISES, regions: CANTONS, modes_voix: MODES_VOIX,
               pays: Object.entries(PAYS).map(([code, p]) => [code, p.nom]) },
   };
 }

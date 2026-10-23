@@ -185,7 +185,7 @@ def main() -> int:
         secours = None if export else lire_secours(racine / "preferences.json")
         config = (export or {}).get("config") or secours or {}
         if config.get("pays") in pays.PROFILS:      # le pays choisi dans l'application donne le fuseau
-            fuseau = pays.profil(config["pays"])["fuseau"]
+            fuseau = pays.profil(config["pays"], config.get("fuseau"))["fuseau"]
         if export or secours:
             mode, explication = decider_filet(dt.datetime.now(dt.timezone.utc), fuseau, export, secours,
                                               date_dernier_episode(racine / "memoire.json"))

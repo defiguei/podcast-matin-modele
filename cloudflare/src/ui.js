@@ -186,7 +186,7 @@ const ECRANS = {
 
   agenda(config, etat) {
     const a = config.agenda;
-    const connus = etat.agendas || [];
+    const connus = (etat.agendas || []).filter((x) => !(a.retires || []).includes(x.id));
     const actifs = connus.filter((x) => !a.exclus.includes(x.id)).length;
     const texte = [
       "🗓️ <b>Agenda</b>",
@@ -208,7 +208,7 @@ const ECRANS = {
 
   agendas(config, etat) {
     const a = config.agenda;
-    const connus = etat.agendas || [];
+    const connus = (etat.agendas || []).filter((x) => !(a.retires || []).includes(x.id));
     const lignes = connus.map((x) => `${a.exclus.includes(x.id) ? "▫️" : "✅"} ${e(x.nom)} — ${x.nb} événement${x.nb > 1 ? "s" : ""}`);
     const texte = ["📚 <b>Mes agendas</b>",
       connus.length ? lignes.join("\n") : "Je ne connais pas encore tes agendas : touche « Lire mes agendas ».",

@@ -168,3 +168,18 @@ Les jours fériés légaux restent lus par la source « Jours fériés » (`pays
 - Université d'Helsinki, [interface des jours de fête](https://almanakka.helsinki.fi/en/name-days/name-day-interface).
 - Wikimedia, [service feed « On this day »](https://github.com/wikimedia/mediawiki-services-wikifeeds) et [suivi du défaut des jours fériés](https://phabricator.wikimedia.org/T158783).
 - Wikipédia, [Calendrier romain général de 1969](https://en.wikipedia.org/wiki/General_Roman_Calendar_of_1969).
+
+## Précisions ajoutées le 23 octobre 2026
+
+- **Prénoms et saints.** La rubrique « Fête du prénom » ne cite plus les saints : elle donne le prénom du calendrier traditionnel et
+  les autres prénoms que l'on fête souvent ce jour-là. Le calendrier des saints sert seulement de contrôle (accord de 65 %).
+  Aucune source consultée ne distingue la France, la Belgique et la Suisse romande ; la tradition de la fête du prénom est moins
+  suivie en Suisse alémanique, où nous n'avons pas de calendrier de référence.
+- **La liste du ministère néo-zélandais.** C'est le ministère des Affaires étrangères de Nouvelle-Zélande qui publie les fêtes
+  nationales des pays avec lesquels il a des relations : elle sert de seconde source indépendante de Wikipédia, pour presque tous les
+  pays. La Nouvelle-Zélande elle-même y figure (Waitangi Day, 6 février).
+- **Profils des pays.** `donnees/pays.json` est fabriqué par `outils/construire_pays.py` : noms français et langues officielles (CLDR),
+  devise (CLDR), fuseau principal (base des fuseaux horaires). Les flux d'actualités des pays hors Suisse, France et Belgique sont des
+  éditions locales de Google Actualités construites à partir du code du pays et de sa langue : elles n'ont pas pu être testées d'ici
+  (réseau fermé) et certaines combinaisons pays/langue peuvent ne renvoyer aucun article. Les jours fériés viennent de la bibliothèque
+  `holidays` (épisodes) et de Nager.Date (calendrier de l'application, environ 120 pays).

@@ -92,23 +92,18 @@ def _et(noms: list[str]) -> str:
 
 
 def prenoms_en_texte(jour: dt.date) -> list[str]:
-    """Lignes prêtes pour la collecte d'une rubrique « Fête du prénom »."""
+    """Lignes prêtes pour la rubrique « Fête du prénom » : les prénoms à souhaiter, sans les saints
+    (l'auditeur fête des prénoms d'amis, pas des saints)."""
     p = prenoms_du_jour(jour)
-    saints = saints_du_jour(jour)
     lignes: list[str] = []
     if p["principal"]:
         lignes.append(f"Prénom fêté aujourd'hui (calendrier traditionnel français) : {_et(p['principal'])}"
                       + (f" — {p['fete']}" if p["fete"] else ""))
         if p["aussi"]:
-            lignes.append(f"Autres prénoms du calendrier des saints ce jour-là : {_et(p['aussi'])}")
+            lignes.append(f"Autres prénoms que l'on fête aussi ce jour-là, selon les calendriers : {_et(p['aussi'])}")
     elif p["fete"]:
         lignes.append(f"Pas de prénom fixe ce jour-là dans le calendrier traditionnel : c'est {p['fete']}"
-                      + (f" (prénoms possibles : {_et(p['aussi'])})" if p["aussi"] else ""))
-    if saints:
-        lignes.append(f"Saints et fêtes du jour (calendrier des saints) : {', '.join(saints)}")
-    if p["principal"] and saints:
-        lignes.append("Les deux calendriers ne coïncident pas toujours (environ un jour sur trois) : annoncer d'abord "
-                      "le prénom du calendrier traditionnel.")
+                      + (f" (prénoms parfois fêtés ce jour-là : {_et(p['aussi'])})" if p["aussi"] else ""))
     return lignes
 
 

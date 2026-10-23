@@ -7,8 +7,11 @@ import PROFILS_PAYS from "../../donnees/pays.json" with { type: "json" };
 
 export const PAYS = PROFILS_PAYS;
 export const PAYS_DEFAUT = "CH";
+export const SANS_PAYS = "--"; // « Pas renseigné » : ni jours fériés, ni médias d'un pays
 export function profilPays(config) {
-  return PAYS[config?.pays] || PAYS[PAYS_DEFAUT];
+  const profil = PAYS[config?.pays] || PAYS[PAYS_DEFAUT];
+  // Sans pays, l'heure reste celle du pays choisi avant (config.fuseau), sinon celle de la Suisse.
+  return config?.pays === SANS_PAYS ? { ...profil, fuseau: config.fuseau || PAYS[PAYS_DEFAUT].fuseau } : profil;
 }
 // Médias par défaut : ceux du pays choisi (tant que la liste n'a pas été modifiée).
 export function fluxActus(config) {
@@ -27,7 +30,7 @@ export const LONGUEURS = { phrase: "une phrase", courte: "courte", developpee: "
 // spécialisés de l'auditeur s'y ajoutent sous la forme « flux:<id> ».
 export const SOURCES = {
   actus: "Google Actualités", web: "Recherche web", meteo: "Météo", transports: "Trains",
-  lieux: "Lieux", wikivoyage: "Guides de voyage", saints: "Prénoms et saints du jour", fetes: "Journées et fêtes",
+  lieux: "Lieux", wikivoyage: "Guides de voyage", saints: "Prénoms du jour", fetes: "Journées et fêtes",
   feries: "Jours fériés", agenda: "Agendas",
 };
 export const INFOS_SOURCES = {
@@ -38,7 +41,7 @@ export const INFOS_SOURCES = {
   transports: { apporte: "Horaires, retards et suppressions de trains.", ou: "CFF et search.ch (Suisse), iRail (Belgique), SNCF (France)", cle_api: "sncf" },
   lieux: { apporte: "Musées, parcs, points de vue… autour d'un lieu.", ou: "OpenStreetMap et Wikipédia" },
   wikivoyage: { apporte: "Ce qu'il faut savoir d'une ville ou d'une région à visiter.", ou: "Wikivoyage (fr.wikivoyage.org)" },
-  saints: { apporte: "Le prénom fêté aujourd'hui, et les saints du jour.", ou: "Calendrier des prénoms intégré au podcast (sans connexion)" },
+  saints: { apporte: "Le prénom fêté aujourd'hui, et les autres prénoms du jour.", ou: "Calendrier des prénoms intégré au podcast (sans connexion)" },
   fetes: { apporte: "Les journées mondiales, fêtes nationales et usages du jour (Suisse, France, Belgique).", ou: "Données intégrées au podcast : ONU, fêtes nationales, usages (sans connexion)" },
   feries: { apporte: "Les jours fériés des deux semaines à venir.", ou: "Calendrier de ta région (Planning › Jours fériés)", aussi: "Planning (horaire des jours fériés)" },
   agenda: { apporte: "Les événements de tes agendas : un rappel selon l'agenda s'en sert.", ou: "Tes liens iCal (fiche Agenda)", aussi: "Agenda, Mes déplacements" },
@@ -65,7 +68,7 @@ export function nomSource(s, config) {
   return flux ? flux.nom : "flux retiré";
 }
 export const TRANSPORTS = { voiture: "🚗 Voiture", train: "🚆 Train", velo: "🚲 Vélo", pied: "🚶 À pied", peu_importe: "Peu importe", aucun: "Pas de transport" };
-export const DEVISES = ["CHF", "EUR", "USD", "GBP"];
+export const DEVISES = [...new Set(["CHF", "EUR", "USD", "GBP", ...Object.values(PROFILS_PAYS).map((p) => p.devise)])];
 // Jours fériés : cantons suisses (code ISO de Nager.Date) et pays voisins ou fréquents.
 export const REGIONS_FERIES = [
   ["CH-VD", "Suisse · Vaud"], ["CH-GE", "Suisse · Genève"], ["CH-NE", "Suisse · Neuchâtel"], ["CH-FR", "Suisse · Fribourg"],
@@ -78,6 +81,7 @@ export const REGIONS_FERIES = [
   ["FR", "France"], ["BE", "Belgique"], ["LU", "Luxembourg"], ["DE", "Allemagne"], ["AT", "Autriche"], ["IT", "Italie"],
   ["ES", "Espagne"], ["PT", "Portugal"], ["NL", "Pays-Bas"], ["GB", "Royaume-Uni"], ["CA", "Canada"], ["US", "États-Unis"],
 ];
+export const CANTONS = REGIONS_FERIES.filter(([c]) => c.startsWith("CH-"));
 export const MODES_VOIX = { fixe: "Toujours les mêmes", jours: "Selon le jour", aleatoire: "Au hasard" };
 
 // Rubriques intégrées du déroulé. Les rubriques créées par l'auditeur (« R1 », « R2 »…)
@@ -94,7 +98,7 @@ export const ECRAN_INTEGREE = {
 // Gemini choisit quand on demande une rubrique à la voix. Le formulaire de départ est celui
 // de la fiche de l'application ; « pret » : titre et consigne utilisables tels quels.
 export const MODELES_RUBRIQUES = [
-  { id: "prenom", sources: ["saints"], famille: "jour", titre: "Fête du prénom", texte: "Le prénom fêté aujourd'hui (calendrier traditionnel) et les saints du jour", pret: true,
+  { id: "prenom", sources: ["saints"], famille: "jour", titre: "Fête du prénom", texte: "Le prénom fêté aujourd'hui (calendrier traditionnel), pour le souhaiter à tes amis", pret: true,
     formulaire: () => ({ place: "ouverture", titre: "Fête du prénom", consigne: "Dis-moi quels prénoms on fête aujourd'hui (un ou deux).", longueur: "phrase" }) },
   { id: "journee", sources: ["fetes"], famille: "jour", titre: "Journée du jour", texte: "La journée mondiale ou la fête nationale célébrée aujourd'hui", pret: true,
     formulaire: () => ({ place: "ouverture", titre: "Journée du jour", consigne: "Dis-moi quelle journée mondiale, internationale ou fête nationale on célèbre aujourd'hui.", longueur: "phrase" }) },
@@ -167,7 +171,7 @@ export function configParDefaut() {
     },
     deroule: Object.keys(RUBRIQUES).map((cle) => ({ cle, actif: true })),
     agenda: { jours: 7, horizon: 90, notes: true, deplacements: true, jours_deplacements: 14,
-              max_deplacements: 2, exclus: [] },
+              max_deplacements: 2, exclus: [], retires: [] },
     actus: { ville: "", sujets_preferes: [], sujets_a_eviter: [], flux: null, fraicheur_heures: 36, citer_sources: "ecrit",
              locale_articles: 3 },
     // Où arrive l'épisode : toujours dans l'application, le flux et les notifications ;
@@ -272,8 +276,12 @@ export function regler(config, chemin, valeurBrute) {
   const ancienPays = config.pays;
   ecrireChemin(config, chemin, valeur);
   // Changer de pays : les jours fériés suivent, s'ils étaient ceux de l'ancien pays.
-  if (chemin === "pays" && ancienPays !== valeur && (config.planning.feries_region || "CH-VD") === profilPays({ pays: ancienPays }).feries) {
-    config.planning.feries_region = profilPays(config).feries;
+  if (chemin === "pays" && ancienPays !== valeur) {
+    // Les jours fériés suivent le pays (en Suisse : le canton choisi, Vaud au départ). Sans pays : aucun.
+    if (valeur === SANS_PAYS) config.fuseau = profilPays({ ...config, pays: ancienPays }).fuseau;
+    else delete config.fuseau;
+    const canton = String(config.planning.feries_region || "");
+    config.planning.feries_region = valeur === "CH" ? (canton.startsWith("CH-") ? canton : "CH-VD") : profilPays(config).feries;
     config.planning.feries_cache = {};
   }
   if (chemin === "actus.sujets_a_eviter") {
@@ -656,11 +664,12 @@ export function estFerie(planning, dateIso) {
 }
 
 // Régions dont les fériés sont calculés ici ; les autres sont téléchargés (Nager.Date).
-export const FERIES_CALCULES = ["CH-VD", "FR"];
+export const FERIES_CALCULES = ["CH-VD", "FR", "--"];
 
 export function nomFerie(planning, dateIso) {
   const region = planning?.feries_region || "CH-VD";
   if (region === "CH-VD") return estFerieVaud(dateIso) ? "férié" : null;
+  if (region === SANS_PAYS) return null;
   if (region === "FR") return feriesFrance(Number(dateIso.slice(0, 4))).get(dateIso) || null;
   const liste = planning.feries_cache?.[dateIso.slice(0, 4)] || [];
   return (liste.find(([d]) => d === dateIso) || [])[1] || null;

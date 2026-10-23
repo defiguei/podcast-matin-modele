@@ -72,7 +72,8 @@ NAVIGATEUR = (
     "(KHTML, like Gecko) Chrome/130.0 Safari/537.36"
 )
 TAUX_PAR_DEFAUT = 24_000          # Gemini TTS : 24 kHz, mono, 16 bits
-SEUIL_SCRIPT_COURT = 0.8         # sous 80 % des mots visés, on demande plus long
+SEUIL_SCRIPT_COURT = 0.9         # sous 90 % des mots visés, on demande plus long
+REMPLISSAGE_MIN = 0.5            # un script ne fait jamais moins de la moitié de ce qu'on lui demande (garde-fou)
 CARACTERES_PAR_SECONDE = 18       # débit moyen d'une voix française (mesuré : 15 à 21)
 
 JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
@@ -429,6 +430,7 @@ def memoire_vide() -> dict[str, Any]:
         "episodes_refaits": {},        # {"date": ..., "nombre": ...}
         "dernier_programme": "",       # date du dernier épisode programmé (hors épisodes à la demande)
         "debit_mots_minute": {},     # débit réellement mesuré, par vitesse
+        "remplissage": None,         # mots écrits / mots demandés (moyenne glissante) : Gemini écrit court, on demande plus
         "articles_vus": {},          # titre normalisé → date : actus déjà racontées (pas deux fois en une semaine)
         "lieux_presentes": [],       # déplacements déjà présentés : lieu, dates, idées proposées
     }
@@ -537,6 +539,12 @@ def decouvrir_modeles(reglages: dict, cle: str) -> dict[str, list[str]]:
     return resultat
 
 
+def _remplissage(memoire: dict) -> float:
+    """Part des mots demandés que Gemini écrit vraiment (1 = il tient la longueur). Mesurée à chaque épisode."""
+    valeur = memoire.get("remplissage")
+    return max(REMPLISSAGE_MIN, min(1.0, float(valeur))) if isinstance(valeur, (int, float)) else 1.0
+
+
 def reglages_effectifs(reglages: dict, memoire: dict) -> dict[str, Any]:
     """Ce que l'auditeur a demandé au bot l'emporte sur reglages.toml."""
     effectifs = dict(reglages)
@@ -553,6 +561,7 @@ def reglages_effectifs(reglages: dict, memoire: dict) -> dict[str, Any]:
     mesure = (memoire.get("debit_mots_minute") or {}).get(effectifs["vitesse_parole"])
     effectifs["mots_par_minute"] = (int(mesure) if isinstance(mesure, (int, float)) and 100 <= mesure <= 300
                                     else VITESSES[effectifs["vitesse_parole"]][1])
+    effectifs["remplissage"] = _remplissage(memoire)
     effectifs["a_approfondir"] = [a for a in memoire.get("a_approfondir") or []
                                   if isinstance(a, dict) and a.get("sujet")][:5]
     effectifs.setdefault("ton", "naturel")
@@ -609,6 +618,7 @@ def effectifs_depuis_bot(reglages: dict, memoire: dict, config: dict) -> dict[st
     mesure = (memoire.get("debit_mots_minute") or {}).get(e["vitesse_parole"])
     e["mots_par_minute"] = (int(mesure) if isinstance(mesure, (int, float)) and 100 <= mesure <= 300
                             else VITESSES[e["vitesse_parole"]][1])
+    e["remplissage"] = _remplissage(memoire)
     deroule = config.get("deroule")
     e["deroule"] = deroule if isinstance(deroule, list) and deroule else [{"cle": c, "actif": True} for c in moteur.RUBRIQUES]
     e["config_bot"] = config
@@ -1508,7 +1518,9 @@ def consigne_systeme(effectifs: dict, rubriques: list[tuple[str, str]] | None = 
     a, b = noms_animateurs[0], noms_animateurs[-1]
     collectes = collectes or {}
     minutes = minutes_visees(effectifs, collectes)
-    mots = round(minutes * effectifs.get("mots_par_minute", VITESSES[effectifs["vitesse_parole"]][1]))
+    # Gemini écrit souvent plus court que demandé : on demande en proportion de ce qu'il a réellement écrit.
+    mots = round(minutes * effectifs.get("mots_par_minute", VITESSES[effectifs["vitesse_parole"]][1])
+                 / effectifs.get("remplissage", 1.0))
     adresse = "Tutoie" if effectifs["tutoiement"] else "Vouvoie"
     prenom = effectifs.get("prenom_auditeur", "").strip()
     qui = f"{adresse} l'auditeur, qui s'appelle {prenom}." if prenom else f"{adresse} l'auditeur."
@@ -1691,6 +1703,9 @@ def nettoyer_script(script: dict, noms: list[str], rubriques: list[str] | None =
             "idees": nettoyer_liste(script.get("idees"), 8)}
 
 
+script_mots_vises = [0]   # mots visés pour l'épisode en cours (mesure du remplissage, après l'épisode)
+
+
 def ecrire_script(effectifs: dict, cle: str, maintenant: dt.datetime, agenda: str,
                   sections: list[tuple[str, str]], remarques: list[str],
                   rubriques: list[tuple[str, str]] | None = None, collectes: dict | None = None) -> dict:
@@ -1706,6 +1721,7 @@ def ecrire_script(effectifs: dict, cle: str, maintenant: dt.datetime, agenda: st
     mots = sum(len(r["texte"].split()) for r in script["repliques"])
     minutes = minutes_visees(effectifs, collectes)
     vise = round(minutes * effectifs.get("mots_par_minute", 180))
+    script_mots_vises[0] = vise
     if mots < SEUIL_SCRIPT_COURT * vise:     # script trop court (fréquent avec les modèles légers) : on le fait étoffer
         journal(f"Script trop court ({mots} mots pour {vise} visés) : demande d'une version plus longue.")
         try:
@@ -2034,6 +2050,25 @@ class Telegram:
                 raise
             fichiers.pop("thumbnail")          # vignette refusée : l'épisode passe sans
             return self.appeler("sendAudio", donnees, fichiers, delai=180)
+
+
+def rubriques_pour_bot(script: dict, rubriques: list[tuple[str, str]] | None,
+                       sources: list[tuple[str, str, str]]) -> dict[str, dict]:
+    """Ce que chaque rubrique a dit dans l'épisode (texte) et les liens qu'elle a cités : le bot les garde
+    pour le résumé de la rubrique dans l'application. {identifiant: {titre, texte, sources}}."""
+    titres = dict(rubriques or [])
+    morceaux: dict[str, list[str]] = {}
+    for r in script["repliques"]:
+        cle_rubrique = r.get("rubrique")
+        if cle_rubrique in titres:
+            morceaux.setdefault(cle_rubrique, []).append(f"{r['animateur']} : {r['texte']}")
+    resultat = {}
+    for cle_rubrique, lignes in morceaux.items():
+        titre = titres[cle_rubrique]
+        resultat[cle_rubrique] = {
+            "titre": titre, "texte": "\n".join(lignes)[:4000],
+            "sources": [{"titre": t, "url": u} for s, t, u in sources if s == titre][:10]}
+    return resultat
 
 
 def sources_episode(script: dict, articles: list[Article], collectes: dict | None) -> list[tuple[str, str, str]]:
@@ -2437,7 +2472,7 @@ def main(arguments: list[str] | None = None) -> int:
                            help="règles à traiter aussi dans l'épisode, ex. R3,R5")
     analyseur.add_argument("--recherche", default=os.environ.get("RECHERCHE", ""),
                            help="résultats de recherche pour ces règles, ex. R5,R6")
-    analyseur.add_argument("--format", default=os.environ.get("FORMAT", "") or "ecrit", choices=("ecrit", "audio"),
+    analyseur.add_argument("--format", default=os.environ.get("FORMAT", "") or "ecrit", choices=("ecrit", "audio", "resume"),
                            help="résultats écrits (photos, lieux, sondage) ou mini-podcast")
     analyseur.add_argument("--echantillons", default=os.environ.get("ECHANTILLONS", ""),
                            help="extraits audio de ces voix, ex. Aoede,Kore")
@@ -2536,6 +2571,9 @@ def main(arguments: list[str] | None = None) -> int:
             if options.echantillons:
                 return recherche.echantillons(options.echantillons, effectifs, cle, telegram, conversation, bot,
                                               options.sans_envoi, discret=bool((export or {}).get("app")))
+            if options.format == "resume":
+                return recherche.resume_rubrique(options.recherche.strip(), effectifs, cle, maintenant, telegram,
+                                                 conversation, bot)
             return recherche.lancer(identifiants_regles(options.recherche), options.format, effectifs, cle,
                                     maintenant, telegram, conversation, bot, export or {}, options.sans_envoi)
 
@@ -2644,6 +2682,8 @@ def main(arguments: list[str] | None = None) -> int:
                         for s, t, u in sources_episode(script, contenu.articles, contenu.collectes)][:30],
             "pochette_id": (((envoi or {}).get("audio") or {}).get("thumbnail") or {}).get("file_id"),
             "audio": audio_bot, "pochette": pochette_bot,
+            "rubriques": rubriques_pour_bot(script, contenu.rubriques, sources_episode(
+                script, contenu.articles, contenu.collectes)),
             "ref": int(maintenant.strftime("%H%M%S")),   # distingue les épisodes du jour, avec ou sans Telegram
         }
         if bot.evenement(evenement):
@@ -2673,6 +2713,14 @@ def main(arguments: list[str] | None = None) -> int:
             nouveau = mesure if not isinstance(ancien, (int, float)) else (ancien + mesure) / 2
             debits[effectifs["vitesse_parole"]] = round(max(100, min(300, nouveau)))
             journal(f"Débit mesuré : {mesure:.0f} mots/min (vitesse {effectifs['vitesse_parole']}).")
+        if script_mots_vises[0] >= 100 and mots_dits >= 50:
+            # Régulation : on a demandé vise / remplissage mots et obtenu mots_dits ; si l'on est en deçà de
+            # vise, le remplissage baisse (donc on demande plus la prochaine fois), au-delà il remonte vers 1.
+            demandes = script_mots_vises[0]
+            taux = max(REMPLISSAGE_MIN, min(1.0, effectifs.get("remplissage", 1.0) * mots_dits / demandes))
+            ancien_taux = memoire.get("remplissage")
+            memoire["remplissage"] = round(taux if not isinstance(ancien_taux, (int, float)) else (ancien_taux + taux) / 2, 3)
+            journal(f"Remplissage : {mots_dits} mots écrits pour {demandes:.0f} visés (réglage {taux:.0%}).")
         sauver_memoire(chemin_memoire, memoire)
         return 0
 

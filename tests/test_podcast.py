@@ -61,6 +61,14 @@ def memoire():
     return json.loads(MEMOIRE.read_text(encoding="utf-8"))
 
 
+def oublier_remplissage():
+    """Le faux Gemini écrit toujours très court : le podcast apprend à demander plus. Pour les contrôles
+    de longueur exacte, on repart d'une mémoire sans cette correction."""
+    m = memoire()
+    m["remplissage"] = None
+    MEMOIRE.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
+
+
 # ───────────────────────── 1. créneau horaire ─────────────────────────
 print("1. Créneau horaire (été / hiver)")
 cas = [
@@ -640,6 +648,7 @@ confirmations = [t[1].get("offset") for t in appels_telegram() if t[0] == "getUp
 # 5c. Épisode du lendemain : préférences appliquées, agenda vide → prochain événement + voyage.
 print("\n5c. Épisode du lendemain (agenda vide, voyage à venir)")
 appels.clear()
+oublier_remplissage()
 a_la_date(2026, 10, 13)
 scenario.update({"agenda": ICS_VIDE, "quota_premier_modele_voix": False, "refuser_mode": False,
                  "refuser_style": True, "deplacements": [{
@@ -708,6 +717,7 @@ verifier(code == 0 and mem["preferences"]["duree_minutes"] == 7.0 and mem["teleg
 # 5e. Audio WAV et audio tronqué.
 print("\n5e. Audio WAV et audio tronqué")
 appels.clear()
+oublier_remplissage()
 scenario.update({"wav": True, "tronquer_une_fois": True})
 a_la_date(2026, 10, 14)
 code = podcast.main([])
@@ -718,11 +728,22 @@ verifier("mode" in voix[0]["generation_config"]["speech_config"], "option conver
 verifier([t[0] for t in appels_telegram()] == ["getUpdates", "sendAudio"], "avec TELEGRAM_CHAT_ID : lecture puis envoi")
 depots = [a for a in appels if a[0] == "PUT"]
 evenements_bot = [a[2] for a in appels if a[0] == "POST" and a[1].endswith("/api/evenement")]
+episodes_bot = [e for e in evenements_bot if e.get("type") == "episode"]
+verifier(episodes_bot and episodes_bot[-1].get("rubriques") and all(r["texte"] and r["titre"] for r in episodes_bot[-1]["rubriques"].values()),
+         "l'événement de l'épisode porte le texte de chaque rubrique (pour son résumé dans l'application)")
 verifier(len(depots) == 1 and depots[0][2].endswith(".mp3") and evenements_bot and evenements_bot[-1]["audio"] is None,
          "bot sans stockage (ancienne version) : un seul essai, l'épisode part quand même")
 debit = memoire()["debit_mots_minute"]["lente"]
 verifier(f"entre {7 * debit} et" in appels_gemini("script")[0]["system_instruction"],
          f"durée de 7 minutes appliquée, au débit mesuré pour « lente » ({debit} mots/min)")
+# Gemini a écrit court (script de test de ~95 mots) : le podcast s'en souvient et demande plus la fois suivante.
+rempl = memoire()["remplissage"]
+verifier(isinstance(rempl, float) and 0.5 <= rempl < 0.9,
+         f"longueur : Gemini a écrit court, le réglage de remplissage baisse ({rempl})")
+mots_avant = 7 * debit
+verifier(round(mots_avant / max(0.5, rempl)) > mots_avant, "longueur : la consigne suivante demandera plus de mots que la durée choisie")
+verifier(podcast._remplissage({"remplissage": 0.1}) == 0.5 and podcast._remplissage({}) == 1.0 and podcast._remplissage({"remplissage": 2}) == 1.0,
+         "remplissage : borné entre 0,5 et 1, 1 sans mesure")
 
 # 5f. Essai local sans envoi : la mémoire n'est pas modifiée.
 print("\n5f. Essai sans envoi")

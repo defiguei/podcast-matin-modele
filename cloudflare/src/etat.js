@@ -24,7 +24,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-23.1";
+export const VERSION = "2026-10-23.2";
 const MAX_REFAITS = 6;
 const LONGUEURS_VALIDES = ["phrase", "courte", "developpee"];
 const MAX_RECHERCHES = 15;
@@ -35,9 +35,9 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 // Message envoyé après une mise à jour : les nouveautés de cette version…
 const NOUVEAUTES = `✅ <b>Ton podcast est à jour</b> (version ${VERSION}).
 
-• Fête du prénom : le prénom du jour vient maintenant du calendrier traditionnel (un prénom par jour), et le calendrier des saints est corrigé : mai et juin y étaient inversés.
-• Journées et fêtes du jour : plus d'appel à Wikipédia. Les journées de l'ONU, les fêtes nationales de presque tous les pays, les usages de Suisse, de France et de Belgique et les dates mobiles (fête des mères, heure d'hiver…) sont intégrés au podcast.
-• Une date contestée (Kosovo, Taïwan…) ou un sujet douloureux est annoncé avec sa réserve ; une journée non officielle est présentée comme telle.`;
+• Pays : près de 200 pays au choix (« Pas renseigné » possible), qui règlent l'heure, la devise, les jours fériés et les médias. Le réglage des jours fériés a disparu du planning (en Suisse, le canton se choisit sous le pays).
+• Durée : un curseur et des raccourcis (3, 5, 8, 10, 12 min) ; si Gemini écrit plus court que demandé, le podcast s'en souvient et demande davantage la fois suivante.
+• Chaque rubrique garde ce qu'elle a raconté : liste des sujets, podcast de synthèse, textes et sources, dans sa fiche. Les agendas venus de GitHub se retirent aussi (et se remettent). La fête du prénom ne cite plus les saints.`;
 
 // … ou, pour qui arrive d'avant l'application (installation neuve, ancienne version
 // réglée par la conversation), sa présentation.
@@ -142,6 +142,7 @@ export class Etat extends DurableObject {
         return Response.json(await this.enFile(() => this.actionApp(demande)));
       }
       if (url.pathname === "/api/config") return Response.json(await this.enFile(() => this.exporterConfig()));
+      if (url.pathname === "/api/rubrique") return Response.json({ entrees: await this.historiqueRubrique(url.searchParams.get("id") || "") });
       if (url.pathname === "/flux") return await this.enFile(() => this.servirFlux(url.searchParams));
       if (url.pathname === "/api/maj") return await this.enFile(() => this.jetonPourMaj());
       if (url.pathname === "/api/code-connexion") return Response.json(await this.enFile(() => this.codeConnexion(url.searchParams.get("si") === "premiere")));
@@ -250,6 +251,24 @@ export class Etat extends DurableObject {
       await this.ctx.storage.put("etat", etat);
     }
     return etat;
+  }
+
+  // Mémoire des rubriques : ce que chacune a dit dans les derniers épisodes (texte et liens), pour son résumé.
+  async retenirRubriques(episode, rubriques) {
+    if (!rubriques || typeof rubriques !== "object") return;
+    for (const [id, r] of Object.entries(rubriques).slice(0, 40)) {
+      if (!/^[A-Za-z0-9_]{1,24}$/.test(id) || !r || typeof r.texte !== "string") continue;
+      const cle = `rub:${id}`;
+      const gardees = ((await this.ctx.storage.get(cle)) || []).filter((x) => x.episode !== cleEpisode(episode));
+      gardees.push({ date: episode.date, episode: cleEpisode(episode), titre: String(r.titre || "").slice(0, 80),
+                     texte: r.texte.slice(0, 4000), sources: nettoyerSources((r.sources || []).map((s) => ({ section: r.titre, ...s }))).slice(0, 10) });
+      await this.ctx.storage.put(cle, gardees.slice(-30));
+    }
+  }
+
+  async historiqueRubrique(id) {
+    if (!/^[A-Za-z0-9_]{1,24}$/.test(id)) return [];
+    return (await this.ctx.storage.get(`rub:${id}`)) || [];
   }
 
   async texteEpisode(episode) {
@@ -1715,6 +1734,7 @@ export class Etat extends DurableObject {
   async fichierAudio(cle) {
     const etat = await this.lireEtat();
     if (cle === "idees:dernier") return { fichier: etat.derniers_resultats?.audio || null, file_id: null };
+    if (cle.startsWith("resume:")) return { fichier: etat.resumes?.[cle.slice(7)]?.audio || null, file_id: null };
     if (cle.startsWith("voix:")) {
       const voix = cle.slice(5);
       return { fichier: etat.echantillons_fichiers?.[voix] || null, file_id: etat.echantillons?.[voix] || null };
@@ -2192,10 +2212,26 @@ export class Etat extends DurableObject {
           etat.bienvenue_faite = ctx.maintenantIso;
           await this.ecrireEtat(etat);
           return reponse();
+        case "agenda_remettre": {
+          if (!(config.agenda.retires || []).includes(demande.id)) return refus("Cet agenda n'est pas dans les retirés.");
+          config.agenda.retires = config.agenda.retires.filter((x) => x !== demande.id);
+          config.agenda.exclus = config.agenda.exclus.filter((x) => x !== demande.id);
+          libelle = `Agenda « ${etat.agendas?.find((x) => x.id === demande.id)?.nom || demande.id} » remis`;
+          break;
+        }
         case "agenda_retirer": {
           const avant = this.cles.agendas || [];
           const agendas = avant.filter((a) => a.id !== demande.id);
-          if (agendas.length === avant.length) return refus("Cet agenda n'a pas été ajouté dans l'application.");
+          if (agendas.length === avant.length) {
+            // Agenda du secret GitHub (CALENDAR_ICS_URL) : le bot ne peut pas modifier ce secret, il cesse de le lire
+            // et le range dans les « retirés », d'où on peut le remettre.
+            const connu = (etat.agendas || []).find((x) => x.id === demande.id);
+            if (!connu) return refus("Agenda inconnu : relis la liste.");
+            config.agenda.retires = [...new Set([...(config.agenda.retires || []), demande.id])];
+            config.agenda.exclus = [...new Set([...config.agenda.exclus, demande.id])];
+            libelle = `Agenda « ${connu.nom} » retiré (il reste dans le secret GitHub, mais n'est plus lu)`;
+            break;
+          }
           await this.ecrireCles({ ...this.cles, agendas });
           etat.agendas = (etat.agendas || []).filter((a) => a.id !== demande.id);
           etat.agenda_apercu = (etat.agenda_apercu || []).filter((x) => x.agenda !== demande.id);
@@ -2260,6 +2296,27 @@ export class Etat extends DurableObject {
           const liste = (await this.ctx.storage.get(`archive:${mois}`)) || [];
           const liens = await this.liensAudio(etat, liste);
           return reponse({ mois_episodes: { mois, episodes: liste.slice().reverse().map((ep) => ({ ...episodeApp(ep, liens), archive: true })) } });
+        }
+        case "rubrique_resume": {
+          const id = String(demande.id || "");
+          const entrees = await this.historiqueRubrique(id);
+          const secret = await secretPartage(this.env);
+          const resume = etat.resumes?.[id];
+          const lien = resume?.audio ? await lienAudio(secret, `resume:${id}`, Math.max(this.maintenant(), Date.now())) : null;
+          return reponse({ rubrique: {
+            id, entrees: entrees.slice().reverse().map((x) => ({ date: x.date, titre: x.titre, texte: x.texte, sources: x.sources || [] })),
+            resume: lien ? { cle: `resume:${id}`, titre: resume.titre || "Synthèse de la rubrique", audio: lien, duree: resume.duree,
+                             date: String(resume.quand || "").slice(0, 10), texte: "", chapitres: [], sujets: [], coches: [], sources: [], image: null } : null } });
+        }
+        case "resume_podcast": {
+          const id = String(demande.id || "");
+          if (!(await this.historiqueRubrique(id)).length) return refus("Cette rubrique n'a encore rien gardé : elle doit d'abord passer dans un épisode.");
+          const compte = etat.refaits?.date === ctx.aujourdHui ? etat.refaits.nombre : 0;
+          if (compte >= MAX_REFAITS) return refus("Plus de mini-podcast aujourd'hui (quota gratuit de la voix). Réessaie demain.");
+          try { await this.gh.lancer("recherche.yml", { regles: id, format: "resume" }); } catch (erreur) { return refus(erreur.message); }
+          etat.refaits = { date: ctx.aujourdHui, nombre: compte + 1 };
+          await this.ecrireEtat(etat);
+          return reponse({ message: "Je prépare la synthèse : elle arrive d'ici trois ou quatre minutes." });
         }
         case "texte": {
           const episode = await this.trouverEpisode(etat, String(demande.cle || ""));
@@ -2455,6 +2512,7 @@ export class Etat extends DurableObject {
         ref: Number.isInteger(Number(ev.ref)) && Number(ev.ref) > 0 && Number(ev.ref) < 240000 ? Number(ev.ref) : null,
       };
       if (ev.transcription) await this.ctx.storage.put(`texte:${cleEpisode(episode)}`, String(ev.transcription).slice(0, 20000));
+      await this.retenirRubriques(episode, ev.rubriques);
       const meme = (x) => x.date === episode.date && (x.message_id || x.ref || null) === (episode.message_id || episode.ref || null);
       const tous = [...etat.episodes.filter((x) => !meme(x)), episode];
       etat.episodes = tous.slice(-MAX_EPISODES);
@@ -2540,6 +2598,15 @@ export class Etat extends DurableObject {
         etat.temps_echantillons = { ...(etat.temps_echantillons || {}), [ev.voix]: [debut, fin] };
       }
       await this.ecrireEtat(etat);
+      return { ok: true };
+    }
+    if (ev.type === "resume") {
+      const id = String(ev.rubrique || "");
+      if (!/^[A-Za-z0-9_]{1,24}$/.test(id)) return { ok: false, erreur: "rubrique inconnue" };
+      etat.resumes = { ...(etat.resumes || {}), [id]: { audio: fichierRecu(ev.audio, ".mp3"), titre: String(ev.titre || "").slice(0, 120),
+                                                         duree: Number(ev.duree) || null, quand: ctx.maintenantIso } };
+      await this.ecrireEtat(etat);
+      await this.notifier(etat, { titre: "🎧 Ta synthèse est prête", corps: String(ev.titre || "").slice(0, 200), url: `/app?rubrique=${encodeURIComponent(id)}`, tag: `resume-${id}` });
       return { ok: true };
     }
     if (ev.type === "recherche") {

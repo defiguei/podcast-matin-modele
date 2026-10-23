@@ -1,59 +1,4117 @@
 {
-  "CH": {
-    "nom": "Suisse",
-    "fuseau": "Europe/Zurich",
-    "devise": "CHF",
-    "feries": "CH-VD",
-    "actus_langue": "fr",
-    "actus_pays": "CH",
-    "accept_language": "fr-CH,fr;q=0.9",
-    "ou": "en Suisse romande",
-    "habitant": "un habitant de Suisse romande",
-    "d_abord": "la Suisse et la Suisse romande",
-    "exemple_ville": "Lausanne",
-    "exemple_rando": "randonnée facile Jura vaudois",
-    "flux": [
-      { "nom": "Google Actualités – Suisse", "url": "https://news.google.com/rss?hl=fr&gl=CH&ceid=CH:fr" },
-      { "nom": "RTS Info", "url": "https://www.rts.ch/info/?format=rss/news" },
-      { "nom": "Le Monde", "url": "https://www.lemonde.fr/rss/une.xml" }
-    ]
-  },
-  "FR": {
-    "nom": "France",
-    "fuseau": "Europe/Paris",
-    "devise": "EUR",
-    "feries": "FR",
-    "actus_langue": "fr",
-    "actus_pays": "FR",
-    "accept_language": "fr-FR,fr;q=0.9",
-    "ou": "en France",
-    "habitant": "un habitant de France",
-    "d_abord": "la France",
-    "exemple_ville": "Lyon",
-    "exemple_rando": "randonnée facile Vercors",
-    "flux": [
-      { "nom": "Google Actualités – France", "url": "https://news.google.com/rss?hl=fr&gl=FR&ceid=FR:fr" },
-      { "nom": "franceinfo", "url": "https://www.francetvinfo.fr/titres.rss" },
-      { "nom": "Le Monde", "url": "https://www.lemonde.fr/rss/une.xml" }
-    ]
-  },
-  "BE": {
-    "nom": "Belgique",
-    "fuseau": "Europe/Brussels",
-    "devise": "EUR",
-    "feries": "BE",
-    "actus_langue": "fr",
-    "actus_pays": "BE",
-    "accept_language": "fr-BE,fr;q=0.9",
-    "ou": "en Belgique francophone",
-    "habitant": "un habitant de Belgique francophone",
-    "d_abord": "la Belgique",
-    "exemple_ville": "Namur",
-    "exemple_rando": "randonnée facile Ardennes",
-    "flux": [
-      { "nom": "Google Actualités – Belgique", "url": "https://news.google.com/rss?hl=fr&gl=BE&ceid=BE:fr" },
-      { "nom": "RTBF Info", "url": "https://rss.rtbf.be/article/rss/highlight_rtbf_info.xml?source=internal" },
-      { "nom": "Le Monde", "url": "https://www.lemonde.fr/rss/une.xml" }
-    ]
-  }
+ "CH": {
+  "nom": "Suisse",
+  "fuseau": "Europe/Zurich",
+  "devise": "CHF",
+  "feries": "CH-VD",
+  "actus_langue": "fr",
+  "actus_pays": "CH",
+  "accept_language": "fr-CH,fr;q=0.9",
+  "ou": "en Suisse romande",
+  "habitant": "un habitant de Suisse romande",
+  "d_abord": "la Suisse et la Suisse romande",
+  "exemple_ville": "Lausanne",
+  "exemple_rando": "randonnée facile Jura vaudois",
+  "flux": [
+   {
+    "nom": "Google Actualités – Suisse",
+    "url": "https://news.google.com/rss?hl=fr&gl=CH&ceid=CH:fr"
+   },
+   {
+    "nom": "RTS Info",
+    "url": "https://www.rts.ch/info/?format=rss/news"
+   },
+   {
+    "nom": "Le Monde",
+    "url": "https://www.lemonde.fr/rss/une.xml"
+   }
+  ]
+ },
+ "FR": {
+  "nom": "France",
+  "fuseau": "Europe/Paris",
+  "devise": "EUR",
+  "feries": "FR",
+  "actus_langue": "fr",
+  "actus_pays": "FR",
+  "accept_language": "fr-FR,fr;q=0.9",
+  "ou": "en France",
+  "habitant": "un habitant de France",
+  "d_abord": "la France",
+  "exemple_ville": "Lyon",
+  "exemple_rando": "randonnée facile Vercors",
+  "flux": [
+   {
+    "nom": "Google Actualités – France",
+    "url": "https://news.google.com/rss?hl=fr&gl=FR&ceid=FR:fr"
+   },
+   {
+    "nom": "franceinfo",
+    "url": "https://www.francetvinfo.fr/titres.rss"
+   },
+   {
+    "nom": "Le Monde",
+    "url": "https://www.lemonde.fr/rss/une.xml"
+   }
+  ]
+ },
+ "BE": {
+  "nom": "Belgique",
+  "fuseau": "Europe/Brussels",
+  "devise": "EUR",
+  "feries": "BE",
+  "actus_langue": "fr",
+  "actus_pays": "BE",
+  "accept_language": "fr-BE,fr;q=0.9",
+  "ou": "en Belgique francophone",
+  "habitant": "un habitant de Belgique francophone",
+  "d_abord": "la Belgique",
+  "exemple_ville": "Namur",
+  "exemple_rando": "randonnée facile Ardennes",
+  "flux": [
+   {
+    "nom": "Google Actualités – Belgique",
+    "url": "https://news.google.com/rss?hl=fr&gl=BE&ceid=BE:fr"
+   },
+   {
+    "nom": "RTBF Info",
+    "url": "https://rss.rtbf.be/article/rss/highlight_rtbf_info.xml?source=internal"
+   },
+   {
+    "nom": "Le Monde",
+    "url": "https://www.lemonde.fr/rss/une.xml"
+   }
+  ]
+ },
+ "AF": {
+  "auto": true,
+  "nom": "Afghanistan",
+  "fuseau": "Asia/Kabul",
+  "devise": "AFN",
+  "feries": "AF",
+  "actus_langue": "fa",
+  "actus_pays": "AF",
+  "accept_language": "fa-AF,fa;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Afghanistan",
+  "habitant": "un habitant du pays suivant : Afghanistan",
+  "d_abord": "le pays « Afghanistan »",
+  "exemple_ville": "Kabul",
+  "exemple_rando": "randonnée facile près de Kabul",
+  "flux": [
+   {
+    "nom": "Google Actualités – Afghanistan",
+    "url": "https://news.google.com/rss?hl=fa&gl=AF&ceid=AF:fa"
+   }
+  ]
+ },
+ "ZA": {
+  "auto": true,
+  "nom": "Afrique du Sud",
+  "fuseau": "Africa/Johannesburg",
+  "devise": "ZAR",
+  "feries": "ZA",
+  "actus_langue": "en",
+  "actus_pays": "ZA",
+  "accept_language": "en-ZA,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Afrique du Sud",
+  "habitant": "un habitant du pays suivant : Afrique du Sud",
+  "d_abord": "le pays « Afrique du Sud »",
+  "exemple_ville": "Johannesburg",
+  "exemple_rando": "randonnée facile près de Johannesburg",
+  "flux": [
+   {
+    "nom": "Google Actualités – Afrique du Sud",
+    "url": "https://news.google.com/rss?hl=en&gl=ZA&ceid=ZA:en"
+   }
+  ]
+ },
+ "AL": {
+  "auto": true,
+  "nom": "Albanie",
+  "fuseau": "Europe/Tirane",
+  "devise": "ALL",
+  "feries": "AL",
+  "actus_langue": "sq",
+  "actus_pays": "AL",
+  "accept_language": "sq-AL,sq;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Albanie",
+  "habitant": "un habitant du pays suivant : Albanie",
+  "d_abord": "le pays « Albanie »",
+  "exemple_ville": "Tirane",
+  "exemple_rando": "randonnée facile près de Tirane",
+  "flux": [
+   {
+    "nom": "Google Actualités – Albanie",
+    "url": "https://news.google.com/rss?hl=sq&gl=AL&ceid=AL:sq"
+   }
+  ]
+ },
+ "DZ": {
+  "auto": true,
+  "nom": "Algérie",
+  "fuseau": "Africa/Algiers",
+  "devise": "DZD",
+  "feries": "DZ",
+  "actus_langue": "ar",
+  "actus_pays": "DZ",
+  "accept_language": "ar-DZ,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Algérie",
+  "habitant": "un habitant du pays suivant : Algérie",
+  "d_abord": "le pays « Algérie »",
+  "exemple_ville": "Algiers",
+  "exemple_rando": "randonnée facile près de Algiers",
+  "flux": [
+   {
+    "nom": "Google Actualités – Algérie",
+    "url": "https://news.google.com/rss?hl=ar&gl=DZ&ceid=DZ:ar"
+   }
+  ]
+ },
+ "DE": {
+  "auto": true,
+  "nom": "Allemagne",
+  "fuseau": "Europe/Berlin",
+  "devise": "EUR",
+  "feries": "DE",
+  "actus_langue": "de",
+  "actus_pays": "DE",
+  "accept_language": "de-DE,de;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Allemagne",
+  "habitant": "un habitant du pays suivant : Allemagne",
+  "d_abord": "le pays « Allemagne »",
+  "exemple_ville": "Berlin",
+  "exemple_rando": "randonnée facile près de Berlin",
+  "flux": [
+   {
+    "nom": "Google Actualités – Allemagne",
+    "url": "https://news.google.com/rss?hl=de&gl=DE&ceid=DE:de"
+   }
+  ]
+ },
+ "AD": {
+  "auto": true,
+  "nom": "Andorre",
+  "fuseau": "Europe/Andorra",
+  "devise": "EUR",
+  "feries": "AD",
+  "actus_langue": "ca",
+  "actus_pays": "AD",
+  "accept_language": "ca-AD,ca;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Andorre",
+  "habitant": "un habitant du pays suivant : Andorre",
+  "d_abord": "le pays « Andorre »",
+  "exemple_ville": "Andorra",
+  "exemple_rando": "randonnée facile près de Andorra",
+  "flux": [
+   {
+    "nom": "Google Actualités – Andorre",
+    "url": "https://news.google.com/rss?hl=ca&gl=AD&ceid=AD:ca"
+   }
+  ]
+ },
+ "AO": {
+  "auto": true,
+  "nom": "Angola",
+  "fuseau": "Africa/Luanda",
+  "devise": "AOA",
+  "feries": "AO",
+  "actus_langue": "pt",
+  "actus_pays": "AO",
+  "accept_language": "pt-AO,pt;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Angola",
+  "habitant": "un habitant du pays suivant : Angola",
+  "d_abord": "le pays « Angola »",
+  "exemple_ville": "Luanda",
+  "exemple_rando": "randonnée facile près de Luanda",
+  "flux": [
+   {
+    "nom": "Google Actualités – Angola",
+    "url": "https://news.google.com/rss?hl=pt&gl=AO&ceid=AO:pt"
+   }
+  ]
+ },
+ "AG": {
+  "auto": true,
+  "nom": "Antigua-et-Barbuda",
+  "fuseau": "America/Antigua",
+  "devise": "XCD",
+  "feries": "AG",
+  "actus_langue": "en",
+  "actus_pays": "AG",
+  "accept_language": "en-AG,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Antigua-et-Barbuda",
+  "habitant": "un habitant du pays suivant : Antigua-et-Barbuda",
+  "d_abord": "le pays « Antigua-et-Barbuda »",
+  "exemple_ville": "Antigua",
+  "exemple_rando": "randonnée facile près de Antigua",
+  "flux": [
+   {
+    "nom": "Google Actualités – Antigua-et-Barbuda",
+    "url": "https://news.google.com/rss?hl=en&gl=AG&ceid=AG:en"
+   }
+  ]
+ },
+ "SA": {
+  "auto": true,
+  "nom": "Arabie saoudite",
+  "fuseau": "Asia/Riyadh",
+  "devise": "SAR",
+  "feries": "SA",
+  "actus_langue": "ar",
+  "actus_pays": "SA",
+  "accept_language": "ar-SA,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Arabie saoudite",
+  "habitant": "un habitant du pays suivant : Arabie saoudite",
+  "d_abord": "le pays « Arabie saoudite »",
+  "exemple_ville": "Riyadh",
+  "exemple_rando": "randonnée facile près de Riyadh",
+  "flux": [
+   {
+    "nom": "Google Actualités – Arabie saoudite",
+    "url": "https://news.google.com/rss?hl=ar&gl=SA&ceid=SA:ar"
+   }
+  ]
+ },
+ "AR": {
+  "auto": true,
+  "nom": "Argentine",
+  "fuseau": "America/Argentina/Buenos_Aires",
+  "devise": "ARS",
+  "feries": "AR",
+  "actus_langue": "es",
+  "actus_pays": "AR",
+  "accept_language": "es-AR,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Argentine",
+  "habitant": "un habitant du pays suivant : Argentine",
+  "d_abord": "le pays « Argentine »",
+  "exemple_ville": "Buenos Aires",
+  "exemple_rando": "randonnée facile près de Buenos Aires",
+  "flux": [
+   {
+    "nom": "Google Actualités – Argentine",
+    "url": "https://news.google.com/rss?hl=es&gl=AR&ceid=AR:es"
+   }
+  ]
+ },
+ "AM": {
+  "auto": true,
+  "nom": "Arménie",
+  "fuseau": "Asia/Yerevan",
+  "devise": "AMD",
+  "feries": "AM",
+  "actus_langue": "hy",
+  "actus_pays": "AM",
+  "accept_language": "hy-AM,hy;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Arménie",
+  "habitant": "un habitant du pays suivant : Arménie",
+  "d_abord": "le pays « Arménie »",
+  "exemple_ville": "Yerevan",
+  "exemple_rando": "randonnée facile près de Yerevan",
+  "flux": [
+   {
+    "nom": "Google Actualités – Arménie",
+    "url": "https://news.google.com/rss?hl=hy&gl=AM&ceid=AM:hy"
+   }
+  ]
+ },
+ "AU": {
+  "auto": true,
+  "nom": "Australie",
+  "fuseau": "Australia/Sydney",
+  "devise": "AUD",
+  "feries": "AU",
+  "actus_langue": "en",
+  "actus_pays": "AU",
+  "accept_language": "en-AU,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Australie",
+  "habitant": "un habitant du pays suivant : Australie",
+  "d_abord": "le pays « Australie »",
+  "exemple_ville": "Sydney",
+  "exemple_rando": "randonnée facile près de Sydney",
+  "flux": [
+   {
+    "nom": "Google Actualités – Australie",
+    "url": "https://news.google.com/rss?hl=en&gl=AU&ceid=AU:en"
+   }
+  ]
+ },
+ "AT": {
+  "auto": true,
+  "nom": "Autriche",
+  "fuseau": "Europe/Vienna",
+  "devise": "EUR",
+  "feries": "AT",
+  "actus_langue": "de",
+  "actus_pays": "AT",
+  "accept_language": "de-AT,de;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Autriche",
+  "habitant": "un habitant du pays suivant : Autriche",
+  "d_abord": "le pays « Autriche »",
+  "exemple_ville": "Vienna",
+  "exemple_rando": "randonnée facile près de Vienna",
+  "flux": [
+   {
+    "nom": "Google Actualités – Autriche",
+    "url": "https://news.google.com/rss?hl=de&gl=AT&ceid=AT:de"
+   }
+  ]
+ },
+ "AZ": {
+  "auto": true,
+  "nom": "Azerbaïdjan",
+  "fuseau": "Asia/Baku",
+  "devise": "AZN",
+  "feries": "AZ",
+  "actus_langue": "az",
+  "actus_pays": "AZ",
+  "accept_language": "az-AZ,az;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Azerbaïdjan",
+  "habitant": "un habitant du pays suivant : Azerbaïdjan",
+  "d_abord": "le pays « Azerbaïdjan »",
+  "exemple_ville": "Baku",
+  "exemple_rando": "randonnée facile près de Baku",
+  "flux": [
+   {
+    "nom": "Google Actualités – Azerbaïdjan",
+    "url": "https://news.google.com/rss?hl=az&gl=AZ&ceid=AZ:az"
+   }
+  ]
+ },
+ "BS": {
+  "auto": true,
+  "nom": "Bahamas",
+  "fuseau": "America/Nassau",
+  "devise": "BSD",
+  "feries": "BS",
+  "actus_langue": "en",
+  "actus_pays": "BS",
+  "accept_language": "en-BS,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Bahamas",
+  "habitant": "un habitant du pays suivant : Bahamas",
+  "d_abord": "le pays « Bahamas »",
+  "exemple_ville": "Nassau",
+  "exemple_rando": "randonnée facile près de Nassau",
+  "flux": [
+   {
+    "nom": "Google Actualités – Bahamas",
+    "url": "https://news.google.com/rss?hl=en&gl=BS&ceid=BS:en"
+   }
+  ]
+ },
+ "BH": {
+  "auto": true,
+  "nom": "Bahreïn",
+  "fuseau": "Asia/Bahrain",
+  "devise": "BHD",
+  "feries": "BH",
+  "actus_langue": "ar",
+  "actus_pays": "BH",
+  "accept_language": "ar-BH,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Bahreïn",
+  "habitant": "un habitant du pays suivant : Bahreïn",
+  "d_abord": "le pays « Bahreïn »",
+  "exemple_ville": "Bahrain",
+  "exemple_rando": "randonnée facile près de Bahrain",
+  "flux": [
+   {
+    "nom": "Google Actualités – Bahreïn",
+    "url": "https://news.google.com/rss?hl=ar&gl=BH&ceid=BH:ar"
+   }
+  ]
+ },
+ "BD": {
+  "auto": true,
+  "nom": "Bangladesh",
+  "fuseau": "Asia/Dhaka",
+  "devise": "BDT",
+  "feries": "BD",
+  "actus_langue": "bn",
+  "actus_pays": "BD",
+  "accept_language": "bn-BD,bn;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Bangladesh",
+  "habitant": "un habitant du pays suivant : Bangladesh",
+  "d_abord": "le pays « Bangladesh »",
+  "exemple_ville": "Dhaka",
+  "exemple_rando": "randonnée facile près de Dhaka",
+  "flux": [
+   {
+    "nom": "Google Actualités – Bangladesh",
+    "url": "https://news.google.com/rss?hl=bn&gl=BD&ceid=BD:bn"
+   }
+  ]
+ },
+ "BB": {
+  "auto": true,
+  "nom": "Barbade",
+  "fuseau": "America/Barbados",
+  "devise": "BBD",
+  "feries": "BB",
+  "actus_langue": "en",
+  "actus_pays": "BB",
+  "accept_language": "en-BB,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Barbade",
+  "habitant": "un habitant du pays suivant : Barbade",
+  "d_abord": "le pays « Barbade »",
+  "exemple_ville": "Barbados",
+  "exemple_rando": "randonnée facile près de Barbados",
+  "flux": [
+   {
+    "nom": "Google Actualités – Barbade",
+    "url": "https://news.google.com/rss?hl=en&gl=BB&ceid=BB:en"
+   }
+  ]
+ },
+ "BZ": {
+  "auto": true,
+  "nom": "Belize",
+  "fuseau": "America/Belize",
+  "devise": "BZD",
+  "feries": "BZ",
+  "actus_langue": "en",
+  "actus_pays": "BZ",
+  "accept_language": "en-BZ,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Belize",
+  "habitant": "un habitant du pays suivant : Belize",
+  "d_abord": "le pays « Belize »",
+  "exemple_ville": "Belize",
+  "exemple_rando": "randonnée facile près de Belize",
+  "flux": [
+   {
+    "nom": "Google Actualités – Belize",
+    "url": "https://news.google.com/rss?hl=en&gl=BZ&ceid=BZ:en"
+   }
+  ]
+ },
+ "BT": {
+  "auto": true,
+  "nom": "Bhoutan",
+  "fuseau": "Asia/Thimphu",
+  "devise": "INR",
+  "feries": "BT",
+  "actus_langue": "dz",
+  "actus_pays": "BT",
+  "accept_language": "dz-BT,dz;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Bhoutan",
+  "habitant": "un habitant du pays suivant : Bhoutan",
+  "d_abord": "le pays « Bhoutan »",
+  "exemple_ville": "Thimphu",
+  "exemple_rando": "randonnée facile près de Thimphu",
+  "flux": [
+   {
+    "nom": "Google Actualités – Bhoutan",
+    "url": "https://news.google.com/rss?hl=dz&gl=BT&ceid=BT:dz"
+   }
+  ]
+ },
+ "BY": {
+  "auto": true,
+  "nom": "Biélorussie",
+  "fuseau": "Europe/Minsk",
+  "devise": "BYN",
+  "feries": "BY",
+  "actus_langue": "be",
+  "actus_pays": "BY",
+  "accept_language": "be-BY,be;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Biélorussie",
+  "habitant": "un habitant du pays suivant : Biélorussie",
+  "d_abord": "le pays « Biélorussie »",
+  "exemple_ville": "Minsk",
+  "exemple_rando": "randonnée facile près de Minsk",
+  "flux": [
+   {
+    "nom": "Google Actualités – Biélorussie",
+    "url": "https://news.google.com/rss?hl=be&gl=BY&ceid=BY:be"
+   }
+  ]
+ },
+ "BO": {
+  "auto": true,
+  "nom": "Bolivie",
+  "fuseau": "America/La_Paz",
+  "devise": "BOB",
+  "feries": "BO",
+  "actus_langue": "es",
+  "actus_pays": "BO",
+  "accept_language": "es-BO,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Bolivie",
+  "habitant": "un habitant du pays suivant : Bolivie",
+  "d_abord": "le pays « Bolivie »",
+  "exemple_ville": "La Paz",
+  "exemple_rando": "randonnée facile près de La Paz",
+  "flux": [
+   {
+    "nom": "Google Actualités – Bolivie",
+    "url": "https://news.google.com/rss?hl=es&gl=BO&ceid=BO:es"
+   }
+  ]
+ },
+ "BA": {
+  "auto": true,
+  "nom": "Bosnie-Herzégovine",
+  "fuseau": "Europe/Sarajevo",
+  "devise": "BAM",
+  "feries": "BA",
+  "actus_langue": "bs",
+  "actus_pays": "BA",
+  "accept_language": "bs-BA,bs;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Bosnie-Herzégovine",
+  "habitant": "un habitant du pays suivant : Bosnie-Herzégovine",
+  "d_abord": "le pays « Bosnie-Herzégovine »",
+  "exemple_ville": "Sarajevo",
+  "exemple_rando": "randonnée facile près de Sarajevo",
+  "flux": [
+   {
+    "nom": "Google Actualités – Bosnie-Herzégovine",
+    "url": "https://news.google.com/rss?hl=bs&gl=BA&ceid=BA:bs"
+   }
+  ]
+ },
+ "BW": {
+  "auto": true,
+  "nom": "Botswana",
+  "fuseau": "Africa/Gaborone",
+  "devise": "BWP",
+  "feries": "BW",
+  "actus_langue": "en",
+  "actus_pays": "BW",
+  "accept_language": "en-BW,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Botswana",
+  "habitant": "un habitant du pays suivant : Botswana",
+  "d_abord": "le pays « Botswana »",
+  "exemple_ville": "Gaborone",
+  "exemple_rando": "randonnée facile près de Gaborone",
+  "flux": [
+   {
+    "nom": "Google Actualités – Botswana",
+    "url": "https://news.google.com/rss?hl=en&gl=BW&ceid=BW:en"
+   }
+  ]
+ },
+ "BN": {
+  "auto": true,
+  "nom": "Brunei",
+  "fuseau": "Asia/Brunei",
+  "devise": "BND",
+  "feries": "BN",
+  "actus_langue": "ms",
+  "actus_pays": "BN",
+  "accept_language": "ms-BN,ms;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Brunei",
+  "habitant": "un habitant du pays suivant : Brunei",
+  "d_abord": "le pays « Brunei »",
+  "exemple_ville": "Brunei",
+  "exemple_rando": "randonnée facile près de Brunei",
+  "flux": [
+   {
+    "nom": "Google Actualités – Brunei",
+    "url": "https://news.google.com/rss?hl=ms&gl=BN&ceid=BN:ms"
+   }
+  ]
+ },
+ "BR": {
+  "auto": true,
+  "nom": "Brésil",
+  "fuseau": "America/Sao_Paulo",
+  "devise": "BRL",
+  "feries": "BR",
+  "actus_langue": "pt",
+  "actus_pays": "BR",
+  "accept_language": "pt-BR,pt;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Brésil",
+  "habitant": "un habitant du pays suivant : Brésil",
+  "d_abord": "le pays « Brésil »",
+  "exemple_ville": "Sao Paulo",
+  "exemple_rando": "randonnée facile près de Sao Paulo",
+  "flux": [
+   {
+    "nom": "Google Actualités – Brésil",
+    "url": "https://news.google.com/rss?hl=pt&gl=BR&ceid=BR:pt"
+   }
+  ]
+ },
+ "BG": {
+  "auto": true,
+  "nom": "Bulgarie",
+  "fuseau": "Europe/Sofia",
+  "devise": "BGN",
+  "feries": "BG",
+  "actus_langue": "bg",
+  "actus_pays": "BG",
+  "accept_language": "bg-BG,bg;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Bulgarie",
+  "habitant": "un habitant du pays suivant : Bulgarie",
+  "d_abord": "le pays « Bulgarie »",
+  "exemple_ville": "Sofia",
+  "exemple_rando": "randonnée facile près de Sofia",
+  "flux": [
+   {
+    "nom": "Google Actualités – Bulgarie",
+    "url": "https://news.google.com/rss?hl=bg&gl=BG&ceid=BG:bg"
+   }
+  ]
+ },
+ "BF": {
+  "auto": true,
+  "nom": "Burkina Faso",
+  "fuseau": "Africa/Ouagadougou",
+  "devise": "XOF",
+  "feries": "BF",
+  "actus_langue": "fr",
+  "actus_pays": "BF",
+  "accept_language": "fr-BF,fr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Burkina Faso",
+  "habitant": "un habitant du pays suivant : Burkina Faso",
+  "d_abord": "le pays « Burkina Faso »",
+  "exemple_ville": "Ouagadougou",
+  "exemple_rando": "randonnée facile près de Ouagadougou",
+  "flux": [
+   {
+    "nom": "Google Actualités – Burkina Faso",
+    "url": "https://news.google.com/rss?hl=fr&gl=BF&ceid=BF:fr"
+   }
+  ]
+ },
+ "BI": {
+  "auto": true,
+  "nom": "Burundi",
+  "fuseau": "Africa/Bujumbura",
+  "devise": "BIF",
+  "feries": "BI",
+  "actus_langue": "rn",
+  "actus_pays": "BI",
+  "accept_language": "rn-BI,rn;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Burundi",
+  "habitant": "un habitant du pays suivant : Burundi",
+  "d_abord": "le pays « Burundi »",
+  "exemple_ville": "Bujumbura",
+  "exemple_rando": "randonnée facile près de Bujumbura",
+  "flux": [
+   {
+    "nom": "Google Actualités – Burundi",
+    "url": "https://news.google.com/rss?hl=rn&gl=BI&ceid=BI:rn"
+   }
+  ]
+ },
+ "BJ": {
+  "auto": true,
+  "nom": "Bénin",
+  "fuseau": "Africa/Porto-Novo",
+  "devise": "XOF",
+  "feries": "BJ",
+  "actus_langue": "fr",
+  "actus_pays": "BJ",
+  "accept_language": "fr-BJ,fr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Bénin",
+  "habitant": "un habitant du pays suivant : Bénin",
+  "d_abord": "le pays « Bénin »",
+  "exemple_ville": "Porto-Novo",
+  "exemple_rando": "randonnée facile près de Porto-Novo",
+  "flux": [
+   {
+    "nom": "Google Actualités – Bénin",
+    "url": "https://news.google.com/rss?hl=fr&gl=BJ&ceid=BJ:fr"
+   }
+  ]
+ },
+ "KH": {
+  "auto": true,
+  "nom": "Cambodge",
+  "fuseau": "Asia/Phnom_Penh",
+  "devise": "KHR",
+  "feries": "KH",
+  "actus_langue": "km",
+  "actus_pays": "KH",
+  "accept_language": "km-KH,km;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Cambodge",
+  "habitant": "un habitant du pays suivant : Cambodge",
+  "d_abord": "le pays « Cambodge »",
+  "exemple_ville": "Phnom Penh",
+  "exemple_rando": "randonnée facile près de Phnom Penh",
+  "flux": [
+   {
+    "nom": "Google Actualités – Cambodge",
+    "url": "https://news.google.com/rss?hl=km&gl=KH&ceid=KH:km"
+   }
+  ]
+ },
+ "CM": {
+  "auto": true,
+  "nom": "Cameroun",
+  "fuseau": "Africa/Douala",
+  "devise": "XAF",
+  "feries": "CM",
+  "actus_langue": "fr",
+  "actus_pays": "CM",
+  "accept_language": "fr-CM,fr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Cameroun",
+  "habitant": "un habitant du pays suivant : Cameroun",
+  "d_abord": "le pays « Cameroun »",
+  "exemple_ville": "Douala",
+  "exemple_rando": "randonnée facile près de Douala",
+  "flux": [
+   {
+    "nom": "Google Actualités – Cameroun",
+    "url": "https://news.google.com/rss?hl=fr&gl=CM&ceid=CM:fr"
+   }
+  ]
+ },
+ "CA": {
+  "auto": true,
+  "nom": "Canada",
+  "fuseau": "America/Toronto",
+  "devise": "CAD",
+  "feries": "CA",
+  "actus_langue": "fr",
+  "actus_pays": "CA",
+  "accept_language": "fr-CA,fr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Canada",
+  "habitant": "un habitant du pays suivant : Canada",
+  "d_abord": "le pays « Canada »",
+  "exemple_ville": "Toronto",
+  "exemple_rando": "randonnée facile près de Toronto",
+  "flux": [
+   {
+    "nom": "Google Actualités – Canada",
+    "url": "https://news.google.com/rss?hl=fr&gl=CA&ceid=CA:fr"
+   }
+  ]
+ },
+ "CV": {
+  "auto": true,
+  "nom": "Cap-Vert",
+  "fuseau": "Atlantic/Cape_Verde",
+  "devise": "CVE",
+  "feries": "CV",
+  "actus_langue": "pt",
+  "actus_pays": "CV",
+  "accept_language": "pt-CV,pt;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Cap-Vert",
+  "habitant": "un habitant du pays suivant : Cap-Vert",
+  "d_abord": "le pays « Cap-Vert »",
+  "exemple_ville": "Cape Verde",
+  "exemple_rando": "randonnée facile près de Cape Verde",
+  "flux": [
+   {
+    "nom": "Google Actualités – Cap-Vert",
+    "url": "https://news.google.com/rss?hl=pt&gl=CV&ceid=CV:pt"
+   }
+  ]
+ },
+ "CL": {
+  "auto": true,
+  "nom": "Chili",
+  "fuseau": "America/Santiago",
+  "devise": "CLP",
+  "feries": "CL",
+  "actus_langue": "es",
+  "actus_pays": "CL",
+  "accept_language": "es-CL,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Chili",
+  "habitant": "un habitant du pays suivant : Chili",
+  "d_abord": "le pays « Chili »",
+  "exemple_ville": "Santiago",
+  "exemple_rando": "randonnée facile près de Santiago",
+  "flux": [
+   {
+    "nom": "Google Actualités – Chili",
+    "url": "https://news.google.com/rss?hl=es&gl=CL&ceid=CL:es"
+   }
+  ]
+ },
+ "CN": {
+  "auto": true,
+  "nom": "Chine",
+  "fuseau": "Asia/Shanghai",
+  "devise": "CNY",
+  "feries": "CN",
+  "actus_langue": "zh",
+  "actus_pays": "CN",
+  "accept_language": "zh-CN,zh;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Chine",
+  "habitant": "un habitant du pays suivant : Chine",
+  "d_abord": "le pays « Chine »",
+  "exemple_ville": "Shanghai",
+  "exemple_rando": "randonnée facile près de Shanghai",
+  "flux": [
+   {
+    "nom": "Google Actualités – Chine",
+    "url": "https://news.google.com/rss?hl=zh&gl=CN&ceid=CN:zh"
+   }
+  ]
+ },
+ "CY": {
+  "auto": true,
+  "nom": "Chypre",
+  "fuseau": "Asia/Nicosia",
+  "devise": "EUR",
+  "feries": "CY",
+  "actus_langue": "el",
+  "actus_pays": "CY",
+  "accept_language": "el-CY,el;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Chypre",
+  "habitant": "un habitant du pays suivant : Chypre",
+  "d_abord": "le pays « Chypre »",
+  "exemple_ville": "Nicosia",
+  "exemple_rando": "randonnée facile près de Nicosia",
+  "flux": [
+   {
+    "nom": "Google Actualités – Chypre",
+    "url": "https://news.google.com/rss?hl=el&gl=CY&ceid=CY:el"
+   }
+  ]
+ },
+ "CO": {
+  "auto": true,
+  "nom": "Colombie",
+  "fuseau": "America/Bogota",
+  "devise": "COP",
+  "feries": "CO",
+  "actus_langue": "es",
+  "actus_pays": "CO",
+  "accept_language": "es-CO,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Colombie",
+  "habitant": "un habitant du pays suivant : Colombie",
+  "d_abord": "le pays « Colombie »",
+  "exemple_ville": "Bogota",
+  "exemple_rando": "randonnée facile près de Bogota",
+  "flux": [
+   {
+    "nom": "Google Actualités – Colombie",
+    "url": "https://news.google.com/rss?hl=es&gl=CO&ceid=CO:es"
+   }
+  ]
+ },
+ "KM": {
+  "auto": true,
+  "nom": "Comores",
+  "fuseau": "Indian/Comoro",
+  "devise": "KMF",
+  "feries": "KM",
+  "actus_langue": "ar",
+  "actus_pays": "KM",
+  "accept_language": "ar-KM,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Comores",
+  "habitant": "un habitant du pays suivant : Comores",
+  "d_abord": "le pays « Comores »",
+  "exemple_ville": "Comoro",
+  "exemple_rando": "randonnée facile près de Comoro",
+  "flux": [
+   {
+    "nom": "Google Actualités – Comores",
+    "url": "https://news.google.com/rss?hl=ar&gl=KM&ceid=KM:ar"
+   }
+  ]
+ },
+ "CG": {
+  "auto": true,
+  "nom": "Congo-Brazzaville",
+  "fuseau": "Africa/Brazzaville",
+  "devise": "XAF",
+  "feries": "CG",
+  "actus_langue": "fr",
+  "actus_pays": "CG",
+  "accept_language": "fr-CG,fr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Congo-Brazzaville",
+  "habitant": "un habitant du pays suivant : Congo-Brazzaville",
+  "d_abord": "le pays « Congo-Brazzaville »",
+  "exemple_ville": "Brazzaville",
+  "exemple_rando": "randonnée facile près de Brazzaville",
+  "flux": [
+   {
+    "nom": "Google Actualités – Congo-Brazzaville",
+    "url": "https://news.google.com/rss?hl=fr&gl=CG&ceid=CG:fr"
+   }
+  ]
+ },
+ "CD": {
+  "auto": true,
+  "nom": "Congo-Kinshasa",
+  "fuseau": "Africa/Kinshasa",
+  "devise": "CDF",
+  "feries": "CD",
+  "actus_langue": "fr",
+  "actus_pays": "CD",
+  "accept_language": "fr-CD,fr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Congo-Kinshasa",
+  "habitant": "un habitant du pays suivant : Congo-Kinshasa",
+  "d_abord": "le pays « Congo-Kinshasa »",
+  "exemple_ville": "Kinshasa",
+  "exemple_rando": "randonnée facile près de Kinshasa",
+  "flux": [
+   {
+    "nom": "Google Actualités – Congo-Kinshasa",
+    "url": "https://news.google.com/rss?hl=fr&gl=CD&ceid=CD:fr"
+   }
+  ]
+ },
+ "KP": {
+  "auto": true,
+  "nom": "Corée du Nord",
+  "fuseau": "Asia/Pyongyang",
+  "devise": "KPW",
+  "feries": "KP",
+  "actus_langue": "ko",
+  "actus_pays": "KP",
+  "accept_language": "ko-KP,ko;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Corée du Nord",
+  "habitant": "un habitant du pays suivant : Corée du Nord",
+  "d_abord": "le pays « Corée du Nord »",
+  "exemple_ville": "Pyongyang",
+  "exemple_rando": "randonnée facile près de Pyongyang",
+  "flux": [
+   {
+    "nom": "Google Actualités – Corée du Nord",
+    "url": "https://news.google.com/rss?hl=ko&gl=KP&ceid=KP:ko"
+   }
+  ]
+ },
+ "KR": {
+  "auto": true,
+  "nom": "Corée du Sud",
+  "fuseau": "Asia/Seoul",
+  "devise": "KRW",
+  "feries": "KR",
+  "actus_langue": "ko",
+  "actus_pays": "KR",
+  "accept_language": "ko-KR,ko;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Corée du Sud",
+  "habitant": "un habitant du pays suivant : Corée du Sud",
+  "d_abord": "le pays « Corée du Sud »",
+  "exemple_ville": "Seoul",
+  "exemple_rando": "randonnée facile près de Seoul",
+  "flux": [
+   {
+    "nom": "Google Actualités – Corée du Sud",
+    "url": "https://news.google.com/rss?hl=ko&gl=KR&ceid=KR:ko"
+   }
+  ]
+ },
+ "CR": {
+  "auto": true,
+  "nom": "Costa Rica",
+  "fuseau": "America/Costa_Rica",
+  "devise": "CRC",
+  "feries": "CR",
+  "actus_langue": "es",
+  "actus_pays": "CR",
+  "accept_language": "es-CR,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Costa Rica",
+  "habitant": "un habitant du pays suivant : Costa Rica",
+  "d_abord": "le pays « Costa Rica »",
+  "exemple_ville": "Costa Rica",
+  "exemple_rando": "randonnée facile près de Costa Rica",
+  "flux": [
+   {
+    "nom": "Google Actualités – Costa Rica",
+    "url": "https://news.google.com/rss?hl=es&gl=CR&ceid=CR:es"
+   }
+  ]
+ },
+ "HR": {
+  "auto": true,
+  "nom": "Croatie",
+  "fuseau": "Europe/Zagreb",
+  "devise": "EUR",
+  "feries": "HR",
+  "actus_langue": "hr",
+  "actus_pays": "HR",
+  "accept_language": "hr-HR,hr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Croatie",
+  "habitant": "un habitant du pays suivant : Croatie",
+  "d_abord": "le pays « Croatie »",
+  "exemple_ville": "Zagreb",
+  "exemple_rando": "randonnée facile près de Zagreb",
+  "flux": [
+   {
+    "nom": "Google Actualités – Croatie",
+    "url": "https://news.google.com/rss?hl=hr&gl=HR&ceid=HR:hr"
+   }
+  ]
+ },
+ "CU": {
+  "auto": true,
+  "nom": "Cuba",
+  "fuseau": "America/Havana",
+  "devise": "CUP",
+  "feries": "CU",
+  "actus_langue": "es",
+  "actus_pays": "CU",
+  "accept_language": "es-CU,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Cuba",
+  "habitant": "un habitant du pays suivant : Cuba",
+  "d_abord": "le pays « Cuba »",
+  "exemple_ville": "Havana",
+  "exemple_rando": "randonnée facile près de Havana",
+  "flux": [
+   {
+    "nom": "Google Actualités – Cuba",
+    "url": "https://news.google.com/rss?hl=es&gl=CU&ceid=CU:es"
+   }
+  ]
+ },
+ "CI": {
+  "auto": true,
+  "nom": "Côte d’Ivoire",
+  "fuseau": "Africa/Abidjan",
+  "devise": "XOF",
+  "feries": "CI",
+  "actus_langue": "fr",
+  "actus_pays": "CI",
+  "accept_language": "fr-CI,fr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Côte d’Ivoire",
+  "habitant": "un habitant du pays suivant : Côte d’Ivoire",
+  "d_abord": "le pays « Côte d’Ivoire »",
+  "exemple_ville": "Abidjan",
+  "exemple_rando": "randonnée facile près de Abidjan",
+  "flux": [
+   {
+    "nom": "Google Actualités – Côte d’Ivoire",
+    "url": "https://news.google.com/rss?hl=fr&gl=CI&ceid=CI:fr"
+   }
+  ]
+ },
+ "DK": {
+  "auto": true,
+  "nom": "Danemark",
+  "fuseau": "Europe/Copenhagen",
+  "devise": "DKK",
+  "feries": "DK",
+  "actus_langue": "da",
+  "actus_pays": "DK",
+  "accept_language": "da-DK,da;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Danemark",
+  "habitant": "un habitant du pays suivant : Danemark",
+  "d_abord": "le pays « Danemark »",
+  "exemple_ville": "Copenhagen",
+  "exemple_rando": "randonnée facile près de Copenhagen",
+  "flux": [
+   {
+    "nom": "Google Actualités – Danemark",
+    "url": "https://news.google.com/rss?hl=da&gl=DK&ceid=DK:da"
+   }
+  ]
+ },
+ "DJ": {
+  "auto": true,
+  "nom": "Djibouti",
+  "fuseau": "Africa/Djibouti",
+  "devise": "DJF",
+  "feries": "DJ",
+  "actus_langue": "fr",
+  "actus_pays": "DJ",
+  "accept_language": "fr-DJ,fr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Djibouti",
+  "habitant": "un habitant du pays suivant : Djibouti",
+  "d_abord": "le pays « Djibouti »",
+  "exemple_ville": "Djibouti",
+  "exemple_rando": "randonnée facile près de Djibouti",
+  "flux": [
+   {
+    "nom": "Google Actualités – Djibouti",
+    "url": "https://news.google.com/rss?hl=fr&gl=DJ&ceid=DJ:fr"
+   }
+  ]
+ },
+ "DM": {
+  "auto": true,
+  "nom": "Dominique",
+  "fuseau": "America/Dominica",
+  "devise": "XCD",
+  "feries": "DM",
+  "actus_langue": "en",
+  "actus_pays": "DM",
+  "accept_language": "en-DM,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Dominique",
+  "habitant": "un habitant du pays suivant : Dominique",
+  "d_abord": "le pays « Dominique »",
+  "exemple_ville": "Dominica",
+  "exemple_rando": "randonnée facile près de Dominica",
+  "flux": [
+   {
+    "nom": "Google Actualités – Dominique",
+    "url": "https://news.google.com/rss?hl=en&gl=DM&ceid=DM:en"
+   }
+  ]
+ },
+ "ES": {
+  "auto": true,
+  "nom": "Espagne",
+  "fuseau": "Europe/Madrid",
+  "devise": "EUR",
+  "feries": "ES",
+  "actus_langue": "es",
+  "actus_pays": "ES",
+  "accept_language": "es-ES,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Espagne",
+  "habitant": "un habitant du pays suivant : Espagne",
+  "d_abord": "le pays « Espagne »",
+  "exemple_ville": "Madrid",
+  "exemple_rando": "randonnée facile près de Madrid",
+  "flux": [
+   {
+    "nom": "Google Actualités – Espagne",
+    "url": "https://news.google.com/rss?hl=es&gl=ES&ceid=ES:es"
+   }
+  ]
+ },
+ "EE": {
+  "auto": true,
+  "nom": "Estonie",
+  "fuseau": "Europe/Tallinn",
+  "devise": "EUR",
+  "feries": "EE",
+  "actus_langue": "et",
+  "actus_pays": "EE",
+  "accept_language": "et-EE,et;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Estonie",
+  "habitant": "un habitant du pays suivant : Estonie",
+  "d_abord": "le pays « Estonie »",
+  "exemple_ville": "Tallinn",
+  "exemple_rando": "randonnée facile près de Tallinn",
+  "flux": [
+   {
+    "nom": "Google Actualités – Estonie",
+    "url": "https://news.google.com/rss?hl=et&gl=EE&ceid=EE:et"
+   }
+  ]
+ },
+ "SZ": {
+  "auto": true,
+  "nom": "Eswatini",
+  "fuseau": "Africa/Mbabane",
+  "devise": "SZL",
+  "feries": "SZ",
+  "actus_langue": "en",
+  "actus_pays": "SZ",
+  "accept_language": "en-SZ,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Eswatini",
+  "habitant": "un habitant du pays suivant : Eswatini",
+  "d_abord": "le pays « Eswatini »",
+  "exemple_ville": "Mbabane",
+  "exemple_rando": "randonnée facile près de Mbabane",
+  "flux": [
+   {
+    "nom": "Google Actualités – Eswatini",
+    "url": "https://news.google.com/rss?hl=en&gl=SZ&ceid=SZ:en"
+   }
+  ]
+ },
+ "FJ": {
+  "auto": true,
+  "nom": "Fidji",
+  "fuseau": "Pacific/Fiji",
+  "devise": "FJD",
+  "feries": "FJ",
+  "actus_langue": "en",
+  "actus_pays": "FJ",
+  "accept_language": "en-FJ,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Fidji",
+  "habitant": "un habitant du pays suivant : Fidji",
+  "d_abord": "le pays « Fidji »",
+  "exemple_ville": "Fiji",
+  "exemple_rando": "randonnée facile près de Fiji",
+  "flux": [
+   {
+    "nom": "Google Actualités – Fidji",
+    "url": "https://news.google.com/rss?hl=en&gl=FJ&ceid=FJ:en"
+   }
+  ]
+ },
+ "FI": {
+  "auto": true,
+  "nom": "Finlande",
+  "fuseau": "Europe/Helsinki",
+  "devise": "EUR",
+  "feries": "FI",
+  "actus_langue": "fi",
+  "actus_pays": "FI",
+  "accept_language": "fi-FI,fi;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Finlande",
+  "habitant": "un habitant du pays suivant : Finlande",
+  "d_abord": "le pays « Finlande »",
+  "exemple_ville": "Helsinki",
+  "exemple_rando": "randonnée facile près de Helsinki",
+  "flux": [
+   {
+    "nom": "Google Actualités – Finlande",
+    "url": "https://news.google.com/rss?hl=fi&gl=FI&ceid=FI:fi"
+   }
+  ]
+ },
+ "GA": {
+  "auto": true,
+  "nom": "Gabon",
+  "fuseau": "Africa/Libreville",
+  "devise": "XAF",
+  "feries": "GA",
+  "actus_langue": "fr",
+  "actus_pays": "GA",
+  "accept_language": "fr-GA,fr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Gabon",
+  "habitant": "un habitant du pays suivant : Gabon",
+  "d_abord": "le pays « Gabon »",
+  "exemple_ville": "Libreville",
+  "exemple_rando": "randonnée facile près de Libreville",
+  "flux": [
+   {
+    "nom": "Google Actualités – Gabon",
+    "url": "https://news.google.com/rss?hl=fr&gl=GA&ceid=GA:fr"
+   }
+  ]
+ },
+ "GM": {
+  "auto": true,
+  "nom": "Gambie",
+  "fuseau": "Africa/Banjul",
+  "devise": "GMD",
+  "feries": "GM",
+  "actus_langue": "en",
+  "actus_pays": "GM",
+  "accept_language": "en-GM,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Gambie",
+  "habitant": "un habitant du pays suivant : Gambie",
+  "d_abord": "le pays « Gambie »",
+  "exemple_ville": "Banjul",
+  "exemple_rando": "randonnée facile près de Banjul",
+  "flux": [
+   {
+    "nom": "Google Actualités – Gambie",
+    "url": "https://news.google.com/rss?hl=en&gl=GM&ceid=GM:en"
+   }
+  ]
+ },
+ "GH": {
+  "auto": true,
+  "nom": "Ghana",
+  "fuseau": "Africa/Accra",
+  "devise": "GHS",
+  "feries": "GH",
+  "actus_langue": "en",
+  "actus_pays": "GH",
+  "accept_language": "en-GH,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Ghana",
+  "habitant": "un habitant du pays suivant : Ghana",
+  "d_abord": "le pays « Ghana »",
+  "exemple_ville": "Accra",
+  "exemple_rando": "randonnée facile près de Accra",
+  "flux": [
+   {
+    "nom": "Google Actualités – Ghana",
+    "url": "https://news.google.com/rss?hl=en&gl=GH&ceid=GH:en"
+   }
+  ]
+ },
+ "GD": {
+  "auto": true,
+  "nom": "Grenade",
+  "fuseau": "America/Grenada",
+  "devise": "XCD",
+  "feries": "GD",
+  "actus_langue": "en",
+  "actus_pays": "GD",
+  "accept_language": "en-GD,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Grenade",
+  "habitant": "un habitant du pays suivant : Grenade",
+  "d_abord": "le pays « Grenade »",
+  "exemple_ville": "Grenada",
+  "exemple_rando": "randonnée facile près de Grenada",
+  "flux": [
+   {
+    "nom": "Google Actualités – Grenade",
+    "url": "https://news.google.com/rss?hl=en&gl=GD&ceid=GD:en"
+   }
+  ]
+ },
+ "GR": {
+  "auto": true,
+  "nom": "Grèce",
+  "fuseau": "Europe/Athens",
+  "devise": "EUR",
+  "feries": "GR",
+  "actus_langue": "el",
+  "actus_pays": "GR",
+  "accept_language": "el-GR,el;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Grèce",
+  "habitant": "un habitant du pays suivant : Grèce",
+  "d_abord": "le pays « Grèce »",
+  "exemple_ville": "Athens",
+  "exemple_rando": "randonnée facile près de Athens",
+  "flux": [
+   {
+    "nom": "Google Actualités – Grèce",
+    "url": "https://news.google.com/rss?hl=el&gl=GR&ceid=GR:el"
+   }
+  ]
+ },
+ "GT": {
+  "auto": true,
+  "nom": "Guatemala",
+  "fuseau": "America/Guatemala",
+  "devise": "GTQ",
+  "feries": "GT",
+  "actus_langue": "es",
+  "actus_pays": "GT",
+  "accept_language": "es-GT,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Guatemala",
+  "habitant": "un habitant du pays suivant : Guatemala",
+  "d_abord": "le pays « Guatemala »",
+  "exemple_ville": "Guatemala",
+  "exemple_rando": "randonnée facile près de Guatemala",
+  "flux": [
+   {
+    "nom": "Google Actualités – Guatemala",
+    "url": "https://news.google.com/rss?hl=es&gl=GT&ceid=GT:es"
+   }
+  ]
+ },
+ "GN": {
+  "auto": true,
+  "nom": "Guinée",
+  "fuseau": "Africa/Conakry",
+  "devise": "GNF",
+  "feries": "GN",
+  "actus_langue": "fr",
+  "actus_pays": "GN",
+  "accept_language": "fr-GN,fr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Guinée",
+  "habitant": "un habitant du pays suivant : Guinée",
+  "d_abord": "le pays « Guinée »",
+  "exemple_ville": "Conakry",
+  "exemple_rando": "randonnée facile près de Conakry",
+  "flux": [
+   {
+    "nom": "Google Actualités – Guinée",
+    "url": "https://news.google.com/rss?hl=fr&gl=GN&ceid=GN:fr"
+   }
+  ]
+ },
+ "GQ": {
+  "auto": true,
+  "nom": "Guinée équatoriale",
+  "fuseau": "Africa/Malabo",
+  "devise": "XAF",
+  "feries": "GQ",
+  "actus_langue": "es",
+  "actus_pays": "GQ",
+  "accept_language": "es-GQ,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Guinée équatoriale",
+  "habitant": "un habitant du pays suivant : Guinée équatoriale",
+  "d_abord": "le pays « Guinée équatoriale »",
+  "exemple_ville": "Malabo",
+  "exemple_rando": "randonnée facile près de Malabo",
+  "flux": [
+   {
+    "nom": "Google Actualités – Guinée équatoriale",
+    "url": "https://news.google.com/rss?hl=es&gl=GQ&ceid=GQ:es"
+   }
+  ]
+ },
+ "GW": {
+  "auto": true,
+  "nom": "Guinée-Bissau",
+  "fuseau": "Africa/Bissau",
+  "devise": "XOF",
+  "feries": "GW",
+  "actus_langue": "pt",
+  "actus_pays": "GW",
+  "accept_language": "pt-GW,pt;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Guinée-Bissau",
+  "habitant": "un habitant du pays suivant : Guinée-Bissau",
+  "d_abord": "le pays « Guinée-Bissau »",
+  "exemple_ville": "Bissau",
+  "exemple_rando": "randonnée facile près de Bissau",
+  "flux": [
+   {
+    "nom": "Google Actualités – Guinée-Bissau",
+    "url": "https://news.google.com/rss?hl=pt&gl=GW&ceid=GW:pt"
+   }
+  ]
+ },
+ "GY": {
+  "auto": true,
+  "nom": "Guyana",
+  "fuseau": "America/Guyana",
+  "devise": "GYD",
+  "feries": "GY",
+  "actus_langue": "en",
+  "actus_pays": "GY",
+  "accept_language": "en-GY,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Guyana",
+  "habitant": "un habitant du pays suivant : Guyana",
+  "d_abord": "le pays « Guyana »",
+  "exemple_ville": "Guyana",
+  "exemple_rando": "randonnée facile près de Guyana",
+  "flux": [
+   {
+    "nom": "Google Actualités – Guyana",
+    "url": "https://news.google.com/rss?hl=en&gl=GY&ceid=GY:en"
+   }
+  ]
+ },
+ "GE": {
+  "auto": true,
+  "nom": "Géorgie",
+  "fuseau": "Asia/Tbilisi",
+  "devise": "GEL",
+  "feries": "GE",
+  "actus_langue": "ka",
+  "actus_pays": "GE",
+  "accept_language": "ka-GE,ka;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Géorgie",
+  "habitant": "un habitant du pays suivant : Géorgie",
+  "d_abord": "le pays « Géorgie »",
+  "exemple_ville": "Tbilisi",
+  "exemple_rando": "randonnée facile près de Tbilisi",
+  "flux": [
+   {
+    "nom": "Google Actualités – Géorgie",
+    "url": "https://news.google.com/rss?hl=ka&gl=GE&ceid=GE:ka"
+   }
+  ]
+ },
+ "HT": {
+  "auto": true,
+  "nom": "Haïti",
+  "fuseau": "America/Port-au-Prince",
+  "devise": "HTG",
+  "feries": "HT",
+  "actus_langue": "ht",
+  "actus_pays": "HT",
+  "accept_language": "ht-HT,ht;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Haïti",
+  "habitant": "un habitant du pays suivant : Haïti",
+  "d_abord": "le pays « Haïti »",
+  "exemple_ville": "Port-au-Prince",
+  "exemple_rando": "randonnée facile près de Port-au-Prince",
+  "flux": [
+   {
+    "nom": "Google Actualités – Haïti",
+    "url": "https://news.google.com/rss?hl=ht&gl=HT&ceid=HT:ht"
+   }
+  ]
+ },
+ "HN": {
+  "auto": true,
+  "nom": "Honduras",
+  "fuseau": "America/Tegucigalpa",
+  "devise": "HNL",
+  "feries": "HN",
+  "actus_langue": "es",
+  "actus_pays": "HN",
+  "accept_language": "es-HN,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Honduras",
+  "habitant": "un habitant du pays suivant : Honduras",
+  "d_abord": "le pays « Honduras »",
+  "exemple_ville": "Tegucigalpa",
+  "exemple_rando": "randonnée facile près de Tegucigalpa",
+  "flux": [
+   {
+    "nom": "Google Actualités – Honduras",
+    "url": "https://news.google.com/rss?hl=es&gl=HN&ceid=HN:es"
+   }
+  ]
+ },
+ "HU": {
+  "auto": true,
+  "nom": "Hongrie",
+  "fuseau": "Europe/Budapest",
+  "devise": "HUF",
+  "feries": "HU",
+  "actus_langue": "hu",
+  "actus_pays": "HU",
+  "accept_language": "hu-HU,hu;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Hongrie",
+  "habitant": "un habitant du pays suivant : Hongrie",
+  "d_abord": "le pays « Hongrie »",
+  "exemple_ville": "Budapest",
+  "exemple_rando": "randonnée facile près de Budapest",
+  "flux": [
+   {
+    "nom": "Google Actualités – Hongrie",
+    "url": "https://news.google.com/rss?hl=hu&gl=HU&ceid=HU:hu"
+   }
+  ]
+ },
+ "IN": {
+  "auto": true,
+  "nom": "Inde",
+  "fuseau": "Asia/Kolkata",
+  "devise": "INR",
+  "feries": "IN",
+  "actus_langue": "en",
+  "actus_pays": "IN",
+  "accept_language": "en-IN,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Inde",
+  "habitant": "un habitant du pays suivant : Inde",
+  "d_abord": "le pays « Inde »",
+  "exemple_ville": "Kolkata",
+  "exemple_rando": "randonnée facile près de Kolkata",
+  "flux": [
+   {
+    "nom": "Google Actualités – Inde",
+    "url": "https://news.google.com/rss?hl=en&gl=IN&ceid=IN:en"
+   }
+  ]
+ },
+ "ID": {
+  "auto": true,
+  "nom": "Indonésie",
+  "fuseau": "Asia/Jakarta",
+  "devise": "IDR",
+  "feries": "ID",
+  "actus_langue": "id",
+  "actus_pays": "ID",
+  "accept_language": "id-ID,id;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Indonésie",
+  "habitant": "un habitant du pays suivant : Indonésie",
+  "d_abord": "le pays « Indonésie »",
+  "exemple_ville": "Jakarta",
+  "exemple_rando": "randonnée facile près de Jakarta",
+  "flux": [
+   {
+    "nom": "Google Actualités – Indonésie",
+    "url": "https://news.google.com/rss?hl=id&gl=ID&ceid=ID:id"
+   }
+  ]
+ },
+ "IQ": {
+  "auto": true,
+  "nom": "Irak",
+  "fuseau": "Asia/Baghdad",
+  "devise": "IQD",
+  "feries": "IQ",
+  "actus_langue": "ar",
+  "actus_pays": "IQ",
+  "accept_language": "ar-IQ,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Irak",
+  "habitant": "un habitant du pays suivant : Irak",
+  "d_abord": "le pays « Irak »",
+  "exemple_ville": "Baghdad",
+  "exemple_rando": "randonnée facile près de Baghdad",
+  "flux": [
+   {
+    "nom": "Google Actualités – Irak",
+    "url": "https://news.google.com/rss?hl=ar&gl=IQ&ceid=IQ:ar"
+   }
+  ]
+ },
+ "IR": {
+  "auto": true,
+  "nom": "Iran",
+  "fuseau": "Asia/Tehran",
+  "devise": "IRR",
+  "feries": "IR",
+  "actus_langue": "fa",
+  "actus_pays": "IR",
+  "accept_language": "fa-IR,fa;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Iran",
+  "habitant": "un habitant du pays suivant : Iran",
+  "d_abord": "le pays « Iran »",
+  "exemple_ville": "Tehran",
+  "exemple_rando": "randonnée facile près de Tehran",
+  "flux": [
+   {
+    "nom": "Google Actualités – Iran",
+    "url": "https://news.google.com/rss?hl=fa&gl=IR&ceid=IR:fa"
+   }
+  ]
+ },
+ "IE": {
+  "auto": true,
+  "nom": "Irlande",
+  "fuseau": "Europe/Dublin",
+  "devise": "EUR",
+  "feries": "IE",
+  "actus_langue": "en",
+  "actus_pays": "IE",
+  "accept_language": "en-IE,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Irlande",
+  "habitant": "un habitant du pays suivant : Irlande",
+  "d_abord": "le pays « Irlande »",
+  "exemple_ville": "Dublin",
+  "exemple_rando": "randonnée facile près de Dublin",
+  "flux": [
+   {
+    "nom": "Google Actualités – Irlande",
+    "url": "https://news.google.com/rss?hl=en&gl=IE&ceid=IE:en"
+   }
+  ]
+ },
+ "IS": {
+  "auto": true,
+  "nom": "Islande",
+  "fuseau": "Atlantic/Reykjavik",
+  "devise": "ISK",
+  "feries": "IS",
+  "actus_langue": "is",
+  "actus_pays": "IS",
+  "accept_language": "is-IS,is;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Islande",
+  "habitant": "un habitant du pays suivant : Islande",
+  "d_abord": "le pays « Islande »",
+  "exemple_ville": "Reykjavik",
+  "exemple_rando": "randonnée facile près de Reykjavik",
+  "flux": [
+   {
+    "nom": "Google Actualités – Islande",
+    "url": "https://news.google.com/rss?hl=is&gl=IS&ceid=IS:is"
+   }
+  ]
+ },
+ "IT": {
+  "auto": true,
+  "nom": "Italie",
+  "fuseau": "Europe/Rome",
+  "devise": "EUR",
+  "feries": "IT",
+  "actus_langue": "it",
+  "actus_pays": "IT",
+  "accept_language": "it-IT,it;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Italie",
+  "habitant": "un habitant du pays suivant : Italie",
+  "d_abord": "le pays « Italie »",
+  "exemple_ville": "Rome",
+  "exemple_rando": "randonnée facile près de Rome",
+  "flux": [
+   {
+    "nom": "Google Actualités – Italie",
+    "url": "https://news.google.com/rss?hl=it&gl=IT&ceid=IT:it"
+   }
+  ]
+ },
+ "JM": {
+  "auto": true,
+  "nom": "Jamaïque",
+  "fuseau": "America/Jamaica",
+  "devise": "JMD",
+  "feries": "JM",
+  "actus_langue": "en",
+  "actus_pays": "JM",
+  "accept_language": "en-JM,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Jamaïque",
+  "habitant": "un habitant du pays suivant : Jamaïque",
+  "d_abord": "le pays « Jamaïque »",
+  "exemple_ville": "Jamaica",
+  "exemple_rando": "randonnée facile près de Jamaica",
+  "flux": [
+   {
+    "nom": "Google Actualités – Jamaïque",
+    "url": "https://news.google.com/rss?hl=en&gl=JM&ceid=JM:en"
+   }
+  ]
+ },
+ "JP": {
+  "auto": true,
+  "nom": "Japon",
+  "fuseau": "Asia/Tokyo",
+  "devise": "JPY",
+  "feries": "JP",
+  "actus_langue": "ja",
+  "actus_pays": "JP",
+  "accept_language": "ja-JP,ja;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Japon",
+  "habitant": "un habitant du pays suivant : Japon",
+  "d_abord": "le pays « Japon »",
+  "exemple_ville": "Tokyo",
+  "exemple_rando": "randonnée facile près de Tokyo",
+  "flux": [
+   {
+    "nom": "Google Actualités – Japon",
+    "url": "https://news.google.com/rss?hl=ja&gl=JP&ceid=JP:ja"
+   }
+  ]
+ },
+ "JO": {
+  "auto": true,
+  "nom": "Jordanie",
+  "fuseau": "Asia/Amman",
+  "devise": "JOD",
+  "feries": "JO",
+  "actus_langue": "ar",
+  "actus_pays": "JO",
+  "accept_language": "ar-JO,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Jordanie",
+  "habitant": "un habitant du pays suivant : Jordanie",
+  "d_abord": "le pays « Jordanie »",
+  "exemple_ville": "Amman",
+  "exemple_rando": "randonnée facile près de Amman",
+  "flux": [
+   {
+    "nom": "Google Actualités – Jordanie",
+    "url": "https://news.google.com/rss?hl=ar&gl=JO&ceid=JO:ar"
+   }
+  ]
+ },
+ "KZ": {
+  "auto": true,
+  "nom": "Kazakhstan",
+  "fuseau": "Asia/Almaty",
+  "devise": "KZT",
+  "feries": "KZ",
+  "actus_langue": "ru",
+  "actus_pays": "KZ",
+  "accept_language": "ru-KZ,ru;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Kazakhstan",
+  "habitant": "un habitant du pays suivant : Kazakhstan",
+  "d_abord": "le pays « Kazakhstan »",
+  "exemple_ville": "Almaty",
+  "exemple_rando": "randonnée facile près de Almaty",
+  "flux": [
+   {
+    "nom": "Google Actualités – Kazakhstan",
+    "url": "https://news.google.com/rss?hl=ru&gl=KZ&ceid=KZ:ru"
+   }
+  ]
+ },
+ "KE": {
+  "auto": true,
+  "nom": "Kenya",
+  "fuseau": "Africa/Nairobi",
+  "devise": "KES",
+  "feries": "KE",
+  "actus_langue": "en",
+  "actus_pays": "KE",
+  "accept_language": "en-KE,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Kenya",
+  "habitant": "un habitant du pays suivant : Kenya",
+  "d_abord": "le pays « Kenya »",
+  "exemple_ville": "Nairobi",
+  "exemple_rando": "randonnée facile près de Nairobi",
+  "flux": [
+   {
+    "nom": "Google Actualités – Kenya",
+    "url": "https://news.google.com/rss?hl=en&gl=KE&ceid=KE:en"
+   }
+  ]
+ },
+ "KG": {
+  "auto": true,
+  "nom": "Kirghizstan",
+  "fuseau": "Asia/Bishkek",
+  "devise": "KGS",
+  "feries": "KG",
+  "actus_langue": "ky",
+  "actus_pays": "KG",
+  "accept_language": "ky-KG,ky;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Kirghizstan",
+  "habitant": "un habitant du pays suivant : Kirghizstan",
+  "d_abord": "le pays « Kirghizstan »",
+  "exemple_ville": "Bishkek",
+  "exemple_rando": "randonnée facile près de Bishkek",
+  "flux": [
+   {
+    "nom": "Google Actualités – Kirghizstan",
+    "url": "https://news.google.com/rss?hl=ky&gl=KG&ceid=KG:ky"
+   }
+  ]
+ },
+ "KI": {
+  "auto": true,
+  "nom": "Kiribati",
+  "fuseau": "Pacific/Tarawa",
+  "devise": "AUD",
+  "feries": "KI",
+  "actus_langue": "en",
+  "actus_pays": "KI",
+  "accept_language": "en-KI,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Kiribati",
+  "habitant": "un habitant du pays suivant : Kiribati",
+  "d_abord": "le pays « Kiribati »",
+  "exemple_ville": "Tarawa",
+  "exemple_rando": "randonnée facile près de Tarawa",
+  "flux": [
+   {
+    "nom": "Google Actualités – Kiribati",
+    "url": "https://news.google.com/rss?hl=en&gl=KI&ceid=KI:en"
+   }
+  ]
+ },
+ "KW": {
+  "auto": true,
+  "nom": "Koweït",
+  "fuseau": "Asia/Kuwait",
+  "devise": "KWD",
+  "feries": "KW",
+  "actus_langue": "ar",
+  "actus_pays": "KW",
+  "accept_language": "ar-KW,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Koweït",
+  "habitant": "un habitant du pays suivant : Koweït",
+  "d_abord": "le pays « Koweït »",
+  "exemple_ville": "Kuwait",
+  "exemple_rando": "randonnée facile près de Kuwait",
+  "flux": [
+   {
+    "nom": "Google Actualités – Koweït",
+    "url": "https://news.google.com/rss?hl=ar&gl=KW&ceid=KW:ar"
+   }
+  ]
+ },
+ "LA": {
+  "auto": true,
+  "nom": "Laos",
+  "fuseau": "Asia/Vientiane",
+  "devise": "LAK",
+  "feries": "LA",
+  "actus_langue": "lo",
+  "actus_pays": "LA",
+  "accept_language": "lo-LA,lo;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Laos",
+  "habitant": "un habitant du pays suivant : Laos",
+  "d_abord": "le pays « Laos »",
+  "exemple_ville": "Vientiane",
+  "exemple_rando": "randonnée facile près de Vientiane",
+  "flux": [
+   {
+    "nom": "Google Actualités – Laos",
+    "url": "https://news.google.com/rss?hl=lo&gl=LA&ceid=LA:lo"
+   }
+  ]
+ },
+ "LS": {
+  "auto": true,
+  "nom": "Lesotho",
+  "fuseau": "Africa/Maseru",
+  "devise": "ZAR",
+  "feries": "LS",
+  "actus_langue": "st",
+  "actus_pays": "LS",
+  "accept_language": "st-LS,st;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Lesotho",
+  "habitant": "un habitant du pays suivant : Lesotho",
+  "d_abord": "le pays « Lesotho »",
+  "exemple_ville": "Maseru",
+  "exemple_rando": "randonnée facile près de Maseru",
+  "flux": [
+   {
+    "nom": "Google Actualités – Lesotho",
+    "url": "https://news.google.com/rss?hl=st&gl=LS&ceid=LS:st"
+   }
+  ]
+ },
+ "LV": {
+  "auto": true,
+  "nom": "Lettonie",
+  "fuseau": "Europe/Riga",
+  "devise": "EUR",
+  "feries": "LV",
+  "actus_langue": "lv",
+  "actus_pays": "LV",
+  "accept_language": "lv-LV,lv;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Lettonie",
+  "habitant": "un habitant du pays suivant : Lettonie",
+  "d_abord": "le pays « Lettonie »",
+  "exemple_ville": "Riga",
+  "exemple_rando": "randonnée facile près de Riga",
+  "flux": [
+   {
+    "nom": "Google Actualités – Lettonie",
+    "url": "https://news.google.com/rss?hl=lv&gl=LV&ceid=LV:lv"
+   }
+  ]
+ },
+ "LB": {
+  "auto": true,
+  "nom": "Liban",
+  "fuseau": "Asia/Beirut",
+  "devise": "LBP",
+  "feries": "LB",
+  "actus_langue": "ar",
+  "actus_pays": "LB",
+  "accept_language": "ar-LB,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Liban",
+  "habitant": "un habitant du pays suivant : Liban",
+  "d_abord": "le pays « Liban »",
+  "exemple_ville": "Beirut",
+  "exemple_rando": "randonnée facile près de Beirut",
+  "flux": [
+   {
+    "nom": "Google Actualités – Liban",
+    "url": "https://news.google.com/rss?hl=ar&gl=LB&ceid=LB:ar"
+   }
+  ]
+ },
+ "LR": {
+  "auto": true,
+  "nom": "Liberia",
+  "fuseau": "Africa/Monrovia",
+  "devise": "LRD",
+  "feries": "LR",
+  "actus_langue": "en",
+  "actus_pays": "LR",
+  "accept_language": "en-LR,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Liberia",
+  "habitant": "un habitant du pays suivant : Liberia",
+  "d_abord": "le pays « Liberia »",
+  "exemple_ville": "Monrovia",
+  "exemple_rando": "randonnée facile près de Monrovia",
+  "flux": [
+   {
+    "nom": "Google Actualités – Liberia",
+    "url": "https://news.google.com/rss?hl=en&gl=LR&ceid=LR:en"
+   }
+  ]
+ },
+ "LY": {
+  "auto": true,
+  "nom": "Libye",
+  "fuseau": "Africa/Tripoli",
+  "devise": "LYD",
+  "feries": "LY",
+  "actus_langue": "ar",
+  "actus_pays": "LY",
+  "accept_language": "ar-LY,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Libye",
+  "habitant": "un habitant du pays suivant : Libye",
+  "d_abord": "le pays « Libye »",
+  "exemple_ville": "Tripoli",
+  "exemple_rando": "randonnée facile près de Tripoli",
+  "flux": [
+   {
+    "nom": "Google Actualités – Libye",
+    "url": "https://news.google.com/rss?hl=ar&gl=LY&ceid=LY:ar"
+   }
+  ]
+ },
+ "LI": {
+  "auto": true,
+  "nom": "Liechtenstein",
+  "fuseau": "Europe/Vaduz",
+  "devise": "CHF",
+  "feries": "LI",
+  "actus_langue": "de",
+  "actus_pays": "LI",
+  "accept_language": "de-LI,de;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Liechtenstein",
+  "habitant": "un habitant du pays suivant : Liechtenstein",
+  "d_abord": "le pays « Liechtenstein »",
+  "exemple_ville": "Vaduz",
+  "exemple_rando": "randonnée facile près de Vaduz",
+  "flux": [
+   {
+    "nom": "Google Actualités – Liechtenstein",
+    "url": "https://news.google.com/rss?hl=de&gl=LI&ceid=LI:de"
+   }
+  ]
+ },
+ "LT": {
+  "auto": true,
+  "nom": "Lituanie",
+  "fuseau": "Europe/Vilnius",
+  "devise": "EUR",
+  "feries": "LT",
+  "actus_langue": "lt",
+  "actus_pays": "LT",
+  "accept_language": "lt-LT,lt;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Lituanie",
+  "habitant": "un habitant du pays suivant : Lituanie",
+  "d_abord": "le pays « Lituanie »",
+  "exemple_ville": "Vilnius",
+  "exemple_rando": "randonnée facile près de Vilnius",
+  "flux": [
+   {
+    "nom": "Google Actualités – Lituanie",
+    "url": "https://news.google.com/rss?hl=lt&gl=LT&ceid=LT:lt"
+   }
+  ]
+ },
+ "LU": {
+  "auto": true,
+  "nom": "Luxembourg",
+  "fuseau": "Europe/Luxembourg",
+  "devise": "EUR",
+  "feries": "LU",
+  "actus_langue": "fr",
+  "actus_pays": "LU",
+  "accept_language": "fr-LU,fr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Luxembourg",
+  "habitant": "un habitant du pays suivant : Luxembourg",
+  "d_abord": "le pays « Luxembourg »",
+  "exemple_ville": "Luxembourg",
+  "exemple_rando": "randonnée facile près de Luxembourg",
+  "flux": [
+   {
+    "nom": "Google Actualités – Luxembourg",
+    "url": "https://news.google.com/rss?hl=fr&gl=LU&ceid=LU:fr"
+   }
+  ]
+ },
+ "MK": {
+  "auto": true,
+  "nom": "Macédoine du Nord",
+  "fuseau": "Europe/Skopje",
+  "devise": "MKD",
+  "feries": "MK",
+  "actus_langue": "mk",
+  "actus_pays": "MK",
+  "accept_language": "mk-MK,mk;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Macédoine du Nord",
+  "habitant": "un habitant du pays suivant : Macédoine du Nord",
+  "d_abord": "le pays « Macédoine du Nord »",
+  "exemple_ville": "Skopje",
+  "exemple_rando": "randonnée facile près de Skopje",
+  "flux": [
+   {
+    "nom": "Google Actualités – Macédoine du Nord",
+    "url": "https://news.google.com/rss?hl=mk&gl=MK&ceid=MK:mk"
+   }
+  ]
+ },
+ "MG": {
+  "auto": true,
+  "nom": "Madagascar",
+  "fuseau": "Indian/Antananarivo",
+  "devise": "MGA",
+  "feries": "MG",
+  "actus_langue": "mg",
+  "actus_pays": "MG",
+  "accept_language": "mg-MG,mg;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Madagascar",
+  "habitant": "un habitant du pays suivant : Madagascar",
+  "d_abord": "le pays « Madagascar »",
+  "exemple_ville": "Antananarivo",
+  "exemple_rando": "randonnée facile près de Antananarivo",
+  "flux": [
+   {
+    "nom": "Google Actualités – Madagascar",
+    "url": "https://news.google.com/rss?hl=mg&gl=MG&ceid=MG:mg"
+   }
+  ]
+ },
+ "MY": {
+  "auto": true,
+  "nom": "Malaisie",
+  "fuseau": "Asia/Kuala_Lumpur",
+  "devise": "MYR",
+  "feries": "MY",
+  "actus_langue": "ms",
+  "actus_pays": "MY",
+  "accept_language": "ms-MY,ms;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Malaisie",
+  "habitant": "un habitant du pays suivant : Malaisie",
+  "d_abord": "le pays « Malaisie »",
+  "exemple_ville": "Kuala Lumpur",
+  "exemple_rando": "randonnée facile près de Kuala Lumpur",
+  "flux": [
+   {
+    "nom": "Google Actualités – Malaisie",
+    "url": "https://news.google.com/rss?hl=ms&gl=MY&ceid=MY:ms"
+   }
+  ]
+ },
+ "MW": {
+  "auto": true,
+  "nom": "Malawi",
+  "fuseau": "Africa/Blantyre",
+  "devise": "MWK",
+  "feries": "MW",
+  "actus_langue": "ny",
+  "actus_pays": "MW",
+  "accept_language": "ny-MW,ny;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Malawi",
+  "habitant": "un habitant du pays suivant : Malawi",
+  "d_abord": "le pays « Malawi »",
+  "exemple_ville": "Blantyre",
+  "exemple_rando": "randonnée facile près de Blantyre",
+  "flux": [
+   {
+    "nom": "Google Actualités – Malawi",
+    "url": "https://news.google.com/rss?hl=ny&gl=MW&ceid=MW:ny"
+   }
+  ]
+ },
+ "MV": {
+  "auto": true,
+  "nom": "Maldives",
+  "fuseau": "Indian/Maldives",
+  "devise": "MVR",
+  "feries": "MV",
+  "actus_langue": "dv",
+  "actus_pays": "MV",
+  "accept_language": "dv-MV,dv;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Maldives",
+  "habitant": "un habitant du pays suivant : Maldives",
+  "d_abord": "le pays « Maldives »",
+  "exemple_ville": "Maldives",
+  "exemple_rando": "randonnée facile près de Maldives",
+  "flux": [
+   {
+    "nom": "Google Actualités – Maldives",
+    "url": "https://news.google.com/rss?hl=dv&gl=MV&ceid=MV:dv"
+   }
+  ]
+ },
+ "ML": {
+  "auto": true,
+  "nom": "Mali",
+  "fuseau": "Africa/Bamako",
+  "devise": "XOF",
+  "feries": "ML",
+  "actus_langue": "fr",
+  "actus_pays": "ML",
+  "accept_language": "fr-ML,fr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Mali",
+  "habitant": "un habitant du pays suivant : Mali",
+  "d_abord": "le pays « Mali »",
+  "exemple_ville": "Bamako",
+  "exemple_rando": "randonnée facile près de Bamako",
+  "flux": [
+   {
+    "nom": "Google Actualités – Mali",
+    "url": "https://news.google.com/rss?hl=fr&gl=ML&ceid=ML:fr"
+   }
+  ]
+ },
+ "MT": {
+  "auto": true,
+  "nom": "Malte",
+  "fuseau": "Europe/Malta",
+  "devise": "EUR",
+  "feries": "MT",
+  "actus_langue": "mt",
+  "actus_pays": "MT",
+  "accept_language": "mt-MT,mt;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Malte",
+  "habitant": "un habitant du pays suivant : Malte",
+  "d_abord": "le pays « Malte »",
+  "exemple_ville": "Malta",
+  "exemple_rando": "randonnée facile près de Malta",
+  "flux": [
+   {
+    "nom": "Google Actualités – Malte",
+    "url": "https://news.google.com/rss?hl=mt&gl=MT&ceid=MT:mt"
+   }
+  ]
+ },
+ "MA": {
+  "auto": true,
+  "nom": "Maroc",
+  "fuseau": "Africa/Casablanca",
+  "devise": "MAD",
+  "feries": "MA",
+  "actus_langue": "ar",
+  "actus_pays": "MA",
+  "accept_language": "ar-MA,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Maroc",
+  "habitant": "un habitant du pays suivant : Maroc",
+  "d_abord": "le pays « Maroc »",
+  "exemple_ville": "Casablanca",
+  "exemple_rando": "randonnée facile près de Casablanca",
+  "flux": [
+   {
+    "nom": "Google Actualités – Maroc",
+    "url": "https://news.google.com/rss?hl=ar&gl=MA&ceid=MA:ar"
+   }
+  ]
+ },
+ "MU": {
+  "auto": true,
+  "nom": "Maurice",
+  "fuseau": "Indian/Mauritius",
+  "devise": "MUR",
+  "feries": "MU",
+  "actus_langue": "fr",
+  "actus_pays": "MU",
+  "accept_language": "fr-MU,fr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Maurice",
+  "habitant": "un habitant du pays suivant : Maurice",
+  "d_abord": "le pays « Maurice »",
+  "exemple_ville": "Mauritius",
+  "exemple_rando": "randonnée facile près de Mauritius",
+  "flux": [
+   {
+    "nom": "Google Actualités – Maurice",
+    "url": "https://news.google.com/rss?hl=fr&gl=MU&ceid=MU:fr"
+   }
+  ]
+ },
+ "MR": {
+  "auto": true,
+  "nom": "Mauritanie",
+  "fuseau": "Africa/Nouakchott",
+  "devise": "MRU",
+  "feries": "MR",
+  "actus_langue": "ar",
+  "actus_pays": "MR",
+  "accept_language": "ar-MR,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Mauritanie",
+  "habitant": "un habitant du pays suivant : Mauritanie",
+  "d_abord": "le pays « Mauritanie »",
+  "exemple_ville": "Nouakchott",
+  "exemple_rando": "randonnée facile près de Nouakchott",
+  "flux": [
+   {
+    "nom": "Google Actualités – Mauritanie",
+    "url": "https://news.google.com/rss?hl=ar&gl=MR&ceid=MR:ar"
+   }
+  ]
+ },
+ "MX": {
+  "auto": true,
+  "nom": "Mexique",
+  "fuseau": "America/Mexico_City",
+  "devise": "MXN",
+  "feries": "MX",
+  "actus_langue": "es",
+  "actus_pays": "MX",
+  "accept_language": "es-MX,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Mexique",
+  "habitant": "un habitant du pays suivant : Mexique",
+  "d_abord": "le pays « Mexique »",
+  "exemple_ville": "Mexico City",
+  "exemple_rando": "randonnée facile près de Mexico City",
+  "flux": [
+   {
+    "nom": "Google Actualités – Mexique",
+    "url": "https://news.google.com/rss?hl=es&gl=MX&ceid=MX:es"
+   }
+  ]
+ },
+ "FM": {
+  "auto": true,
+  "nom": "Micronésie",
+  "fuseau": "Pacific/Chuuk",
+  "devise": "USD",
+  "feries": "FM",
+  "actus_langue": "en",
+  "actus_pays": "FM",
+  "accept_language": "en-FM,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Micronésie",
+  "habitant": "un habitant du pays suivant : Micronésie",
+  "d_abord": "le pays « Micronésie »",
+  "exemple_ville": "Chuuk",
+  "exemple_rando": "randonnée facile près de Chuuk",
+  "flux": [
+   {
+    "nom": "Google Actualités – Micronésie",
+    "url": "https://news.google.com/rss?hl=en&gl=FM&ceid=FM:en"
+   }
+  ]
+ },
+ "MD": {
+  "auto": true,
+  "nom": "Moldavie",
+  "fuseau": "Europe/Chisinau",
+  "devise": "MDL",
+  "feries": "MD",
+  "actus_langue": "ro",
+  "actus_pays": "MD",
+  "accept_language": "ro-MD,ro;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Moldavie",
+  "habitant": "un habitant du pays suivant : Moldavie",
+  "d_abord": "le pays « Moldavie »",
+  "exemple_ville": "Chisinau",
+  "exemple_rando": "randonnée facile près de Chisinau",
+  "flux": [
+   {
+    "nom": "Google Actualités – Moldavie",
+    "url": "https://news.google.com/rss?hl=ro&gl=MD&ceid=MD:ro"
+   }
+  ]
+ },
+ "MC": {
+  "auto": true,
+  "nom": "Monaco",
+  "fuseau": "Europe/Monaco",
+  "devise": "EUR",
+  "feries": "MC",
+  "actus_langue": "fr",
+  "actus_pays": "MC",
+  "accept_language": "fr-MC,fr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Monaco",
+  "habitant": "un habitant du pays suivant : Monaco",
+  "d_abord": "le pays « Monaco »",
+  "exemple_ville": "Monaco",
+  "exemple_rando": "randonnée facile près de Monaco",
+  "flux": [
+   {
+    "nom": "Google Actualités – Monaco",
+    "url": "https://news.google.com/rss?hl=fr&gl=MC&ceid=MC:fr"
+   }
+  ]
+ },
+ "MN": {
+  "auto": true,
+  "nom": "Mongolie",
+  "fuseau": "Asia/Ulaanbaatar",
+  "devise": "MNT",
+  "feries": "MN",
+  "actus_langue": "mn",
+  "actus_pays": "MN",
+  "accept_language": "mn-MN,mn;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Mongolie",
+  "habitant": "un habitant du pays suivant : Mongolie",
+  "d_abord": "le pays « Mongolie »",
+  "exemple_ville": "Ulaanbaatar",
+  "exemple_rando": "randonnée facile près de Ulaanbaatar",
+  "flux": [
+   {
+    "nom": "Google Actualités – Mongolie",
+    "url": "https://news.google.com/rss?hl=mn&gl=MN&ceid=MN:mn"
+   }
+  ]
+ },
+ "ME": {
+  "auto": true,
+  "nom": "Monténégro",
+  "fuseau": "Europe/Podgorica",
+  "devise": "EUR",
+  "feries": "ME",
+  "actus_langue": "sr",
+  "actus_pays": "ME",
+  "accept_language": "sr-ME,sr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Monténégro",
+  "habitant": "un habitant du pays suivant : Monténégro",
+  "d_abord": "le pays « Monténégro »",
+  "exemple_ville": "Podgorica",
+  "exemple_rando": "randonnée facile près de Podgorica",
+  "flux": [
+   {
+    "nom": "Google Actualités – Monténégro",
+    "url": "https://news.google.com/rss?hl=sr&gl=ME&ceid=ME:sr"
+   }
+  ]
+ },
+ "MZ": {
+  "auto": true,
+  "nom": "Mozambique",
+  "fuseau": "Africa/Maputo",
+  "devise": "MZN",
+  "feries": "MZ",
+  "actus_langue": "pt",
+  "actus_pays": "MZ",
+  "accept_language": "pt-MZ,pt;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Mozambique",
+  "habitant": "un habitant du pays suivant : Mozambique",
+  "d_abord": "le pays « Mozambique »",
+  "exemple_ville": "Maputo",
+  "exemple_rando": "randonnée facile près de Maputo",
+  "flux": [
+   {
+    "nom": "Google Actualités – Mozambique",
+    "url": "https://news.google.com/rss?hl=pt&gl=MZ&ceid=MZ:pt"
+   }
+  ]
+ },
+ "MM": {
+  "auto": true,
+  "nom": "Myanmar (Birmanie)",
+  "fuseau": "Asia/Yangon",
+  "devise": "MMK",
+  "feries": "MM",
+  "actus_langue": "my",
+  "actus_pays": "MM",
+  "accept_language": "my-MM,my;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Myanmar (Birmanie)",
+  "habitant": "un habitant du pays suivant : Myanmar (Birmanie)",
+  "d_abord": "le pays « Myanmar (Birmanie) »",
+  "exemple_ville": "Yangon",
+  "exemple_rando": "randonnée facile près de Yangon",
+  "flux": [
+   {
+    "nom": "Google Actualités – Myanmar (Birmanie)",
+    "url": "https://news.google.com/rss?hl=my&gl=MM&ceid=MM:my"
+   }
+  ]
+ },
+ "NA": {
+  "auto": true,
+  "nom": "Namibie",
+  "fuseau": "Africa/Windhoek",
+  "devise": "ZAR",
+  "feries": "NA",
+  "actus_langue": "en",
+  "actus_pays": "NA",
+  "accept_language": "en-NA,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Namibie",
+  "habitant": "un habitant du pays suivant : Namibie",
+  "d_abord": "le pays « Namibie »",
+  "exemple_ville": "Windhoek",
+  "exemple_rando": "randonnée facile près de Windhoek",
+  "flux": [
+   {
+    "nom": "Google Actualités – Namibie",
+    "url": "https://news.google.com/rss?hl=en&gl=NA&ceid=NA:en"
+   }
+  ]
+ },
+ "NR": {
+  "auto": true,
+  "nom": "Nauru",
+  "fuseau": "Pacific/Nauru",
+  "devise": "AUD",
+  "feries": "NR",
+  "actus_langue": "en",
+  "actus_pays": "NR",
+  "accept_language": "en-NR,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Nauru",
+  "habitant": "un habitant du pays suivant : Nauru",
+  "d_abord": "le pays « Nauru »",
+  "exemple_ville": "Nauru",
+  "exemple_rando": "randonnée facile près de Nauru",
+  "flux": [
+   {
+    "nom": "Google Actualités – Nauru",
+    "url": "https://news.google.com/rss?hl=en&gl=NR&ceid=NR:en"
+   }
+  ]
+ },
+ "NI": {
+  "auto": true,
+  "nom": "Nicaragua",
+  "fuseau": "America/Managua",
+  "devise": "NIO",
+  "feries": "NI",
+  "actus_langue": "es",
+  "actus_pays": "NI",
+  "accept_language": "es-NI,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Nicaragua",
+  "habitant": "un habitant du pays suivant : Nicaragua",
+  "d_abord": "le pays « Nicaragua »",
+  "exemple_ville": "Managua",
+  "exemple_rando": "randonnée facile près de Managua",
+  "flux": [
+   {
+    "nom": "Google Actualités – Nicaragua",
+    "url": "https://news.google.com/rss?hl=es&gl=NI&ceid=NI:es"
+   }
+  ]
+ },
+ "NE": {
+  "auto": true,
+  "nom": "Niger",
+  "fuseau": "Africa/Niamey",
+  "devise": "XOF",
+  "feries": "NE",
+  "actus_langue": "fr",
+  "actus_pays": "NE",
+  "accept_language": "fr-NE,fr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Niger",
+  "habitant": "un habitant du pays suivant : Niger",
+  "d_abord": "le pays « Niger »",
+  "exemple_ville": "Niamey",
+  "exemple_rando": "randonnée facile près de Niamey",
+  "flux": [
+   {
+    "nom": "Google Actualités – Niger",
+    "url": "https://news.google.com/rss?hl=fr&gl=NE&ceid=NE:fr"
+   }
+  ]
+ },
+ "NG": {
+  "auto": true,
+  "nom": "Nigeria",
+  "fuseau": "Africa/Lagos",
+  "devise": "NGN",
+  "feries": "NG",
+  "actus_langue": "en",
+  "actus_pays": "NG",
+  "accept_language": "en-NG,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Nigeria",
+  "habitant": "un habitant du pays suivant : Nigeria",
+  "d_abord": "le pays « Nigeria »",
+  "exemple_ville": "Lagos",
+  "exemple_rando": "randonnée facile près de Lagos",
+  "flux": [
+   {
+    "nom": "Google Actualités – Nigeria",
+    "url": "https://news.google.com/rss?hl=en&gl=NG&ceid=NG:en"
+   }
+  ]
+ },
+ "NO": {
+  "auto": true,
+  "nom": "Norvège",
+  "fuseau": "Europe/Oslo",
+  "devise": "NOK",
+  "feries": "NO",
+  "actus_langue": "no",
+  "actus_pays": "NO",
+  "accept_language": "no-NO,no;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Norvège",
+  "habitant": "un habitant du pays suivant : Norvège",
+  "d_abord": "le pays « Norvège »",
+  "exemple_ville": "Oslo",
+  "exemple_rando": "randonnée facile près de Oslo",
+  "flux": [
+   {
+    "nom": "Google Actualités – Norvège",
+    "url": "https://news.google.com/rss?hl=no&gl=NO&ceid=NO:no"
+   }
+  ]
+ },
+ "NZ": {
+  "auto": true,
+  "nom": "Nouvelle-Zélande",
+  "fuseau": "Pacific/Auckland",
+  "devise": "NZD",
+  "feries": "NZ",
+  "actus_langue": "en",
+  "actus_pays": "NZ",
+  "accept_language": "en-NZ,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Nouvelle-Zélande",
+  "habitant": "un habitant du pays suivant : Nouvelle-Zélande",
+  "d_abord": "le pays « Nouvelle-Zélande »",
+  "exemple_ville": "Auckland",
+  "exemple_rando": "randonnée facile près de Auckland",
+  "flux": [
+   {
+    "nom": "Google Actualités – Nouvelle-Zélande",
+    "url": "https://news.google.com/rss?hl=en&gl=NZ&ceid=NZ:en"
+   }
+  ]
+ },
+ "NP": {
+  "auto": true,
+  "nom": "Népal",
+  "fuseau": "Asia/Kathmandu",
+  "devise": "NPR",
+  "feries": "NP",
+  "actus_langue": "ne",
+  "actus_pays": "NP",
+  "accept_language": "ne-NP,ne;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Népal",
+  "habitant": "un habitant du pays suivant : Népal",
+  "d_abord": "le pays « Népal »",
+  "exemple_ville": "Kathmandu",
+  "exemple_rando": "randonnée facile près de Kathmandu",
+  "flux": [
+   {
+    "nom": "Google Actualités – Népal",
+    "url": "https://news.google.com/rss?hl=ne&gl=NP&ceid=NP:ne"
+   }
+  ]
+ },
+ "OM": {
+  "auto": true,
+  "nom": "Oman",
+  "fuseau": "Asia/Muscat",
+  "devise": "OMR",
+  "feries": "OM",
+  "actus_langue": "ar",
+  "actus_pays": "OM",
+  "accept_language": "ar-OM,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Oman",
+  "habitant": "un habitant du pays suivant : Oman",
+  "d_abord": "le pays « Oman »",
+  "exemple_ville": "Muscat",
+  "exemple_rando": "randonnée facile près de Muscat",
+  "flux": [
+   {
+    "nom": "Google Actualités – Oman",
+    "url": "https://news.google.com/rss?hl=ar&gl=OM&ceid=OM:ar"
+   }
+  ]
+ },
+ "UG": {
+  "auto": true,
+  "nom": "Ouganda",
+  "fuseau": "Africa/Kampala",
+  "devise": "UGX",
+  "feries": "UG",
+  "actus_langue": "sw",
+  "actus_pays": "UG",
+  "accept_language": "sw-UG,sw;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Ouganda",
+  "habitant": "un habitant du pays suivant : Ouganda",
+  "d_abord": "le pays « Ouganda »",
+  "exemple_ville": "Kampala",
+  "exemple_rando": "randonnée facile près de Kampala",
+  "flux": [
+   {
+    "nom": "Google Actualités – Ouganda",
+    "url": "https://news.google.com/rss?hl=sw&gl=UG&ceid=UG:sw"
+   }
+  ]
+ },
+ "UZ": {
+  "auto": true,
+  "nom": "Ouzbékistan",
+  "fuseau": "Asia/Samarkand",
+  "devise": "UZS",
+  "feries": "UZ",
+  "actus_langue": "uz",
+  "actus_pays": "UZ",
+  "accept_language": "uz-UZ,uz;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Ouzbékistan",
+  "habitant": "un habitant du pays suivant : Ouzbékistan",
+  "d_abord": "le pays « Ouzbékistan »",
+  "exemple_ville": "Samarkand",
+  "exemple_rando": "randonnée facile près de Samarkand",
+  "flux": [
+   {
+    "nom": "Google Actualités – Ouzbékistan",
+    "url": "https://news.google.com/rss?hl=uz&gl=UZ&ceid=UZ:uz"
+   }
+  ]
+ },
+ "PK": {
+  "auto": true,
+  "nom": "Pakistan",
+  "fuseau": "Asia/Karachi",
+  "devise": "PKR",
+  "feries": "PK",
+  "actus_langue": "en",
+  "actus_pays": "PK",
+  "accept_language": "en-PK,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Pakistan",
+  "habitant": "un habitant du pays suivant : Pakistan",
+  "d_abord": "le pays « Pakistan »",
+  "exemple_ville": "Karachi",
+  "exemple_rando": "randonnée facile près de Karachi",
+  "flux": [
+   {
+    "nom": "Google Actualités – Pakistan",
+    "url": "https://news.google.com/rss?hl=en&gl=PK&ceid=PK:en"
+   }
+  ]
+ },
+ "PW": {
+  "auto": true,
+  "nom": "Palaos",
+  "fuseau": "Pacific/Palau",
+  "devise": "USD",
+  "feries": "PW",
+  "actus_langue": "pau",
+  "actus_pays": "PW",
+  "accept_language": "pau-PW,pau;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Palaos",
+  "habitant": "un habitant du pays suivant : Palaos",
+  "d_abord": "le pays « Palaos »",
+  "exemple_ville": "Palau",
+  "exemple_rando": "randonnée facile près de Palau",
+  "flux": [
+   {
+    "nom": "Google Actualités – Palaos",
+    "url": "https://news.google.com/rss?hl=pau&gl=PW&ceid=PW:pau"
+   }
+  ]
+ },
+ "PA": {
+  "auto": true,
+  "nom": "Panama",
+  "fuseau": "America/Panama",
+  "devise": "PAB",
+  "feries": "PA",
+  "actus_langue": "es",
+  "actus_pays": "PA",
+  "accept_language": "es-PA,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Panama",
+  "habitant": "un habitant du pays suivant : Panama",
+  "d_abord": "le pays « Panama »",
+  "exemple_ville": "Panama",
+  "exemple_rando": "randonnée facile près de Panama",
+  "flux": [
+   {
+    "nom": "Google Actualités – Panama",
+    "url": "https://news.google.com/rss?hl=es&gl=PA&ceid=PA:es"
+   }
+  ]
+ },
+ "PG": {
+  "auto": true,
+  "nom": "Papouasie-Nouvelle-Guinée",
+  "fuseau": "Pacific/Port_Moresby",
+  "devise": "PGK",
+  "feries": "PG",
+  "actus_langue": "tpi",
+  "actus_pays": "PG",
+  "accept_language": "tpi-PG,tpi;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Papouasie-Nouvelle-Guinée",
+  "habitant": "un habitant du pays suivant : Papouasie-Nouvelle-Guinée",
+  "d_abord": "le pays « Papouasie-Nouvelle-Guinée »",
+  "exemple_ville": "Port Moresby",
+  "exemple_rando": "randonnée facile près de Port Moresby",
+  "flux": [
+   {
+    "nom": "Google Actualités – Papouasie-Nouvelle-Guinée",
+    "url": "https://news.google.com/rss?hl=tpi&gl=PG&ceid=PG:tpi"
+   }
+  ]
+ },
+ "PY": {
+  "auto": true,
+  "nom": "Paraguay",
+  "fuseau": "America/Asuncion",
+  "devise": "PYG",
+  "feries": "PY",
+  "actus_langue": "gn",
+  "actus_pays": "PY",
+  "accept_language": "gn-PY,gn;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Paraguay",
+  "habitant": "un habitant du pays suivant : Paraguay",
+  "d_abord": "le pays « Paraguay »",
+  "exemple_ville": "Asuncion",
+  "exemple_rando": "randonnée facile près de Asuncion",
+  "flux": [
+   {
+    "nom": "Google Actualités – Paraguay",
+    "url": "https://news.google.com/rss?hl=gn&gl=PY&ceid=PY:gn"
+   }
+  ]
+ },
+ "NL": {
+  "auto": true,
+  "nom": "Pays-Bas",
+  "fuseau": "Europe/Amsterdam",
+  "devise": "EUR",
+  "feries": "NL",
+  "actus_langue": "nl",
+  "actus_pays": "NL",
+  "accept_language": "nl-NL,nl;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Pays-Bas",
+  "habitant": "un habitant du pays suivant : Pays-Bas",
+  "d_abord": "le pays « Pays-Bas »",
+  "exemple_ville": "Amsterdam",
+  "exemple_rando": "randonnée facile près de Amsterdam",
+  "flux": [
+   {
+    "nom": "Google Actualités – Pays-Bas",
+    "url": "https://news.google.com/rss?hl=nl&gl=NL&ceid=NL:nl"
+   }
+  ]
+ },
+ "PH": {
+  "auto": true,
+  "nom": "Philippines",
+  "fuseau": "Asia/Manila",
+  "devise": "PHP",
+  "feries": "PH",
+  "actus_langue": "en",
+  "actus_pays": "PH",
+  "accept_language": "en-PH,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Philippines",
+  "habitant": "un habitant du pays suivant : Philippines",
+  "d_abord": "le pays « Philippines »",
+  "exemple_ville": "Manila",
+  "exemple_rando": "randonnée facile près de Manila",
+  "flux": [
+   {
+    "nom": "Google Actualités – Philippines",
+    "url": "https://news.google.com/rss?hl=en&gl=PH&ceid=PH:en"
+   }
+  ]
+ },
+ "PL": {
+  "auto": true,
+  "nom": "Pologne",
+  "fuseau": "Europe/Warsaw",
+  "devise": "PLN",
+  "feries": "PL",
+  "actus_langue": "pl",
+  "actus_pays": "PL",
+  "accept_language": "pl-PL,pl;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Pologne",
+  "habitant": "un habitant du pays suivant : Pologne",
+  "d_abord": "le pays « Pologne »",
+  "exemple_ville": "Warsaw",
+  "exemple_rando": "randonnée facile près de Warsaw",
+  "flux": [
+   {
+    "nom": "Google Actualités – Pologne",
+    "url": "https://news.google.com/rss?hl=pl&gl=PL&ceid=PL:pl"
+   }
+  ]
+ },
+ "PT": {
+  "auto": true,
+  "nom": "Portugal",
+  "fuseau": "Europe/Lisbon",
+  "devise": "EUR",
+  "feries": "PT",
+  "actus_langue": "pt",
+  "actus_pays": "PT",
+  "accept_language": "pt-PT,pt;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Portugal",
+  "habitant": "un habitant du pays suivant : Portugal",
+  "d_abord": "le pays « Portugal »",
+  "exemple_ville": "Lisbon",
+  "exemple_rando": "randonnée facile près de Lisbon",
+  "flux": [
+   {
+    "nom": "Google Actualités – Portugal",
+    "url": "https://news.google.com/rss?hl=pt&gl=PT&ceid=PT:pt"
+   }
+  ]
+ },
+ "PE": {
+  "auto": true,
+  "nom": "Pérou",
+  "fuseau": "America/Lima",
+  "devise": "PEN",
+  "feries": "PE",
+  "actus_langue": "es",
+  "actus_pays": "PE",
+  "accept_language": "es-PE,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Pérou",
+  "habitant": "un habitant du pays suivant : Pérou",
+  "d_abord": "le pays « Pérou »",
+  "exemple_ville": "Lima",
+  "exemple_rando": "randonnée facile près de Lima",
+  "flux": [
+   {
+    "nom": "Google Actualités – Pérou",
+    "url": "https://news.google.com/rss?hl=es&gl=PE&ceid=PE:es"
+   }
+  ]
+ },
+ "QA": {
+  "auto": true,
+  "nom": "Qatar",
+  "fuseau": "Asia/Qatar",
+  "devise": "QAR",
+  "feries": "QA",
+  "actus_langue": "ar",
+  "actus_pays": "QA",
+  "accept_language": "ar-QA,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Qatar",
+  "habitant": "un habitant du pays suivant : Qatar",
+  "d_abord": "le pays « Qatar »",
+  "exemple_ville": "Qatar",
+  "exemple_rando": "randonnée facile près de Qatar",
+  "flux": [
+   {
+    "nom": "Google Actualités – Qatar",
+    "url": "https://news.google.com/rss?hl=ar&gl=QA&ceid=QA:ar"
+   }
+  ]
+ },
+ "RO": {
+  "auto": true,
+  "nom": "Roumanie",
+  "fuseau": "Europe/Bucharest",
+  "devise": "RON",
+  "feries": "RO",
+  "actus_langue": "ro",
+  "actus_pays": "RO",
+  "accept_language": "ro-RO,ro;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Roumanie",
+  "habitant": "un habitant du pays suivant : Roumanie",
+  "d_abord": "le pays « Roumanie »",
+  "exemple_ville": "Bucharest",
+  "exemple_rando": "randonnée facile près de Bucharest",
+  "flux": [
+   {
+    "nom": "Google Actualités – Roumanie",
+    "url": "https://news.google.com/rss?hl=ro&gl=RO&ceid=RO:ro"
+   }
+  ]
+ },
+ "RU": {
+  "auto": true,
+  "nom": "Russie",
+  "fuseau": "Europe/Moscow",
+  "devise": "RUB",
+  "feries": "RU",
+  "actus_langue": "ru",
+  "actus_pays": "RU",
+  "accept_language": "ru-RU,ru;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Russie",
+  "habitant": "un habitant du pays suivant : Russie",
+  "d_abord": "le pays « Russie »",
+  "exemple_ville": "Moscow",
+  "exemple_rando": "randonnée facile près de Moscow",
+  "flux": [
+   {
+    "nom": "Google Actualités – Russie",
+    "url": "https://news.google.com/rss?hl=ru&gl=RU&ceid=RU:ru"
+   }
+  ]
+ },
+ "RW": {
+  "auto": true,
+  "nom": "Rwanda",
+  "fuseau": "Africa/Kigali",
+  "devise": "RWF",
+  "feries": "RW",
+  "actus_langue": "rw",
+  "actus_pays": "RW",
+  "accept_language": "rw-RW,rw;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Rwanda",
+  "habitant": "un habitant du pays suivant : Rwanda",
+  "d_abord": "le pays « Rwanda »",
+  "exemple_ville": "Kigali",
+  "exemple_rando": "randonnée facile près de Kigali",
+  "flux": [
+   {
+    "nom": "Google Actualités – Rwanda",
+    "url": "https://news.google.com/rss?hl=rw&gl=RW&ceid=RW:rw"
+   }
+  ]
+ },
+ "CF": {
+  "auto": true,
+  "nom": "République centrafricaine",
+  "fuseau": "Africa/Bangui",
+  "devise": "XAF",
+  "feries": "CF",
+  "actus_langue": "sg",
+  "actus_pays": "CF",
+  "accept_language": "sg-CF,sg;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : République centrafricaine",
+  "habitant": "un habitant du pays suivant : République centrafricaine",
+  "d_abord": "le pays « République centrafricaine »",
+  "exemple_ville": "Bangui",
+  "exemple_rando": "randonnée facile près de Bangui",
+  "flux": [
+   {
+    "nom": "Google Actualités – République centrafricaine",
+    "url": "https://news.google.com/rss?hl=sg&gl=CF&ceid=CF:sg"
+   }
+  ]
+ },
+ "DO": {
+  "auto": true,
+  "nom": "République dominicaine",
+  "fuseau": "America/Santo_Domingo",
+  "devise": "DOP",
+  "feries": "DO",
+  "actus_langue": "es",
+  "actus_pays": "DO",
+  "accept_language": "es-DO,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : République dominicaine",
+  "habitant": "un habitant du pays suivant : République dominicaine",
+  "d_abord": "le pays « République dominicaine »",
+  "exemple_ville": "Santo Domingo",
+  "exemple_rando": "randonnée facile près de Santo Domingo",
+  "flux": [
+   {
+    "nom": "Google Actualités – République dominicaine",
+    "url": "https://news.google.com/rss?hl=es&gl=DO&ceid=DO:es"
+   }
+  ]
+ },
+ "KN": {
+  "auto": true,
+  "nom": "Saint-Christophe-et-Niévès",
+  "fuseau": "America/St_Kitts",
+  "devise": "XCD",
+  "feries": "KN",
+  "actus_langue": "en",
+  "actus_pays": "KN",
+  "accept_language": "en-KN,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Saint-Christophe-et-Niévès",
+  "habitant": "un habitant du pays suivant : Saint-Christophe-et-Niévès",
+  "d_abord": "le pays « Saint-Christophe-et-Niévès »",
+  "exemple_ville": "St Kitts",
+  "exemple_rando": "randonnée facile près de St Kitts",
+  "flux": [
+   {
+    "nom": "Google Actualités – Saint-Christophe-et-Niévès",
+    "url": "https://news.google.com/rss?hl=en&gl=KN&ceid=KN:en"
+   }
+  ]
+ },
+ "SM": {
+  "auto": true,
+  "nom": "Saint-Marin",
+  "fuseau": "Europe/San_Marino",
+  "devise": "EUR",
+  "feries": "SM",
+  "actus_langue": "it",
+  "actus_pays": "SM",
+  "accept_language": "it-SM,it;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Saint-Marin",
+  "habitant": "un habitant du pays suivant : Saint-Marin",
+  "d_abord": "le pays « Saint-Marin »",
+  "exemple_ville": "San Marino",
+  "exemple_rando": "randonnée facile près de San Marino",
+  "flux": [
+   {
+    "nom": "Google Actualités – Saint-Marin",
+    "url": "https://news.google.com/rss?hl=it&gl=SM&ceid=SM:it"
+   }
+  ]
+ },
+ "VC": {
+  "auto": true,
+  "nom": "Saint-Vincent-et-les Grenadines",
+  "fuseau": "America/St_Vincent",
+  "devise": "XCD",
+  "feries": "VC",
+  "actus_langue": "en",
+  "actus_pays": "VC",
+  "accept_language": "en-VC,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Saint-Vincent-et-les Grenadines",
+  "habitant": "un habitant du pays suivant : Saint-Vincent-et-les Grenadines",
+  "d_abord": "le pays « Saint-Vincent-et-les Grenadines »",
+  "exemple_ville": "St Vincent",
+  "exemple_rando": "randonnée facile près de St Vincent",
+  "flux": [
+   {
+    "nom": "Google Actualités – Saint-Vincent-et-les Grenadines",
+    "url": "https://news.google.com/rss?hl=en&gl=VC&ceid=VC:en"
+   }
+  ]
+ },
+ "LC": {
+  "auto": true,
+  "nom": "Sainte-Lucie",
+  "fuseau": "America/St_Lucia",
+  "devise": "XCD",
+  "feries": "LC",
+  "actus_langue": "en",
+  "actus_pays": "LC",
+  "accept_language": "en-LC,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Sainte-Lucie",
+  "habitant": "un habitant du pays suivant : Sainte-Lucie",
+  "d_abord": "le pays « Sainte-Lucie »",
+  "exemple_ville": "St Lucia",
+  "exemple_rando": "randonnée facile près de St Lucia",
+  "flux": [
+   {
+    "nom": "Google Actualités – Sainte-Lucie",
+    "url": "https://news.google.com/rss?hl=en&gl=LC&ceid=LC:en"
+   }
+  ]
+ },
+ "SV": {
+  "auto": true,
+  "nom": "Salvador",
+  "fuseau": "America/El_Salvador",
+  "devise": "USD",
+  "feries": "SV",
+  "actus_langue": "es",
+  "actus_pays": "SV",
+  "accept_language": "es-SV,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Salvador",
+  "habitant": "un habitant du pays suivant : Salvador",
+  "d_abord": "le pays « Salvador »",
+  "exemple_ville": "El Salvador",
+  "exemple_rando": "randonnée facile près de El Salvador",
+  "flux": [
+   {
+    "nom": "Google Actualités – Salvador",
+    "url": "https://news.google.com/rss?hl=es&gl=SV&ceid=SV:es"
+   }
+  ]
+ },
+ "WS": {
+  "auto": true,
+  "nom": "Samoa",
+  "fuseau": "Pacific/Apia",
+  "devise": "WST",
+  "feries": "WS",
+  "actus_langue": "sm",
+  "actus_pays": "WS",
+  "accept_language": "sm-WS,sm;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Samoa",
+  "habitant": "un habitant du pays suivant : Samoa",
+  "d_abord": "le pays « Samoa »",
+  "exemple_ville": "Apia",
+  "exemple_rando": "randonnée facile près de Apia",
+  "flux": [
+   {
+    "nom": "Google Actualités – Samoa",
+    "url": "https://news.google.com/rss?hl=sm&gl=WS&ceid=WS:sm"
+   }
+  ]
+ },
+ "ST": {
+  "auto": true,
+  "nom": "Sao Tomé-et-Principe",
+  "fuseau": "Africa/Sao_Tome",
+  "devise": "STN",
+  "feries": "ST",
+  "actus_langue": "pt",
+  "actus_pays": "ST",
+  "accept_language": "pt-ST,pt;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Sao Tomé-et-Principe",
+  "habitant": "un habitant du pays suivant : Sao Tomé-et-Principe",
+  "d_abord": "le pays « Sao Tomé-et-Principe »",
+  "exemple_ville": "Sao Tome",
+  "exemple_rando": "randonnée facile près de Sao Tome",
+  "flux": [
+   {
+    "nom": "Google Actualités – Sao Tomé-et-Principe",
+    "url": "https://news.google.com/rss?hl=pt&gl=ST&ceid=ST:pt"
+   }
+  ]
+ },
+ "RS": {
+  "auto": true,
+  "nom": "Serbie",
+  "fuseau": "Europe/Belgrade",
+  "devise": "RSD",
+  "feries": "RS",
+  "actus_langue": "sr",
+  "actus_pays": "RS",
+  "accept_language": "sr-RS,sr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Serbie",
+  "habitant": "un habitant du pays suivant : Serbie",
+  "d_abord": "le pays « Serbie »",
+  "exemple_ville": "Belgrade",
+  "exemple_rando": "randonnée facile près de Belgrade",
+  "flux": [
+   {
+    "nom": "Google Actualités – Serbie",
+    "url": "https://news.google.com/rss?hl=sr&gl=RS&ceid=RS:sr"
+   }
+  ]
+ },
+ "SC": {
+  "auto": true,
+  "nom": "Seychelles",
+  "fuseau": "Indian/Mahe",
+  "devise": "SCR",
+  "feries": "SC",
+  "actus_langue": "fr",
+  "actus_pays": "SC",
+  "accept_language": "fr-SC,fr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Seychelles",
+  "habitant": "un habitant du pays suivant : Seychelles",
+  "d_abord": "le pays « Seychelles »",
+  "exemple_ville": "Mahe",
+  "exemple_rando": "randonnée facile près de Mahe",
+  "flux": [
+   {
+    "nom": "Google Actualités – Seychelles",
+    "url": "https://news.google.com/rss?hl=fr&gl=SC&ceid=SC:fr"
+   }
+  ]
+ },
+ "SL": {
+  "auto": true,
+  "nom": "Sierra Leone",
+  "fuseau": "Africa/Freetown",
+  "devise": "SLE",
+  "feries": "SL",
+  "actus_langue": "en",
+  "actus_pays": "SL",
+  "accept_language": "en-SL,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Sierra Leone",
+  "habitant": "un habitant du pays suivant : Sierra Leone",
+  "d_abord": "le pays « Sierra Leone »",
+  "exemple_ville": "Freetown",
+  "exemple_rando": "randonnée facile près de Freetown",
+  "flux": [
+   {
+    "nom": "Google Actualités – Sierra Leone",
+    "url": "https://news.google.com/rss?hl=en&gl=SL&ceid=SL:en"
+   }
+  ]
+ },
+ "SG": {
+  "auto": true,
+  "nom": "Singapour",
+  "fuseau": "Asia/Singapore",
+  "devise": "SGD",
+  "feries": "SG",
+  "actus_langue": "en",
+  "actus_pays": "SG",
+  "accept_language": "en-SG,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Singapour",
+  "habitant": "un habitant du pays suivant : Singapour",
+  "d_abord": "le pays « Singapour »",
+  "exemple_ville": "Singapore",
+  "exemple_rando": "randonnée facile près de Singapore",
+  "flux": [
+   {
+    "nom": "Google Actualités – Singapour",
+    "url": "https://news.google.com/rss?hl=en&gl=SG&ceid=SG:en"
+   }
+  ]
+ },
+ "SK": {
+  "auto": true,
+  "nom": "Slovaquie",
+  "fuseau": "Europe/Bratislava",
+  "devise": "EUR",
+  "feries": "SK",
+  "actus_langue": "sk",
+  "actus_pays": "SK",
+  "accept_language": "sk-SK,sk;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Slovaquie",
+  "habitant": "un habitant du pays suivant : Slovaquie",
+  "d_abord": "le pays « Slovaquie »",
+  "exemple_ville": "Bratislava",
+  "exemple_rando": "randonnée facile près de Bratislava",
+  "flux": [
+   {
+    "nom": "Google Actualités – Slovaquie",
+    "url": "https://news.google.com/rss?hl=sk&gl=SK&ceid=SK:sk"
+   }
+  ]
+ },
+ "SI": {
+  "auto": true,
+  "nom": "Slovénie",
+  "fuseau": "Europe/Ljubljana",
+  "devise": "EUR",
+  "feries": "SI",
+  "actus_langue": "sl",
+  "actus_pays": "SI",
+  "accept_language": "sl-SI,sl;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Slovénie",
+  "habitant": "un habitant du pays suivant : Slovénie",
+  "d_abord": "le pays « Slovénie »",
+  "exemple_ville": "Ljubljana",
+  "exemple_rando": "randonnée facile près de Ljubljana",
+  "flux": [
+   {
+    "nom": "Google Actualités – Slovénie",
+    "url": "https://news.google.com/rss?hl=sl&gl=SI&ceid=SI:sl"
+   }
+  ]
+ },
+ "SO": {
+  "auto": true,
+  "nom": "Somalie",
+  "fuseau": "Africa/Mogadishu",
+  "devise": "SOS",
+  "feries": "SO",
+  "actus_langue": "so",
+  "actus_pays": "SO",
+  "accept_language": "so-SO,so;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Somalie",
+  "habitant": "un habitant du pays suivant : Somalie",
+  "d_abord": "le pays « Somalie »",
+  "exemple_ville": "Mogadishu",
+  "exemple_rando": "randonnée facile près de Mogadishu",
+  "flux": [
+   {
+    "nom": "Google Actualités – Somalie",
+    "url": "https://news.google.com/rss?hl=so&gl=SO&ceid=SO:so"
+   }
+  ]
+ },
+ "SD": {
+  "auto": true,
+  "nom": "Soudan",
+  "fuseau": "Africa/Khartoum",
+  "devise": "SDG",
+  "feries": "SD",
+  "actus_langue": "en",
+  "actus_pays": "SD",
+  "accept_language": "en-SD,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Soudan",
+  "habitant": "un habitant du pays suivant : Soudan",
+  "d_abord": "le pays « Soudan »",
+  "exemple_ville": "Khartoum",
+  "exemple_rando": "randonnée facile près de Khartoum",
+  "flux": [
+   {
+    "nom": "Google Actualités – Soudan",
+    "url": "https://news.google.com/rss?hl=en&gl=SD&ceid=SD:en"
+   }
+  ]
+ },
+ "SS": {
+  "auto": true,
+  "nom": "Soudan du Sud",
+  "fuseau": "Africa/Juba",
+  "devise": "SSP",
+  "feries": "SS",
+  "actus_langue": "en",
+  "actus_pays": "SS",
+  "accept_language": "en-SS,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Soudan du Sud",
+  "habitant": "un habitant du pays suivant : Soudan du Sud",
+  "d_abord": "le pays « Soudan du Sud »",
+  "exemple_ville": "Juba",
+  "exemple_rando": "randonnée facile près de Juba",
+  "flux": [
+   {
+    "nom": "Google Actualités – Soudan du Sud",
+    "url": "https://news.google.com/rss?hl=en&gl=SS&ceid=SS:en"
+   }
+  ]
+ },
+ "LK": {
+  "auto": true,
+  "nom": "Sri Lanka",
+  "fuseau": "Asia/Colombo",
+  "devise": "LKR",
+  "feries": "LK",
+  "actus_langue": "si",
+  "actus_pays": "LK",
+  "accept_language": "si-LK,si;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Sri Lanka",
+  "habitant": "un habitant du pays suivant : Sri Lanka",
+  "d_abord": "le pays « Sri Lanka »",
+  "exemple_ville": "Colombo",
+  "exemple_rando": "randonnée facile près de Colombo",
+  "flux": [
+   {
+    "nom": "Google Actualités – Sri Lanka",
+    "url": "https://news.google.com/rss?hl=si&gl=LK&ceid=LK:si"
+   }
+  ]
+ },
+ "SR": {
+  "auto": true,
+  "nom": "Suriname",
+  "fuseau": "America/Paramaribo",
+  "devise": "SRD",
+  "feries": "SR",
+  "actus_langue": "nl",
+  "actus_pays": "SR",
+  "accept_language": "nl-SR,nl;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Suriname",
+  "habitant": "un habitant du pays suivant : Suriname",
+  "d_abord": "le pays « Suriname »",
+  "exemple_ville": "Paramaribo",
+  "exemple_rando": "randonnée facile près de Paramaribo",
+  "flux": [
+   {
+    "nom": "Google Actualités – Suriname",
+    "url": "https://news.google.com/rss?hl=nl&gl=SR&ceid=SR:nl"
+   }
+  ]
+ },
+ "SE": {
+  "auto": true,
+  "nom": "Suède",
+  "fuseau": "Europe/Stockholm",
+  "devise": "SEK",
+  "feries": "SE",
+  "actus_langue": "sv",
+  "actus_pays": "SE",
+  "accept_language": "sv-SE,sv;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Suède",
+  "habitant": "un habitant du pays suivant : Suède",
+  "d_abord": "le pays « Suède »",
+  "exemple_ville": "Stockholm",
+  "exemple_rando": "randonnée facile près de Stockholm",
+  "flux": [
+   {
+    "nom": "Google Actualités – Suède",
+    "url": "https://news.google.com/rss?hl=sv&gl=SE&ceid=SE:sv"
+   }
+  ]
+ },
+ "SY": {
+  "auto": true,
+  "nom": "Syrie",
+  "fuseau": "Asia/Damascus",
+  "devise": "SYP",
+  "feries": "SY",
+  "actus_langue": "ar",
+  "actus_pays": "SY",
+  "accept_language": "ar-SY,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Syrie",
+  "habitant": "un habitant du pays suivant : Syrie",
+  "d_abord": "le pays « Syrie »",
+  "exemple_ville": "Damascus",
+  "exemple_rando": "randonnée facile près de Damascus",
+  "flux": [
+   {
+    "nom": "Google Actualités – Syrie",
+    "url": "https://news.google.com/rss?hl=ar&gl=SY&ceid=SY:ar"
+   }
+  ]
+ },
+ "SN": {
+  "auto": true,
+  "nom": "Sénégal",
+  "fuseau": "Africa/Dakar",
+  "devise": "XOF",
+  "feries": "SN",
+  "actus_langue": "fr",
+  "actus_pays": "SN",
+  "accept_language": "fr-SN,fr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Sénégal",
+  "habitant": "un habitant du pays suivant : Sénégal",
+  "d_abord": "le pays « Sénégal »",
+  "exemple_ville": "Dakar",
+  "exemple_rando": "randonnée facile près de Dakar",
+  "flux": [
+   {
+    "nom": "Google Actualités – Sénégal",
+    "url": "https://news.google.com/rss?hl=fr&gl=SN&ceid=SN:fr"
+   }
+  ]
+ },
+ "TJ": {
+  "auto": true,
+  "nom": "Tadjikistan",
+  "fuseau": "Asia/Dushanbe",
+  "devise": "TJS",
+  "feries": "TJ",
+  "actus_langue": "tg",
+  "actus_pays": "TJ",
+  "accept_language": "tg-TJ,tg;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Tadjikistan",
+  "habitant": "un habitant du pays suivant : Tadjikistan",
+  "d_abord": "le pays « Tadjikistan »",
+  "exemple_ville": "Dushanbe",
+  "exemple_rando": "randonnée facile près de Dushanbe",
+  "flux": [
+   {
+    "nom": "Google Actualités – Tadjikistan",
+    "url": "https://news.google.com/rss?hl=tg&gl=TJ&ceid=TJ:tg"
+   }
+  ]
+ },
+ "TZ": {
+  "auto": true,
+  "nom": "Tanzanie",
+  "fuseau": "Africa/Dar_es_Salaam",
+  "devise": "TZS",
+  "feries": "TZ",
+  "actus_langue": "sw",
+  "actus_pays": "TZ",
+  "accept_language": "sw-TZ,sw;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Tanzanie",
+  "habitant": "un habitant du pays suivant : Tanzanie",
+  "d_abord": "le pays « Tanzanie »",
+  "exemple_ville": "Dar es Salaam",
+  "exemple_rando": "randonnée facile près de Dar es Salaam",
+  "flux": [
+   {
+    "nom": "Google Actualités – Tanzanie",
+    "url": "https://news.google.com/rss?hl=sw&gl=TZ&ceid=TZ:sw"
+   }
+  ]
+ },
+ "TW": {
+  "auto": true,
+  "nom": "Taïwan",
+  "fuseau": "Asia/Taipei",
+  "devise": "TWD",
+  "feries": "TW",
+  "actus_langue": "zh",
+  "actus_pays": "TW",
+  "accept_language": "zh-TW,zh;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Taïwan",
+  "habitant": "un habitant du pays suivant : Taïwan",
+  "d_abord": "le pays « Taïwan »",
+  "exemple_ville": "Taipei",
+  "exemple_rando": "randonnée facile près de Taipei",
+  "flux": [
+   {
+    "nom": "Google Actualités – Taïwan",
+    "url": "https://news.google.com/rss?hl=zh&gl=TW&ceid=TW:zh"
+   }
+  ]
+ },
+ "TD": {
+  "auto": true,
+  "nom": "Tchad",
+  "fuseau": "Africa/Ndjamena",
+  "devise": "XAF",
+  "feries": "TD",
+  "actus_langue": "ar",
+  "actus_pays": "TD",
+  "accept_language": "ar-TD,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Tchad",
+  "habitant": "un habitant du pays suivant : Tchad",
+  "d_abord": "le pays « Tchad »",
+  "exemple_ville": "Ndjamena",
+  "exemple_rando": "randonnée facile près de Ndjamena",
+  "flux": [
+   {
+    "nom": "Google Actualités – Tchad",
+    "url": "https://news.google.com/rss?hl=ar&gl=TD&ceid=TD:ar"
+   }
+  ]
+ },
+ "CZ": {
+  "auto": true,
+  "nom": "Tchéquie",
+  "fuseau": "Europe/Prague",
+  "devise": "CZK",
+  "feries": "CZ",
+  "actus_langue": "cs",
+  "actus_pays": "CZ",
+  "accept_language": "cs-CZ,cs;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Tchéquie",
+  "habitant": "un habitant du pays suivant : Tchéquie",
+  "d_abord": "le pays « Tchéquie »",
+  "exemple_ville": "Prague",
+  "exemple_rando": "randonnée facile près de Prague",
+  "flux": [
+   {
+    "nom": "Google Actualités – Tchéquie",
+    "url": "https://news.google.com/rss?hl=cs&gl=CZ&ceid=CZ:cs"
+   }
+  ]
+ },
+ "PS": {
+  "auto": true,
+  "nom": "Territoires palestiniens",
+  "fuseau": "Asia/Gaza",
+  "devise": "ILS",
+  "feries": "PS",
+  "actus_langue": "ar",
+  "actus_pays": "PS",
+  "accept_language": "ar-PS,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Territoires palestiniens",
+  "habitant": "un habitant du pays suivant : Territoires palestiniens",
+  "d_abord": "le pays « Territoires palestiniens »",
+  "exemple_ville": "Gaza",
+  "exemple_rando": "randonnée facile près de Gaza",
+  "flux": [
+   {
+    "nom": "Google Actualités – Territoires palestiniens",
+    "url": "https://news.google.com/rss?hl=ar&gl=PS&ceid=PS:ar"
+   }
+  ]
+ },
+ "TH": {
+  "auto": true,
+  "nom": "Thaïlande",
+  "fuseau": "Asia/Bangkok",
+  "devise": "THB",
+  "feries": "TH",
+  "actus_langue": "th",
+  "actus_pays": "TH",
+  "accept_language": "th-TH,th;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Thaïlande",
+  "habitant": "un habitant du pays suivant : Thaïlande",
+  "d_abord": "le pays « Thaïlande »",
+  "exemple_ville": "Bangkok",
+  "exemple_rando": "randonnée facile près de Bangkok",
+  "flux": [
+   {
+    "nom": "Google Actualités – Thaïlande",
+    "url": "https://news.google.com/rss?hl=th&gl=TH&ceid=TH:th"
+   }
+  ]
+ },
+ "TL": {
+  "auto": true,
+  "nom": "Timor oriental",
+  "fuseau": "Asia/Dili",
+  "devise": "USD",
+  "feries": "TL",
+  "actus_langue": "tet",
+  "actus_pays": "TL",
+  "accept_language": "tet-TL,tet;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Timor oriental",
+  "habitant": "un habitant du pays suivant : Timor oriental",
+  "d_abord": "le pays « Timor oriental »",
+  "exemple_ville": "Dili",
+  "exemple_rando": "randonnée facile près de Dili",
+  "flux": [
+   {
+    "nom": "Google Actualités – Timor oriental",
+    "url": "https://news.google.com/rss?hl=tet&gl=TL&ceid=TL:tet"
+   }
+  ]
+ },
+ "TG": {
+  "auto": true,
+  "nom": "Togo",
+  "fuseau": "Africa/Lome",
+  "devise": "XOF",
+  "feries": "TG",
+  "actus_langue": "fr",
+  "actus_pays": "TG",
+  "accept_language": "fr-TG,fr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Togo",
+  "habitant": "un habitant du pays suivant : Togo",
+  "d_abord": "le pays « Togo »",
+  "exemple_ville": "Lome",
+  "exemple_rando": "randonnée facile près de Lome",
+  "flux": [
+   {
+    "nom": "Google Actualités – Togo",
+    "url": "https://news.google.com/rss?hl=fr&gl=TG&ceid=TG:fr"
+   }
+  ]
+ },
+ "TO": {
+  "auto": true,
+  "nom": "Tonga",
+  "fuseau": "Pacific/Tongatapu",
+  "devise": "TOP",
+  "feries": "TO",
+  "actus_langue": "to",
+  "actus_pays": "TO",
+  "accept_language": "to-TO,to;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Tonga",
+  "habitant": "un habitant du pays suivant : Tonga",
+  "d_abord": "le pays « Tonga »",
+  "exemple_ville": "Tongatapu",
+  "exemple_rando": "randonnée facile près de Tongatapu",
+  "flux": [
+   {
+    "nom": "Google Actualités – Tonga",
+    "url": "https://news.google.com/rss?hl=to&gl=TO&ceid=TO:to"
+   }
+  ]
+ },
+ "TT": {
+  "auto": true,
+  "nom": "Trinité-et-Tobago",
+  "fuseau": "America/Port_of_Spain",
+  "devise": "TTD",
+  "feries": "TT",
+  "actus_langue": "en",
+  "actus_pays": "TT",
+  "accept_language": "en-TT,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Trinité-et-Tobago",
+  "habitant": "un habitant du pays suivant : Trinité-et-Tobago",
+  "d_abord": "le pays « Trinité-et-Tobago »",
+  "exemple_ville": "Port of Spain",
+  "exemple_rando": "randonnée facile près de Port of Spain",
+  "flux": [
+   {
+    "nom": "Google Actualités – Trinité-et-Tobago",
+    "url": "https://news.google.com/rss?hl=en&gl=TT&ceid=TT:en"
+   }
+  ]
+ },
+ "TN": {
+  "auto": true,
+  "nom": "Tunisie",
+  "fuseau": "Africa/Tunis",
+  "devise": "TND",
+  "feries": "TN",
+  "actus_langue": "ar",
+  "actus_pays": "TN",
+  "accept_language": "ar-TN,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Tunisie",
+  "habitant": "un habitant du pays suivant : Tunisie",
+  "d_abord": "le pays « Tunisie »",
+  "exemple_ville": "Tunis",
+  "exemple_rando": "randonnée facile près de Tunis",
+  "flux": [
+   {
+    "nom": "Google Actualités – Tunisie",
+    "url": "https://news.google.com/rss?hl=ar&gl=TN&ceid=TN:ar"
+   }
+  ]
+ },
+ "TM": {
+  "auto": true,
+  "nom": "Turkménistan",
+  "fuseau": "Asia/Ashgabat",
+  "devise": "TMT",
+  "feries": "TM",
+  "actus_langue": "tk",
+  "actus_pays": "TM",
+  "accept_language": "tk-TM,tk;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Turkménistan",
+  "habitant": "un habitant du pays suivant : Turkménistan",
+  "d_abord": "le pays « Turkménistan »",
+  "exemple_ville": "Ashgabat",
+  "exemple_rando": "randonnée facile près de Ashgabat",
+  "flux": [
+   {
+    "nom": "Google Actualités – Turkménistan",
+    "url": "https://news.google.com/rss?hl=tk&gl=TM&ceid=TM:tk"
+   }
+  ]
+ },
+ "TR": {
+  "auto": true,
+  "nom": "Turquie",
+  "fuseau": "Europe/Istanbul",
+  "devise": "TRY",
+  "feries": "TR",
+  "actus_langue": "tr",
+  "actus_pays": "TR",
+  "accept_language": "tr-TR,tr;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Turquie",
+  "habitant": "un habitant du pays suivant : Turquie",
+  "d_abord": "le pays « Turquie »",
+  "exemple_ville": "Istanbul",
+  "exemple_rando": "randonnée facile près de Istanbul",
+  "flux": [
+   {
+    "nom": "Google Actualités – Turquie",
+    "url": "https://news.google.com/rss?hl=tr&gl=TR&ceid=TR:tr"
+   }
+  ]
+ },
+ "TV": {
+  "auto": true,
+  "nom": "Tuvalu",
+  "fuseau": "Pacific/Funafuti",
+  "devise": "AUD",
+  "feries": "TV",
+  "actus_langue": "tvl",
+  "actus_pays": "TV",
+  "accept_language": "tvl-TV,tvl;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Tuvalu",
+  "habitant": "un habitant du pays suivant : Tuvalu",
+  "d_abord": "le pays « Tuvalu »",
+  "exemple_ville": "Funafuti",
+  "exemple_rando": "randonnée facile près de Funafuti",
+  "flux": [
+   {
+    "nom": "Google Actualités – Tuvalu",
+    "url": "https://news.google.com/rss?hl=tvl&gl=TV&ceid=TV:tvl"
+   }
+  ]
+ },
+ "UA": {
+  "auto": true,
+  "nom": "Ukraine",
+  "fuseau": "Europe/Kyiv",
+  "devise": "UAH",
+  "feries": "UA",
+  "actus_langue": "uk",
+  "actus_pays": "UA",
+  "accept_language": "uk-UA,uk;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Ukraine",
+  "habitant": "un habitant du pays suivant : Ukraine",
+  "d_abord": "le pays « Ukraine »",
+  "exemple_ville": "Kyiv",
+  "exemple_rando": "randonnée facile près de Kyiv",
+  "flux": [
+   {
+    "nom": "Google Actualités – Ukraine",
+    "url": "https://news.google.com/rss?hl=uk&gl=UA&ceid=UA:uk"
+   }
+  ]
+ },
+ "UY": {
+  "auto": true,
+  "nom": "Uruguay",
+  "fuseau": "America/Montevideo",
+  "devise": "UYU",
+  "feries": "UY",
+  "actus_langue": "es",
+  "actus_pays": "UY",
+  "accept_language": "es-UY,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Uruguay",
+  "habitant": "un habitant du pays suivant : Uruguay",
+  "d_abord": "le pays « Uruguay »",
+  "exemple_ville": "Montevideo",
+  "exemple_rando": "randonnée facile près de Montevideo",
+  "flux": [
+   {
+    "nom": "Google Actualités – Uruguay",
+    "url": "https://news.google.com/rss?hl=es&gl=UY&ceid=UY:es"
+   }
+  ]
+ },
+ "VU": {
+  "auto": true,
+  "nom": "Vanuatu",
+  "fuseau": "Pacific/Efate",
+  "devise": "VUV",
+  "feries": "VU",
+  "actus_langue": "bi",
+  "actus_pays": "VU",
+  "accept_language": "bi-VU,bi;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Vanuatu",
+  "habitant": "un habitant du pays suivant : Vanuatu",
+  "d_abord": "le pays « Vanuatu »",
+  "exemple_ville": "Efate",
+  "exemple_rando": "randonnée facile près de Efate",
+  "flux": [
+   {
+    "nom": "Google Actualités – Vanuatu",
+    "url": "https://news.google.com/rss?hl=bi&gl=VU&ceid=VU:bi"
+   }
+  ]
+ },
+ "VE": {
+  "auto": true,
+  "nom": "Venezuela",
+  "fuseau": "America/Caracas",
+  "devise": "VES",
+  "feries": "VE",
+  "actus_langue": "es",
+  "actus_pays": "VE",
+  "accept_language": "es-VE,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Venezuela",
+  "habitant": "un habitant du pays suivant : Venezuela",
+  "d_abord": "le pays « Venezuela »",
+  "exemple_ville": "Caracas",
+  "exemple_rando": "randonnée facile près de Caracas",
+  "flux": [
+   {
+    "nom": "Google Actualités – Venezuela",
+    "url": "https://news.google.com/rss?hl=es&gl=VE&ceid=VE:es"
+   }
+  ]
+ },
+ "VN": {
+  "auto": true,
+  "nom": "Viêt Nam",
+  "fuseau": "Asia/Ho_Chi_Minh",
+  "devise": "VND",
+  "feries": "VN",
+  "actus_langue": "vi",
+  "actus_pays": "VN",
+  "accept_language": "vi-VN,vi;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Viêt Nam",
+  "habitant": "un habitant du pays suivant : Viêt Nam",
+  "d_abord": "le pays « Viêt Nam »",
+  "exemple_ville": "Ho Chi Minh",
+  "exemple_rando": "randonnée facile près de Ho Chi Minh",
+  "flux": [
+   {
+    "nom": "Google Actualités – Viêt Nam",
+    "url": "https://news.google.com/rss?hl=vi&gl=VN&ceid=VN:vi"
+   }
+  ]
+ },
+ "YE": {
+  "auto": true,
+  "nom": "Yémen",
+  "fuseau": "Asia/Aden",
+  "devise": "YER",
+  "feries": "YE",
+  "actus_langue": "ar",
+  "actus_pays": "YE",
+  "accept_language": "ar-YE,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Yémen",
+  "habitant": "un habitant du pays suivant : Yémen",
+  "d_abord": "le pays « Yémen »",
+  "exemple_ville": "Aden",
+  "exemple_rando": "randonnée facile près de Aden",
+  "flux": [
+   {
+    "nom": "Google Actualités – Yémen",
+    "url": "https://news.google.com/rss?hl=ar&gl=YE&ceid=YE:ar"
+   }
+  ]
+ },
+ "ZM": {
+  "auto": true,
+  "nom": "Zambie",
+  "fuseau": "Africa/Lusaka",
+  "devise": "ZMW",
+  "feries": "ZM",
+  "actus_langue": "en",
+  "actus_pays": "ZM",
+  "accept_language": "en-ZM,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Zambie",
+  "habitant": "un habitant du pays suivant : Zambie",
+  "d_abord": "le pays « Zambie »",
+  "exemple_ville": "Lusaka",
+  "exemple_rando": "randonnée facile près de Lusaka",
+  "flux": [
+   {
+    "nom": "Google Actualités – Zambie",
+    "url": "https://news.google.com/rss?hl=en&gl=ZM&ceid=ZM:en"
+   }
+  ]
+ },
+ "ZW": {
+  "auto": true,
+  "nom": "Zimbabwe",
+  "fuseau": "Africa/Harare",
+  "devise": "USD",
+  "feries": "ZW",
+  "actus_langue": "sn",
+  "actus_pays": "ZW",
+  "accept_language": "sn-ZW,sn;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Zimbabwe",
+  "habitant": "un habitant du pays suivant : Zimbabwe",
+  "d_abord": "le pays « Zimbabwe »",
+  "exemple_ville": "Harare",
+  "exemple_rando": "randonnée facile près de Harare",
+  "flux": [
+   {
+    "nom": "Google Actualités – Zimbabwe",
+    "url": "https://news.google.com/rss?hl=sn&gl=ZW&ceid=ZW:sn"
+   }
+  ]
+ },
+ "EG": {
+  "auto": true,
+  "nom": "Égypte",
+  "fuseau": "Africa/Cairo",
+  "devise": "EGP",
+  "feries": "EG",
+  "actus_langue": "ar",
+  "actus_pays": "EG",
+  "accept_language": "ar-EG,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Égypte",
+  "habitant": "un habitant du pays suivant : Égypte",
+  "d_abord": "le pays « Égypte »",
+  "exemple_ville": "Cairo",
+  "exemple_rando": "randonnée facile près de Cairo",
+  "flux": [
+   {
+    "nom": "Google Actualités – Égypte",
+    "url": "https://news.google.com/rss?hl=ar&gl=EG&ceid=EG:ar"
+   }
+  ]
+ },
+ "AE": {
+  "auto": true,
+  "nom": "Émirats arabes unis",
+  "fuseau": "Asia/Dubai",
+  "devise": "AED",
+  "feries": "AE",
+  "actus_langue": "ar",
+  "actus_pays": "AE",
+  "accept_language": "ar-AE,ar;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Émirats arabes unis",
+  "habitant": "un habitant du pays suivant : Émirats arabes unis",
+  "d_abord": "le pays « Émirats arabes unis »",
+  "exemple_ville": "Dubai",
+  "exemple_rando": "randonnée facile près de Dubai",
+  "flux": [
+   {
+    "nom": "Google Actualités – Émirats arabes unis",
+    "url": "https://news.google.com/rss?hl=ar&gl=AE&ceid=AE:ar"
+   }
+  ]
+ },
+ "EC": {
+  "auto": true,
+  "nom": "Équateur",
+  "fuseau": "America/Guayaquil",
+  "devise": "USD",
+  "feries": "EC",
+  "actus_langue": "es",
+  "actus_pays": "EC",
+  "accept_language": "es-EC,es;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Équateur",
+  "habitant": "un habitant du pays suivant : Équateur",
+  "d_abord": "le pays « Équateur »",
+  "exemple_ville": "Guayaquil",
+  "exemple_rando": "randonnée facile près de Guayaquil",
+  "flux": [
+   {
+    "nom": "Google Actualités – Équateur",
+    "url": "https://news.google.com/rss?hl=es&gl=EC&ceid=EC:es"
+   }
+  ]
+ },
+ "ER": {
+  "auto": true,
+  "nom": "Érythrée",
+  "fuseau": "Africa/Asmara",
+  "devise": "ERN",
+  "feries": "ER",
+  "actus_langue": "ti",
+  "actus_pays": "ER",
+  "accept_language": "ti-ER,ti;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Érythrée",
+  "habitant": "un habitant du pays suivant : Érythrée",
+  "d_abord": "le pays « Érythrée »",
+  "exemple_ville": "Asmara",
+  "exemple_rando": "randonnée facile près de Asmara",
+  "flux": [
+   {
+    "nom": "Google Actualités – Érythrée",
+    "url": "https://news.google.com/rss?hl=ti&gl=ER&ceid=ER:ti"
+   }
+  ]
+ },
+ "VA": {
+  "auto": true,
+  "nom": "État de la Cité du Vatican",
+  "fuseau": "Europe/Vatican",
+  "devise": "EUR",
+  "feries": "VA",
+  "actus_langue": "it",
+  "actus_pays": "VA",
+  "accept_language": "it-VA,it;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : État de la Cité du Vatican",
+  "habitant": "un habitant du pays suivant : État de la Cité du Vatican",
+  "d_abord": "le pays « État de la Cité du Vatican »",
+  "exemple_ville": "Vatican",
+  "exemple_rando": "randonnée facile près de Vatican",
+  "flux": [
+   {
+    "nom": "Google Actualités – État de la Cité du Vatican",
+    "url": "https://news.google.com/rss?hl=it&gl=VA&ceid=VA:it"
+   }
+  ]
+ },
+ "US": {
+  "auto": true,
+  "nom": "États-Unis",
+  "fuseau": "America/New_York",
+  "devise": "USD",
+  "feries": "US",
+  "actus_langue": "en",
+  "actus_pays": "US",
+  "accept_language": "en-US,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : États-Unis",
+  "habitant": "un habitant du pays suivant : États-Unis",
+  "d_abord": "le pays « États-Unis »",
+  "exemple_ville": "New York",
+  "exemple_rando": "randonnée facile près de New York",
+  "flux": [
+   {
+    "nom": "Google Actualités – États-Unis",
+    "url": "https://news.google.com/rss?hl=en&gl=US&ceid=US:en"
+   }
+  ]
+ },
+ "ET": {
+  "auto": true,
+  "nom": "Éthiopie",
+  "fuseau": "Africa/Addis_Ababa",
+  "devise": "ETB",
+  "feries": "ET",
+  "actus_langue": "am",
+  "actus_pays": "ET",
+  "accept_language": "am-ET,am;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Éthiopie",
+  "habitant": "un habitant du pays suivant : Éthiopie",
+  "d_abord": "le pays « Éthiopie »",
+  "exemple_ville": "Addis Ababa",
+  "exemple_rando": "randonnée facile près de Addis Ababa",
+  "flux": [
+   {
+    "nom": "Google Actualités – Éthiopie",
+    "url": "https://news.google.com/rss?hl=am&gl=ET&ceid=ET:am"
+   }
+  ]
+ },
+ "MH": {
+  "auto": true,
+  "nom": "Îles Marshall",
+  "fuseau": "Pacific/Majuro",
+  "devise": "USD",
+  "feries": "MH",
+  "actus_langue": "en",
+  "actus_pays": "MH",
+  "accept_language": "en-MH,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Îles Marshall",
+  "habitant": "un habitant du pays suivant : Îles Marshall",
+  "d_abord": "le pays « Îles Marshall »",
+  "exemple_ville": "Majuro",
+  "exemple_rando": "randonnée facile près de Majuro",
+  "flux": [
+   {
+    "nom": "Google Actualités – Îles Marshall",
+    "url": "https://news.google.com/rss?hl=en&gl=MH&ceid=MH:en"
+   }
+  ]
+ },
+ "SB": {
+  "auto": true,
+  "nom": "Îles Salomon",
+  "fuseau": "Pacific/Guadalcanal",
+  "devise": "SBD",
+  "feries": "SB",
+  "actus_langue": "en",
+  "actus_pays": "SB",
+  "accept_language": "en-SB,en;q=0.9,fr;q=0.6",
+  "ou": "résidant dans le pays suivant : Îles Salomon",
+  "habitant": "un habitant du pays suivant : Îles Salomon",
+  "d_abord": "le pays « Îles Salomon »",
+  "exemple_ville": "Guadalcanal",
+  "exemple_rando": "randonnée facile près de Guadalcanal",
+  "flux": [
+   {
+    "nom": "Google Actualités – Îles Salomon",
+    "url": "https://news.google.com/rss?hl=en&gl=SB&ceid=SB:en"
+   }
+  ]
+ },
+ "--": {
+  "nom": "Pas renseigné",
+  "fuseau": "Europe/Zurich",
+  "devise": "EUR",
+  "feries": "--",
+  "actus_langue": "fr",
+  "actus_pays": "FR",
+  "accept_language": "fr;q=0.9,en;q=0.5",
+  "ou": "dont le pays n'est pas précisé",
+  "habitant": "un auditeur dont le pays n'est pas précisé",
+  "d_abord": "l'actualité proche de l'auditeur",
+  "exemple_ville": "Genève",
+  "exemple_rando": "randonnée facile près de chez l'auditeur",
+  "flux": [
+   {
+    "nom": "Google Actualités – monde",
+    "url": "https://news.google.com/rss?hl=fr&gl=FR&ceid=FR:fr"
+   }
+  ]
+ }
 }

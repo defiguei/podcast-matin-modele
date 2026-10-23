@@ -17,25 +17,31 @@ RACINE = Path(__file__).resolve().parent
 PROFILS: dict[str, dict[str, Any]] = json.loads((RACINE / "donnees" / "pays.json").read_text(encoding="utf-8"))
 DEFAUT = "CH"
 
-_actuel = {"code": DEFAUT, "feries": ""}
+SANS_PAYS = "--"   # « Pas renseigné » : ni jours fériés, ni médias d'un pays
+_actuel = {"code": DEFAUT, "feries": "", "fuseau": ""}
 
 
-def definir(code: str | None, region_feries: str | None = None) -> None:
+def definir(code: str | None, region_feries: str | None = None, fuseau: str | None = None) -> None:
     _actuel["code"] = code if code in PROFILS else DEFAUT
     _actuel["feries"] = str(region_feries or "")
+    _actuel["fuseau"] = str(fuseau or "")
 
 
 def definir_depuis_config(config: dict | None) -> None:
     config = config or {}
-    definir(config.get("pays"), (config.get("planning") or {}).get("feries_region"))
+    definir(config.get("pays"), (config.get("planning") or {}).get("feries_region"), config.get("fuseau"))
 
 
 def code() -> str:
     return _actuel["code"]
 
 
-def profil(code_pays: str | None = None) -> dict[str, Any]:
-    return PROFILS.get(code_pays or _actuel["code"]) or PROFILS[DEFAUT]
+def profil(code_pays: str | None = None, fuseau: str | None = None) -> dict[str, Any]:
+    """Profil d'un pays. Sans pays (« Pas renseigné »), l'heure reste celle du pays choisi avant."""
+    profil_pays = PROFILS.get(code_pays or _actuel["code"]) or PROFILS[DEFAUT]
+    if (code_pays or _actuel["code"]) == SANS_PAYS:
+        return {**profil_pays, "fuseau": fuseau or _actuel["fuseau"] or profil_pays["fuseau"]}
+    return profil_pays
 
 
 def region_feries() -> str:
@@ -82,6 +88,8 @@ def feries_calcules(annee: int, region: str) -> list[tuple[dt.date, str]]:
 def feries(debut: dt.date, jours: int = 7, region: str | None = None) -> list[tuple[dt.date, str]]:
     """Jours fériés de la région (« CH-VD », « FR », « BE »…) entre debut et debut + jours."""
     region = region or region_feries()
+    if region == SANS_PAYS:
+        return []
     fin = debut + dt.timedelta(days=jours)
     pays_code, _, subdivision = region.partition("-")
     try:

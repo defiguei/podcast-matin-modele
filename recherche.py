@@ -281,6 +281,47 @@ Longueur : environ {mots} mots. Remplis « titre » (court), « sujets » (les i
     return script, pcm, taux, minutage
 
 
+# ───────────────────────── synthèse d'une rubrique ──────────────────────────
+
+def resume_rubrique(identifiant: str, effectifs: dict, cle_gemini: str, maintenant: dt.datetime,
+                    telegram: p.Telegram | None, conversation: str, bot: Any) -> int:
+    """Mini-podcast qui résume ce que la rubrique a raconté ces derniers jours (texte et sources gardés par le bot)."""
+    entrees = bot.rubrique(identifiant)
+    if not entrees:
+        raise p.ErreurPodcast("Le bot n'a encore rien gardé de cette rubrique : elle doit d'abord passer dans un épisode.")
+    config = effectifs.get("config_bot") or {}
+    regle = next((r for r in config.get("regles") or [] if r.get("id") == identifiant), {})
+    titre_rubrique = regle.get("titre") or (entrees[-1].get("titre") if entrees else "") or identifiant
+    a, b = (x["nom"] for x in effectifs["animateurs"])
+    noms = [a, b]
+    adresse = "Tutoie" if effectifs.get("tutoiement", True) else "Vouvoie"
+    mots = round(3 * effectifs.get("mots_par_minute", 180))
+    systeme = f"""Tu écris un mini-podcast audio de trois minutes, animé par {a} et {b}, qui fait le point sur la rubrique « {titre_rubrique} » à partir de ce qu'elle a déjà raconté ces derniers jours (fourni ci-dessous, du plus ancien au plus récent). {adresse} l'auditeur.
+Regroupe par thème plutôt que jour par jour, relève ce qui revient ou évolue, dis ce qui est encore d'actualité et ce qui est dépassé. N'invente rien qui ne soit pas dans la matière ; pas d'adresse web, pas de markdown, pas d'emoji.
+Longueur : environ {mots} mots. Remplis « titre » (court), « sujets » (les thèmes, dans l'ordre) et « sources » (liste vide)."""
+    matiere = []
+    for entree in entrees[-14:]:
+        liens = "; ".join(s.get("titre", "") for s in entree.get("sources") or [])
+        matiere.append(f"[{entree.get('date', '')}]\n{entree.get('texte', '')}" + (f"\nSources citées : {liens}" if liens else ""))
+    modeles = list(dict.fromkeys(effectifs["modeles_texte"] + effectifs["modeles_rapides"]))
+    brut, _ = p.demander_json(systeme, f"Nous sommes le {p.date_longue(maintenant.date())}.\n\n" + "\n\n".join(matiere),
+                              p.schema_script(noms), modeles, cle_gemini, delai=150, tours=2)
+    script = p.nettoyer_script(brut, noms)
+    minutage: list[float] = []
+    pcm, taux = p.synthetiser(script, effectifs, cle_gemini, minutage)
+    mp3 = p.encoder_mp3(pcm, taux, effectifs["debit_mp3_kbps"])
+    duree = round(len(pcm) / (2 * taux))
+    nom_bot = f"{maintenant:%Y-%m}/resume-{identifiant}-{maintenant:%Y-%m-%d-%H%M%S}.mp3"
+    audio_bot = nom_bot if bot.deposer(nom_bot, mp3, "audio/mpeg") else None
+    if telegram and conversation:
+        telegram.audio(conversation, mp3, f"resume-{identifiant}.mp3", p.tronquer(script["titre"], 64),
+                       " & ".join(a["nom"] for a in effectifs["animateurs"]), f"🎧 <b>{e(script['titre'])}</b>\nSynthèse : {e(titre_rubrique)}",
+                       duree, p.creer_pochette(maintenant.date(), script["titre"], "SYNTHÈSE"))
+    bot.evenement({"type": "resume", "rubrique": identifiant, "audio": audio_bot, "titre": script["titre"], "duree": duree})
+    p.journal(f"Synthèse de « {titre_rubrique} » envoyée ✅")
+    return 0
+
+
 # ──────────────────────────────── principal ─────────────────────────────────
 
 def lancer(identifiants: list[str], format_: str, effectifs: dict, cle_gemini: str, maintenant: dt.datetime,

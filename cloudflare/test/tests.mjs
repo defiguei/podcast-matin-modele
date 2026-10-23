@@ -1430,6 +1430,18 @@ await scenario("Connexions : clés et agendas saisis dans l'application", async 
   // Retirer.
   r = await app("agenda_retirer", { id: ajoute.id });
   verifier(r.ok && !r.donnees.connexions.agendas.length, "agenda retiré");
+  // Un agenda qui vient du secret GitHub se retire aussi (il n'est plus lu) et se remet.
+  await envoyerJson(`${BOT}/test/etat`, { etat: { ...(await etat()).etat, agendas: [{ id: "abc123", nom: "Famille", nb: 4 }, { id: "def456", nom: "Travail", nb: 9 }] } });
+  r = await app("agenda_retirer", { id: "abc123" });
+  let cfg = (await etat()).config;
+  verifier(r.ok && cfg.agenda.retires.includes("abc123") && cfg.agenda.exclus.includes("abc123")
+    && !r.donnees.reglages.agendas.some((a) => a.id === "abc123") && r.donnees.reglages.agendas_retires.some((a) => a.id === "abc123"),
+    "agenda du secret GitHub retiré : ignoré et rangé dans les retirés", cfg.agenda);
+  r = await app("agenda_remettre", { id: "abc123" });
+  cfg = (await etat()).config;
+  verifier(r.ok && !cfg.agenda.retires.includes("abc123") && !cfg.agenda.exclus.includes("abc123") && r.donnees.reglages.agendas.some((a) => a.id === "abc123"),
+    "agenda remis : relu", cfg.agenda);
+  verifier((await app("agenda_retirer", { id: "inconnu" })).ok === false, "agenda inconnu refusé");
   r = await app("cle", { nom: "gemini", valeur: "" });
   verifier(r.ok && r.donnees.connexions.cles.gemini.source === "github", "clé retirée : retour au secret GitHub");
   await app("cle", { nom: "tavily", valeur: "" });
@@ -1841,6 +1853,49 @@ await scenario("Pays : réglage et reprise des anciennes installations", async (
   await app("etat");
   ({ config } = await etat());
   verifier(config.pays === "CH" && config.planning.feries_region === "CH-VD", "ancienne version suisse : rien ne change", config.pays);
+  // Tous les pays proposés, plus « Pas renseigné » ; les fériés suivent le pays (en Suisse : le canton).
+  r = await app("etat");
+  const pays = r.donnees.listes.pays;
+  verifier(pays.length > 150 && pays.some(([c, n]) => c === "JP" && n === "Japon") && pays.at(-1)[0] === "--" && pays.at(-1)[1] === "Pas renseigné",
+    "liste complète des pays, « Pas renseigné » en dernier", pays.length);
+  verifier(r.donnees.listes.regions.every(([c]) => c.startsWith("CH-")), "seuls les cantons restent à choisir");
+  await app("regler", { chemin: "planning.feries_region", valeur: "CH-GE" });
+  r = await app("regler", { chemin: "pays", valeur: "JP" });
+  ({ config } = await etat());
+  verifier(config.pays === "JP" && config.planning.feries_region === "JP" && r.donnees.devise === "JPY", "Japon : fériés et devise suivent", config.planning.feries_region);
+  r = await app("regler", { chemin: "pays", valeur: "--" });
+  ({ config } = await etat());
+  verifier(config.pays === "--" && config.planning.feries_region === "--" && config.fuseau === "Asia/Tokyo" && r.donnees.reglages.planning?.feries_region !== "JP",
+    "pas de pays : pas de fériés, l'heure reste celle du pays d'avant", { fuseau: config.fuseau, region: config.planning.feries_region });
+  verifier(r.donnees.pays === "--" && r.donnees.planning.feries_region === "--", "l'application reçoit « pas de pays »");
+  await app("regler", { chemin: "pays", valeur: "CH" });
+  ({ config } = await etat());
+  verifier(config.planning.feries_region === "CH-VD" && !config.fuseau, "retour en Suisse : canton de Vaud par défaut, plus de fuseau mémorisé", config.planning.feries_region);
+});
+
+await scenario("Rubrique : ce qu'elle a raconté, synthèse, textes et sources", async () => {
+  const entetes = { "X-Podcast-Secret": SECRET };
+  const episode = (date, id, texte) => envoyerJson(`${BOT}/api/evenement`, { type: "episode", date, titre: "Épisode", sujets: [], message_id: Number(date.slice(-2)) + 7000, mode: "planifie",
+    rubriques: { [id]: { titre: "Veille IA", texte, sources: [{ titre: "Un article", url: "https://exemple.ch/a" }] }, "<x>": { titre: "ignoré", texte: "x" } } }, entetes);
+  await episode("2026-10-14", "R1", "Léa : Les modèles progressent.\nHugo : Oui, vite.");
+  await episode("2026-10-15", "R1", "Léa : Nouveau modèle ouvert.");
+  const h = await (await fetch(`${BOT}/api/rubrique?id=R1`, { headers: entetes })).json();
+  verifier(h.entrees.length === 2 && h.entrees[1].texte.includes("Nouveau modèle") && h.entrees[0].sources[0].url === "https://exemple.ch/a", "le bot garde le texte et les sources de la rubrique", h);
+  verifier((await fetch(`${BOT}/api/rubrique?id=R1`)).status === 403, "historique réservé à GitHub");
+  verifier((await (await fetch(`${BOT}/api/rubrique?id=%3Cx%3E`, { headers: entetes })).json()).entrees.length === 0, "identifiant invalide ignoré");
+  await episode("2026-10-15", "R1", "Léa : Nouveau modèle ouvert (version corrigée).");
+  let r = await app("rubrique_resume", { id: "R1" });
+  verifier(r.ok && r.rubrique.entrees.length === 2 && r.rubrique.entrees[0].date === "2026-10-15" && r.rubrique.entrees[0].texte.includes("corrigée") && r.rubrique.resume === null,
+    "le même épisode ne compte qu'une fois, du plus récent au plus ancien", r.rubrique);
+  await vider();
+  r = await app("resume_podcast", { id: "R1" });
+  const lance = lancements(await appels()).find((a) => a.workflow === "recherche.yml");
+  verifier(r.ok && lance && lance.entrees.regles === "R1" && lance.entrees.format === "resume", "synthèse lancée sur GitHub", lance);
+  verifier((await app("resume_podcast", { id: "R9" })).ok === false, "rubrique sans historique : refus");
+  // La synthèse arrive : le lecteur de l'application peut la lire.
+  await envoyerJson(`${BOT}/api/evenement`, { type: "resume", rubrique: "R1", audio: "2026-10/resume-R1-2026-10-15-070000.mp3", titre: "Où en est la veille IA", duree: 180 }, entetes);
+  r = await app("rubrique_resume", { id: "R1" });
+  verifier(r.rubrique.resume?.audio?.startsWith("/app/audio?c=resume%3AR1") && r.rubrique.resume.duree === 180, "synthèse disponible avec un lien audio signé", r.rubrique.resume);
 });
 
 await scenario("Après le déploiement : nouveautés, ou présentation pour qui vient d'avant", async () => {

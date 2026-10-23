@@ -55,6 +55,19 @@ class Bot:
                 continue
         return None
 
+    def rubrique(self, identifiant: str) -> list[dict]:
+        """Ce que le bot a gardé d'une rubrique : [{date, texte, sources}], du plus ancien au plus récent."""
+        if not self.secret:
+            return []
+        try:
+            reponse = requests.get(f"{self.adresse}/api/rubrique", params={"id": identifiant}, timeout=self.delai,
+                                   headers={"X-Podcast-Secret": self.secret})
+            if reponse.status_code == 200 and isinstance(reponse.json().get("entrees"), list):
+                return reponse.json()["entrees"]
+        except (requests.RequestException, ValueError):
+            pass
+        return []
+
     def deposer(self, nom: str, contenu: bytes, type_mime: str) -> bool:
         """Confie un fichier au bot (MP3, pochette, extrait de voix), qui le garde un an :
         l'application et le flux privé le lisent chez lui. nom : « 2026-10/….mp3 » ou « voix/….mp3 »."""

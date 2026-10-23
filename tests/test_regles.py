@@ -319,7 +319,8 @@ verifier(("Wikivoyage : Vallorbe", "https://fr.wikivoyage.org/wiki/Vallorbe") in
 regle1 = config_bot()["regles"][0]
 c1 = moteur.collecter(regle1, moteur.plan_par_defaut(regle1, "Yverdon-les-Bains"), FaussesSources(), jeudi, "Yverdon-les-Bains")
 saints = json.loads((PROJET / "donnees" / "saints.json").read_text(encoding="utf-8"))["jours"]["10-15"]
-verifier(saints and f"Saints et fêtes du jour (calendrier des saints) : {', '.join(saints)}" in c1.texte, f"saint du 15 octobre : {saints}")
+verifier(saints and "Prénom fêté aujourd'hui" in c1.texte and "Thérèse" in c1.texte and "Saints et fêtes" not in c1.texte,
+         "15 octobre : prénoms fêtés (Thérèse), sans liste de saints")
 verifier(isinstance(sources.saints_du_jour(dt.date(2028, 2, 29)), list), "29 février sans erreur")
 
 # ───────────── 5 ter. prénoms, saints, journées et fêtes (données de référence) ─────────────
@@ -346,8 +347,8 @@ r_p0 = {"id": "R9", "titre": "Fête du prénom", "consigne": "Prénoms fêtés",
         "recherche": {"fiche": {}, "sources": ["saints"], "requetes": []}}
 cp0 = moteur.collecter(r_p0, moteur.plan_par_defaut(r_p0, "Yverdon-les-Bains"), FaussesSources(), dt.date(2026, 10, 23), "Yverdon-les-Bains")
 verifier("Prénom fêté aujourd'hui (calendrier traditionnel français) : Jean" in cp0.texte
-         and "Saints et fêtes du jour (calendrier des saints) : St-Hyacinthe, St-Jean de Capistran" in cp0.texte,
-         "rubrique prénom : prénom traditionnel puis saints du jour")
+         and "Saints et fêtes" not in cp0.texte and "St-Hyacinthe" not in cp0.texte,
+         "rubrique prénom : le prénom traditionnel, pas de liste de saints")
 # journées : mobiles, par pays, prudence
 verifier(fetes.date_regle("fete_meres_fr", 2023) == dt.date(2023, 6, 4) and fetes.date_regle("fete_meres_fr", 2026) == dt.date(2026, 5, 31),
          "fête des mères en France : le dernier dimanche de mai, sauf Pentecôte (4 juin 2023, 31 mai 2026)")
@@ -612,10 +613,10 @@ def rubrique(titre, consigne, sources_):
 # Seules les sources cochées sont lues (depuis Réglages › Sources : plus d'ajout d'après le titre).
 r_prenom = rubrique("Fête du prénom", "Trouver les prénoms de la fête d'aujourd'hui", ["saints"])
 cp = moteur.collecter(r_prenom, moteur.plan_par_defaut(r_prenom, "Yverdon-les-Bains"), SourcesFetes(), jeudi, "Yverdon-les-Bains")
-verifier(f"Saints et fêtes du jour (calendrier des saints) : {', '.join(saints)}" in cp.texte, "fête du prénom : calendrier des saints coché, lu")
+verifier("Prénom fêté aujourd'hui" in cp.texte, "fête du prénom : source « prénoms » cochée, lue")
 r_web = rubrique("Fête du prénom", "Trouver les prénoms de la fête d'aujourd'hui", ["web"])
 cw = moteur.collecter(r_web, moteur.plan_par_defaut(r_web, "Yverdon-les-Bains"), SourcesFetes(), jeudi, "Yverdon-les-Bains")
-verifier("calendrier des saints" not in cw.texte and "[W1]" in cw.texte, "recherche web seule cochée : pas de saints ajoutés en douce")
+verifier("Prénom fêté aujourd'hui" not in cw.texte and "[W1]" in cw.texte, "recherche web seule cochée : pas de prénoms ajoutés en douce")
 r_intl = rubrique("Fête internationale", "Fête internationale", ["web", "fetes"])
 ci = moteur.collecter(r_intl, moteur.plan_par_defaut(r_intl, "Yverdon-les-Bains"), SourcesFetes(), jeudi, "Yverdon-les-Bains")
 verifier("journée mondiale du lavage des mains" in ci.texte and "[W1]" in ci.texte, "fête internationale : journées cochées + recherche web même sans requête")
@@ -1124,9 +1125,26 @@ for cle_env, valeur in env_avant.items():
         os.environ[cle_env] = valeur
 
 print()
+
+# ───────────── 5 quater. pays : tous les pays proposés, « Pas renseigné » ─────────────
+print("\n5 quater. Pays (donnees/pays.json)")
+import pays as _pays
+verifier(len(_pays.PROFILS) > 150 and {"CH", "FR", "BE", "JP", "BR", "--"} <= set(_pays.PROFILS), f"{len(_pays.PROFILS)} profils, dont la Suisse, la France, la Belgique et « Pas renseigné »")
+verifier(all(p_.get("fuseau") and p_.get("devise") and p_.get("flux") and p_.get("nom") for p_ in _pays.PROFILS.values()), "chaque profil a nom, fuseau, devise et média")
+verifier(all(dt.datetime.now(dt.timezone.utc).astimezone(__import__("zoneinfo").ZoneInfo(p_["fuseau"])) for p_ in _pays.PROFILS.values()), "tous les fuseaux existent")
+verifier(_pays.PROFILS["JP"]["fuseau"] == "Asia/Tokyo" and _pays.PROFILS["JP"]["devise"] == "JPY" and _pays.PROFILS["JP"]["feries"] == "JP", "Japon : Tokyo, yen")
+verifier(not any(_pays.PROFILS[c].get("auto") for c in ("CH", "FR", "BE")) and all(p_.get("auto") for c, p_ in _pays.PROFILS.items() if c not in ("CH", "FR", "BE", "--")),
+         "CH, FR, BE écrits à la main ; les autres profils marqués « auto »")
+_pays.definir("--", "--", "Europe/Paris")
+verifier(_pays.profil()["fuseau"] == "Europe/Paris" and _pays.feries(dt.date(2026, 12, 20), 10) == [], "pas de pays : l'heure du pays d'avant, aucun jour férié")
+_pays.definir("JP", "JP")
+verifier(dt.date(2026, 11, 3) in [d for d, _ in _pays.feries(dt.date(2026, 11, 1), 10)] and _pays.profil()["fuseau"] == "Asia/Tokyo", "Japon : fériés de la bibliothèque (3 novembre)")
+_pays.definir("CH", "CH-VD")
+
 if echecs:
     print(f"{len(echecs)} ÉCHEC(S) :")
     for message in echecs:
         print(" -", message)
     sys.exit(1)
 print("Tous les tests de la version 3 passent ✅")
+
