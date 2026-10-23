@@ -101,6 +101,8 @@ h2 { margin: 0; font-family: var(--titre); font-weight: 700; font-size: 18px; }
 .pastille-mini { width: 30px; height: 30px; flex: none; border-radius: 9px; display: flex; align-items: center; justify-content: center; }
 /* genre de rubrique : sa couleur (--g) sur un fond teinté de la même couleur */
 .genre { color: var(--g); background: var(--carte-2); background: color-mix(in srgb, var(--g) 16%, var(--carte)); }
+/* rubrique fournie avec l'application : même fond sombre teinté, mais à l'orange de l'application (l'icône garde sa couleur) */
+.genre.fournie { background: var(--carte-2); background: color-mix(in srgb, var(--aube) 16%, var(--carte)); }
 .f-integree { background: var(--carte-2); color: var(--doux-2); }
 .deroule li.eteint .pastille-mini { opacity: .5; }
 .section-fiche { display: flex; flex-direction: column; gap: 10px; background: var(--carte); border-radius: 20px; padding: 14px 14px 16px; }
@@ -1127,9 +1129,9 @@ const GENRES = {
 // Bot d'avant le genre : on retombe sur la famille.
 const GENRE_PAR_FAMILLE = { jour: "meteo", info: "libre", sortie: "sortie", agenda: "rappel" };
 const genreDe = (r) => (r && (GENRES[r.genre] ? r.genre : GENRE_PAR_FAMILLE[r.famille])) || "libre";
-function pastille(genre, taille = 20, mini = false) {
+function pastille(genre, taille = 20, mini = false, fournie = false) {
   const g = GENRES[genre] || GENRES.libre;
-  return `<span class="${mini ? "pastille-mini" : "pastille"} genre" style="--g:${g.couleur}">${icone(g.icone, taille)}</span>`;
+  return `<span class="${mini ? "pastille-mini" : "pastille"} genre${fournie ? " fournie" : ""}" style="--g:${g.couleur}">${icone(g.icone, taille)}</span>`;
 }
 
 function resumeIntegree(cle) {
@@ -1188,7 +1190,7 @@ function appliqueLe(r, date) {
 function ligneProgramme(x, i, fixe) {
   const r = x.integree ? null : S.d.regles.find((y) => y.id === x.cle);
   const actif = x.actif && !(r && r.pause);
-  const marque = pastille(x.integree ? x.cle : genreDe(r), 17, true);
+  const marque = pastille(x.integree ? x.cle : genreDe(r), 17, true, Boolean(x.integree));
   const detail = x.integree ? h(resumeIntegree(x.cle)) : r ? detailRubrique(r) : "";
   const cible = x.integree ? `data-integree="${h(x.cle)}"` : `data-ouvrir="${h(x.cle)}"`;
   const textes = `<button type="button" class="textes" ${cible}><span class="nom">${h(x.nom)}</span><span class="detail">${detail}</span></button>`;

@@ -1,10 +1,11 @@
 {
-  "version": "2026-10-23.3",
+  "version": "2026-10-23.4",
   "date": "2026-10-23",
   "titre": "Fiches de rubrique plus lisibles",
   "nouveautes": [
     "Fiches de rubrique : chaque partie est une carte à part, « Dans l'épisode » devient « Longueur du passage », et les interrupteurs Prioritaire et Active sont retirés de la fiche (Active reste dans l'onglet Épisode).",
-    "Agendas : une pastille de couleur identifie chaque agenda, la même que dans l'aperçu."
+    "Agendas : une pastille de couleur identifie chaque agenda, la même que dans l'aperçu.",
+    "Onglet Épisode : les rubriques fournies avec l'application se distinguent par un fond orange discret."
   ],
   "supprimes": [
     "cloudflare/worker.js",
