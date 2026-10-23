@@ -1191,6 +1191,55 @@ verifier(code == 0 and "::warning::" in sortie and "BOT_URL" in sortie, "bot inj
 code, sortie, _, _ = essai_code([], {}, {"BOT_GITHUB_TOKEN": ""})
 verifier(code == 1 and "BOT_GITHUB_TOKEN" in sortie, "sans jeton : message clair")
 
+# ── Point sur un sujet (recherche ponctuelle « point ») : un podcast, pas des articles ──
+print("\n▶ Point sur un sujet")
+import recherche as _recherche  # noqa: E402
+import regles as _moteur  # noqa: E402
+
+
+class _BotPoint:
+    secret = "s"
+
+    def __init__(self):
+        self.evenements, self.deposes = [], []
+
+    def deposer(self, nom, octets, type_):
+        self.deposes.append(nom)
+        return True
+
+    def evenement(self, ev):
+        self.evenements.append(ev)
+
+
+_vus = {}
+_anciens = (podcast.demander_json, podcast.synthetiser, podcast.encoder_mp3)
+try:
+    def _demander(systeme, entree, schema, modeles, cle, **_):
+        _vus["systeme"], _vus["entree"] = systeme, entree
+        return {"titre": "Les retards CFF", "sujets": ["chantiers", "ponctualité"], "sources": [],
+                "repliques": [{"animateur": n, "texte": t} for n, t in (("Kore", "Bonjour."), ("Puck", "Le point."),
+                                                                         ("Kore", "Les chantiers."), ("Puck", "À demain."))]}, "m"
+    podcast.demander_json = _demander
+    podcast.synthetiser = lambda script, effectifs, cle, minutage=None: (b"\0\0" * 24000 * 3, 24000)
+    podcast.encoder_mp3 = lambda pcm, taux, debit: b"mp3"
+    _regle = {"id": "R9", "titre": "Retards CFF", "consigne": "Fais le point sur les retards des CFF en ce moment",
+              "periode": {"type": "ponctuelle"}, "recherche": {"rendu": "point", "minutes": 3, "sources": ["web", "actus"], "fiche": {}}}
+    _collecte = _moteur.Collecte(regle=_regle, plan={}, texte="Recherche web :\n  [W1] CFF : ponctualité en baisse — …",
+                                 liens=[("CFF : ponctualité en baisse", "https://exemple.ch/cff"), ("doublon", "http://non-https.ch")])
+    _bot = _BotPoint()
+    _effectifs = {"animateurs": [{"nom": "Kore"}, {"nom": "Puck"}], "mots_par_minute": 150, "tutoiement": True,
+                  "modeles_texte": ["m"], "modeles_rapides": [], "debit_mp3_kbps": 64}
+    _code = _recherche.lancer_point([_regle], [_collecte], _effectifs, "cle", dt.datetime(2026, 10, 23, 21, 0, tzinfo=ZH), None, "", _bot)
+finally:
+    podcast.demander_json, podcast.synthetiser, podcast.encoder_mp3 = _anciens
+_ev = _bot.evenements[0] if _bot.evenements else {}
+verifier(_code == 0 and _ev.get("format") == "point" and _ev.get("audio") and _bot.deposes[0].startswith("2026-10/point-R9-"),
+         "point : un podcast déposé chez le bot, annoncé comme « point »")
+verifier("3 minutes" in _vus.get("systeme", "") and "environ 450 mots" in _vus.get("systeme", "") and "état des lieux" in _vus.get("systeme", ""),
+         "point : la durée demandée (3 min) règle la longueur du script, consigne d'état des lieux")
+verifier(_ev.get("resultats", [{}])[0].get("sources") == [{"titre": "CFF : ponctualité en baisse", "lien": "https://exemple.ch/cff"}]
+         and _ev.get("idees") == [], "point : sources gardées (https seulement), aucune « idée » ni article listé")
+
 print("\nRÉSULTAT :", "tout est vert ✅" if not echecs else f"{len(echecs)} échec(s) ❌")
 for e in echecs:
     print("  -", e)

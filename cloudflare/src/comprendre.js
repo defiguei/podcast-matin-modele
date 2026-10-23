@@ -15,7 +15,7 @@ import {
   nettoyerListe, LONGUEUR_CONSIGNE, normaliserTexte, etatRegle, decrirePeriode, nomRubrique, jourDeSemaine,
   heureParlee, dateCourte, nettoyerPlanning, fluxActus, profilPays, MODELES_RUBRIQUES,
   nomVoix, voixActive, trouverVoix, renommerVoix, activerVoix, choisirVoixJour,
-  INFOS_SOURCES, sourcesAuto, sourcesUtilisables, nomSource,
+  INFOS_SOURCES, sourcesAuto, sourcesUtilisables, nomSource, RENDUS, minutesPoint, formatRecherche,
 } from "./config.js";
 import { formulaireNeuf, formulaireDepuisRegle, enregistrerRubrique, PERIODES } from "./miniapp.js";
 import { GRATUIT } from "./assistant.js";
@@ -74,6 +74,8 @@ export function schemaOperations() {
                 modele: decrit({ type: "string", enum: MODELES_RUBRIQUES.map((m) => m.id) }, "Pour nouvelle_regle : le modèle du catalogue le plus proche."),
                 titre: texte, consigne: texte,
                 periode_type: { type: "string", enum: PERIODES },
+                rendu: decrit({ type: "string", enum: RENDUS }, "Pour une recherche ponctuelle : point (podcast qui fait l'état des lieux d'un sujet) ou idees (sorties, activités, lieux, cadeaux)."),
+                minutes: decrit({ type: "number" }, "Pour un point : durée du podcast demandée, en minutes (3 si rien n'est dit)."),
                 debut: texte, fin: texte, jours: listeTextes,
                 condition_texte: texte, condition_moment: { type: "string", enum: ["jour_meme", "veille", "jours_avant"] },
                 condition_n: { type: "number" },
@@ -127,8 +129,8 @@ OPÉRATIONS (champ « action ») :
 - activer_voix / desactiver_voix : id = la voix ou son prénom. Une voix désactivée n'anime plus aucun épisode.
 - voix_jour : qui présente certains jours de la semaine (mode « selon le jour », chemin voix.mode = jours). jours = codes ; ids = une ou deux voix ou prénoms (vide : les animateurs habituels).
 - ajouter_source : valeur = nom du média ou adresse de son flux RSS. retirer_source : valeur = nom de la source (sources par défaut : ${fluxActus({ ...config, actus: {} }).map((f) => f.nom).join(", ")}).
-- nouvel_episode : l'auditeur veut un nouvel épisode tout de suite. ids = rubriques à traiter spécialement (facultatif).
-- resultats : lancer tout de suite la recherche d'une ou plusieurs rubriques. ids, format = "ecrit" ou "audio".
+- nouvel_episode : REFAIT l'épisode du jour en entier. Seulement si l'auditeur demande explicitement un nouvel épisode ou de refaire son podcast du jour. ids = rubriques à traiter spécialement (facultatif).
+- resultats : relancer tout de suite la recherche d'une ou plusieurs rubriques existantes. ids, format = "ecrit" ou "audio".
 - assistant : l'auditeur veut organiser une activité ou une sortie mais il manque des informations (qui, où, quand, transport, budget…). valeur = son message résumé. N'utilise PAS nouvelle_regle dans ce cas.
 - afficher : l'auditeur veut voir quelque chose. valeur parmi ${MENUS.join(", ")}, ou "regle:R3".
 - annuler : annuler le dernier changement.
@@ -151,6 +153,8 @@ Le modèle règle déjà la place, la longueur et les sources : ne remplis que c
 - pour une activité ou une sortie : quoi, avec_qui, ages, ou, quand, transport, budget_max, budget_unite (personne | total), budget_transport_inclus, inclure, exclure, attendu, jours_avant (combien de jours avant en parler)
 - importance : normale | prioritaire
 Une information exacte (saint du jour, jour férié, météo, horaire de train) doit venir d'une source, pas de tes connaissances.
+
+PODCAST PONCTUEL SUR UN SUJET : « fais-moi un podcast de 3 minutes sur les retards CFF en ce moment », « fais le point sur… », « résume-moi où en est… » = UNE seule opération nouvelle_regle avec periode_type ponctuelle, rendu point, minutes = la durée demandée, consigne = le sujet et l'angle (état des lieux à l'heure actuelle), sources adaptées (actus, web, transports pour les trains…). Il est fabriqué et envoyé tout seul : n'ajoute JAMAIS nouvel_episode, resultats, ni regler format.duree_minutes (c'est la durée de l'épisode quotidien, à ne changer que si l'auditeur parle de son épisode habituel). rendu idees : seulement pour trouver des sorties, activités, lieux ou cadeaux.
 
 RUBRIQUES INTÉGRÉES DU DÉROULÉ (clés) : ${Object.entries(RUBRIQUES).map(([c, n]) => `${c} (${n})`).join(", ")}.
 
@@ -205,6 +209,8 @@ export function completerFormulaire(f, r = {}, texte = "") {
     if (cle) f.place = cle;
   }
   if (LONGUEURS_FORMULAIRE.includes(longueur)) f.longueur = longueur;
+  if (RENDUS.includes(r.rendu)) f.rendu = r.rendu;
+  if (typeof r.minutes === "number" && r.minutes > 0) f.minutes = minutesPoint(r.minutes);
   else if ((rempli(place) || rempli(r.rubrique_titre)) && f.longueur === "aucune") f.longueur = "courte";   // une place dite = un passage
   // Sources : celles que Gemini donne remplacent (modification) ; une nouvelle rubrique les
   // ajoute à celles de son modèle (nouvelleRubrique).
@@ -234,7 +240,8 @@ function titreDepuisConsigne(consigne) {
 
 function nouvelleRubrique(config, r = {}, ctx) {
   const modele = MODELES_RUBRIQUES.find((m) => m.id === r.modele) || MODELES_RUBRIQUES.find((m) => m.id === "libre");
-  const f = formulaireNeuf(config, modele.id, r.periode_type === "ponctuelle");
+  const ponctuelle = r.periode_type === "ponctuelle";
+  const f = formulaireNeuf(config, modele.id, ponctuelle, ponctuelle ? renduPonctuel(r, modele) : "idees");
   if (!modele.pret) { f.titre = ""; f.consigne = ""; }     // titre et consigne du modèle à compléter : c'est à l'auditeur de les dire
   const parDefaut = [...f.sources];
   completerFormulaire(f, r, ctx.message);
@@ -255,6 +262,15 @@ function nouvelleRubrique(config, r = {}, ctx) {
   return regle;
 }
 
+// Ce que rend une recherche ponctuelle demandée en mots, quand Gemini ne le dit pas : des idées
+// pour une sortie (modèle sortie, budget, compagnie…), sinon un point sur le sujet.
+function renduPonctuel(r, modele) {
+  if (RENDUS.includes(r.rendu)) return r.rendu;
+  const sortie = modele.id === "sortie" || ["avec_qui", "ages", "budget_max"].some((c) => rempli(r[c]))
+    || (Array.isArray(r.sources) && r.sources.some((x) => x === "lieux" || x === "wikivoyage"));
+  return sortie ? "idees" : "point";
+}
+
 // « cherche dans : Google Actualités, Recherche web »
 export function sourcesEnMots(config, regle) {
   const noms = sourcesUtilisables(regle.recherche?.sources || [], config).map((s) => nomSource(s, config));
@@ -263,7 +279,8 @@ export function sourcesEnMots(config, regle) {
 
 // Où passe une rubrique, en mots.
 export function decrirePlace(config, regle) {
-  if (regle.periode.type === "ponctuelle") return "recherche, hors podcast";
+  if (regle.periode.type === "ponctuelle") return regle.recherche?.rendu === "point"
+    ? `podcast de ${regle.recherche.minutes || 3} min à part, hors épisode` : "recherche, hors podcast";
   if (!regle.rubrique) return "glissée dans l'épisode";
   return `après ${nomRubrique(config, regle.rubrique.apres)}`;
 }
@@ -300,7 +317,7 @@ export function heureDemandee(op) {
 // grande à la plus petite, pour que les numéros cités par Gemini restent les bons.
 export function appliquerOperations(config, operations, ctx) {
   const changements = [], actions = [], erreurs = [], reglesCreees = [], lourds = [], suppressions = [];
-  const liste = Array.isArray(operations) ? operations.filter((op) => op && typeof op === "object") : [];
+  const liste = garderPonctuel(config, Array.isArray(operations) ? operations.filter((op) => op && typeof op === "object") : []);
   const numero = (op) => Number(/(\d+)/.exec(String(op.id || ""))?.[1] || 0);
   const ordonnees = [...liste.filter((op) => op.action !== "supprimer_regle"),
                      ...liste.filter((op) => op.action === "supprimer_regle").sort((a, b) => numero(b) - numero(a))];
@@ -318,6 +335,24 @@ export function appliquerOperations(config, operations, ctx) {
   }
   nettoyerPlanning(config.planning, ctx.aujourdHui);
   return { changements, actions, erreurs, reglesCreees, lourds, suppressions };
+}
+
+// Un podcast ponctuel ne touche jamais l'épisode du jour. Quand une recherche ponctuelle est créée,
+// on écarte ce que Gemini y ajoute parfois : nouvel épisode, relance de recherche (elle part
+// d'elle-même), durée de l'épisode quotidien prise pour celle du podcast demandé. Un nouvel
+// épisode demandé seulement pour des recherches ponctuelles devient leur recherche.
+export function garderPonctuel(config, operations) {
+  const ponctuelle = operations.some((op) => op.action === "nouvelle_regle" && op.regle?.periode_type === "ponctuelle");
+  const ponctuelles = new Set(config.regles.filter((r) => r.periode.type === "ponctuelle").map((r) => r.id));
+  const id = (x) => { const m = /(\d+)/.exec(String(x || "")); return m ? `R${Number(m[1])}` : ""; };
+  return operations.flatMap((op) => {
+    if (ponctuelle && (op.action === "nouvel_episode" || op.action === "resultats")) return [];
+    if (ponctuelle && op.action === "regler" && op.chemin === "format.duree_minutes") return [];
+    if (op.action === "nouvel_episode" && op.ids?.length && op.ids.every((x) => ponctuelles.has(id(x)))) {
+      return [{ action: "resultats", ids: op.ids, format: "audio" }];
+    }
+    return [op];
+  });
 }
 
 function appliquerUne(config, op, ctx) {
@@ -407,7 +442,10 @@ function appliquerUne(config, op, ctx) {
     }
     case "nouvelle_regle": {
       const regle = nouvelleRubrique(config, op.regle || {}, ctx);
-      return { changement: `Rubrique ${regle.id} créée : ${regle.titre} (${decrirePlace(config, regle)} ; ${sourcesEnMots(config, regle)})`, regle };
+      const changement = `Rubrique ${regle.id} créée : ${regle.titre} (${decrirePlace(config, regle)} ; ${sourcesEnMots(config, regle)})`;
+      // Une recherche ponctuelle part tout de suite, dans son format (point en audio, ou idées écrites).
+      const action = regle.periode.type === "ponctuelle" ? { type: "resultats", ids: [regle.id], format: formatRecherche(regle) } : null;
+      return { changement, regle, action };
     }
     case "modifier_regle": {
       const id = identifiantRegle(op.id);

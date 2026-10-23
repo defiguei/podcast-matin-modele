@@ -24,7 +24,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-23.5";
+export const VERSION = "2026-10-23.6";
 const MAX_REFAITS = 6;
 const LONGUEURS_VALIDES = ["phrase", "courte", "developpee"];
 const MAX_RECHERCHES = 15;
@@ -35,10 +35,9 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 // Message envoyé après une mise à jour : les nouveautés de cette version…
 const NOUVEAUTES = `✅ <b>Ton podcast est à jour</b> (version ${VERSION}).
 
-• Fiches de rubrique : chaque partie est une carte à part, « Dans l'épisode » devient « Longueur du passage », et les interrupteurs Prioritaire et Active sont retirés de la fiche (Active reste dans l'onglet Épisode).
-• Agendas : une pastille de couleur identifie chaque agenda, la même que dans l'aperçu.
-• Onglet Épisode : les rubriques fournies avec l'application se distinguent par un fond orange discret.
-• Ajouter une rubrique : le catalogue est rangé par catégories (L'essentiel, Au calendrier, Pratique, À suivre, Sorties, Sur mesure) ; les rubriques de base s'y activent ou se coupent par un interrupteur. « Journée du jour » devient « Journée mondiale » et l'actu d'un pays est séparée de celle d'un thème.`;
+• Podcast sur un sujet, tout de suite : « fais-moi un podcast de 3 minutes sur les retards CFF en ce moment » donne un vrai podcast qui fait l'état des lieux (pas une liste d'articles), à la durée demandée, écoutable dans Idées.
+• Cette demande ne touche plus ton épisode du matin : ni nouvel épisode du jour, ni changement de sa durée.
+• Onglet Idées : nouveau bouton « Un podcast sur un sujet, maintenant » ; dans la fiche d'une recherche, choisis « Un podcast sur le sujet » (avec sa durée) ou « Des idées ».`;
 
 // … ou, pour qui arrive d'avant l'application (installation neuve, ancienne version
 // réglée par la conversation), sa présentation.
@@ -1164,7 +1163,10 @@ export class Etat extends DurableObject {
       await dire("Aucune rubrique à traiter.");
       return { ok: false, erreur: "Aucune rubrique à traiter." };
     }
-    if (format === "audio") {
+    // Une recherche « point » se rend toujours en podcast d'état des lieux, quel que soit le bouton.
+    const points = valides.filter((id) => config.regles.find((r) => r.id === id)?.recherche?.rendu === "point");
+    if (points.length) { format = "point"; valides.splice(0, valides.length, ...points); }
+    if (format === "audio" || format === "point") {
       const compte = etat.refaits?.date === ctx.aujourdHui ? etat.refaits.nombre : 0;
       if (compte >= MAX_REFAITS) {
         await dire("🚫 Plus de mini-podcast aujourd'hui (quota gratuit de la voix). Je peux t'envoyer les résultats par écrit :",
@@ -1188,10 +1190,12 @@ export class Etat extends DurableObject {
     }
     await this.ecrireEtat(etat);
     if (options.silencieux) return { ok: true };
-    await this.tg.envoyer(format === "audio"
+    await this.tg.envoyer(format === "point"
+      ? `🎧 Je fais le point (${valides.join(", ")}) : le podcast arrive dans trois ou quatre minutes.`
+      : format === "audio"
       ? `🎧 Je prépare un mini-podcast sur ${valides.join(", ")} : il arrive dans trois ou quatre minutes.`
       : `🔎 Je cherche pour ${valides.join(", ")} : les résultats arrivent dans une à deux minutes.`);
-    return { ok: true };
+    return { ok: true, format };
   }
 
   async envoyerEchantillons(etat) {
@@ -1844,7 +1848,11 @@ export class Etat extends DurableObject {
     const suites = [];
     for (const action of resultat.actions) {
       if (action.type === "nouvel_episode") suites.push((await this.lancerEpisode(action.ids, "audio", { silencieux: true })).ok ? "Nouvel épisode lancé." : "Épisode non lancé (limite du jour).");
-      if (action.type === "resultats") suites.push((await this.lancerRecherche(action.ids, action.format, { silencieux: true })).ok ? "Recherche lancée." : "Recherche non lancée (limite du jour).");
+      if (action.type === "resultats") {
+        const lance = await this.lancerRecherche(action.ids, action.format, { silencieux: true });
+        suites.push(lance.ok ? (lance.format === "point" ? "Podcast lancé : il arrive dans « Idées » d'ici trois ou quatre minutes." : "Recherche lancée.")
+          : `Recherche non lancée (${lance.erreur || "limite du jour"}).`);
+      }
       if (action.type === "annuler") { const annule = await this.annulerCoeur(); suites.push(annule ? `Annulé : ${annule}` : "Rien à annuler."); }
     }
     const afficher = resultat.actions.find((a) => a.type === "afficher" || a.type === "assistant");
@@ -2331,7 +2339,8 @@ export class Etat extends DurableObject {
           if (!config.regles.some((r) => r.id === demande.id)) return refus("Cette rubrique n'existe plus.");
           const lance = await this.lancerRecherche([demande.id], demande.format === "audio" ? "audio" : "ecrit", { silencieux: true });
           if (!lance.ok) return refus(lance.erreur);
-          return reponse({ message: demande.format === "audio"
+          return reponse({ message: lance.format === "point" ? "Je fais le point : le podcast arrive ici d'ici trois ou quatre minutes."
+            : demande.format === "audio"
             ? "Je prépare le mini-podcast : il arrive d'ici trois ou quatre minutes."
             : "Je cherche : les résultats arrivent ici d'ici une à deux minutes." });
         }
@@ -2618,6 +2627,7 @@ export class Etat extends DurableObject {
       }
       await this.ctx.storage.put("config", config);
       etat.derniers_resultats = { regles: ev.regles || [], idees: (ev.idees || []).slice(0, 10), quand: ctx.maintenantIso,
+                                  format: ev.format === "point" ? "point" : ev.format === "audio" ? "audio" : "ecrit",
                                   details: nettoyerResultats(ev.resultats),
                                   // Mini-podcast gardé par le bot (écoute dans l'application, avec ou sans Telegram).
                                   audio: fichierRecu(ev.audio, ".mp3"), titre_audio: String(ev.titre_audio || "").slice(0, 120), duree_audio: Number(ev.duree) || null };
@@ -2627,7 +2637,9 @@ export class Etat extends DurableObject {
       }
       await this.ecrireEtat(etat);
       const nombre = etat.derniers_resultats.idees.length;
-      if (nombre) {
+      if (ev.format === "point") {
+        await this.notifier(etat, { titre: "🎧 Ton podcast est prêt", corps: String(ev.titre_audio || "").slice(0, 200), url: "/app?ecran=resultats", tag: "idees" });
+      } else if (nombre) {
         await this.notifier(etat, { titre: ev.format === "audio" ? "🎧 Ton mini-podcast d'idées est prêt" : "💡 Tes idées sont prêtes",
           corps: etat.derniers_resultats.idees.slice(0, 3).join(" · ").slice(0, 200), url: "/app?ecran=resultats", tag: "idees" });
       }

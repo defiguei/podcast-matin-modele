@@ -11,7 +11,7 @@ import {
   VOIX, VOIX_CONSEILLEES, VITESSES, TONS, CITER, TRANSPORTS, fluxActus, profilPays, PAYS, DELAIS_RATTRAPAGE,
   DEVISES, CANTONS, MODES_VOIX, sourcesAuto, estFerie, nomFerie, animateursDuJour, placesDuJour, normaliserTexte,
   jourDeSemaine, MODELES_RUBRIQUES, CATEGORIES_RUBRIQUES, catalogueRubriques, nouvelleRegle, modifierRegle,
-  INFOS_SOURCES, sourceConnue, sourcesUtilisables, nomSource,
+  INFOS_SOURCES, sourceConnue, sourcesUtilisables, nomSource, RENDUS, minutesPoint,
 } from "./config.js";
 
 const DUREE_VALIDITE = 24 * 3600;      // une ouverture reste valable 24 h
@@ -134,6 +134,7 @@ function regleVisible(r, aujourdHui) {
     fiche: Object.fromEntries(CHAMPS_FICHE.map((c) => [c, fiche[c] || ""])),
     transport: fiche.transport || "", budget: fiche.budget || { max: null, unite: "personne", transport_inclus: false },
     inclure: fiche.inclure || [], exclure: fiche.exclure || [], recherche: Boolean(r.recherche),
+    rendu: r.recherche?.rendu || "idees", minutes: r.recherche?.minutes || 3,
     place: r.rubrique?.apres || null,
     derniere_application: r.derniere_application, servie: Boolean(r.servie), id_condition: Boolean(r.condition),
   };
@@ -211,10 +212,10 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
     stockage: Object.values(etat.stockage || {}).reduce((total, n) => total + (Number(n) || 0), 0),
     annulation: etat.annulations?.at(-1)?.libelle || null,
     resultats: etat.derniers_resultats ? {
-      quand: etat.derniers_resultats.quand, regles: etat.derniers_resultats.regles || [],
+      quand: etat.derniers_resultats.quand, regles: etat.derniers_resultats.regles || [], format: etat.derniers_resultats.format || "ecrit",
       idees: etat.derniers_resultats.idees || [], details: etat.derniers_resultats.details || [],
       // Le mini-podcast, comme un épisode pour le lecteur de l'application.
-      episode: liens.idees ? { cle: "idees:dernier", titre: etat.derniers_resultats.titre_audio || "Mini-podcast d'idées", audio: liens.idees,
+      episode: liens.idees ? { cle: "idees:dernier", titre: etat.derniers_resultats.titre_audio || (etat.derniers_resultats.format === "point" ? "Ton podcast" : "Mini-podcast d'idées"), audio: liens.idees,
         date: String(etat.derniers_resultats.quand || "").slice(0, 10), texte: "", duree: etat.derniers_resultats.duree_audio || null,
         chapitres: [], sujets: [], coches: [], sources: [], image: null } : null,
     } : null,
@@ -310,6 +311,9 @@ export function champsDepuisFormulaire(f, ancienne, aujourdHui, devise = "CHF", 
   fiche.inclure = nettoyerListe(Array.isArray(f.inclure) ? f.inclure : String(f.inclure || "").split(/[,;\n]/), 8);
   fiche.exclure = nettoyerListe(Array.isArray(f.exclure) ? f.exclure : String(f.exclure || "").split(/[,;\n]/), 8);
   const recherche = { sources, fiche };
+  // Une recherche ponctuelle : un point en audio (état des lieux) ou des idées concrètes.
+  if (RENDUS.includes(f.rendu)) recherche.rendu = f.rendu;
+  if (f.minutes !== undefined && f.minutes !== null && f.minutes !== "") recherche.minutes = minutesPoint(f.minutes);
 
   const c = f.condition;
   const condition = c && texte(c.texte, 120) ? {
@@ -336,7 +340,7 @@ export function champsDepuisFormulaire(f, ancienne, aujourdHui, devise = "CHF", 
 
 // Le formulaire d'une nouvelle rubrique, comme la fiche de l'application l'ouvre depuis le
 // catalogue (« + ») : un seul point de départ pour l'application et pour la voix.
-export function formulaireNeuf(config, idModele = "libre", ponctuelle = false) {
+export function formulaireNeuf(config, idModele = "libre", ponctuelle = false, rendu = "idees") {
   const modele = MODELES_RUBRIQUES.find((m) => m.id === idModele) || MODELES_RUBRIQUES.find((m) => m.id === "libre");
   const base = modele.formulaire(config.actus?.ville || "");
   return {
@@ -344,7 +348,8 @@ export function formulaireNeuf(config, idModele = "libre", ponctuelle = false) {
     longueur: ponctuelle ? "aucune" : base.longueur || "courte",
     periode: ponctuelle ? { type: "ponctuelle", debut: "", fin: "", jours: [] }
       : { type: "toujours", debut: "", fin: "", jours: [], ...(base.periode || {}) },
-    sources: sourcesUtilisables(ponctuelle ? ["web", "lieux"] : modele.sources || [], config),
+    sources: sourcesUtilisables(ponctuelle ? (rendu === "point" ? ["web", "actus"] : ["web", "lieux"]) : modele.sources || [], config),
+    rendu: ponctuelle ? rendu : "idees", minutes: 3,
     fiche: Object.fromEntries(CHAMPS_FICHE.map((c) => [c, ""])),
     transport: "aucun", budget: { max: "", unite: "personne", devise: profilPays(config).devise, transport_inclus: false },
     inclure: [], exclure: [], condition: base.condition ? { ...base.condition } : null,
@@ -361,6 +366,7 @@ export function formulaireDepuisRegle(r, devise = "CHF") {
     longueur: r.rubrique?.longueur || "aucune",
     periode: { type: r.periode.type, debut: r.periode.debut || "", fin: r.periode.fin || "", jours: [...(r.periode.jours || [])] },
     sources: [...(r.recherche?.sources || [])],
+    rendu: r.recherche?.rendu || "idees", minutes: r.recherche?.minutes || 3,
     fiche: Object.fromEntries(CHAMPS_FICHE.map((c) => [c, fiche[c] || ""])),
     transport: fiche.transport || "",
     budget: { max: budget.max ?? "", unite: budget.unite || "personne", devise: budget.devise || devise, transport_inclus: Boolean(budget.transport_inclus) },
@@ -414,7 +420,11 @@ export function nettoyerResultats(resultats) {
       acces: court(i?.acces, 200), lien: /^https:\/\//.test(String(i?.lien || "")) ? String(i.lien).slice(0, 400) : "",
       dans_le_budget: Boolean(i?.dans_le_budget),
     })).filter((i) => i.titre),
-  })).filter((r) => r.idees.length);
+    // Un point (état des lieux) : ses sources, sans idées.
+    sources: (Array.isArray(r?.sources) ? r.sources : []).slice(0, 8).map((x) => ({
+      titre: court(x?.titre, 120), lien: /^https:\/\//.test(String(x?.lien || "")) ? String(x.lien).slice(0, 400) : "",
+    })).filter((x) => x.titre && x.lien),
+  })).filter((r) => r.idees.length || r.sources.length || r.intro);
 }
 
 // Sources d'un épisode : titres et adresses https seulement.

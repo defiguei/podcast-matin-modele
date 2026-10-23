@@ -327,6 +327,19 @@ export function nouvelleRegle(config, champs, aujourdHui, origine = "") {
   return regle;
 }
 
+// Recherches ponctuelles : ce qu'elles rendent, et la durée d'un « point ».
+export const RENDUS = ["point", "idees"];
+export const MINUTES_POINT = [2, 3, 5, 8, 10];
+export function minutesPoint(valeur) {
+  const n = Math.round(Number(valeur));
+  return Number.isFinite(n) && n > 0 ? Math.max(1, Math.min(10, n)) : 3;
+}
+// Le format de lancement (workflow Recherche) d'une rubrique ponctuelle.
+export function formatRecherche(regle, format = "ecrit") {
+  if (regle?.recherche?.rendu === "point") return "point";
+  return format === "audio" ? "audio" : "ecrit";
+}
+
 export function normaliserRegle(r) {
   const periode = r.periode || {};
   const type = ["toujours", "dates", "jours", "une_fois", "ponctuelle"].includes(periode.type) ? periode.type : "toujours";
@@ -351,6 +364,10 @@ export function normaliserRegle(r) {
     },
     sources: nettoyerListe(r.recherche.sources, 15).filter(sourceConnue),
     requetes: nettoyerListe(r.recherche.requetes, 6),
+    // Ce qu'une recherche ponctuelle rend : « point » = un podcast qui fait l'état des lieux
+    // d'un sujet (durée en minutes) ; « idees » = des idées concrètes (sorties, activités…).
+    rendu: RENDUS.includes(r.recherche.rendu) ? r.recherche.rendu : "idees",
+    minutes: minutesPoint(r.recherche.minutes),
   } : null;
   const condition = r.condition && r.condition.texte ? {
     texte: texteCourt(120)(r.condition.texte),

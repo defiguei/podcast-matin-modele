@@ -3,6 +3,8 @@
   - Résultats de recherche (« 📝 Résultats écrits ») : idées concrètes pour une
     ou plusieurs règles, avec photo, lieu sur la carte, liens, sondage.
   - Mini-podcast (« 🎧 ») : les mêmes idées, racontées par les deux voix.
+  - Point (recherche ponctuelle « point ») : un podcast de quelques minutes qui fait l'état
+    des lieux d'un sujet à l'heure actuelle (« les retards CFF en ce moment »), hors épisode.
   - Extraits de voix : pour choisir les voix des animateurs.
 """
 
@@ -281,6 +283,59 @@ Longueur : environ {mots} mots. Remplis « titre » (court), « sujets » (les i
     return script, pcm, taux, minutage
 
 
+# ───────────────────────────── point sur un sujet ───────────────────────────
+
+def consigne_point(titre: str, minutes: int, a: str, b: str, mots: int, tutoiement: bool) -> str:
+    adresse = "Tutoie" if tutoiement else "Vouvoie"
+    return f"""Tu écris un podcast audio de {minutes} minute{"s" if minutes > 1 else ""}, animé par {a} et {b}, qui fait le point sur « {titre} » à l'heure actuelle. {adresse} l'auditeur.
+C'est un état des lieux, pas une revue de presse : commence par la réponse (où en est-on aujourd'hui), puis les causes, les chiffres, ce qui change ou va changer, et ce que ça implique concrètement pour l'auditeur. Regroupe par idée, pas article par article ; ne lis pas de titres d'articles.
+Appuie-toi UNIQUEMENT sur la matière fournie (recherche web, actualités, horaires). Date les faits (« depuis lundi », « en septembre ») ; si les sources se contredisent ou datent, dis-le ; si la matière est maigre, dis franchement ce qu'on ne sait pas plutôt que de remplir.
+Pas d'adresse web, pas de markdown, pas d'emoji ; chiffres, heures et sigles écrits comme on les dit.
+Longueur : environ {mots} mots. Remplis « titre » (court), « sujets » (les idées abordées, dans l'ordre) et « sources » (liste vide)."""
+
+
+def point_podcast(regle: dict, collecte: moteur.Collecte, effectifs: dict, cle_gemini: str,
+                  maintenant: dt.datetime) -> tuple[dict, bytes, int]:
+    a, b = (x["nom"] for x in effectifs["animateurs"])
+    noms = [a, b]
+    minutes = int((regle.get("recherche") or {}).get("minutes") or 3)
+    mots = round(minutes * effectifs.get("mots_par_minute", 180))
+    titre = (regle.get("rubrique") or {}).get("titre") or regle.get("titre") or "le sujet"
+    systeme = consigne_point(titre, minutes, a, b, mots, effectifs.get("tutoiement", True))
+    entree = (f"Nous sommes le {p.date_longue(maintenant.date())}, il est {maintenant:%H:%M}.\n"
+              f"Demande de l'auditeur : {regle.get('consigne', '')}\n\n{collecte.texte}")
+    modeles = list(dict.fromkeys(effectifs["modeles_texte"] + effectifs["modeles_rapides"]))
+    brut, _ = p.demander_json(systeme, entree, p.schema_script(noms), modeles, cle_gemini, delai=150, tours=2)
+    script = p.nettoyer_script(brut, noms)
+    pcm, taux = p.synthetiser(script, effectifs, cle_gemini, [])
+    return script, pcm, taux
+
+
+def lancer_point(regles: list[dict], collectes: list[moteur.Collecte], effectifs: dict, cle_gemini: str,
+                 maintenant: dt.datetime, telegram: p.Telegram | None, conversation: str, bot: Any) -> int:
+    """Un podcast par recherche « point », déposé chez le bot (écoute dans l'application) et envoyé dans Telegram."""
+    for regle, collecte in zip(regles, collectes):
+        script, pcm, taux = point_podcast(regle, collecte, effectifs, cle_gemini, maintenant)
+        mp3 = p.encoder_mp3(pcm, taux, effectifs["debit_mp3_kbps"])
+        duree = round(len(pcm) / (2 * taux))
+        nom_bot = f"{maintenant:%Y-%m}/point-{regle['id']}-{maintenant:%Y-%m-%d-%H%M%S}.mp3"
+        audio_bot = nom_bot if bot.deposer(nom_bot, mp3, "audio/mpeg") else None
+        sources = [{"titre": t, "lien": u} for t, u in dict.fromkeys(collecte.liens) if u.startswith("https://")][:8]
+        if telegram and conversation:
+            lignes = [f"🎧 <b>{e(script['titre'])}</b>", e(regle.get("titre", ""))]
+            lignes += [f'• <a href="{html.escape(s["lien"], quote=True)}">{e(p.tronquer(s["titre"], 70))}</a>' for s in sources[:5]]
+            telegram.audio(conversation, mp3, f"point-{regle['id']}.mp3", p.tronquer(script["titre"], 64),
+                           " & ".join(x["nom"] for x in effectifs["animateurs"]), "\n".join(lignes)[:1024], duree,
+                           p.creer_pochette(maintenant.date(), script["titre"], "LE POINT"))
+        bot.evenement({"type": "recherche", "regles": [regle["id"]], "idees": [], "sondage": None, "format": "point",
+                       "audio": audio_bot, "titre_audio": script["titre"], "duree": duree,
+                       "resultats": [{"regle": regle["id"], "titre": regle.get("titre", ""),
+                                      "intro": " · ".join(script.get("sujets") or [])[:400], "conseil": "", "idees": [],
+                                      "sources": sources}]})
+        p.journal(f"Point « {regle.get('titre', '')} » envoyé ({duree} s) ✅")
+    return 0
+
+
 # ───────────────────────── synthèse d'une rubrique ──────────────────────────
 
 def resume_rubrique(identifiant: str, effectifs: dict, cle_gemini: str, maintenant: dt.datetime,
@@ -351,6 +406,8 @@ def lancer(identifiants: list[str], format_: str, effectifs: dict, cle_gemini: s
     precedents = export.get("derniers_resultats") or {}
     exclues = precedents.get("idees", []) if set(precedents.get("regles", [])) & set(identifiants) else []
     traitees = []
+    point = format_ == "point"
+    collectes: list[moteur.Collecte] = []
     for regle in regles[:3]:
         plan = plans[regle["id"]]
         # Seules les sources cochées dans sa fiche (recherche web et lieux par défaut).
@@ -362,9 +419,19 @@ def lancer(identifiants: list[str], format_: str, effectifs: dict, cle_gemini: s
 
         collecte = moteur.collecter(regle_large, plan, sources, jour, ville, actus, profondeur=2,
                                     config=config, lire_flux=flux_specialise, agenda=agenda)
+        if point:                 # un état des lieux : pas d'idées à trouver
+            collectes.append(collecte)
+            continue
         traitees.append((regle, collecte, trouver_idees(collecte, effectifs, cle_gemini, exclues)))
     if sources.credits_tavily:
         p.journal(f"Recherche web : {sources.credits_tavily} crédit(s) Tavily.")
+
+    if point:
+        if sans_envoi or not (telegram or bot.secret):
+            for regle, collecte in zip(regles, collectes):
+                print(f"{regle['id']} :\n{collecte.texte}")
+            return 0
+        return lancer_point(regles[:3], collectes, effectifs, cle_gemini, maintenant, telegram, conversation, bot)
 
     if sans_envoi or not (telegram or bot.secret):
         for regle, _, resultat in traitees:

@@ -394,6 +394,41 @@ await scenario("Sélection de règles et recherche groupée", async () => {
   verifier((await etat()).etat.selection.length === 0, "sélection vidée");
 });
 
+await scenario("Podcast ponctuel sur un sujet : ni épisode du jour, ni durée changée", async () => {
+  const dureeAvant = (await etat()).config.format.duree_minutes;
+  const refaitsAvant = (await etat()).etat.refaits || null;
+  // Ce que Gemini renvoyait : la recherche, mais aussi un nouvel épisode et la durée de l'épisode quotidien.
+  await gemini({ operations: [
+    { action: "regler", chemin: "format.duree_minutes", valeur: "3" },
+    { action: "nouvelle_regle", regle: { titre: "Retards CFF", consigne: "Fais le point sur les retards des CFF en ce moment", periode_type: "ponctuelle", rendu: "point", minutes: 3, sources: ["actus", "web"] } },
+    { action: "nouvel_episode" },
+    { action: "resultats", ids: ["R9"], format: "ecrit" },
+  ], reponse: "" });
+  await message("fais-moi un podcast de 3 minutes sur les retards CFF en ce moment");
+  const liste = await attendre((l) => lancements(l).length >= 1 && tg(l, "sendMessage").length >= 3);
+  const { config } = await etat();
+  const regle = config.regles.find((r) => r.titre === "Retards CFF");
+  verifier(regle?.periode.type === "ponctuelle" && regle.recherche.rendu === "point" && regle.recherche.minutes === 3, "point créé, 3 minutes", regle?.recherche);
+  verifier(config.format.duree_minutes === dureeAvant, "durée de l'épisode quotidien inchangée", config.format);
+  const lances = lancements(liste);
+  verifier(lances.length === 1 && lances[0].workflow === "recherche.yml" && lances[0].entrees.format === "point" && lances[0].entrees.regles === regle?.id,
+    "seul le podcast du point est lancé (pas d'épisode du jour)", lances);
+  // Relancé depuis un bouton « résultats écrits », un point reste un point.
+  await vider();
+  await bouton(`a:rl:${regle.id}:ecrit`);
+  const relance = lancements(await attendre((l) => lancements(l).length >= 1))[0];
+  verifier(relance?.entrees.format === "point", "un point se relance en point", relance);
+  // Un « nouvel épisode » demandé pour une recherche ponctuelle devient sa recherche.
+  await vider();
+  await gemini({ operations: [{ action: "nouvel_episode", ids: [regle.id] }], reponse: "" });
+  await message("refais ce podcast");
+  const encore = lancements(await attendre((l) => lancements(l).length >= 1));
+  verifier(encore.length === 1 && encore[0].workflow === "recherche.yml" && encore[0].entrees.format === "point", "nouvel épisode d'une recherche → son point", encore);
+  // Les points comptent sur le quota de la voix, comme les épisodes : on le rend aux scénarios suivants.
+  const apres = (await etat()).etat;
+  await envoyerJson(`${BOT}/test/etat`, { etat: { ...apres, refaits: refaitsAvant } });
+});
+
 await scenario("Assistant de recherche guidé", async () => {
   await gemini({ quoi: "activité avec les enfants", avec_qui: "en famille", ages: "6 et 9 ans", ou: "autour d'Yverdon", quand_date: "2026-10-17", transport: "", budget_max: 0 });
   await message("/recherche sortie avec les enfants (6 et 9 ans) samedi autour d'Yverdon");

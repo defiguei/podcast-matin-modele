@@ -1,12 +1,11 @@
 {
-  "version": "2026-10-23.5",
+  "version": "2026-10-23.6",
   "date": "2026-10-23",
-  "titre": "Fiches de rubrique plus lisibles",
+  "titre": "Podcast ponctuel sur un sujet",
   "nouveautes": [
-    "Fiches de rubrique : chaque partie est une carte à part, « Dans l'épisode » devient « Longueur du passage », et les interrupteurs Prioritaire et Active sont retirés de la fiche (Active reste dans l'onglet Épisode).",
-    "Agendas : une pastille de couleur identifie chaque agenda, la même que dans l'aperçu.",
-    "Onglet Épisode : les rubriques fournies avec l'application se distinguent par un fond orange discret.",
-    "Ajouter une rubrique : le catalogue est rangé par catégories (L'essentiel, Au calendrier, Pratique, À suivre, Sorties, Sur mesure) ; les rubriques de base s'y activent ou se coupent par un interrupteur. « Journée du jour » devient « Journée mondiale » et l'actu d'un pays est séparée de celle d'un thème."
+    "Podcast sur un sujet, tout de suite : « fais-moi un podcast de 3 minutes sur les retards CFF en ce moment » donne un vrai podcast qui fait l'état des lieux (pas une liste d'articles), à la durée demandée, écoutable dans Idées.",
+    "Cette demande ne touche plus ton épisode du matin : ni nouvel épisode du jour, ni changement de sa durée.",
+    "Onglet Idées : nouveau bouton « Un podcast sur un sujet, maintenant » ; dans la fiche d'une recherche, choisis « Un podcast sur le sujet » (avec sa durée) ou « Des idées »."
   ],
   "supprimes": [
     "cloudflare/worker.js",

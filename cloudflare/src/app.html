@@ -906,6 +906,15 @@ async function geste(cle, g) {
 function vueResultats() {
   const res = S.d.resultats;
   if (!res || !res.details.length) return `${entete("Idées trouvées")}<div class="vide">Aucun résultat récent. Lance une recherche depuis une rubrique.</div>`;
+  if (res.format === "point") return `${entete("Ton podcast", res.quand ? `Le ${dateLongue(res.quand.slice(0, 10))}` : "")}
+  ${res.episode ? `<section class="carte"><h2>${h(res.episode.titre)}</h2>${vueLecteur(res.episode)}</section>` : ""}
+  ${res.details.map((r) => `
+    <section style="display:flex;flex-direction:column;gap:10px">
+      <div class="entre"><h2>${h(r.titre || r.regle)}</h2>${r.regle ? `<button type="button" class="lien" data-ouvrir="${h(r.regle)}">Recherche</button>` : ""}</div>
+      ${r.intro ? `<p class="aide" style="font-size:14px;color:var(--doux-2)">Abordé : ${h(r.intro)}</p>` : ""}
+      ${(r.sources || []).length ? `<span class="groupe">Sources</span><div class="gestes" style="flex-direction:column;align-items:stretch">${r.sources.map((x) => `<button type="button" data-lien="${h(x.lien)}" style="text-align:left">${h(x.titre)}</button>`).join("")}</div>` : ""}
+      ${r.regle ? `<button type="button" class="bouton gris" data-chercher="${h(r.regle)}">Refaire le point</button>` : ""}
+    </section>`).join("")}`;
   return `${entete("Idées trouvées", res.quand ? `Le ${dateLongue(res.quand.slice(0, 10))}` : "")}
   ${res.episode ? `<section class="carte"><h2>${h(res.episode.titre)}</h2>${vueLecteur(res.episode)}</section>` : ""}
   ${res.details.map((r) => `
@@ -1286,11 +1295,12 @@ function vueIdees() {
   const recherches = d.regles.filter((r) => r.periode.type === "ponctuelle");
   const res = d.resultats && d.resultats.details && d.resultats.details.length ? d.resultats : null;
   return `<h1>Idées</h1>
-  <p class="aide" style="font-size:14px;color:var(--doux-2)">Une recherche ponctuelle : une sortie, une activité, une idée… Les résultats arrivent ici, par écrit ou en mini-podcast, sans s'ajouter à tes épisodes.</p>
-  <button type="button" class="bouton plein" data-action="nouvelle-recherche">${icone("idees", 20)}Chercher une sortie, une activité…</button>
+  <p class="aide" style="font-size:14px;color:var(--doux-2)">Une recherche ponctuelle : un podcast qui fait le point sur un sujet, ou des idées de sortie, d'activité… Les résultats arrivent ici, sans s'ajouter à tes épisodes.</p>
+  <button type="button" class="bouton plein" data-action="nouveau-point">${icone("voix", 20)}Un podcast sur un sujet, maintenant</button>
+  <button type="button" class="bouton gris" data-action="nouvelle-recherche">${icone("idees", 20)}Chercher une sortie, une activité…</button>
   ${res ? `<button type="button" class="episode-ligne" data-aller="resultats">
       <span class="pastille f-sortie" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center">${icone("idees", 20)}</span>
-      <span style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600">Derniers résultats</span>
+      <span style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600">${res.format === "point" ? "Dernier podcast" : "Derniers résultats"}</span>
       <span class="sous" style="font-size:13px">${h(res.details.map((r) => r.titre || r.regle).join(" · "))}</span></span>${icone("suite", 18, 2)}</button>` : ""}
   ${recherches.length ? `<span class="groupe">Tes recherches</span><div class="liste">${recherches.map(carteRubrique).join("")}</div>`
     : `<div class="vide">Aucune recherche pour l'instant.</div>`}`;
@@ -1305,7 +1315,8 @@ function ouvrirFiche(id, modele = null, origine = null) {
   const vide = { quoi: "", avec_qui: "", ages: "", ou: "", quand: "", attendu: "" };
   const m = modele || {};
   const base = typeof m.f === "function" ? m.f(S.d.reglages.actus.ville) : (m.f || {});
-  const ponctuelle = r ? r.periode.type === "ponctuelle" : m.id === "recherche";
+  const ponctuelle = r ? r.periode.type === "ponctuelle" : m.id === "recherche" || m.id === "point";
+  const rendu = r ? r.rendu || "idees" : m.id === "point" ? "point" : "idees";
   S.fiche = {
     id: r ? r.id : null, modifie: Boolean(!r && m.depuisConsigne !== undefined),
     origine: origine || (ponctuelle ? "idees" : r ? "programme" : "catalogue"),
@@ -1313,13 +1324,14 @@ function ouvrirFiche(id, modele = null, origine = null) {
     modeleNom: m.titre || "",
     // Détails de recherche montrés seulement s'ils servent (un suivi de train n'en a pas besoin).
     recherche: Boolean(r && r.recherche && (Object.values(r.fiche).some(Boolean) || r.budget.max !== null || r.inclure.length || r.exclure.length))
-      || Boolean(m.recherche) || ponctuelle,
+      || Boolean(m.recherche) || (ponctuelle && rendu === "idees"),
     f: {
       titre: r ? r.titre : base.titre || "", consigne: r ? r.consigne : base.consigne || "",
       longueur: r ? (r.longueur || "aucune") : ponctuelle ? "aucune" : base.longueur || "courte",
       periode: r ? { type: r.periode.type, debut: r.periode.debut || "", fin: r.periode.fin || "", jours: [...(r.periode.jours || [])] }
                  : { type: ponctuelle ? "ponctuelle" : "toujours", debut: "", fin: "", jours: [], ...(base.periode || {}) },
-      sources: r ? [...r.sources] : ponctuelle ? ["web", "lieux"] : sourcesProposables([...(m.sources || [])]),
+      sources: r ? [...r.sources] : ponctuelle ? (rendu === "point" ? ["web", "actus"] : ["web", "lieux"]) : sourcesProposables([...(m.sources || [])]),
+      rendu, minutes: r ? r.minutes || 3 : 3,
       fiche: r ? { ...vide, ...r.fiche } : { ...vide },
       transport: r ? r.transport : "aucun",
       budget: r ? { max: r.budget.max ?? "", unite: r.budget.unite || "personne", devise: r.budget.devise || S.d.devise || "CHF", transport_inclus: Boolean(r.budget.transport_inclus) }
@@ -1363,7 +1375,8 @@ function vueFiche() {
   const famille = r ? { jour: "Le jour", info: "Veille et actualité", sortie: "Sorties et lieux", agenda: "Selon l'agenda" }[r.famille] : ponctuelle ? "Nouvelle recherche" : "Nouvelle rubrique";
   const segments = [["aucune", "Glissée"], ["phrase", "Une phrase"], ["courte", "Courte"], ["developpee", "Développée"]];
   const avant = r && r.place ? (S.d.deroule.find((x) => x.cle === r.place) || {}).nom : null;
-  const libelleBouton = F.id ? "Enregistrer" : ponctuelle ? "Créer et chercher" : "Ajouter à mon épisode";
+  const point = ponctuelle && f.rendu === "point";
+  const libelleBouton = F.id ? "Enregistrer" : point ? "Créer et écouter" : ponctuelle ? "Créer et chercher" : "Ajouter à mon épisode";
   return `
   <div class="entete-fiche">
     <button type="button" class="icone" data-action="retour" aria-label="Retour">${icone("retour", 22, 2)}</button>
@@ -1373,11 +1386,21 @@ function vueFiche() {
   ${r && r.prochain && r.etat !== "active" && !ponctuelle ? `<p class="aide">Prochain passage : ${h(r.prochain)}</p>` : ""}
   <section class="section-fiche" aria-labelledby="s-quoi"><h2 id="s-quoi">${ponctuelle ? "Ce que tu cherches" : "Ce qu'elle raconte"}</h2>
     <div class="champ"><label for="c-titre">Titre${ponctuelle ? "" : " (aussi titre du chapitre)"}</label>
-      <input id="c-titre" class="saisie titre" type="text" maxlength="50" data-champ="titre" value="${h(f.titre)}" placeholder="${ponctuelle ? "Ex. Sortie en famille samedi" : "Ex. Fête du prénom du jour"}"></div>
+      <input id="c-titre" class="saisie titre" type="text" maxlength="50" data-champ="titre" value="${h(f.titre)}" placeholder="${point ? "Ex. Retards CFF" : ponctuelle ? "Ex. Sortie en famille samedi" : "Ex. Fête du prénom du jour"}"></div>
     <div class="champ"><label for="c-consigne">${ponctuelle ? "Ta demande" : "Consigne aux animateurs"}</label>
-      <textarea id="c-consigne" class="saisie" maxlength="400" rows="3" data-champ="consigne" placeholder="${ponctuelle ? "Ex. Une activité au calme, plutôt en intérieur s'il pleut" : "Ce qu'ils doivent dire ou faire"}">${h(f.consigne)}</textarea></div>
-    ${F.recherche || ponctuelle ? blocRecherche(f) : `<button type="button" class="bouton pointille" data-action="recherche">+ Détails pour une recherche (lieu, budget, transport…)</button>`}
+      <textarea id="c-consigne" class="saisie" maxlength="400" rows="3" data-champ="consigne" placeholder="${point ? "Ex. Où en sont les retards des CFF en ce moment, et pourquoi" : ponctuelle ? "Ex. Une activité au calme, plutôt en intérieur s'il pleut" : "Ce qu'ils doivent dire ou faire"}">${h(f.consigne)}</textarea></div>
+    ${point ? "" : F.recherche || ponctuelle ? blocRecherche(f) : `<button type="button" class="bouton pointille" data-action="recherche">+ Détails pour une recherche (lieu, budget, transport…)</button>`}
   </section>
+  ${ponctuelle ? `<section class="section-fiche" aria-labelledby="s-rendu"><h2 id="s-rendu">Ce que tu reçois</h2>
+    <div class="segments" role="group" aria-labelledby="s-rendu" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+      <button type="button" data-rendu="point" aria-pressed="${point}">Un podcast sur le sujet</button>
+      <button type="button" data-rendu="idees" aria-pressed="${!point}">Des idées (sorties…)</button>
+    </div>
+    ${point ? `<div class="champ"><label for="c-minutes">Durée</label>
+      <select id="c-minutes" class="saisie" data-champ="minutes">${[2, 3, 5, 8, 10].map((n) => `<option value="${n}" ${Number(f.minutes) === n ? "selected" : ""}>${n} minutes</option>`).join("")}</select></div>
+    <p class="aide">Les animateurs font l'état des lieux à l'heure actuelle, à partir des sources cochées. Il arrive dans « Idées » et ne change rien à ton épisode du matin.</p>`
+    : `<p class="aide">Des idées concrètes, avec lieux, prix et liens, par écrit ou en mini-podcast.</p>`}
+  </section>` : ""}
   ${ponctuelle ? "" : `<section class="section-fiche" aria-labelledby="s-quand"><h2 id="s-quand">Quand</h2>
     <select id="c-periode" class="saisie" data-champ="periode.type" aria-label="Quand elle passe">
       ${PERIODES_RUBRIQUE.map(([cle, nom]) => `<option value="${cle}" ${f.periode.type === cle ? "selected" : ""}>${nom}</option>`).join("")}
@@ -1578,7 +1601,7 @@ async function enregistrerFiche() {
     await demander("liste", { chemin: "consignes", valeurs: l }, { discret: true });
   }
   if (nouvelleRecherche) {
-    const k = await demander("recherche", { id: j.id, format: "ecrit" });
+    const k = await demander("recherche", { id: j.id, format: F.f.rendu === "point" ? "point" : "ecrit" });
     annoncer(k.ok ? k.message : `Recherche ${j.id} créée`);
     S.ecran = "idees";
     return dessiner();
@@ -1593,7 +1616,9 @@ async function enregistrerFiche() {
 function menuFiche() {
   const F = S.fiche;
   const r = S.d.regles.find((x) => x.id === F.id);
-  const boutons = r && r.recherche
+  const boutons = r && r.recherche && r.periode.type === "ponctuelle" && r.rendu === "point"
+    ? [{ id: "chercher", type: "default", text: "Refaire le point" }, { id: "supprimer", type: "destructive", text: "Supprimer" }]
+    : r && r.recherche
     ? [{ id: "chercher", type: "default", text: "Chercher maintenant" }, { id: "mini", type: "default", text: "Mini-podcast" }, { id: "supprimer", type: "destructive", text: "Supprimer" }]
     : [{ id: "tester", type: "default", text: "Épisode test avec elle" }, { id: "supprimer", type: "destructive", text: "Supprimer" }];
   choisir(F.f.titre || ("Rubrique " + F.id), "Que veux-tu faire ?", boutons, (choix) => {
@@ -2442,6 +2467,13 @@ document.addEventListener("click", (ev) => {
     if (ds.retirerBulle) f[ds.retirerBulle].splice(Number(ds.i), 1);
     else if (ds.action === "passage") f.longueur = f.longueur === "aucune" ? "courte" : "aucune";
     else if (ds.longueur) f.longueur = ds.longueur;
+    else if (ds.rendu) {
+      f.rendu = ds.rendu;
+      // Les sources par défaut suivent : actualités pour un point, lieux pour des idées (si on n'y a pas touché).
+      const defaut = { point: ["web", "actus"], idees: ["web", "lieux"] };
+      if (!S.fiche.id && JSON.stringify(f.sources) === JSON.stringify(defaut[ds.rendu === "point" ? "idees" : "point"])) f.sources = [...defaut[ds.rendu]];
+      S.fiche.recherche = ds.rendu === "idees";
+    }
     else if (ds.jour) f.periode.jours = f.periode.jours.includes(ds.jour) ? f.periode.jours.filter((j) => j !== ds.jour) : [...f.periode.jours, ds.jour];
     else if (ds.source) f.sources = f.sources.includes(ds.source) ? f.sources.filter((s) => s !== ds.source) : [...f.sources, ds.source];
     else if (ds.bascule) { const [a, b] = ds.bascule.split("."); if (b) f[a][b] = !f[a][b]; else f[a] = !f[a]; }
@@ -2454,6 +2486,7 @@ document.addEventListener("click", (ev) => {
     case "fermer": return tg ? tg.close() : null;
     case "nouvelle": return aller("catalogue");
     case "nouvelle-recherche": return ouvrirFiche(null, { id: "recherche" });
+    case "nouveau-point": return ouvrirFiche(null, { id: "point" });
     case "garder": {
       // Une recherche devient une rubrique de l'épisode : on choisit quand elle passe.
       const f = S.fiche.f;

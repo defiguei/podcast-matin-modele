@@ -2472,8 +2472,9 @@ def main(arguments: list[str] | None = None) -> int:
                            help="règles à traiter aussi dans l'épisode, ex. R3,R5")
     analyseur.add_argument("--recherche", default=os.environ.get("RECHERCHE", ""),
                            help="résultats de recherche pour ces règles, ex. R5,R6")
-    analyseur.add_argument("--format", default=os.environ.get("FORMAT", "") or "ecrit", choices=("ecrit", "audio", "resume"),
-                           help="résultats écrits (photos, lieux, sondage) ou mini-podcast")
+    analyseur.add_argument("--format", default=os.environ.get("FORMAT", "") or "ecrit", choices=("ecrit", "audio", "resume", "point"),
+                           help="résultats écrits (photos, lieux, sondage), mini-podcast d'idées, synthèse d'une rubrique, "
+                                "ou point (podcast d'état des lieux d'un sujet)")
     analyseur.add_argument("--echantillons", default=os.environ.get("ECHANTILLONS", ""),
                            help="extraits audio de ces voix, ex. Aoede,Kore")
     analyseur.add_argument("--agendas", action="store_true",
