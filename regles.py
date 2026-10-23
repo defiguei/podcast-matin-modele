@@ -203,7 +203,7 @@ def planifier(regles: list[dict], agenda: list[str], jour: dt.date, ville: str,
         print(f"Planification des règles impossible : {erreur}", flush=True)
         return plans
     for element in reponse.get("regles") or []:
-        identifiant = str(element.get("id", "")).upper()
+        identifiant = {i.upper(): i for i in plans}.get(str(element.get("id", "")).upper(), "")
         if identifiant not in plans:
             continue
         plan = plans[identifiant]

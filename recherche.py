@@ -5,6 +5,8 @@
   - Mini-podcast (« 🎧 ») : les mêmes idées, racontées par les deux voix.
   - Point (recherche ponctuelle « point ») : un podcast de quelques minutes qui fait l'état
     des lieux d'un sujet à l'heure actuelle (« les retards CFF en ce moment »), hors épisode.
+  - Rubriques essentielles (Agenda, Mes déplacements, Actu locale, À creuser, Actualités) : « Chercher
+    maintenant » (un point écrit) et « Mini-podcast » (un point audio), depuis le menu de leur fiche.
   - Extraits de voix : pour choisir les voix des animateurs.
 """
 
@@ -336,6 +338,101 @@ def lancer_point(regles: list[dict], collectes: list[moteur.Collecte], effectifs
     return 0
 
 
+# ─────────────────── rubriques essentielles, à la demande ───────────────────
+
+# Menu « ··· » de la fiche d'une rubrique essentielle : elle n'est pas une règle, on en fabrique une
+# pour la durée de la recherche (mêmes sources que dans l'épisode). « Chercher maintenant » rend un
+# point écrit, « Mini-podcast » un point audio (format « point »).
+ESSENTIELLES = {
+    "agenda": ("Agenda", ["agenda"]),
+    "deplacements": ("Mes déplacements", ["agenda", "web", "actus"]),
+    "actu_locale": ("Actu locale", ["actus"]),
+    "approfondissements": ("À creuser", ["web", "actus"]),
+    "actualites": ("Actualités", ["medias"]),   # tes médias, lus directement (voir ajouter_medias)
+}
+assert set(ESSENTIELLES) == set(p.RUBRIQUES_ESSENTIELLES)
+
+
+def regle_essentielle(rubrique: str, config: dict, ville: str) -> dict:
+    titre, sources = ESSENTIELLES[rubrique]
+    actus = config.get("actus") or {}
+    requetes: list[str] = []
+    if rubrique == "agenda":
+        consigne = "Mes rendez-vous du jour (heure, lieu, ce qu'il faut préparer), puis un aperçu des jours suivants."
+    elif rubrique == "deplacements":
+        consigne = ("Si mon agenda annonce un voyage ou une sortie ailleurs : quand c'est, deux ou trois idées sur place "
+                    "et les actualités du lieu. Sinon, dis simplement qu'aucun déplacement n'est prévu.")
+    elif rubrique == "actu_locale":
+        ville_locale = str(actus.get("ville") or ville or "").strip()
+        if not ville_locale:
+            raise p.ErreurPodcast("Ta ville n'est pas précisée : ajoute-la dans Réglages › Moi pour avoir l'actu locale.")
+        requetes = [f"actualité {ville_locale}"]
+        consigne = f"Une ou deux nouvelles de {ville_locale}, et ce qu'elles changent au quotidien."
+    elif rubrique == "approfondissements":
+        sujets = [str(a.get("sujet") or "").strip() for a in config.get("a_approfondir") or [] if isinstance(a, dict)]
+        sujets = [x for x in sujets if x]
+        if not sujets:
+            raise p.ErreurPodcast("Rien à creuser pour l'instant : ajoute un sujet dans « À creuser ».")
+        requetes = sujets[:3]
+        consigne = "Fais le point sur les sujets que j'ai demandé de creuser : " + " ; ".join(sujets) + "."
+    else:
+        consigne = "Les sujets importants du jour : mon pays d'abord, puis l'international."
+    return {"id": rubrique, "titre": titre, "consigne": consigne, "rubrique": {"titre": titre},
+            "recherche": {"fiche": {}, "sources": list(sources), "requetes": requetes, "rendu": "point", "minutes": 3}}
+
+
+def ajouter_medias(collecte: moteur.Collecte, effectifs: dict, maintenant: dt.datetime) -> None:
+    """Actualités : les articles récents des médias de l'auditeur (ceux de ses épisodes)."""
+    articles, _ = p.lire_actualites(effectifs, maintenant)
+    if not articles:
+        collecte.texte += "\n\nMédias de l'auditeur : aucun article récent n'a pu être lu."
+        return
+    lignes = ["Articles récents de ses médias :"]
+    for article in articles[:15]:
+        lignes.append(f"  - {article.source} — {article.titre}" + (f" : {article.resume}" if article.resume else ""))
+        if article.lien.startswith("https://"):
+            collecte.liens.append((article.titre, article.lien))
+    collecte.texte += "\n\n" + "\n".join(lignes)
+
+
+def schema_resume() -> dict:
+    texte = {"type": "string"}
+    return {"type": "object", "properties": {"titre": texte, "texte": texte}, "required": ["titre", "texte"]}
+
+
+def resume_ecrit(regle: dict, collecte: moteur.Collecte, effectifs: dict, cle_gemini: str,
+                 maintenant: dt.datetime) -> dict:
+    """Le point écrit d'une rubrique essentielle (« Chercher maintenant »)."""
+    titre = (regle.get("rubrique") or {}).get("titre") or regle.get("titre", "")
+    adresse = "Tutoie" if effectifs.get("tutoiement", True) else "Vouvoie"
+    systeme = f"""Tu rédiges, pour l'auditeur, le point écrit de sa rubrique « {titre} » à l'heure actuelle. {adresse} l'auditeur.
+Trois à six phrases courtes (une centaine de mots), les faits d'abord (heures, lieux, chiffres, dates), pas de liste à puces, pas de markdown, pas d'emoji, pas d'adresse web.
+Appuie-toi UNIQUEMENT sur la matière fournie ; si elle est maigre ou vide, dis franchement ce qu'on ne sait pas plutôt que de remplir.
+Remplis « titre » (court) et « texte »."""
+    modeles = list(dict.fromkeys(effectifs["modeles_rapides"] + effectifs["modeles_texte"]))
+    brut, _ = p.demander_json(systeme, f"Nous sommes le {p.date_longue(maintenant.date())}, il est {maintenant:%H:%M}.\n"
+                              f"Demande : {regle.get('consigne', '')}\n\n{collecte.texte}", schema_resume(), modeles, cle_gemini,
+                              delai=90, tours=2)
+    return {"titre": p.tronquer(str(brut.get("titre") or titre).strip(), 60) or titre,
+            "texte": re.sub(r"\s+", " ", str(brut.get("texte") or "")).strip()}
+
+
+def lancer_ecrit_essentielles(regles: list[dict], collectes: list[moteur.Collecte], effectifs: dict, cle_gemini: str,
+                              maintenant: dt.datetime, telegram: p.Telegram | None, conversation: str, bot: Any) -> int:
+    """Un point écrit par rubrique essentielle, montré dans l'application (et envoyé dans Telegram s'il est là)."""
+    for regle, collecte in zip(regles, collectes):
+        resume = resume_ecrit(regle, collecte, effectifs, cle_gemini, maintenant)
+        sources = [{"titre": t, "lien": u} for t, u in dict.fromkeys(collecte.liens) if u.startswith("https://")][:8]
+        if telegram and conversation:
+            telegram.message(conversation, f"🔎 <b>{e(regle.get('titre', ''))}</b>\n{e(resume['texte'])}")
+        bot.evenement({"type": "recherche", "regles": [regle["id"]], "idees": [], "sondage": None, "format": "ecrit",
+                       "audio": None, "titre_audio": "", "duree": 0,
+                       "resultats": [{"regle": regle["id"], "titre": regle.get("titre", ""), "intro": resume["texte"],
+                                      "conseil": "", "idees": [], "sources": sources}]})
+        p.journal(f"Point écrit « {regle.get('titre', '')} » envoyé ✅")
+    return 0
+
+
 # ───────────────────────── synthèse d'une rubrique ──────────────────────────
 
 def resume_rubrique(identifiant: str, effectifs: dict, cle_gemini: str, maintenant: dt.datetime,
@@ -382,14 +479,20 @@ Longueur : environ {mots} mots. Remplis « titre » (court), « sujets » (les t
 def lancer(identifiants: list[str], format_: str, effectifs: dict, cle_gemini: str, maintenant: dt.datetime,
            telegram: p.Telegram | None, conversation: str, bot: Any, export: dict, sans_envoi: bool = False) -> int:
     config = effectifs.get("config_bot") or {}
-    regles = [r for r in config.get("regles") or [] if r.get("id") in identifiants]
-    if not regles:
-        raise p.ErreurPodcast(f"rubrique introuvable ({', '.join(identifiants) or 'aucune'}).")
     jour = maintenant.date()
     ville = effectifs["ville_habituelle"]
+    essentielles = [i for i in identifiants if i in ESSENTIELLES]
+    if essentielles:        # menu « ··· » d'une rubrique essentielle : une seule à la fois
+        regles = [regle_essentielle(essentielles[0], config, ville)]
+    else:
+        regles = [r for r in config.get("regles") or [] if r.get("id") in identifiants]
+    if not regles:
+        raise p.ErreurPodcast(f"rubrique introuvable ({', '.join(identifiants) or 'aucune'}).")
     agenda: list[str] = []
     if any(r.get("condition") or "agenda" in ((r.get("recherche") or {}).get("sources") or []) for r in regles):
         urls = p.separer_urls(os.environ.get("CALENDAR_ICS_URL", ""))
+        if essentielles and not urls:
+            raise p.ErreurPodcast("Aucun agenda n'est branché : ajoute-en un dans Réglages › Connexions.")
         if urls:
             evenements, _ = p.lire_agendas(urls, effectifs, maintenant, 31)
             agenda = moteur.agenda_pour_plan(evenements, p.quand_court)
@@ -407,6 +510,7 @@ def lancer(identifiants: list[str], format_: str, effectifs: dict, cle_gemini: s
     exclues = precedents.get("idees", []) if set(precedents.get("regles", [])) & set(identifiants) else []
     traitees = []
     point = format_ == "point"
+    ecrit_essentielle = bool(essentielles) and not point
     collectes: list[moteur.Collecte] = []
     for regle in regles[:3]:
         plan = plans[regle["id"]]
@@ -419,12 +523,21 @@ def lancer(identifiants: list[str], format_: str, effectifs: dict, cle_gemini: s
 
         collecte = moteur.collecter(regle_large, plan, sources, jour, ville, actus, profondeur=2,
                                     config=config, lire_flux=flux_specialise, agenda=agenda)
-        if point:                 # un état des lieux : pas d'idées à trouver
+        if essentielles and regle["id"] == "actualites":
+            ajouter_medias(collecte, effectifs, maintenant)
+        if point or ecrit_essentielle:      # un état des lieux : pas d'idées à trouver
             collectes.append(collecte)
             continue
         traitees.append((regle, collecte, trouver_idees(collecte, effectifs, cle_gemini, exclues)))
     if sources.credits_tavily:
         p.journal(f"Recherche web : {sources.credits_tavily} crédit(s) Tavily.")
+
+    if ecrit_essentielle:
+        if sans_envoi or not (telegram or bot.secret):
+            for regle, collecte in zip(regles, collectes):
+                print(f"{regle['id']} :\n{collecte.texte}")
+            return 0
+        return lancer_ecrit_essentielles(regles[:1], collectes, effectifs, cle_gemini, maintenant, telegram, conversation, bot)
 
     if point:
         if sans_envoi or not (telegram or bot.secret):

@@ -2451,6 +2451,21 @@ def identifiants_regles(texte: str) -> list[str]:
     return [x.upper() for x in re.split(r"[,;\s]+", texte or "") if re.fullmatch(r"[Rr]\d{1,4}", x)]
 
 
+# Rubriques essentielles qu'on peut chercher à la demande (menu « ··· » de leur fiche).
+RUBRIQUES_ESSENTIELLES = ("agenda", "deplacements", "actu_locale", "approfondissements", "actualites")
+
+
+def identifiants_recherche(texte: str) -> list[str]:
+    """Les règles (R5) ou les rubriques essentielles (actualites) d'une recherche."""
+    trouves = []
+    for x in re.split(r"[,;\s]+", texte or ""):
+        if re.fullmatch(r"[Rr]\d{1,4}", x):
+            trouves.append(x.upper())
+        elif x.lower() in RUBRIQUES_ESSENTIELLES:
+            trouves.append(x.lower())
+    return trouves
+
+
 def heure_plus(heure: str, minutes: int) -> str:
     try:
         h, m = (int(x) for x in heure.split(":")[:2])
@@ -2575,7 +2590,7 @@ def main(arguments: list[str] | None = None) -> int:
             if options.format == "resume":
                 return recherche.resume_rubrique(options.recherche.strip(), effectifs, cle, maintenant, telegram,
                                                  conversation, bot)
-            return recherche.lancer(identifiants_regles(options.recherche), options.format, effectifs, cle,
+            return recherche.lancer(identifiants_recherche(options.recherche), options.format, effectifs, cle,
                                     maintenant, telegram, conversation, bot, export or {}, options.sans_envoi)
 
         # 1. (Sans le bot instantané) tes messages au bot, pris en compte avant l'épisode.

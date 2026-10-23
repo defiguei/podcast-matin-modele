@@ -1,11 +1,10 @@
 {
-  "version": "2026-10-23.6",
-  "date": "2026-10-23",
-  "titre": "Podcast ponctuel sur un sujet",
+  "version": "2026-10-24.1",
+  "date": "2026-10-24",
+  "titre": "Menu des rubriques essentielles",
   "nouveautes": [
-    "Podcast sur un sujet, tout de suite : « fais-moi un podcast de 3 minutes sur les retards CFF en ce moment » donne un vrai podcast qui fait l'état des lieux (pas une liste d'articles), à la durée demandée, écoutable dans Idées.",
-    "Cette demande ne touche plus ton épisode du matin : ni nouvel épisode du jour, ni changement de sa durée.",
-    "Onglet Idées : nouveau bouton « Un podcast sur un sujet, maintenant » ; dans la fiche d'une recherche, choisis « Un podcast sur le sujet » (avec sa durée) ou « Des idées »."
+    "Rubriques essentielles (Agenda, Mes déplacements, Actu locale, À creuser, Actualités) : la fiche a maintenant le menu « ··· » avec « Chercher maintenant » (un point écrit), « Mini-podcast » (un point audio) et « Supprimer » (la rubrique quitte tes épisodes ; elle se remet depuis « Ajouter une rubrique » › L'essentiel).",
+    "Le résultat s'affiche dans Idées, avec ses sources ; Actualités lit tes médias, Actu locale ta ville, À creuser tes sujets, Agenda et Déplacements ton agenda."
   ],
   "supprimes": [
     "cloudflare/worker.js",

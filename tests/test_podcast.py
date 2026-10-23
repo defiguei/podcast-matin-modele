@@ -1240,6 +1240,83 @@ verifier("3 minutes" in _vus.get("systeme", "") and "environ 450 mots" in _vus.g
 verifier(_ev.get("resultats", [{}])[0].get("sources") == [{"titre": "CFF : ponctualité en baisse", "lien": "https://exemple.ch/cff"}]
          and _ev.get("idees") == [], "point : sources gardées (https seulement), aucune « idée » ni article listé")
 
+# ── Rubriques essentielles à la demande (menu « ··· » de leur fiche) ──
+print("\n▶ Rubriques essentielles : chercher maintenant, mini-podcast")
+verifier(podcast.identifiants_recherche("R5, actualites ; Agenda inconnue r7") == ["R5", "actualites", "agenda", "R7"],
+         "identifiants d'une recherche : règles et rubriques essentielles")
+verifier(set(_recherche.ESSENTIELLES) == set(podcast.RUBRIQUES_ESSENTIELLES), "mêmes rubriques essentielles des deux côtés")
+
+
+def _echoue(fonction, *arguments):
+    try:
+        fonction(*arguments)
+    except podcast.ErreurPodcast as erreur:
+        return str(erreur)
+    return ""
+
+
+_config = {"actus": {"ville": "Yverdon"}, "a_approfondir": [{"sujet": "réforme des retraites"}, {"sujet": "tarifs CFF"}]}
+_ess = {c: _recherche.regle_essentielle(c, _config, "Yverdon") for c in _recherche.ESSENTIELLES}
+verifier(_ess["agenda"]["recherche"]["sources"] == ["agenda"] and _ess["deplacements"]["recherche"]["sources"] == ["agenda", "web", "actus"],
+         "essentielles : les sources de l'épisode (agenda, déplacements)")
+verifier(_ess["actu_locale"]["recherche"]["requetes"] == ["actualité Yverdon"] and "Yverdon" in _ess["actu_locale"]["consigne"],
+         "actu locale : cherche dans sa ville")
+verifier(_ess["approfondissements"]["recherche"]["requetes"] == ["réforme des retraites", "tarifs CFF"], "à creuser : cherche ses sujets")
+verifier(all(r["id"] == c and r["recherche"]["rendu"] == "point" and r["recherche"]["sources"] for c, r in _ess.items()),
+         "essentielles : identifiant, rendu « point », au moins une source")
+verifier("Réglages › Moi" in _echoue(_recherche.regle_essentielle, "actu_locale", {}, ""), "actu locale sans ville : message clair")
+verifier("À creuser" in _echoue(_recherche.regle_essentielle, "approfondissements", {}, "Yverdon"), "à creuser vide : message clair")
+
+# Le planificateur répond avec des identifiants en majuscules : les nôtres (« deplacements ») doivent les retrouver.
+_plans = _moteur.planifier([_ess["deplacements"]], ["mar. 3 nov. 09:00 — Vol pour Lisbonne"], dt.date(2026, 10, 24), "Yverdon",
+                           lambda systeme, entree, schema: {"regles": [{"id": "DEPLACEMENTS", "applique": True, "evenement": "Vol pour Lisbonne",
+                                                                          "requetes": ["Lisbonne novembre"], "lieux": ["Lisbonne"]}]})
+verifier(_plans["deplacements"]["requetes"] == ["Lisbonne novembre"] and _plans["deplacements"]["lieux"] == ["Lisbonne"]
+         and _plans["deplacements"]["evenement"] == "Vol pour Lisbonne", "planificateur : identifiants minuscules retrouvés")
+
+
+class _TelegramEcrit:
+    def __init__(self):
+        self.messages = []
+
+    def message(self, conversation, texte, *_, **__):
+        self.messages.append((conversation, texte))
+
+
+_anciens = (podcast.demander_json, podcast.lire_actualites, _moteur.collecter, podcast.telecharger)
+_vus = {}
+try:
+    def _demander_texte(systeme, entree, schema, modeles, cle, **_):
+        _vus["systeme"], _vus["entree"], _vus["schema"] = systeme, entree, schema
+        return {"titre": "À la une", "texte": "Deux sujets dominent la journée.\nLe premier concerne les CFF."}, "m"
+    podcast.demander_json = _demander_texte
+    podcast.lire_actualites = lambda reglages, maintenant: ([podcast.Article("Les CFF en retard", "Chantiers en cours", "https://exemple.ch/cff",
+                                                                              "Le Temps"), podcast.Article("Sans lien", "", "http://non-https.ch", "X")], [])
+    _moteur.collecter = lambda regle, plan, sources, jour, ville, *a, **k: _moteur.Collecte(regle=regle, plan=plan, texte="Sources lues : medias")
+    _bot_e, _tg_e = _BotPoint(), _TelegramEcrit()
+    _eff = {"animateurs": [{"nom": "Kore"}, {"nom": "Puck"}], "mots_par_minute": 150, "tutoiement": True, "modeles_texte": ["m"],
+            "modeles_rapides": ["r"], "debit_mp3_kbps": 64, "ville_habituelle": "Yverdon", "config_bot": _config, "flux": [], "fraicheur_heures": 24,
+            "articles_par_flux": 3}
+    _code_e = _recherche.lancer(["actualites"], "ecrit", _eff, "cle", dt.datetime(2026, 10, 24, 8, 0, tzinfo=ZH), _tg_e, "42", _bot_e, {})
+    _entree_e = _vus.get("entree", "")
+    _agenda_env = os.environ.pop("CALENDAR_ICS_URL", None)
+    try:
+        _essai_agenda = _echoue(_recherche.lancer, ["agenda"], "ecrit", _eff, "cle", dt.datetime(2026, 10, 24, 8, 0, tzinfo=ZH), None, "", _bot_e, {})
+    finally:
+        if _agenda_env is not None:
+            os.environ["CALENDAR_ICS_URL"] = _agenda_env
+finally:
+    podcast.demander_json, podcast.lire_actualites, _moteur.collecter, podcast.telecharger = _anciens
+_ev_e = _bot_e.evenements[0] if _bot_e.evenements else {}
+_res_e = (_ev_e.get("resultats") or [{}])[0]
+verifier(_code_e == 0 and _ev_e.get("format") == "ecrit" and _ev_e.get("idees") == [] and not _ev_e.get("audio") and _res_e.get("regle") == "actualites",
+         "chercher maintenant : un point écrit pour l'application, sans audio")
+verifier(_res_e.get("intro", "").startswith("Deux sujets dominent la journée.") and "\n" not in _res_e.get("intro", ""), "point écrit : texte sur une ligne")
+verifier(_res_e.get("sources") == [{"titre": "Les CFF en retard", "lien": "https://exemple.ch/cff"}], "point écrit : sources de tes médias (https seulement)")
+verifier("Articles récents de ses médias" in _entree_e and "Les CFF en retard" in _entree_e, "actualités : les médias de l'auditeur sont lus")
+verifier(_tg_e.messages and _tg_e.messages[0][0] == "42" and "Actualités" in _tg_e.messages[0][1], "point écrit : aussi dans Telegram s'il est là")
+verifier("agenda" in _essai_agenda.lower() and "Réglages › Connexions" in _essai_agenda, "agenda sans agenda branché : message clair")
+
 print("\nRÉSULTAT :", "tout est vert ✅" if not echecs else f"{len(echecs)} échec(s) ❌")
 for e in echecs:
     print("  -", e)

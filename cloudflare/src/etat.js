@@ -9,7 +9,7 @@ import {
   nomRubrique, decrirePeriode, ajouterJours, dateCourte, heureParlee, normaliserTexte, nettoyerListe, TONS, CITER, VOIX_CONSEILLEES,
   placerRubrique, FLUX_DEFAUT, NOMS_JOURS, heureValide, modifierChamp, CHAMPS_RUBRIQUE, TRANSPORTS, analyserPeriode,
   VOIX, animateursDuJour, renommerVoix, activerVoix, choisirVoixJour, LONGUEUR_CONSIGNE, PAYS, profilPays, fluxActus, FERIES_CALCULES,
-  SOURCES, MAX_FLUX_SPECIALISES,
+  SOURCES, MAX_FLUX_SPECIALISES, RUBRIQUES_A_CHERCHER,
 } from "./config.js";
 import { consigneComprehension, contexteComprehension, schemaOperations, appliquerOperations, resumerJours, messageCompris } from "./comprendre.js";
 import { ecran, ficheRegle, clavierRegle, tableauDeBord, clavierTableau, clavierEpisode, clavierAvisNegatif, aide, CLAVIER_FIXE, COMMANDES } from "./ui.js";
@@ -24,7 +24,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-23.6";
+export const VERSION = "2026-10-24.1";
 const MAX_REFAITS = 6;
 const LONGUEURS_VALIDES = ["phrase", "courte", "developpee"];
 const MAX_RECHERCHES = 15;
@@ -35,9 +35,8 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 // Message envoyé après une mise à jour : les nouveautés de cette version…
 const NOUVEAUTES = `✅ <b>Ton podcast est à jour</b> (version ${VERSION}).
 
-• Podcast sur un sujet, tout de suite : « fais-moi un podcast de 3 minutes sur les retards CFF en ce moment » donne un vrai podcast qui fait l'état des lieux (pas une liste d'articles), à la durée demandée, écoutable dans Idées.
-• Cette demande ne touche plus ton épisode du matin : ni nouvel épisode du jour, ni changement de sa durée.
-• Onglet Idées : nouveau bouton « Un podcast sur un sujet, maintenant » ; dans la fiche d'une recherche, choisis « Un podcast sur le sujet » (avec sa durée) ou « Des idées ».`;
+• Rubriques essentielles (Agenda, Mes déplacements, Actu locale, À creuser, Actualités) : la fiche a maintenant le menu « ··· » avec « Chercher maintenant » (un point écrit), « Mini-podcast » (un point audio) et « Supprimer » (la rubrique quitte tes épisodes ; elle se remet depuis « Ajouter une rubrique » › L'essentiel).
+• Le résultat s'affiche dans Idées, avec ses sources ; Actualités lit tes médias, Actu locale ta ville, À creuser tes sujets, Agenda et Déplacements ton agenda.`;
 
 // … ou, pour qui arrive d'avant l'application (installation neuve, ancienne version
 // réglée par la conversation), sa présentation.
@@ -1158,7 +1157,7 @@ export class Etat extends DurableObject {
     const config = await this.lireConfig();
     const etat = await this.lireEtat();
     const dire = (texte, extra) => (options.silencieux ? null : this.tg.envoyer(texte, extra));
-    const valides = (ids || []).filter((id) => config.regles.some((r) => r.id === id));
+    const valides = (ids || []).filter((id) => config.regles.some((r) => r.id === id) || RUBRIQUES_A_CHERCHER.includes(id));
     if (!valides.length) {
       await dire("Aucune rubrique à traiter.");
       return { ok: false, erreur: "Aucune rubrique à traiter." };
@@ -1166,6 +1165,9 @@ export class Etat extends DurableObject {
     // Une recherche « point » se rend toujours en podcast d'état des lieux, quel que soit le bouton.
     const points = valides.filter((id) => config.regles.find((r) => r.id === id)?.recherche?.rendu === "point");
     if (points.length) { format = "point"; valides.splice(0, valides.length, ...points); }
+    // Une rubrique essentielle (Agenda, Actualités…) : « Mini-podcast » = son point audio, sinon son point écrit.
+    const essentielle = valides.find((id) => RUBRIQUES_A_CHERCHER.includes(id));
+    if (essentielle) { format = format === "audio" || format === "point" ? "point" : "ecrit"; valides.splice(0, valides.length, essentielle); }
     if (format === "audio" || format === "point") {
       const compte = etat.refaits?.date === ctx.aujourdHui ? etat.refaits.nombre : 0;
       if (compte >= MAX_REFAITS) {
@@ -2336,7 +2338,7 @@ export class Etat extends DurableObject {
 
         // ── recherche, demande libre, annulation ──
         case "recherche": {
-          if (!config.regles.some((r) => r.id === demande.id)) return refus("Cette rubrique n'existe plus.");
+          if (!config.regles.some((r) => r.id === demande.id) && !RUBRIQUES_A_CHERCHER.includes(demande.id)) return refus("Cette rubrique n'existe plus.");
           const lance = await this.lancerRecherche([demande.id], demande.format === "audio" ? "audio" : "ecrit", { silencieux: true });
           if (!lance.ok) return refus(lance.erreur);
           return reponse({ message: lance.format === "point" ? "Je fais le point : le podcast arrive ici d'ici trois ou quatre minutes."

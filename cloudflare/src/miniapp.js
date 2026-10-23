@@ -413,7 +413,7 @@ export function libelleDate(dateIso) {
 export function nettoyerResultats(resultats) {
   const court = (v, max) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
   return (Array.isArray(resultats) ? resultats : []).slice(0, 4).map((r) => ({
-    regle: court(r?.regle, 8), titre: court(r?.titre, 60), intro: court(r?.intro, 400), conseil: court(r?.conseil, 300),
+    regle: court(r?.regle, 20), titre: court(r?.titre, 60), intro: court(r?.intro, 1200), conseil: court(r?.conseil, 300),
     idees: (Array.isArray(r?.idees) ? r.idees : []).slice(0, 5).map((i) => ({
       titre: court(i?.titre, 90), resume: court(i?.resume, 400), pourquoi: court(i?.pourquoi, 300), prix: court(i?.prix, 120),
       duree: court(i?.duree, 80), horaires: court(i?.horaires, 160), lieu: court(i?.lieu, 120), adresse: court(i?.adresse, 160),

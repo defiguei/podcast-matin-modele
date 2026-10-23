@@ -903,6 +903,11 @@ async function geste(cle, g) {
 }
 
 // ─────────────────────────────── résultats ──────────────────────────────
+// Une rubrique essentielle (Agenda, Actualités…) s'ouvre par sa fiche, une règle par la sienne.
+const attrFiche = (cle) => (INTEGREES[cle] ? `data-integree="${h(cle)}"` : `data-ouvrir="${h(cle)}"`);
+const fournieCle = (cle) => Boolean(INTEGREES[cle]);
+const blocSources = (r) => (r.sources || []).length ? `<span class="groupe">Sources</span><div class="gestes" style="flex-direction:column;align-items:stretch">${r.sources.map((x) => `<button type="button" data-lien="${h(x.lien)}" style="text-align:left">${h(x.titre)}</button>`).join("")}</div>` : "";
+
 function vueResultats() {
   const res = S.d.resultats;
   if (!res || !res.details.length) return `${entete("Idées trouvées")}<div class="vide">Aucun résultat récent. Lance une recherche depuis une rubrique.</div>`;
@@ -910,17 +915,17 @@ function vueResultats() {
   ${res.episode ? `<section class="carte"><h2>${h(res.episode.titre)}</h2>${vueLecteur(res.episode)}</section>` : ""}
   ${res.details.map((r) => `
     <section style="display:flex;flex-direction:column;gap:10px">
-      <div class="entre"><h2>${h(r.titre || r.regle)}</h2>${r.regle ? `<button type="button" class="lien" data-ouvrir="${h(r.regle)}">Recherche</button>` : ""}</div>
+      <div class="entre"><h2>${h(r.titre || r.regle)}</h2>${r.regle ? `<button type="button" class="lien" ${attrFiche(r.regle)}>${fournieCle(r.regle) ? "Rubrique" : "Recherche"}</button>` : ""}</div>
       ${r.intro ? `<p class="aide" style="font-size:14px;color:var(--doux-2)">Abordé : ${h(r.intro)}</p>` : ""}
       ${(r.sources || []).length ? `<span class="groupe">Sources</span><div class="gestes" style="flex-direction:column;align-items:stretch">${r.sources.map((x) => `<button type="button" data-lien="${h(x.lien)}" style="text-align:left">${h(x.titre)}</button>`).join("")}</div>` : ""}
       ${r.regle ? `<button type="button" class="bouton gris" data-chercher="${h(r.regle)}">Refaire le point</button>` : ""}
     </section>`).join("")}`;
-  return `${entete("Idées trouvées", res.quand ? `Le ${dateLongue(res.quand.slice(0, 10))}` : "")}
+  return `${entete(res.details.every((r) => fournieCle(r.regle)) ? "Ce que j'ai trouvé" : "Idées trouvées", res.quand ? `Le ${dateLongue(res.quand.slice(0, 10))}` : "")}
   ${res.episode ? `<section class="carte"><h2>${h(res.episode.titre)}</h2>${vueLecteur(res.episode)}</section>` : ""}
   ${res.details.map((r) => `
     <section style="display:flex;flex-direction:column;gap:10px">
-      <div class="entre"><h2>${h(r.titre || r.regle)}</h2>${r.regle ? `<button type="button" class="lien" data-ouvrir="${h(r.regle)}">Rubrique</button>` : ""}</div>
-      ${r.intro ? `<p class="aide" style="font-size:14px;color:var(--doux-2)">${h(r.intro)}</p>` : ""}
+      <div class="entre"><h2>${h(r.titre || r.regle)}</h2>${r.regle ? `<button type="button" class="lien" ${attrFiche(r.regle)}>Rubrique</button>` : ""}</div>
+      ${r.intro ? `<p class="${fournieCle(r.regle) ? "" : "aide"}" style="margin:0;font-size:${fournieCle(r.regle) ? 15 : 14}px;line-height:1.5;color:${fournieCle(r.regle) ? "var(--texte)" : "var(--doux-2)"}">${h(r.intro)}</p>` : ""}
       ${r.idees.map((i) => `<article class="idee">
         <h3>${h(i.titre)}</h3>
         <div class="infos">${i.lieu ? `<span>${h(i.lieu)}</span>` : ""}${i.prix ? `<span class="${i.dans_le_budget ? "ok" : ""}">${h(i.prix)}</span>` : ""}${i.duree ? `<span>${h(i.duree)}</span>` : ""}${i.horaires ? `<span>${h(i.horaires)}</span>` : ""}</div>
@@ -932,7 +937,8 @@ function vueResultats() {
           <button type="button" data-creuser="${h(i.titre)}">En parler demain</button></div>
       </article>`).join("")}
       ${r.conseil ? `<p class="aide">${h(r.conseil)}</p>` : ""}
-      ${r.regle ? `<button type="button" class="bouton gris" data-chercher="${h(r.regle)}">D'autres idées</button>` : ""}
+      ${fournieCle(r.regle) ? blocSources(r) : ""}
+      ${r.regle ? `<button type="button" class="bouton gris" data-chercher="${h(r.regle)}">${fournieCle(r.regle) ? "Chercher à nouveau" : "D'autres idées"}</button>` : ""}
     </section>`).join("")}`;
 }
 
@@ -1630,6 +1636,24 @@ function menuFiche() {
       vibrer("success"); annoncer("Rubrique supprimée");
       const origine = F.origine === "idees" ? "idees" : "programme";
       S.fiche = null; S.ecran = origine; dessiner();
+    });
+  });
+}
+
+// Menu « ··· » d'une rubrique essentielle : chercher tout de suite, mini-podcast, ou la retirer des épisodes
+// (elle reste dans « Ajouter une rubrique » › L'essentiel, avec son interrupteur).
+function menuIntegree() {
+  const cle = S.integree, x = S.d.deroule.find((y) => y.cle === cle);
+  if (!x || !INTEGREES[cle] || INTEGREES[cle].fixe) return;
+  const boutons = [{ id: "chercher", type: "default", text: "Chercher maintenant" }, { id: "mini", type: "default", text: "Mini-podcast" },
+    { id: "supprimer", type: "destructive", text: "Supprimer" }];
+  choisir(x.nom, "Que veux-tu faire ?", boutons, (choix) => {
+    if (choix === "chercher" || choix === "mini") return chercher(cle, choix === "mini" ? "audio" : "ecrit");
+    if (choix === "supprimer") return confirmer(`Retirer « ${x.nom} » de tes épisodes ? Tu pourras la remettre depuis « Ajouter une rubrique » › L'essentiel.`, async () => {
+      const j = await demander("deroule", { ordre: S.d.deroule.map((y) => y.cle), actifs: { [cle]: false } });
+      if (!j.ok) return;
+      vibrer("success"); annoncer(`${x.nom} retirée de tes épisodes`);
+      S.ecran = "programme"; dessiner(); window.scrollTo(0, 0);
     });
   });
 }
@@ -2337,11 +2361,13 @@ function vueIntegree() {
   if (!x || !info) return `${entete("Rubrique", "Ton épisode")}<div class="vide">Cette rubrique n'existe plus.</div>`;
   const avant = i > 0 ? d.deroule[i - 1].nom : null;
   const corps = CORPS_INTEGREES[cle];
-  return `${entete(x.nom, "Fournie avec l'application")}
-  <section class="section-fiche"><h2>Ce qu'elle raconte</h2><p style="margin:0;line-height:1.45">${h(info.texte)}</p></section>
-  <section class="section-fiche"><h2>Dans l'épisode</h2>
-    ${info.fixe ? `<p class="aide">${h(info.fixe)}</p>` : `<div class="bloc">${interrupteur("Dans mes épisodes", x.actif, `data-actif-integree="${h(cle)}"`)}</div>
-    <p class="aide">${avant ? `Après « ${h(avant)} ». ` : ""}${SI_CONTENU.includes(cle) ? "Elle ne passe que s'il y a de quoi en parler. " : ""}L'ordre se change dans « Ton épisode ».</p>`}
+  // Ouverture et clôture sont fixes ; les autres ont leur menu « ··· » (chercher, mini-podcast, supprimer).
+  const menu = info.fixe ? "" : `<button type="button" class="icone" data-action="plus" aria-label="Plus d'options">${icone("plusieurs", 22, 2)}</button>`;
+  return `${entete(x.nom, "Fournie avec l'application", menu)}
+  <section class="section-fiche"><h2>Ce qu'elle raconte</h2><p style="margin:0;line-height:1.45">${h(info.texte)}</p>
+    ${info.fixe ? `<p class="aide">${h(info.fixe)}</p>`
+      : x.actif ? `<p class="aide">${avant ? `Après « ${h(avant)} ». ` : ""}${SI_CONTENU.includes(cle) ? "Elle ne passe que s'il y a de quoi en parler. " : ""}L'ordre se change dans « Ton épisode ».</p>`
+      : `<p class="aide">Retirée de tes épisodes pour l'instant. Remets-la depuis « Ajouter une rubrique » › L'essentiel.</p>`}
   </section>
   ${corps ? `<section class="section-fiche"><h2>${cle === "actualites" ? "Ce qu'elle lit" : "Réglages"}</h2>${corps()}</section>` : ""}
   ${cle !== "ouverture" && cle !== "cloture" ? blocResume(cle) : ""}`;
@@ -2499,7 +2525,7 @@ document.addEventListener("click", (ev) => {
       return window.scrollTo(0, 0);
     }
     case "retour": return retour();
-    case "plus": return menuFiche();
+    case "plus": return S.ecran === "integree" ? menuIntegree() : menuFiche();
     case "enregistrer": return enregistrerFiche();
     case "condition": S.fiche.f.condition = { texte: "", moment: "jour_meme", n: 1 }; S.fiche.modifie = true; return dessiner();
     case "sans-condition": S.fiche.f.condition = null; S.fiche.modifie = true; return dessiner();

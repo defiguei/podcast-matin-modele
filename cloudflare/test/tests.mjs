@@ -3,6 +3,7 @@ import { createHash, createHmac, createECDH, createDecipheriv, createPublicKey, 
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { MODELES_PODCAST } from "../src/connexions.js";
+import { RUBRIQUES_A_CHERCHER } from "../src/config.js";
 
 const BOT = "http://127.0.0.1:8799";
 const FAUX = "http://127.0.0.1:8790";
@@ -1179,6 +1180,29 @@ await scenario("Application : demande libre, recherche, résultats", async () =>
   const det = r.donnees.resultats?.details?.[0];
   verifier(det?.idees.length === 1 && det.idees[0].titre === "Piscine" && det.idees[0].lien === "" && det.idees[0].dans_le_budget, "résultats gardés pour l'application (liens nettoyés)", det);
   await app("supprimer", { id });
+  // Rubriques essentielles (menu « ··· » de leur fiche) : « Chercher maintenant » = point écrit, « Mini-podcast » = point audio.
+  const quotaAvant = (await etat()).etat;
+  await vider();
+  r = await app("recherche", { id: "actualites", format: "ecrit" });
+  let essentielles = lancements(await appels()).filter((a) => a.workflow === "recherche.yml");
+  verifier(r.ok && essentielles.length === 1 && essentielles[0].entrees.regles === "actualites" && essentielles[0].entrees.format === "ecrit",
+    "essentielle : chercher maintenant → point écrit", essentielles);
+  await vider();
+  r = await app("recherche", { id: "agenda", format: "audio" });
+  essentielles = lancements(await appels()).filter((a) => a.workflow === "recherche.yml");
+  verifier(r.ok && essentielles.length === 1 && essentielles[0].entrees.regles === "agenda" && essentielles[0].entrees.format === "point",
+    "essentielle : mini-podcast → point audio", essentielles);
+  verifier((await app("recherche", { id: "ouverture", format: "ecrit" })).ok === false, "ouverture : pas de recherche");
+  const sourcePodcast = readFileSync(new URL("../../podcast.py", import.meta.url), "utf8");
+  const clesPython = ((/RUBRIQUES_ESSENTIELLES = \(([^)]*)\)/.exec(sourcePodcast) || [, ""])[1]).split(",").map((x) => x.trim().replace(/"/g, "")).filter(Boolean);
+  verifier(JSON.stringify(clesPython) === JSON.stringify(RUBRIQUES_A_CHERCHER), "rubriques essentielles : mêmes clés que podcast.py", { clesPython, js: RUBRIQUES_A_CHERCHER });
+  await envoyerJson(`${BOT}/api/evenement`, { type: "recherche", regles: ["approfondissements"], idees: [], format: "ecrit", resultats: [{ regle: "approfondissements", titre: "À creuser",
+    intro: "x".repeat(900), conseil: "", idees: [], sources: [{ titre: "Le Temps", lien: "https://www.letemps.ch/a" }, { titre: "piège", lien: "javascript:alert(1)" }] }] }, entetesApi);
+  r = await app("etat");
+  const detEss = r.donnees.resultats?.details?.[0];
+  verifier(detEss?.regle === "approfondissements" && detEss.intro.length === 900 && detEss.sources.length === 1 && r.donnees.resultats.format === "ecrit",
+    "point écrit d'une essentielle gardé (nom long, texte long, liens nettoyés)", detEss);
+  await envoyerJson(`${BOT}/test/etat`, { etat: { ...(await etat()).etat, refaits: quotaAvant.refaits, recherches: quotaAvant.recherches } });
   await app("regler", { chemin: "voix.vitesse", valeur: "normale" });
 });
 

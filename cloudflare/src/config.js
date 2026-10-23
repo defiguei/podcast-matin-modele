@@ -90,6 +90,8 @@ export const RUBRIQUES = {
   ouverture: "Ouverture", agenda: "Agenda", deplacements: "Mes déplacements",
   actu_locale: "Actu locale", approfondissements: "À creuser", actualites: "Actualités", cloture: "Clôture",
 };
+// Celles qu'on peut chercher à la demande (menu « ··· » de leur fiche) : mêmes clés que ESSENTIELLES de recherche.py.
+export const RUBRIQUES_A_CHERCHER = ["agenda", "deplacements", "actu_locale", "approfondissements", "actualites"];
 // Écran de réglage de chaque rubrique intégrée (null : pas d'écran propre).
 export const ECRAN_INTEGREE = {
   agenda: "agenda", deplacements: "deplacements", actu_locale: "actulocale", approfondissements: "acreuser", actualites: "actus",
