@@ -101,8 +101,6 @@ h2 { margin: 0; font-family: var(--titre); font-weight: 700; font-size: 18px; }
 .pastille-mini { width: 30px; height: 30px; flex: none; border-radius: 9px; display: flex; align-items: center; justify-content: center; }
 /* genre de rubrique : sa couleur (--g) sur un fond teinté de la même couleur */
 .genre { color: var(--g); background: var(--carte-2); background: color-mix(in srgb, var(--g) 16%, var(--carte)); }
-/* rubrique fournie avec l'application : même fond sombre teinté, mais à l'orange de l'application (l'icône garde sa couleur) */
-.genre.fournie { background: var(--carte-2); background: color-mix(in srgb, var(--aube) 16%, var(--carte)); }
 .f-integree { background: var(--carte-2); color: var(--doux-2); }
 .deroule li.eteint .pastille-mini { opacity: .5; }
 .section-fiche { display: flex; flex-direction: column; gap: 10px; background: var(--carte); border-radius: 20px; padding: 14px 14px 16px; }
@@ -168,6 +166,10 @@ input[type="date"].saisie { color-scheme: dark; }
 .deroule { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; position: relative; }
 .deroule li { display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 6px 0 12px; border-radius: 14px; background: var(--carte); position: relative; }
 .deroule li.fixe { background: #171B23; color: var(--doux); min-height: 50px; }
+/* rubrique fournie avec l'application : toute la cellule teintée d'un orange très discret, aussi sombre que les autres */
+.deroule li.fournie { background: var(--carte); background: color-mix(in srgb, var(--aube) 8%, var(--carte)); }
+.rubrique.base { background: var(--carte); background: color-mix(in srgb, var(--aube) 8%, var(--carte)); }
+.deroule li.fixe.fournie { background: #171B23; background: color-mix(in srgb, var(--aube) 8%, #171B23); }
 .deroule li.glisse { background: #2A2F3B; outline: 2px solid var(--aube); box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45); z-index: 3; }
 .deroule li.eteint .nom { color: var(--doux); text-decoration: line-through; }
 .deroule .num { width: 22px; font-variant-numeric: tabular-nums; font-size: 14px; color: var(--doux); flex: none; }
@@ -1129,9 +1131,9 @@ const GENRES = {
 // Bot d'avant le genre : on retombe sur la famille.
 const GENRE_PAR_FAMILLE = { jour: "meteo", info: "libre", sortie: "sortie", agenda: "rappel" };
 const genreDe = (r) => (r && (GENRES[r.genre] ? r.genre : GENRE_PAR_FAMILLE[r.famille])) || "libre";
-function pastille(genre, taille = 20, mini = false, fournie = false) {
+function pastille(genre, taille = 20, mini = false) {
   const g = GENRES[genre] || GENRES.libre;
-  return `<span class="${mini ? "pastille-mini" : "pastille"} genre${fournie ? " fournie" : ""}" style="--g:${g.couleur}">${icone(g.icone, taille)}</span>`;
+  return `<span class="${mini ? "pastille-mini" : "pastille"} genre" style="--g:${g.couleur}">${icone(g.icone, taille)}</span>`;
 }
 
 function resumeIntegree(cle) {
@@ -1190,16 +1192,16 @@ function appliqueLe(r, date) {
 function ligneProgramme(x, i, fixe) {
   const r = x.integree ? null : S.d.regles.find((y) => y.id === x.cle);
   const actif = x.actif && !(r && r.pause);
-  const marque = pastille(x.integree ? x.cle : genreDe(r), 17, true, Boolean(x.integree));
+  const marque = pastille(x.integree ? x.cle : genreDe(r), 17, true);
   const detail = x.integree ? h(resumeIntegree(x.cle)) : r ? detailRubrique(r) : "";
   const cible = x.integree ? `data-integree="${h(x.cle)}"` : `data-ouvrir="${h(x.cle)}"`;
   const textes = `<button type="button" class="textes" ${cible}><span class="nom">${h(x.nom)}</span><span class="detail">${detail}</span></button>`;
   if (fixe) {
-    return `<li class="fixe" data-cle="${h(x.cle)}"><span class="num">${i + 1}</span>${marque}${textes}
+    return `<li class="fixe${x.integree ? " fournie" : ""}" data-cle="${h(x.cle)}"><span class="num">${i + 1}</span>${marque}${textes}
       <span class="mini-inter" style="color:var(--eteint)" role="img" aria-label="Position fixe">${icone("cadenas", 18)}</span></li>`;
   }
   const interrupteurLigne = x.integree ? `data-actif="${h(x.cle)}"` : `data-actif-regle="${h(x.cle)}"`;
-  return `<li class="mobile ${actif ? "" : "eteint"}" data-cle="${h(x.cle)}">
+  return `<li class="mobile${x.integree ? " fournie" : ""} ${actif ? "" : "eteint"}" data-cle="${h(x.cle)}">
     <span class="num">${i + 1}</span>${marque}${textes}
     <button type="button" class="mini-inter" role="switch" aria-checked="${actif}" ${interrupteurLigne} aria-label="${h(x.nom)} : ${actif ? "active" : "en pause"}"><span class="rail"><span></span></span></button>
     <button type="button" class="poignee" data-poignee aria-label="Déplacer ${h(x.nom)} (flèches haut et bas)">${POIGNEE}</button>
@@ -1256,12 +1258,24 @@ function vueProgrammeDuJour(date) {
 const modeles = () => (S.d && S.d.modeles) || [];
 
 function vueCatalogue() {
-  return `${entete("Ajouter une rubrique", "Ton épisode")}
-  <p class="aide" style="font-size:14px;color:var(--doux-2)">Choisis un modèle : il est déjà réglé. Tu pourras tout ajuster avant de l'ajouter.</p>
-  <div class="liste">${modeles().map((m) => `<button type="button" class="rubrique" data-modele="${m.id}">
+  const d = S.d;
+  // Une ligne par modèle (on l'ajoute) ; les rubriques de base se règlent par un interrupteur : une seule de chacune.
+  const ligneModele = (m) => `<button type="button" class="rubrique" data-modele="${m.id}">
     ${pastille(m.id)}
     <span class="textes"><span class="nom">${h(m.titre)}</span><span class="detail" style="white-space:normal">${h(m.texte)}</span></span>
-    <span style="color:var(--eteint)">${icone("suite", 18, 2)}</span></button>`).join("")}</div>
+    <span style="color:var(--eteint)">${icone("suite", 18, 2)}</span></button>`;
+  const ligneBase = (x) => `<div class="rubrique base">
+    ${pastille(x.cle)}
+    <button type="button" class="textes" data-integree="${h(x.cle)}" style="background:none;border:0;padding:0;text-align:left;color:inherit"><span class="nom">${h(x.nom)}</span><span class="detail" style="white-space:normal">${h(INTEGREES[x.cle].texte)}</span></button>
+    <button type="button" class="mini-inter" role="switch" aria-checked="${x.actif}" data-actif-integree="${h(x.cle)}" aria-label="${h(x.nom)} : ${x.actif ? "dans mes épisodes" : "absente de mes épisodes"}"><span class="rail"><span></span></span></button></div>`;
+  const bases = d.deroule.filter((x) => x.integree && !INTEGREES[x.cle].fixe);
+  const sections = (d.categories_rubriques || []).map((c) => {
+    const lignes = c.id === "basiques" ? bases.map(ligneBase) : modeles().filter((m) => m.categorie === c.id).map(ligneModele);
+    return lignes.length ? `<span class="groupe">${h(c.titre)}</span><p class="aide" style="margin:0">${h(c.texte)}</p><div class="liste">${lignes.join("")}</div>` : "";
+  });
+  return `${entete("Ajouter une rubrique", "Ton épisode")}
+  <p class="aide" style="font-size:14px;color:var(--doux-2)">Choisis un modèle : il est déjà réglé. Tu pourras tout ajuster avant de l'ajouter.</p>
+  ${sections.join("")}
   <p class="aide">Pour une recherche ponctuelle (une sortie ce samedi, une idée de cadeau…), passe par l'onglet Idées : elle ne s'ajoute pas à tes épisodes.</p>`;
 }
 

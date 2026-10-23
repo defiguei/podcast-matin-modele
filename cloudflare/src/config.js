@@ -98,24 +98,37 @@ export const ECRAN_INTEGREE = {
 // Gemini choisit quand on demande une rubrique à la voix. Le formulaire de départ est celui
 // de la fiche de l'application ; « pret » : titre et consigne utilisables tels quels.
 export const MODELES_RUBRIQUES = [
-  { id: "prenom", sources: ["saints"], famille: "jour", titre: "Fête du prénom", texte: "Le prénom fêté aujourd'hui (calendrier traditionnel), pour le souhaiter à tes amis", pret: true,
+  { id: "prenom", categorie: "journees", sources: ["saints"], famille: "jour", titre: "Fête du prénom", texte: "Le prénom fêté aujourd'hui (calendrier traditionnel), pour le souhaiter à tes amis", pret: true,
     formulaire: () => ({ place: "ouverture", titre: "Fête du prénom", consigne: "Dis-moi quels prénoms on fête aujourd'hui (un ou deux).", longueur: "phrase" }) },
-  { id: "journee", sources: ["fetes"], famille: "jour", titre: "Journée du jour", texte: "La journée mondiale ou la fête nationale célébrée aujourd'hui", pret: true,
-    formulaire: () => ({ place: "ouverture", titre: "Journée du jour", consigne: "Dis-moi quelle journée mondiale, internationale ou fête nationale on célèbre aujourd'hui.", longueur: "phrase" }) },
-  { id: "meteo", sources: ["meteo"], famille: "jour", titre: "Météo", texte: "Le temps du jour chez toi, et comment t'habiller", pret: true,
+  { id: "journee", categorie: "journees", sources: ["fetes"], famille: "jour", titre: "Journée mondiale", texte: "La journée mondiale ou la fête nationale célébrée aujourd'hui", pret: true,
+    formulaire: () => ({ place: "ouverture", titre: "Journée mondiale", consigne: "Dis-moi quelle journée mondiale, internationale ou fête nationale on célèbre aujourd'hui.", longueur: "phrase" }) },
+  { id: "meteo", categorie: "alertes", sources: ["meteo"], famille: "jour", titre: "Météo", texte: "Le temps du jour chez toi, et comment t'habiller", pret: true,
     formulaire: (ville) => ({ place: "ouverture", titre: "Météo", consigne: `La météo du jour${ville ? ` à ${ville}` : ""} : températures, risque de pluie, et un conseil pour s'habiller.`, longueur: "phrase" }) },
-  { id: "rappel", sources: ["agenda"], famille: "agenda", titre: "Rappel selon l'agenda", texte: "« La veille d'un match, rappelle-moi de préparer mon sac »",
+  { id: "rappel", categorie: "alertes", sources: ["agenda"], famille: "agenda", titre: "Rappel selon l'agenda", texte: "« La veille d'un match, rappelle-moi de préparer mon sac »",
     formulaire: () => ({ place: "agenda", titre: "Rappel", consigne: "Rappelle-moi de ", longueur: "phrase", condition: { texte: "", moment: "veille", n: 1 } }) },
-  { id: "train", sources: ["transports"], famille: "sortie", titre: "Mon train", texte: "Retard ou suppression de ton train habituel (Suisse, France, Belgique)",
+  { id: "train", categorie: "alertes", sources: ["transports"], famille: "sortie", titre: "Mon train", texte: "Retard ou suppression de ton train habituel (Suisse, France, Belgique)",
     formulaire: (ville) => ({ place: "agenda", titre: "Mon train", consigne: `Retard du train de ${ville || "…"} vers … à …h…`, longueur: "phrase",
                               periode: { type: "jours", jours: ["lun", "mar", "mer", "jeu", "ven"] } }) },
-  { id: "actu", sources: ["actus"], famille: "info", titre: "Actu d'un pays ou d'un thème", texte: "« L'actualité du Portugal », « les nouvelles du vélo »",
-    formulaire: () => ({ place: "actualites", titre: "Actu de ", consigne: "Les nouvelles importantes sur ", longueur: "courte" }) },
-  { id: "sortie", sources: ["web", "lieux", "meteo", "wikivoyage"], famille: "sortie", titre: "Idée de sortie", texte: "Une sortie proposée dans tes épisodes, selon tes critères (lieu, budget, transport)", recherche: true, pret: true,
+  { id: "actu_pays", categorie: "actus", sources: ["actus"], famille: "info", titre: "Actu d'un pays", texte: "« L'actualité du Portugal », « ce qui se passe au Canada »",
+    formulaire: () => ({ place: "actualites", titre: "Actu de ", consigne: "Les nouvelles importantes de ce pays : ", longueur: "courte" }) },
+  { id: "actu_theme", categorie: "actus", sources: ["actus"], famille: "info", titre: "Actu d'un thème", texte: "« Les nouvelles du vélo », « l'actu de l'intelligence artificielle »",
+    formulaire: () => ({ place: "actualites", titre: "Actu ", consigne: "Les nouvelles importantes sur le thème : ", longueur: "courte" }) },
+  { id: "sortie", categorie: "guide", sources: ["web", "lieux", "meteo", "wikivoyage"], famille: "sortie", titre: "Idée de sortie", texte: "Une sortie proposée dans tes épisodes, selon tes critères (lieu, budget, transport)", recherche: true, pret: true,
     formulaire: () => ({ place: "deplacements", titre: "Sortie du week-end", consigne: "Propose une idée de sortie pour le week-end.", longueur: "courte",
                          periode: { type: "jours", jours: ["jeu", "ven"] } }) },
-  { id: "libre", sources: [], famille: "info", titre: "Rubrique libre", texte: "Tu écris la consigne et tu choisis où elle cherche",
+  { id: "libre", categorie: "libre", sources: [], famille: "info", titre: "Rubrique libre", texte: "Tu écris la consigne et tu choisis où elle cherche",
     formulaire: () => ({ place: "actualites", titre: "", consigne: "", longueur: "courte" }) },
+];
+
+// Les catégories du catalogue « + » dans l'ordre où l'application les montre (« basiques » : les
+// rubriques fournies, qui s'activent par un interrupteur au lieu de s'ajouter ; « categorie » des modèles).
+export const CATEGORIES_RUBRIQUES = [
+  { id: "basiques", titre: "L'essentiel", texte: "Les rubriques de base du podcast : une seule de chaque, à activer ou à couper." },
+  { id: "journees", titre: "Au calendrier", texte: "Les prénoms à souhaiter et les journées à connaître." },
+  { id: "alertes", titre: "Pratique", texte: "Le temps qu'il fait, ton train, les rappels de ton agenda." },
+  { id: "actus", titre: "À suivre", texte: "Les nouvelles d'un pays ou d'un thème qui t'intéresse." },
+  { id: "guide", titre: "Sorties", texte: "Des idées de sorties qui répondent à tes critères." },
+  { id: "libre", titre: "Sur mesure", texte: "Ta consigne, tes sources." },
 ];
 
 // Le catalogue tel que l'application le reçoit (formulaire déjà rempli pour ta ville ;

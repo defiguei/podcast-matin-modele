@@ -31,7 +31,7 @@ Chaque changement s'annule depuis l'accueil (*Annuler*). Avec Telegram, tu peux 
 
 Une rubrique est un passage de ton épisode. **Toutes se règlent de la même façon**, par leur fiche, qu'elles soient fournies (Agenda, Actualités, Actu locale, Mes déplacements, À creuser) ou ajoutées par toi. Le catalogue du bouton **+** propose :
 
-- **Fête du prénom**, **Journée du jour**, **Météo** ;
+- **Fête du prénom**, **Journée mondiale**, **Météo** ;
 - **Rappel selon l'agenda** : « la veille d'un match, rappelle-moi de préparer mon sac » ;
 - **Mon train** : retard ou suppression de ton train habituel (CFF, SNCF, SNCB) ;
 - **Actu d'un pays ou d'un thème** : « l'actualité du Portugal », « les nouvelles du vélo » ;

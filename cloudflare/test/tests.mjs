@@ -1196,7 +1196,12 @@ await scenario("Application : demande vocale comprise, confirmation, historique,
   await envoyerJson(`${BOT}/test/etat`, { config: { ...sauvegarde, planning: { ...sauvegarde.planning, jours: tous } } });
   let r = await app("etat");
   const meteo = r.donnees.modeles?.find((m) => m.id === "meteo");
-  verifier(r.donnees.modeles?.length === 8 && meteo?.f?.place === "ouverture" && meteo.f.longueur === "phrase", "catalogue fourni par le bot", r.donnees.modeles?.map((m) => m.id));
+  verifier(r.donnees.modeles?.length === 9 && meteo?.f?.place === "ouverture" && meteo.f.longueur === "phrase", "catalogue fourni par le bot", r.donnees.modeles?.map((m) => m.id));
+  const categories = r.donnees.categories_rubriques?.map((c) => c.id);
+  verifier(categories?.join() === "basiques,journees,alertes,actus,guide,libre" && r.donnees.modeles.every((m) => categories.includes(m.categorie)),
+    "catalogue rangé par catégories, chaque modèle dans une catégorie", { categories, modeles: r.donnees.modeles.map((m) => [m.id, m.categorie]) });
+  verifier(r.donnees.modeles.find((m) => m.id === "journee")?.titre === "Journée mondiale" && r.donnees.modeles.some((m) => m.id === "actu_pays") && r.donnees.modeles.some((m) => m.id === "actu_theme"),
+    "journée mondiale ; actu d'un pays et d'un thème séparées");
   const wav = Buffer.from("RIFF0000WAVEfmt faux").toString("base64");
   await gemini({ entendu: "plus d'épisode du lundi au jeudi", operations: [{ action: "horaire", jours: ["lun", "mar", "mer", "jeu"], heure: "aucun" }], reponse: "C'est fait." });
   r = await app("parler", { audio: wav });
@@ -1216,7 +1221,7 @@ await scenario("Application : demande vocale comprise, confirmation, historique,
   r = await app("parler_abandonner");
   verifier(r.ok && r.abandon && JSON.stringify(r.donnees.planning.jours) === joursAvant && r.donnees.demandes[0].issue === "abandonne", "« Non » : rien ne change", r.donnees.demandes[0]);
   // Une rubrique demandée par écrit passe par le même formulaire que la fiche.
-  await gemini({ entendu: "", operations: [{ action: "nouvelle_regle", regle: { modele: "actu", titre: "Actu vélo", consigne: "Les nouvelles importantes du vélo." } }], reponse: "" });
+  await gemini({ entendu: "", operations: [{ action: "nouvelle_regle", regle: { modele: "actu_theme", titre: "Actu vélo", consigne: "Les nouvelles importantes du vélo." } }], reponse: "" });
   r = await app("parler", { texte: "les nouvelles du vélo" });
   const velo = r.donnees.regles.find((x) => x.titre === "Actu vélo");
   verifier(r.ok && velo && velo.sources.join() === "actus" && velo.place === "actualites" && r.ouvrir?.id === velo.id, "rubrique du catalogue créée et ouverte", velo);
@@ -1450,6 +1455,8 @@ await scenario("Connexions : clés et agendas saisis dans l'application", async 
   await envoyerJson(`${BOT}/test/etat`, { config: { pays: "CH" } });
   r = await app("etat");
   verifier(r.donnees.bienvenue === true, "premier lancement proposé à une installation neuve");
+  const basiques = ["agenda", "deplacements", "actu_locale", "approfondissements", "actualites"];
+  verifier(basiques.every((cle) => r.donnees.deroule.find((x) => x.cle === cle)?.actif === true), "installation neuve : les rubriques de base sont actives", r.donnees.deroule);
   r = await app("bienvenue_fin");
   verifier(r.ok && r.donnees.bienvenue === false, "premier lancement terminé");
   await envoyerJson(`${BOT}/test/etat`, { config: sauve });

@@ -24,7 +24,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-23.4";
+export const VERSION = "2026-10-23.5";
 const MAX_REFAITS = 6;
 const LONGUEURS_VALIDES = ["phrase", "courte", "developpee"];
 const MAX_RECHERCHES = 15;
@@ -37,7 +37,8 @@ const NOUVEAUTES = `✅ <b>Ton podcast est à jour</b> (version ${VERSION}).
 
 • Fiches de rubrique : chaque partie est une carte à part, « Dans l'épisode » devient « Longueur du passage », et les interrupteurs Prioritaire et Active sont retirés de la fiche (Active reste dans l'onglet Épisode).
 • Agendas : une pastille de couleur identifie chaque agenda, la même que dans l'aperçu.
-• Onglet Épisode : les rubriques fournies avec l'application se distinguent par un fond orange discret.`;
+• Onglet Épisode : les rubriques fournies avec l'application se distinguent par un fond orange discret.
+• Ajouter une rubrique : le catalogue est rangé par catégories (L'essentiel, Au calendrier, Pratique, À suivre, Sorties, Sur mesure) ; les rubriques de base s'y activent ou se coupent par un interrupteur. « Journée du jour » devient « Journée mondiale » et l'actu d'un pays est séparée de celle d'un thème.`;
 
 // … ou, pour qui arrive d'avant l'application (installation neuve, ancienne version
 // réglée par la conversation), sa présentation.

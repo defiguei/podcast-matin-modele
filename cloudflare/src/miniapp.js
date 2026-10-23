@@ -10,7 +10,7 @@ import {
   heurePrevue, prochainEpisode, ajouterJours, dateCourte, nomRubrique, dateOuNull, nettoyerListe,
   VOIX, VOIX_CONSEILLEES, VITESSES, TONS, CITER, TRANSPORTS, fluxActus, profilPays, PAYS, DELAIS_RATTRAPAGE,
   DEVISES, CANTONS, MODES_VOIX, sourcesAuto, estFerie, nomFerie, animateursDuJour, placesDuJour, normaliserTexte,
-  jourDeSemaine, MODELES_RUBRIQUES, catalogueRubriques, nouvelleRegle, modifierRegle,
+  jourDeSemaine, MODELES_RUBRIQUES, CATEGORIES_RUBRIQUES, catalogueRubriques, nouvelleRegle, modifierRegle,
   INFOS_SOURCES, sourceConnue, sourcesUtilisables, nomSource,
 } from "./config.js";
 
@@ -240,6 +240,7 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
     regles: config.regles.map((r) => regleVisible(r, aujourdHui)),
     // Le catalogue « + » : le même que celui que Gemini utilise pour une rubrique demandée à la voix.
     modeles: catalogueRubriques(config),
+    categories_rubriques: CATEGORIES_RUBRIQUES,
     // Les dernières demandes au bot (écrites ou vocales) : ce qui a été compris et fait.
     demandes: (etat.historique || []).slice(-10).reverse().map((d) => ({
       quand: d.quand, message: d.message, vocal: Boolean(d.vocal), changements: d.changements || [], erreurs: d.erreurs || [],
