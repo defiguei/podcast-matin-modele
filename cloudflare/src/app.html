@@ -757,7 +757,6 @@ function vueAccueil() {
   if (p) quand = p.date === d.aujourdhui ? "Aujourd'hui" : p.date === plusJours(d.aujourdhui, 1) ? `Demain, ${dateLongue(p.date)}` : majuscule(dateLongue(p.date));
   const sautes = d.sautes.map((s) => `<div class="saute"><span>Pas d'épisode le ${h(s.texte)}</span><button type="button" data-retablir="${s.date}">Rétablir</button></div>`).join("");
   const ep = episodeParCle(S.choisi) || d.episodes[0];
-  const res = d.resultats && d.resultats.details && d.resultats.details.length && (Date.now() - new Date(d.resultats.quand).getTime() < 4 * 86400000) ? d.resultats : null;
   return `
   <div class="entre" style="align-items:flex-end">
     <div style="display:flex;flex-direction:column;gap:2px">
@@ -797,10 +796,6 @@ function vueAccueil() {
       <button type="button" class="lien" data-episode="${h(ep.cle)}">Sources, ajuster, texte</button>
     </div>
   </section>` : `<section class="carte"><h2>Épisodes</h2><p class="sous" style="margin:0">Aucun épisode reçu pour l'instant.</p></section>`}
-  ${res ? `<button type="button" class="episode-ligne" data-aller="resultats">
-      <span class="pastille f-sortie" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center">${icone("idees", 20)}</span>
-      <span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">Idées trouvées</span>
-      <span class="sous" style="font-size:13px">${h(res.details.map((r) => r.titre || r.regle).join(" · "))}</span></span>${icone("suite", 18, 2)}</button>` : ""}
   ${d.maj ? `<button type="button" class="episode-ligne" data-reglage="application">
       <span class="pastille f-jour" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center">${icone("aube", 20)}</span>
       <span style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600">Nouvelle version disponible</span>
