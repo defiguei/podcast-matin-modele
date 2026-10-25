@@ -1,10 +1,10 @@
 {
-  "version": "2026-10-24.1",
-  "date": "2026-10-24",
-  "titre": "Menu des rubriques essentielles",
+  "version": "2026-10-25.1",
+  "date": "2026-10-25",
+  "titre": "Tous les appareils dans la liste",
   "nouveautes": [
-    "Rubriques essentielles (Agenda, Mes déplacements, Actu locale, À creuser, Actualités) : la fiche a maintenant le menu « ··· » avec « Chercher maintenant » (un point écrit), « Mini-podcast » (un point audio) et « Supprimer » (la rubrique quitte tes épisodes ; elle se remet depuis « Ajouter une rubrique » › L'essentiel).",
-    "Le résultat s'affiche dans Idées, avec ses sources ; Actualités lit tes médias, Actu locale ta ville, À creuser tes sujets, Agenda et Déplacements ton agenda."
+    "Réglages › Application : « Appareils connectés » montre maintenant tous tes appareils, ceux qui ouvrent le podcast dans Telegram comme ceux connectés par code, avec la mention « cet appareil ».",
+    "Quand un autre appareil entre le code, la liste se met à jour toute seule : plus besoin de rouvrir l'application pour le voir."
   ],
   "supprimes": [
     "cloudflare/worker.js",

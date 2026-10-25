@@ -24,7 +24,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, ECRANS_BOT, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, sourcesDeLegende, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-24.1";
+export const VERSION = "2026-10-25.1";
 const MAX_REFAITS = 6;
 const LONGUEURS_VALIDES = ["phrase", "courte", "developpee"];
 const MAX_RECHERCHES = 15;
@@ -35,8 +35,8 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 // Message envoyé après une mise à jour : les nouveautés de cette version…
 const NOUVEAUTES = `✅ <b>Ton podcast est à jour</b> (version ${VERSION}).
 
-• Rubriques essentielles (Agenda, Mes déplacements, Actu locale, À creuser, Actualités) : la fiche a maintenant le menu « ··· » avec « Chercher maintenant » (un point écrit), « Mini-podcast » (un point audio) et « Supprimer » (la rubrique quitte tes épisodes ; elle se remet depuis « Ajouter une rubrique » › L'essentiel).
-• Le résultat s'affiche dans Idées, avec ses sources ; Actualités lit tes médias, Actu locale ta ville, À creuser tes sujets, Agenda et Déplacements ton agenda.`;
+• Réglages › Application : « Appareils connectés » montre maintenant tous tes appareils, ceux qui ouvrent le podcast dans Telegram comme ceux connectés par code, avec la mention « cet appareil ».
+• Quand un autre appareil entre le code, la liste se met à jour toute seule : plus besoin de rouvrir l'application pour le voir.`;
 
 // … ou, pour qui arrive d'avant l'application (installation neuve, ancienne version
 // réglée par la conversation), sa présentation.
@@ -67,6 +67,14 @@ function noterStockage(etat, nom, taille) {
   if (!nomValide(nom) || !(taille > 0)) return;
   const objet = objetDuNom(nom);
   etat.stockage = { ...(etat.stockage || {}), [objet]: (etat.stockage?.[objet] || 0) + Math.round(taille) };
+}
+
+// Appareils connus du bot : ceux connectés par code (jeton, 8 au plus) et ceux qui ouvrent
+// l'application dans Telegram (juste notés, 8 au plus). On garde les plus récents de chaque sorte.
+function limiterAppareils(liste) {
+  const derniers = (telegram) => new Set(liste.filter((a) => !!a.telegram === telegram).slice(-8));
+  const telegram = derniers(true), codes = derniers(false);
+  return liste.filter((a) => (a.telegram ? telegram : codes).has(a));
 }
 
 // « 2026-10-21.1 » est plus récente que « 2026-10-20.2 ».
@@ -1672,7 +1680,7 @@ export class Etat extends DurableObject {
   async codeConnexion(premiere) {
     const etat = await this.lireEtat();
     const adresse = `${String(etat.adresse || this.env.ADRESSE || "").replace(/\/$/, "")}/app`;
-    if (premiere && (telegramActif(this.env) || (etat.appareils || []).length)) {
+    if (premiere && (telegramActif(this.env) || (etat.appareils || []).some((a) => !a.telegram))) {
       return { ok: true, code: null, adresse, raison: telegramActif(this.env) ? "telegram" : "deja_connecte" };
     }
     const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
@@ -1887,7 +1895,7 @@ export class Etat extends DurableObject {
       maj_etat: etat.maj_etat ? { etat: etat.maj_etat.etat, version: etat.maj_etat.version, message: etat.maj_etat.message || "" } : null,
       maj_modele: etat.maj_modele || null,
       adresse_app: `${etat.adresse || this.env.ADRESSE || ""}/app`,
-      appareils: (etat.appareils || []).map((a) => ({ id: a.id, nom: a.nom, cree_le: a.cree_le, vu_le: a.vu_le })),
+      appareils: (etat.appareils || []).map((a) => ({ id: a.id, nom: a.nom, cree_le: a.cree_le, vu_le: a.vu_le, telegram: !!a.telegram })),
       code_appareil: etat.code_appareil && etat.code_appareil.expire > Date.now() && etat.code_appareil.essais < 5
         ? { code: etat.code_appareil.code, expire: etat.code_appareil.expire } : null });
     const reponse = async (extra = {}) => ({ ok: true, ...extra, donnees: await donnees() });
@@ -1898,6 +1906,8 @@ export class Etat extends DurableObject {
     try {
       switch (demande?.action) {
         case "etat":
+          // Ouverte dans Telegram (pas par un appareil à code), l'application se signale : elle apparaît dans la liste des appareils.
+          if (!demande._appareil) await this.noterAppareilTelegram(etat, demande.appareil_local, ctx);
           if (await this.completerEpisodes(etat)) etat = await this.lireEtat();
           return reponse();
 
@@ -2155,12 +2165,13 @@ export class Etat extends DurableObject {
           return reponse({ message: "Code valable 10 minutes." });
         }
         case "appareil_retirer": {
-          const avant = (etat.appareils || []).length;
-          etat.appareils = (etat.appareils || []).filter((a) => a.id !== demande.id);
-          if (etat.appareils.length === avant) return refus("Appareil inconnu.");
+          const cible = (etat.appareils || []).find((a) => a.id === demande.id);
+          if (!cible) return refus("Appareil inconnu.");
+          etat.appareils = etat.appareils.filter((a) => a !== cible);
           etat.abonnements = (etat.abonnements || []).filter((a) => a.appareil !== demande.id);   // ses notifications aussi
           await this.ecrireEtat(etat);
-          return reponse({ message: "Appareil retiré : il devra entrer un nouveau code." });
+          // Un appareil Telegram n'a pas de jeton à révoquer : il revient dans la liste s'il rouvre l'application.
+          return reponse({ message: cible.telegram ? "Appareil retiré de la liste." : "Appareil retiré : il devra entrer un nouveau code." });
         }
         // ── notifications ──
         case "notif_abonner": {
@@ -2389,6 +2400,28 @@ export class Etat extends DurableObject {
   // Un code à 6 chiffres (10 minutes, 5 essais), affiché dans l'application ouverte
   // dans Telegram, donne à un autre appareil son propre jeton, révocable.
 
+  // Un appareil qui ouvre l'application dans Telegram (signature vérifiée par le Worker) donne un
+  // identifiant tiré au hasard et gardé chez lui (« t-… ») et son nom. Ce n'est pas un droit d'accès :
+  // la liste de « Appareils connectés » montre simplement tout ce qui ouvre l'application, une fois par jour au plus.
+  async noterAppareilTelegram(etat, local, ctx) {
+    const id = String(local?.id || "");
+    if (!/^t-[0-9a-f]{10}$/.test(id)) return false;
+    const nom = String(local.nom || "Telegram").replace(/[<>]/g, "").slice(0, 40) || "Telegram";
+    const liste = etat.appareils || [];
+    const connu = liste.find((a) => a.id === id);
+    if (connu) {
+      if (!connu.telegram) return false;   // jamais l'identifiant d'un appareil à code
+      if (connu.nom === nom && String(connu.vu_le || "").slice(0, 10) === ctx.aujourdHui) return false;
+      connu.nom = nom;
+      connu.vu_le = ctx.maintenantIso;
+    } else {
+      liste.push({ id, nom, telegram: true, cree_le: ctx.maintenantIso, vu_le: ctx.maintenantIso });
+    }
+    etat.appareils = limiterAppareils(liste);
+    await this.ecrireEtat(etat);
+    return true;
+  }
+
   async connecterAppareil(corps) {
     const etat = await this.lireEtat();
     const code = String(corps.code || "").replace(/\D/g, "");
@@ -2405,7 +2438,7 @@ export class Etat extends DurableObject {
     const ctx = this.contexte();
     const appareil = { id: jeton.slice(0, 8), nom: String(corps.nom || "Appareil").replace(/[<>]/g, "").slice(0, 40),
                        empreinte: await empreinte(`appareil:${jeton}`, 64), cree_le: ctx.maintenantIso, vu_le: ctx.maintenantIso };
-    etat.appareils = [...(etat.appareils || []), appareil].slice(-8);
+    etat.appareils = limiterAppareils([...(etat.appareils || []), appareil]);
     etat.code_appareil = null;
     await this.ecrireEtat(etat);
     return { ok: true, jeton };
@@ -2413,7 +2446,7 @@ export class Etat extends DurableObject {
 
   async verifierAppareil(empreinteRecue) {
     const etat = await this.lireEtat();
-    const appareil = (etat.appareils || []).find((a) => a.empreinte === empreinteRecue);
+    const appareil = empreinteRecue && (etat.appareils || []).find((a) => a.empreinte === empreinteRecue);
     if (!appareil) return { ok: false };
     const ctx = this.contexte();
     if (String(appareil.vu_le || "").slice(0, 10) !== ctx.aujourdHui) {

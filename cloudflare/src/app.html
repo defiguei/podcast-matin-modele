@@ -379,6 +379,25 @@ select.compacte { appearance: none; background-image: url("data:image/svg+xml,%3
 const tg = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData ? window.Telegram.WebApp : null;
 // Hors de Telegram, chaque appareil a son propre jeton (donné contre un code à 6 chiffres).
 const APPAREIL = "podcast-matin-appareil";
+// Dans Telegram : un identifiant au hasard gardé sur l'appareil, juste pour le reconnaître dans la liste (pas un droit d'accès).
+const APPAREIL_LOCAL = "podcast-matin-appareil-local";
+function idLocal() {
+  try {
+    let v = localStorage.getItem(APPAREIL_LOCAL) || "";
+    if (!/^t-[0-9a-f]{10}$/.test(v)) {
+      v = "t-" + [...crypto.getRandomValues(new Uint8Array(5))].map((o) => o.toString(16).padStart(2, "0")).join("");
+      localStorage.setItem(APPAREIL_LOCAL, v);
+    }
+    return v;
+  } catch (e) { return ""; }   // stockage refusé : l'appareil n'est pas listé
+}
+function nomTelegram() {
+  const systeme = { ios: "iPhone ou iPad", android: "Android", tdesktop: "ordinateur", macos: "Mac", weba: "navigateur", webk: "navigateur", web: "navigateur" }[(tg && tg.platform) || ""];
+  return systeme ? `Telegram · ${systeme}` : "Telegram";
+}
+// Identifiant de cet appareil dans la liste du bot (même forme que côté bot : 8 premiers caractères du jeton, ou « t-… »).
+const idCourant = () => (tg ? idLocal() : jetonAppareil.lire().slice(0, 8));
+
 const jetonAppareil = { lire() { try { return localStorage.getItem(APPAREIL) || ""; } catch (e) { return ""; } },
   ecrire(v) { try { if (v) localStorage.setItem(APPAREIL, v); else localStorage.removeItem(APPAREIL); } catch (e) { /* stockage refusé */ } } };
 const S = { d: null, ecran: "accueil", integree: null, fiche: null, mois: 0, occupe: false,
@@ -521,7 +540,8 @@ async function demander(action, extra = {}, options = {}) {
     const r = await fetch("/app/api", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Telegram-Init-Data": (tg && tg.initData) || "", ...(tg ? {} : { "X-Appareil": jetonAppareil.lire() }) },
-      body: JSON.stringify({ action, ...extra }),
+      // Dans Telegram, l'ouverture se signale (identifiant gardé ici + nom) : l'appareil apparaît dans « Appareils connectés ».
+      body: JSON.stringify({ action, ...extra, ...(tg && action === "etat" ? { appareil_local: { id: idLocal(), nom: nomTelegram() } } : {}) }),
     });
     const j = await r.json().catch(() => ({ ok: false, erreur: `Le bot ne répond pas (erreur ${r.status}).` }));
     if (j.appareil === "inconnu") { jetonAppareil.ecrire(""); setTimeout(vueConnexionAppareil, 0); }
@@ -726,6 +746,31 @@ function dessiner() {
   if (choisi) choisi.scrollIntoView({ block: "nearest", inline: "center" });
   if (S.ecran === "parler") { const fil = document.getElementById("fil"); if (fil) window.scrollTo(0, document.body.scrollHeight); }
   majLecteur();
+  if (surEcranApplication()) suivreAppareils();
+}
+
+// Réglages › Application : la liste des appareils se remet à jour toute seule (un appareil vient d'entrer le
+// code, ou de s'ouvrir ailleurs) au lieu de garder l'état d'il y a des minutes. Tant qu'un code est affiché,
+// l'état est relu toutes les 5 secondes ; on s'arrête dès que le code est utilisé ou périmé.
+let suiviAppareils = null;
+const surEcranApplication = () => S.ecran === "reglage" && S.reglage === "application";
+function suivreAppareils() {
+  if (suiviAppareils || !S.d) return;
+  const signature = () => JSON.stringify([S.d.appareils.map((a) => [a.id, a.nom, a.vu_le]), S.d.code_appareil && S.d.code_appareil.code]);
+  const rafraichir = async () => {
+    if (S.occupe || document.visibilityState !== "visible") return;
+    const avant = signature(), connus = new Set(S.d.appareils.map((a) => a.id)), codeAffiche = !!S.d.code_appareil;
+    const j = await demander("etat", {}, { discret: true });
+    if (!j.ok || !surEcranApplication()) return;
+    const nouveau = S.d.appareils.find((a) => !connus.has(a.id));
+    if (nouveau && codeAffiche && !S.d.code_appareil) annoncer(`${nouveau.nom} est connecté.`);   // le code vient de servir
+    if (signature() !== avant) dessiner();
+  };
+  rafraichir();
+  suiviAppareils = setInterval(() => {
+    if (!surEcranApplication() || !S.d || !S.d.code_appareil) { clearInterval(suiviAppareils); suiviAppareils = null; return; }
+    rafraichir();
+  }, 5000);
 }
 
 function aller(ecran) {
@@ -2069,10 +2114,15 @@ function vueReglage() {
         ${d.code_appareil ? `<div class="code-geant" aria-label="Code ${h(d.code_appareil.code.split("").join(" "))}">${h(d.code_appareil.code)}</div>
           <p class="aide" style="text-align:center">Valable jusqu'à ${h(new Date(d.code_appareil.expire).toLocaleTimeString("fr-CH", { hour: "2-digit", minute: "2-digit" }))}, pour un seul appareil.</p>`
           : `<button type="button" class="bouton gris" data-action="code-appareil">Afficher un code</button>`}
-        ${d.appareils.length ? `<span class="etiquette" style="font-size:13px;color:var(--doux)">Appareils connectés</span>
-          <div class="bloc" style="background:var(--carte-2)">${d.appareils.map((a) => `<div class="reglage"><span>${h(a.nom)}<br><span class="aide">Vu le ${h(dateLongue(String(a.vu_le).slice(0, 10)))}</span></span>
-            <button type="button" class="lien" style="color:var(--rouge)" data-appareil-retirer="${h(a.id)}">Retirer</button></div>`).join("")}</div>` : ""}
       </section>
+      ${d.appareils.length ? `<section class="carte" aria-labelledby="t-appareils"><h2 id="t-appareils">Appareils connectés</h2>
+        <p class="aide">Tous les appareils qui ouvrent ton podcast, dans Telegram ou avec un code. Retirer un appareil à code l'oblige à entrer un nouveau code.</p>
+        <div class="bloc" style="background:var(--carte-2)">${[...d.appareils].sort((a, b) => String(b.vu_le).localeCompare(String(a.vu_le))).map((a) => {
+          const ici = a.id === idCourant();
+          return `<div class="reglage"><span>${h(a.nom)}${ici ? " · <b>cet appareil</b>" : ""}<br><span class="aide">${a.telegram ? "Telegram · " : ""}vu le ${h(dateLongue(String(a.vu_le).slice(0, 10)))}</span></span>
+            ${ici ? "" : `<button type="button" class="lien" style="color:var(--rouge)" data-appareil-retirer="${h(a.id)}">Retirer</button>`}</div>`;
+        }).join("")}</div>
+      </section>` : ""}
       <section class="carte"><h2>Sur ton écran d'accueil</h2>
         ${tg ? `<p class="aide">Ajoute une icône sur ton téléphone pour ouvrir le podcast directement, sans passer par la conversation.</p>
           ${tg.addToHomeScreen && recent("8.0") ? `<button type="button" class="bouton plein" data-action="ecran-accueil">Ajouter à l'écran d'accueil</button>`
@@ -2438,7 +2488,11 @@ document.addEventListener("click", (ev) => {
     if (((S.d.notifications || {}).abonnements || []).some((a) => a.id === ds.notifRetirer && a.fin === NOTIF.fin)) return couperNotifs();
     return changer("notif_retirer", { id: ds.notifRetirer });
   });
-  if (ds.appareilRetirer) return confirmer("Retirer cet appareil ? Il devra entrer un nouveau code.", () => changer("appareil_retirer", { id: ds.appareilRetirer }));
+  if (ds.appareilRetirer) {
+    const cible = S.d.appareils.find((a) => a.id === ds.appareilRetirer);
+    return confirmer(cible && cible.telegram ? "Retirer cet appareil de la liste ? Il y reviendra s'il rouvre l'application dans Telegram." : "Retirer cet appareil ? Il devra entrer un nouveau code.",
+      () => changer("appareil_retirer", { id: ds.appareilRetirer }));
+  }
   if (ds.agendaRetirer) return confirmer("Retirer cet agenda ?", () => changer("agenda_retirer", { id: ds.agendaRetirer }));
   if (ds.agendaRemettre) return changer("agenda_remettre", { id: ds.agendaRemettre });
   if (ds.bienvenue) return bienvenueSuivante(Number(ds.bienvenue));
@@ -2637,6 +2691,7 @@ document.addEventListener("keydown", (ev) => {
 });
 // Après une longue absence, les données (et les liens audio) se rafraîchissent.
 document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && S.d && surEcranApplication()) suivreAppareils();
   if (document.visibilityState === "visible" && S.d && Date.now() - S.charge > 30 * 60000 && S.ecran !== "fiche") {
     S.archives = {};   // mois archivés rechargés à la demande, avec des liens neufs
     demander("etat", {}, { discret: true }).then((j) => { if (j.ok) dessiner(); });

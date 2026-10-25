@@ -1862,6 +1862,38 @@ await scenario("Hors de Telegram : appareils, manifeste, icônes", async () => {
   r = await app("appareil_retirer", { id: r.donnees.appareils[0].id });
   const apres = await parAppareil(ok.jeton);
   verifier(r.ok && apres.statut === 401 && apres.appareil === "inconnu", "appareil retiré : refusé ensuite");
+
+  // Ouverte dans Telegram, l'application se signale : l'appareil est dans la liste (sans jeton, sans droit d'accès).
+  const local = { id: "t-0a1b2c3d4e", nom: "Telegram · iPhone ou iPad" };
+  r = await app("etat", { appareil_local: local });
+  const listes = (x) => x.donnees.appareils.filter((a) => a.telegram);
+  verifier(r.ok && listes(r).length === 1 && listes(r)[0].id === local.id && listes(r)[0].nom === local.nom, "ouverture dans Telegram : l'appareil est listé", r.donnees.appareils);
+  r = await app("etat", { appareil_local: local });
+  verifier(listes(r).length === 1, "même appareil rouvert : pas de doublon", r.donnees.appareils);
+  r = await app("etat", { appareil_local: { id: "pas-un-identifiant", nom: "x" } });
+  verifier(listes(r).length === 1, "identifiant invalide : ignoré", r.donnees.appareils);
+  r = await app("etat");
+  verifier(listes(r).length === 1, "ouverture sans identifiant : rien de changé");
+  // Un appareil à code et un appareil Telegram sont dans la même liste ; l'appareil à code ne peut pas s'y ajouter un appareil Telegram.
+  r = await app("appareil_code");
+  const jeton3 = (await connexion(r.donnees.code_appareil.code)).jeton;
+  const parCode = await envoyerJson(`${BOT}/app/api`, { action: "etat", appareil_local: { id: "t-ffffffffff", nom: "Pirate" } }, { "X-Appareil": jeton3 }).then((x) => x.json());
+  verifier(parCode.ok && parCode.donnees.appareils.some((a) => !a.telegram && a.nom === "iPhone · Safari") && parCode.donnees.appareils.some((a) => a.id === local.id) && !parCode.donnees.appareils.some((a) => a.id === "t-ffffffffff"),
+    "la liste montre appareils à code et Telegram ; un appareil à code n'ajoute pas d'appareil Telegram", parCode.donnees?.appareils);
+  verifier(!JSON.stringify(parCode.donnees).includes(jeton3), "aucun jeton dans la liste");
+  // Huit appareils Telegram au plus, sans toucher aux appareils à code.
+  for (let i = 0; i < 9; i++) r = await app("etat", { appareil_local: { id: `t-00000000${String(i).padStart(2, "0")}`, nom: "Telegram" } });
+  verifier(listes(r).length === 8 && r.donnees.appareils.some((a) => !a.telegram), "huit appareils Telegram au plus, les appareils à code restent", r.donnees.appareils.length);
+  verifier((await parAppareil(jeton3)).statut === 200, "l'appareil à code garde son accès");
+  // Retirer un appareil Telegram : juste l'oublier de la liste.
+  verifier(!listes(r).some((a) => a.id === local.id), "le plus ancien appareil Telegram est écarté au-delà de huit");
+  const aRetirer = listes(r)[0].id;
+  r = await app("appareil_retirer", { id: aRetirer });
+  verifier(r.ok && r.message === "Appareil retiré de la liste." && !listes(r).some((a) => a.id === aRetirer), "appareil Telegram retiré de la liste", r.message || r.erreur);
+  for (const a of r.donnees.appareils) await app("appareil_retirer", { id: a.id });
+  r = await app("etat");
+  verifier(!r.donnees.appareils.length, "liste vidée pour la suite", r.donnees.appareils);
+
   // Cinq erreurs : le code ne vaut plus rien.
   r = await app("appareil_code");
   const code2 = r.donnees.code_appareil.code, faux2 = code2 === "000000" ? "111111" : "000000";
