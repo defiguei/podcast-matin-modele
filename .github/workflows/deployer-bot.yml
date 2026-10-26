@@ -1,14 +1,13 @@
 name: Déployer le bot
 
-# Met en ligne le bot Telegram (dossier cloudflare/) sur ton compte Cloudflare
+# Met en ligne le bot (dossier cloudflare/) sur ton compte Cloudflare
 # à chaque changement, après ses tests. Secrets GitHub nécessaires :
 #   CLOUDFLARE_API_TOKEN  (modèle « Edit Cloudflare Workers »)
 #   CLOUDFLARE_ACCOUNT_ID (identifiant de ton compte Cloudflare)
-# Le bot reçoit ensuite les secrets GitHub qu'il n'a pas encore
-# (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, GEMINI_API_KEY) et BOT_GITHUB_TOKEN
-# comme jeton GitHub : une valeur déjà réglée chez Cloudflare n'est jamais remplacée.
-# Telegram est facultatif : sans lui, le résumé de l'exécution donne un code
-# pour ouvrir l'application la première fois.
+# Le bot reçoit ensuite GEMINI_API_KEY s'il ne l'a pas encore (une valeur déjà
+# réglée chez Cloudflare n'est jamais remplacée) et BOT_GITHUB_TOKEN comme jeton
+# GitHub. Tant qu'aucun appareil n'est connecté, le résumé de l'exécution donne un
+# code pour ouvrir l'application la première fois.
 
 on:
   push:
@@ -103,8 +102,6 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
         run: node secrets.mjs
@@ -120,12 +117,11 @@ jobs:
           done
           echo "::warning::Activation à confirmer : ouvre $BOT_URL/installer dans ton navigateur (le bot s'active aussi tout seul dans l'heure)."
 
-      # Sans Telegram, à la toute première installation : l'adresse de l'application et un
-      # code de connexion s'affichent dans le résumé de cette exécution.
+      # À la toute première installation : l'adresse de l'application et un code de
+      # connexion s'affichent dans le résumé de cette exécution.
       - name: Première ouverture de l'application
         if: steps.secrets.outputs.pret == 'true'
         working-directory: .
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
         run: python3 code_connexion.py --premiere

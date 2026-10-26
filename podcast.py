@@ -2,21 +2,21 @@
 """Podcast du matin.
 
 Chaque matin, ce script :
-  1. lit tes messages Telegram pour ajuster le podcast (vitesse, sujets…) ;
+  1. lit les réglages tenus par ton bot (Cloudflare), réglés dans l'application ;
   2. lit ton agenda (lien iCal secret) et des flux d'actualités (RSS) ;
   3. repère tes déplacements à venir et cherche les actus de ces lieux ;
   4. fait écrire par Gemini un dialogue à deux voix, façon NotebookLM ;
-  5. le met en voix avec Gemini TTS et t'envoie le MP3 sur Telegram.
+  5. le met en voix avec Gemini TTS et confie le MP3 à ton bot : il t'attend dans
+     l'application et ton flux privé, une notification te prévient.
 
 Modes :
   python podcast.py                          → épisode du jour
   python podcast.py --mode rattrapage        → seulement si l'épisode du jour n'est pas parti
   python podcast.py --regles R3,R5           → épisode qui traite aussi ces règles
   python podcast.py --recherche R5 --format ecrit|audio
-                                             → résultats d'une recherche (photos, lieux, sondage)
+                                             → résultats d'une recherche (idées, lieux, liens)
                                                ou mini-podcast sur ces règles
   python podcast.py --echantillons Aoede,Kore → extraits audio de voix
-  python podcast.py --retours                → (ancien) lit tes messages Telegram et y répond
   python podcast.py --sans-envoi             → épisode écrit dans sortie/, rien n'est envoyé
 
 Réglages : tenus par le bot (Cloudflare), lus au début de chaque épisode ; à
@@ -64,8 +64,6 @@ RACINE = Path(__file__).resolve().parent
 FICHIER_MEMOIRE = "memoire.json"
 FICHIER_PREFERENCES = "preferences.json"   # tenu par le bot instantané (Cloudflare)
 URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta/interactions"
-URL_TELEGRAM = "https://api.telegram.org/bot{jeton}/{methode}"
-URL_FICHIER_TELEGRAM = "https://api.telegram.org/file/bot{jeton}/{chemin}"
 URL_RECHERCHE = "https://news.google.com/rss/search?q={requete}&hl={langue}&gl={pays}&ceid={pays}:{langue}"
 NAVIGATEUR = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -181,29 +179,10 @@ REGLAGES_PAR_DEFAUT: dict[str, Any] = {
     ],
 }
 
-AIDE = (
-    "🎙️ Je suis le bot de ton podcast du matin. Écris-moi, ou envoie-moi un vocal, "
-    "pour l'ajuster. Par exemple :\n"
-    "• « parle un peu plus lentement »\n"
-    "• « le sport ne m'intéresse pas »\n"
-    "• « creuse la réforme des retraites demain »\n"
-    "• « fais des épisodes de 7 minutes »\n"
-    "• « j'habite à Lausanne »\n"
-    "• « refais le podcast en creusant l'actu locale » (nouvel épisode tout de suite)\n\n"
-    "Je te réponds en une à deux minutes, et c'est pris en compte dès l'épisode suivant.\n\n"
-    "/podcast : un nouvel épisode tout de suite\n"
-    "/reglages : voir tes réglages actuels\n"
-    "/reinitialiser : revenir aux réglages de base"
-)
-COMMANDES_PODCAST = ("/podcast", "/episode", "/épisode", "/nouveau")
-MAX_EPISODES_REFAITS = 3        # par jour : la voix gratuite est limitée à 10 requêtes/jour
-COMMANDES_REINITIALISER = ("/reinitialiser", "/réinitialiser", "/reset")
-
-
 # ─────────────────────────────── utilitaires ────────────────────────────────
 
 class ErreurPodcast(Exception):
-    """Erreur expliquée en clair, pour le journal et pour Telegram."""
+    """Erreur expliquée en clair, pour le journal et pour l'application."""
 
 
 class ModeleIndisponible(ErreurPodcast):
@@ -252,11 +231,6 @@ def nettoyer_html(texte: str) -> str:
     texte = re.sub(r"(?s)<[^>]+>", " ", texte)
     texte = html.unescape(texte)
     return re.sub(r"\s+", " ", texte).strip()
-
-
-def echapper(texte: str) -> str:
-    """Texte sûr pour le mode HTML de Telegram (apostrophes laissées telles quelles)."""
-    return html.escape(texte, quote=False)
 
 
 def tronquer(texte: str, longueur: int) -> str:
@@ -418,16 +392,12 @@ def identifiant(nom: str) -> str:
 
 def memoire_vide() -> dict[str, Any]:
     return {
-        "telegram_dernier_update": 0,
         "preferences": {
             "vitesse_parole": None, "duree_minutes": None, "ville_habituelle": None,
             "sujets_preferes": [], "sujets_a_eviter": [], "consignes": [],
         },
         "a_approfondir": [],
         "dernier_episode": {},
-        "historique_retours": [],
-        "retours_echec_signale": 0,
-        "episodes_refaits": {},        # {"date": ..., "nombre": ...}
         "dernier_programme": "",       # date du dernier épisode programmé (hors épisodes à la demande)
         "debit_mots_minute": {},     # débit réellement mesuré, par vitesse
         "remplissage": None,         # mots écrits / mots demandés (moyenne glissante) : Gemini écrit court, on demande plus
@@ -1180,252 +1150,6 @@ def demander_json(systeme: str, entree: Any, schema: dict, modeles: list[str], c
                                                   f"{second} : {encore.detail}).") from None
 
 
-# ───────────────────────── retours de l'auditeur ────────────────────────────
-
-def consigne_retours(reglages: dict) -> str:
-    vitesses = ", ".join(VITESSES)
-    adresse = "en le tutoyant" if reglages.get("tutoiement", True) else "en le vouvoyant"
-    return f"""Tu gères les réglages d'un podcast matinal personnel, en français. L'auditeur t'écrit, ou t'envoie des messages vocaux, pour l'ajuster.
-Mets à jour ses réglages d'après ses messages et prépare une réponse courte.
-
-Champs :
-- vitesse_parole : une valeur parmi {vitesses}. « Parle plus lentement » = un cran plus lent que la valeur actuelle.
-- duree_minutes : durée souhaitée de l'épisode, en minutes (2 à 12).
-- ville_habituelle : la ville où vit l'auditeur (vide si inconnue).
-- sujets_preferes : thèmes à privilégier, en quelques mots chacun.
-- sujets_a_eviter : thèmes qui ne l'intéressent pas. Quand il dit qu'un sujet ne l'intéresse pas, retiens le thème général. Un thème ne peut pas être à la fois préféré et à éviter.
-- consignes : consignes durables sur le ton ou le contenu (ex. « plus d'humour », « pas de résultats sportifs »).
-- a_approfondir : sujets à développer dans le PROCHAIN épisode seulement (ils seront ensuite oubliés).
-- nouvel_episode : true seulement si l'auditeur demande explicitement un nouvel épisode maintenant (« refais le podcast », « envoie-moi un nouvel épisode », « régénère avec… »). Ses autres demandes du même message s'appliquent alors à cet épisode. Sinon false.
-
-Recopie à l'identique tout ce que l'auditeur ne demande pas de changer.
-Pour comprendre « ce sujet » ou « le deuxième sujet », appuie-toi sur la liste des sujets du dernier épisode.
-Si les messages ne demandent aucun changement (remerciement, question…), ne change rien et réponds simplement.
-
-Limites :
-- Le podcast ne dispose que de l'agenda de l'auditeur, de flux d'actualités et de recherches Google Actualités. S'il demande une information que le podcast ne peut pas obtenir (météo, cours de bourse, e-mails…), dis-le simplement, sans l'ajouter aux consignes.
-- L'heure d'envoi, les voix, les prénoms des animateurs et la liste des flux ne se changent pas ici : ne change rien et explique que ça se règle dans les fichiers du dépôt GitHub (reglages.toml ou le workflow), ou en le demandant à Claude.
-
-reponse : une à trois phrases en français, {adresse}, qui disent précisément ce qui change à partir du prochain épisode. Si un message vocal est inaudible ou incompréhensible, dis-le."""
-
-
-def contexte_retours(reglages: dict, memoire: dict, maintenant: dt.datetime) -> str:
-    effectifs = reglages_effectifs(reglages, memoire)
-    episode = memoire.get("dernier_episode") or {}
-    sujets = episode.get("sujets") or []
-    dernier = "aucun pour l'instant"
-    if episode:
-        dernier = (f"{episode.get('date', '?')} — « {episode.get('titre', '')} » — sujets : "
-                   + ("; ".join(f"{i}. {s}" for i, s in enumerate(sujets, 1)) or "?"))
-
-    def liste(valeurs: list[str]) -> str:
-        return "; ".join(valeurs) or "(aucun)"
-    return f"""Date : {date_longue(maintenant.date())}.
-
-Réglages actuels :
-- vitesse_parole : {effectifs['vitesse_parole']}
-- duree_minutes : {effectifs['duree_minutes']:g}
-- ville_habituelle : {effectifs['ville_habituelle'] or '(inconnue)'}
-- sujets_preferes : {liste(effectifs['sujets_preferes'])}
-- sujets_a_eviter : {liste(effectifs['sujets_a_eviter'])}
-- consignes : {liste(effectifs['consignes'])}
-- a_approfondir : {liste([a['sujet'] for a in effectifs['a_approfondir']])}
-
-Dernier épisode : {dernier}
-
-Messages de l'auditeur, du plus ancien au plus récent :"""
-
-
-def schema_retours() -> dict:
-    liste = {"type": "array", "items": {"type": "string"}, "maxItems": 15}
-    return {
-        "type": "object",
-        "properties": {
-            "vitesse_parole": {"type": "string", "enum": list(VITESSES)},
-            "duree_minutes": {"type": "number"},
-            "ville_habituelle": {"type": "string"},
-            "sujets_preferes": liste,
-            "sujets_a_eviter": liste,
-            "consignes": liste,
-            "a_approfondir": {"type": "array", "items": {"type": "string"}, "maxItems": 5},
-            "nouvel_episode": {"type": "boolean"},
-            "reponse": {"type": "string"},
-        },
-        "required": ["vitesse_parole", "duree_minutes", "ville_habituelle", "sujets_preferes",
-                     "sujets_a_eviter", "consignes", "a_approfondir", "nouvel_episode", "reponse"],
-    }
-
-
-def appliquer_retours(memoire: dict, resultat: dict, reglages: dict,
-                      maintenant: dt.datetime) -> None:
-    """Range les réglages compris dans la mémoire (seulement ce qui diffère de reglages.toml)."""
-    preferences = memoire.setdefault("preferences", memoire_vide()["preferences"])
-    vitesse = resultat.get("vitesse_parole")
-    if vitesse in VITESSES:
-        preferences["vitesse_parole"] = None if vitesse == reglages["vitesse_parole"] else vitesse
-    duree = resultat.get("duree_minutes")
-    if isinstance(duree, (int, float)) and 2 <= duree <= 12:
-        duree = round(float(duree), 1)
-        preferences["duree_minutes"] = None if duree == float(reglages["duree_minutes"]) else duree
-    ville = str(resultat.get("ville_habituelle") or "").strip()
-    if not ville or ville.lower() in ("inconnue", "(inconnue)", "aucune"):
-        ville = ""
-    preferences["ville_habituelle"] = (ville or None) if ville != reglages["ville_habituelle"] else None
-    preferences["consignes"] = nettoyer_liste(resultat.get("consignes"), 15, LONGUEUR_CONSIGNE)
-    a_eviter = nettoyer_liste(resultat.get("sujets_a_eviter"))
-    exclus = {sans_accents(s.lower()) for s in a_eviter}
-    preferences["sujets_a_eviter"] = a_eviter
-    preferences["sujets_preferes"] = [s for s in nettoyer_liste(resultat.get("sujets_preferes"))
-                                      if sans_accents(s.lower()) not in exclus]
-    anciens = {sans_accents(a["sujet"].lower()): a for a in memoire.get("a_approfondir") or []
-               if isinstance(a, dict) and a.get("sujet")}
-    memoire["a_approfondir"] = [
-        anciens.get(sans_accents(sujet.lower()),
-                    {"sujet": sujet, "demande_le": maintenant.date().isoformat()})
-        for sujet in nettoyer_liste(resultat.get("a_approfondir"), 5)]
-
-
-def resume_preferences(reglages: dict, memoire: dict) -> str:
-    effectifs = reglages_effectifs(reglages, memoire)
-    e = echapper
-
-    def liste(valeurs: list[str], separateur: str = ", ") -> str:
-        return e(separateur.join(valeurs)) if valeurs else "—"
-    return "\n".join([
-        "🎛️ <b>Tes réglages actuels</b>",
-        f"• Vitesse de parole : {e(effectifs['vitesse_parole'])}",
-        f"• Durée : {effectifs['duree_minutes']:g} min",
-        f"• Ville habituelle : {e(effectifs['ville_habituelle']) or 'non précisée'}",
-        f"• Sujets préférés : {liste(effectifs['sujets_preferes'])}",
-        f"• Sujets à éviter : {liste(effectifs['sujets_a_eviter'])}",
-        f"• Consignes : {liste(effectifs['consignes'], ' ; ')}",
-        "• À approfondir au prochain épisode : "
-        + liste([a["sujet"] for a in effectifs["a_approfondir"]]),
-    ])
-
-
-def demander_nouvel_episode(memoire: dict, maintenant: dt.datetime) -> str:
-    """Note la demande d'un nouvel épisode (au plus MAX_EPISODES_REFAITS par jour)."""
-    if memoire.get("_nouvel_episode"):
-        return "🎙️ Le nouvel épisode est déjà en préparation."
-    compte = memoire.get("episodes_refaits") or {}
-    nombre = compte.get("nombre", 0) if compte.get("date") == maintenant.date().isoformat() else 0
-    if nombre >= MAX_EPISODES_REFAITS:
-        return (f"🚫 Déjà {nombre} épisodes refaits aujourd'hui : c'est le maximum, pour ne pas "
-                "épuiser le quota gratuit de la voix (10 par jour). Ça repart demain.")
-    memoire["episodes_refaits"] = {"date": maintenant.date().isoformat(), "nombre": nombre + 1}
-    memoire["_nouvel_episode"] = True
-    return "🎙️ Je prépare un nouvel épisode : il arrive dans trois ou quatre minutes."
-
-
-def traiter_retours(telegram: Telegram, conversation: str, cle: str, reglages: dict,
-                    memoire: dict, maintenant: dt.datetime) -> bool:
-    """Lit les nouveaux messages de l'auditeur, ajuste la mémoire et lui répond.
-    Renvoie True si la mémoire doit être enregistrée."""
-    depuis = int(memoire.get("telegram_dernier_update") or 0)
-    mises_a_jour = telegram.mises_a_jour(depuis)
-    if not mises_a_jour:
-        return False
-    messages: list[dict[str, str]] = []
-    commandes: list[str] = []
-    reinitialiser = False
-    for mise_a_jour in mises_a_jour:
-        message = mise_a_jour.get("message") or {}
-        if str((message.get("chat") or {}).get("id")) != str(conversation):
-            continue                       # quelqu'un d'autre a écrit au bot : ignoré
-        if (message.get("from") or {}).get("is_bot"):
-            continue
-        texte = str(message.get("text") or message.get("caption") or "").strip()
-        if texte.startswith("/"):
-            commande = texte.split()[0].split("@")[0].lower()
-            if commande in COMMANDES_REINITIALISER:
-                reinitialiser = True
-                messages.clear()           # les demandes précédentes sont annulées
-            else:
-                commandes.append(commande)
-            continue
-        if texte:
-            messages.append({"texte": tronquer(texte, 1500)})
-        vocal = message.get("voice") or message.get("audio")
-        if isinstance(vocal, dict) and vocal.get("file_id"):
-            if int(vocal.get("duration") or 0) <= 300:
-                messages.append({"vocal": vocal["file_id"]})
-            else:
-                messages.append({"texte": "(message vocal de plus de 5 minutes, non écouté)"})
-    nouveau_depart = max(int(m.get("update_id", 0)) for m in mises_a_jour)
-
-    envois: list[str] = []             # réponses, envoyées une fois tout compris
-    if reinitialiser:
-        memoire["preferences"] = memoire_vide()["preferences"]
-        memoire["a_approfondir"] = []
-        envois.append("🔄 C'est remis à zéro : le podcast reprend ses réglages de base "
-                      "(ceux de reglages.toml).")
-
-    if messages:
-        contenus: list[dict[str, Any]] = [
-            {"type": "text", "text": contexte_retours(reglages, memoire, maintenant)}]
-        for numero, element in enumerate(messages, 1):
-            if "texte" in element:
-                contenus.append({"type": "text", "text": f"Message {numero} (écrit) : {element['texte']}"})
-                continue
-            try:
-                audio = telegram.fichier(element["vocal"])
-            except ErreurPodcast as erreur:
-                journal(f"Vocal {numero} illisible : {erreur}")
-                contenus.append({"type": "text",
-                                 "text": f"Message {numero} (vocal) : impossible à récupérer."})
-                continue
-            contenus.append({"type": "text", "text": f"Message {numero} (vocal) :"})
-            contenus.append({"type": "audio", "data": base64.b64encode(audio).decode("ascii"),
-                             "mime_type": "audio/ogg"})
-        try:
-            resultat, modele = demander_json(consigne_retours(reglages), contenus, schema_retours(),
-                                             reglages["modeles_rapides"], cle, delai=120, tours=1)
-        except ErreurPodcast as erreur:
-            # Les messages seront relus à la prochaine exécution ; on ne prévient qu'une fois.
-            journal(f"Messages Telegram non compris pour l'instant : {erreur}")
-            if memoire.get("retours_echec_signale") == nouveau_depart:
-                return False
-            memoire["retours_echec_signale"] = nouveau_depart
-            if "clé Gemini est refusée" in str(erreur):
-                raison = "la clé Gemini est refusée : vérifie-la dans l'application (Réglages › Connexions)"
-            elif "quota" in str(erreur).lower():
-                raison = "le quota gratuit de Gemini est atteint pour le moment"
-            else:
-                raison = "Gemini ne répond pas pour le moment"
-            telegram.message(conversation, (
-                f"⏳ Je n'arrive pas à lire ton message tout de suite ({raison}). "
-                "Je réessaie automatiquement au prochain passage."))
-            return True
-        appliquer_retours(memoire, resultat, reglages, maintenant)
-        reponse = tronquer(str(resultat.get("reponse") or "C'est noté."), 800)
-        historique = memoire.setdefault("historique_retours", [])
-        historique.append({
-            "date": maintenant.isoformat(timespec="minutes"),
-            "messages": [m.get("texte", "(vocal)") for m in messages],
-            "reponse": reponse,
-        })
-        del historique[:-20]
-        journal(f"{len(messages)} message(s) de l'auditeur compris par {modele}.")
-        envois.append("✅ " + echapper(reponse))
-        if resultat.get("nouvel_episode") is True:
-            envois.append(demander_nouvel_episode(memoire, maintenant))
-
-    for commande in dict.fromkeys(commandes):
-        if commande in ("/reglages", "/preferences", "/préférences"):
-            envois.append(resume_preferences(reglages, memoire))
-        elif commande in COMMANDES_PODCAST:
-            envois.append(demander_nouvel_episode(memoire, maintenant))
-        else:                              # /aide, /start ou commande inconnue
-            envois.append(echapper(AIDE))
-    for texte in dict.fromkeys(envois):
-        telegram.message(conversation, texte)
-
-    memoire["telegram_dernier_update"] = nouveau_depart
-    telegram.confirmer(nouveau_depart)   # le relais Cloudflare voit ainsi qu'ils sont traités
-    return True
-
-
 # ─────────────────────────────── déplacements ───────────────────────────────
 
 def schema_deplacements() -> dict:
@@ -1911,28 +1635,6 @@ def minute_seconde(secondes: float) -> str:
     return f"{secondes // 60}:{secondes % 60:02d}"
 
 
-def clavier_application(adresse: str, date: str) -> list[list[dict]]:
-    """Sous l'épisode : un bouton qui ouvre l'application (Mini App) sur cet épisode."""
-    return [[{"text": "🎧 Ouvrir dans l'application", "web_app": {"url": f"{adresse}?episode={date}"}}]]
-
-
-def clavier_episode(date: str, nombre_sujets: int, details: list[str] | None = None) -> list[list[dict]]:
-    """Boutons sous l'épisode : mêmes données que le bot (cloudflare/src/ui.js)."""
-    def bouton(cle_bouton: str, texte: str) -> dict:
-        return {"text": texte, "callback_data": f"e:{date}:{cle_bouton}"}
-    clavier = [[bouton("up", "👍"), bouton("down", "👎")],
-               [bouton("court", "Plus court"), bouton("long", "Plus long"),
-                bouton("lent", "Moins vite"), bouton("vite", "Plus vite")]]
-    sujets = [bouton(f"cr{i + 1}", f"🔎 Sujet {i + 1}") for i in range(min(nombre_sujets, 5))]
-    if sujets:
-        clavier.append(sujets)
-    clavier.append([bouton("txt", "📝 Texte"), bouton("redo", "🔁 Refaire")])
-    for identifiant_regle in (details or [])[:2]:
-        clavier.append([{"text": f"📍 Détails des idées ({identifiant_regle})",
-                         "callback_data": f"a:rl:{identifiant_regle}:ecrit"}])
-    return clavier
-
-
 def encoder_mp3(pcm: bytes, taux: int, debit_kbps: int) -> bytes:
     pcm = silence(0.3, taux) + pcm + silence(0.8, taux)
     encodeur = lameenc.Encoder()
@@ -1941,115 +1643,6 @@ def encoder_mp3(pcm: bytes, taux: int, debit_kbps: int) -> bytes:
     encodeur.set_channels(1)
     encodeur.set_quality(2)
     return bytes(encodeur.encode(pcm) + encodeur.flush())
-
-
-# ──────────────────────────────── Telegram ──────────────────────────────────
-
-class Telegram:
-    def __init__(self, jeton: str) -> None:
-        self.jeton = jeton
-
-    def appeler(self, methode: str, donnees: dict | None = None,
-                fichiers: dict | None = None, delai: int = 60) -> Any:
-        url = URL_TELEGRAM.format(jeton=self.jeton, methode=methode)
-        for essai in range(3):
-            try:
-                reponse = requests.post(url, data=donnees, files=fichiers, timeout=delai)
-                resultat = reponse.json()
-            except (requests.RequestException, ValueError) as erreur:
-                if essai == 2:
-                    raise ErreurPodcast(f"Telegram injoignable ({type(erreur).__name__})")
-                time.sleep(5 * (essai + 1))
-                continue
-            if resultat.get("ok"):
-                return resultat.get("result")
-            if reponse.status_code == 429 and essai < 2:
-                time.sleep(int(resultat.get("parameters", {}).get("retry_after", 5)))
-                continue
-            description = resultat.get("description", f"HTTP {reponse.status_code}")
-            if reponse.status_code in (401, 404):
-                raise ErreurPodcast("Le jeton du bot Telegram est refusé : "
-                                    "vérifie le secret TELEGRAM_BOT_TOKEN.")
-            raise ErreurPodcast(f"Telegram : {description}")
-        raise ErreurPodcast("Telegram : échec après plusieurs tentatives")
-
-    def trouver_conversation(self) -> str:
-        mises_a_jour = self.appeler("getUpdates", {"limit": 100, "timeout": 0}) or []
-        for mise_a_jour in reversed(mises_a_jour):
-            for cle in ("message", "edited_message", "my_chat_member"):
-                chat = (mise_a_jour.get(cle) or {}).get("chat") or {}
-                if chat.get("type") == "private" and chat.get("id"):
-                    return str(chat["id"])
-        try:                                   # nom du bot, pour être sûr d'écrire au bon
-            nom = (self.appeler("getMe") or {}).get("username", "")
-        except ErreurPodcast:
-            nom = ""
-        bot = f"@{nom}" if nom else "ton bot"
-        raise ErreurPodcast(
-            f"Je ne trouve pas ta conversation avec {bot}. Ouvre {bot} dans Telegram, appuie "
-            "sur Démarrer (ou envoie-lui un message), puis relance le workflow dans les 24 h.")
-
-    def mises_a_jour(self, depuis: int) -> list[dict]:
-        """Messages reçus depuis la dernière lecture (Telegram les garde 24 h)."""
-        donnees: dict[str, Any] = {"limit": 100, "timeout": 0,
-                                   "allowed_updates": json.dumps(["message"])}
-        if depuis:
-            donnees["offset"] = depuis + 1
-        try:
-            return self.appeler("getUpdates", donnees) or []
-        except ErreurPodcast as erreur:
-            if "conflict" in str(erreur).lower():   # le bot instantané (webhook) s'en charge
-                journal("Messages gérés par le bot instantané (Cloudflare).")
-                return []
-            raise
-
-    def confirmer(self, dernier: int) -> None:
-        """Marque les messages jusqu'à « dernier » comme lus côté Telegram."""
-        try:
-            self.appeler("getUpdates", {"offset": dernier + 1, "limit": 1, "timeout": 0,
-                                        "allowed_updates": json.dumps(["message"])})
-        except ErreurPodcast as erreur:
-            journal(f"Confirmation Telegram impossible ({erreur}) : sans gravité.")
-
-    def fichier(self, identifiant_fichier: str) -> bytes:
-        infos = self.appeler("getFile", {"file_id": identifiant_fichier}) or {}
-        chemin = infos.get("file_path")
-        if not chemin:
-            raise ErreurPodcast("Telegram : fichier introuvable.")
-        try:
-            reponse = requests.get(URL_FICHIER_TELEGRAM.format(jeton=self.jeton, chemin=chemin),
-                                   timeout=60)
-            reponse.raise_for_status()
-        except requests.RequestException as erreur:
-            raise ErreurPodcast(f"Telegram : téléchargement du vocal impossible "
-                                f"({type(erreur).__name__})") from None
-        return reponse.content
-
-    def message(self, conversation: str, texte: str, clavier: list | None = None,
-                apercu: bool = False) -> Any:
-        donnees = {"chat_id": conversation, "text": texte, "parse_mode": "HTML",
-                   "disable_web_page_preview": "false" if apercu else "true"}
-        if clavier:
-            donnees["reply_markup"] = json.dumps({"inline_keyboard": clavier}, ensure_ascii=False)
-        return self.appeler("sendMessage", donnees)
-
-    def audio(self, conversation: str, mp3: bytes, nom_fichier: str, titre: str,
-              interpretes: str, legende_html: str, duree: int,
-              vignette: bytes | None = None, clavier: list | None = None) -> Any:
-        donnees = {"chat_id": conversation, "title": titre, "performer": interpretes,
-                   "caption": legende_html, "parse_mode": "HTML", "duration": duree}
-        fichiers = {"audio": (nom_fichier, mp3, "audio/mpeg")}
-        if vignette:
-            fichiers["thumbnail"] = ("pochette.jpg", vignette, "image/jpeg")
-        if clavier:
-            donnees["reply_markup"] = json.dumps({"inline_keyboard": clavier}, ensure_ascii=False)
-        try:
-            return self.appeler("sendAudio", donnees, fichiers, delai=180)
-        except ErreurPodcast as erreur:
-            if not vignette or "thumbnail" not in str(erreur).lower():
-                raise
-            fichiers.pop("thumbnail")          # vignette refusée : l'épisode passe sans
-            return self.appeler("sendAudio", donnees, fichiers, delai=180)
 
 
 def rubriques_pour_bot(script: dict, rubriques: list[tuple[str, str]] | None,
@@ -2083,74 +1676,10 @@ def sources_episode(script: dict, articles: list[Article], collectes: dict | Non
     return [(s, t, u) for s, t, u in liens if not (u in vus or vus.add(u))]
 
 
-def legende(script: dict, maintenant: dt.datetime, evenements: list[Evenement],
-            articles: list[Article], remarques: list[str], prochain: Evenement | None = None,
-            deplacements: list[dict] | None = None, chapitres: list[tuple[float, str]] | None = None,
-            collectes: dict | None = None, citer: bool = True) -> str:
-    e = echapper
-    aujourd_hui = maintenant.date()
-    du_jour = [ev for ev in evenements if ev.debut.date() <= aujourd_hui]
-    plus_tard = len(evenements) - len(du_jour)
-    tete = [f"🎙️ <b>{e(script['titre'])}</b>", e(date_longue(aujourd_hui).capitalize()), ""]
-    if du_jour:
-        tete.append(f"📅 {len(du_jour)} événement{'s' if len(du_jour) > 1 else ''} aujourd'hui"
-                    + (f", {plus_tard} les jours suivants" if plus_tard else ""))
-    else:
-        tete.append("📅 Rien à l'agenda aujourd'hui"
-                    + (f", {plus_tard} événement(s) les jours suivants" if plus_tard else ""))
-    if prochain is not None:
-        tete.append(f"🔭 Prochain : {e(tronquer(prochain.titre, 60))}, {e(quand_court(prochain))}")
-    for deplacement in deplacements or []:
-        tete.append(f"🧳 {e(deplacement['lieu'])} : {e(deplacement['quand'])}")
-    simples = []
-    for identifiant_regle, collecte in (collectes or {}).items():
-        regle = collecte.regle
-        titre_regle = (regle.get("rubrique") or {}).get("titre") or regle.get("titre", "")
-        details = []
-        if collecte.meteo:
-            details.append(e(Sources.meteo_en_mots(collecte.meteo).split(",")[0]
-                             + (f", {round(collecte.meteo['max'])} °C" if collecte.meteo.get("max") is not None else "")))
-        if collecte.itineraire:
-            details.append(f'<a href="{html.escape(collecte.itineraire, quote=True)}">itinéraire</a>')
-        if details:
-            tete.append(f"📌 {e(titre_regle)} — {', '.join(details)}")
-        else:
-            simples.append(e(titre_regle))
-    if simples:
-        tete.append(f"📌 {' · '.join(simples)}")
-    if chapitres and len(chapitres) > 1:
-        # Un chapitre par ligne : Telegram ne rend cliquable que les horodatages en début de ligne.
-        tete += ["", "⏱ <b>Chapitres</b>"] + [f"{minute_seconde(t)} {e(titre)}" for t, titre in chapitres]
-    if remarques:
-        tete.append("⚠️ " + e("; ".join(remarques)))
-    liens = [(t, u) for _, t, u in sources_episode(script, articles, collectes)] if citer else []
-    sources = []
-    vus_liens: set[str] = set()
-    for titre, url in liens:
-        if url in vus_liens:
-            continue
-        vus_liens.add(url)
-        site = re.sub(r"^www\.", "", urlparse(url).netloc) or "lien"
-        sources.append(f'<a href="{html.escape(url, quote=True)}">{e(site)}</a> {e(tronquer(titre, 40))}')
-    sources = ["", "🔗 <b>Sources</b>"] + [f"{i}. {x}" for i, x in enumerate(sources, 1)] if sources else []
-    pied = ["", "💬 Écris-moi ou utilise les boutons pour ajuster le podcast."]
-    while len("\n".join(tete + sources + pied)) > 1024 and len(sources) > 2:
-        sources.pop()
-    if len(sources) <= 2:
-        sources = []
-    return "\n".join(tete + sources + pied)[:1024]
-
-
 # ───────────────────────────────── principal ────────────────────────────────
 
 def separer_urls(valeur: str) -> list[str]:
     return [u for u in re.split(r"[\s,;]+", valeur or "") if u.startswith(("http", "webcal"))]
-
-
-def lien_execution() -> str:
-    serveur, depot, numero = (os.environ.get(v, "") for v in
-                              ("GITHUB_SERVER_URL", "GITHUB_REPOSITORY", "GITHUB_RUN_ID"))
-    return f"{serveur}/{depot}/actions/runs/{numero}" if serveur and depot and numero else ""
 
 
 @dataclass
@@ -2478,9 +2007,7 @@ def heure_plus(heure: str, minutes: int) -> str:
 def main(arguments: list[str] | None = None) -> int:
     analyseur = argparse.ArgumentParser(description="Génère et envoie le podcast du matin.")
     analyseur.add_argument("--sans-envoi", action="store_true",
-                           help="n'envoie rien sur Telegram ; écrit le MP3 dans sortie/")
-    analyseur.add_argument("--retours", action="store_true",
-                           help="lit seulement tes messages Telegram et y répond (sans le bot instantané)")
+                           help="ne confie rien au bot ; écrit le MP3 dans sortie/")
     analyseur.add_argument("--mode", default=os.environ.get("MODE", ""),
                            help="planifie, rattrapage, manuel ou filet (lancement par le bot ou par GitHub)")
     analyseur.add_argument("--regles", default=os.environ.get("REGLES", ""),
@@ -2488,7 +2015,7 @@ def main(arguments: list[str] | None = None) -> int:
     analyseur.add_argument("--recherche", default=os.environ.get("RECHERCHE", ""),
                            help="résultats de recherche pour ces règles, ex. R5,R6")
     analyseur.add_argument("--format", default=os.environ.get("FORMAT", "") or "ecrit", choices=("ecrit", "audio", "resume", "point"),
-                           help="résultats écrits (photos, lieux, sondage), mini-podcast d'idées, synthèse d'une rubrique, "
+                           help="résultats écrits (idées, lieux, liens), mini-podcast d'idées, synthèse d'une rubrique, "
                                 "ou point (podcast d'état des lieux d'un sujet)")
     analyseur.add_argument("--echantillons", default=os.environ.get("ECHANTILLONS", ""),
                            help="extraits audio de ces voix, ex. Aoede,Kore")
@@ -2500,20 +2027,16 @@ def main(arguments: list[str] | None = None) -> int:
         mode = "rattrapage"
     forcees = identifiants_regles(options.regles)
 
-    # Fin au plus tard, avant le délai du workflow (25 min ; 10 pour les messages).
+    # Fin au plus tard, avant le délai du workflow (25 min).
     global ECHEANCE
-    ECHEANCE = time.monotonic() + (8 if options.retours else 22) * 60
+    ECHEANCE = time.monotonic() + 22 * 60
     chemin_memoire = RACINE / FICHIER_MEMOIRE
-    nouvel_episode = False
-    telegram: Telegram | None = None
-    conversation = ""
     config_bot: dict | None = None
     export: dict | None = None
     try:
         reglages = charger_reglages(RACINE / "reglages.toml")
         # Le bot d'abord : il peut fournir les clés et agendas saisis dans l'application.
-        jeton = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-        bot = Bot(os.environ.get("BOT_URL", ""), jeton)
+        bot = Bot(os.environ.get("BOT_URL", ""))
         export = bot.config() if bot.secret else None
         presents = secrets_presents()
         appliquees = appliquer_cles(export)
@@ -2529,28 +2052,9 @@ def main(arguments: list[str] | None = None) -> int:
         if not cle:
             raise ErreurPodcast("La clé Gemini manque : ajoute-la dans l'application (Réglages › Connexions) "
                                 "ou en secret GEMINI_API_KEY sur GitHub.")
-        if (options.retours or not options.sans_envoi) and not jeton:
-            # Sans Telegram (facultatif) : tout passe par le bot (application, flux, notifications).
-            if options.retours:
-                journal("Pas de Telegram : aucun message à lire.")
-                return 0
-            if not bot.secret:
-                raise ErreurPodcast("Ni Telegram (secret TELEGRAM_BOT_TOKEN) ni jeton GitHub du bot (secret BOT_GITHUB_TOKEN) : "
-                                    "personne à qui confier l'épisode.")
-        elif options.retours or not options.sans_envoi:
-            telegram = Telegram(jeton)
-            conversation = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
-            if not conversation:
-                if options.retours:
-                    journal("TELEGRAM_CHAT_ID n'est pas encore défini : rien à lire.")
-                    return 0
-                conversation = telegram.trouver_conversation()
-                journal(f"Conversation Telegram trouvée : {conversation}")
-                telegram.message(conversation, (
-                    "👋 Ton bot est bien relié !\n\nTon identifiant de conversation est "
-                    f"<code>{conversation}</code>.\nAjoute-le dans GitHub (Settings → Secrets "
-                    "and variables → Actions) sous le nom <b>TELEGRAM_CHAT_ID</b> pour que "
-                    "l'envoi fonctionne tous les jours. Le podcast arrive dans un instant…"))
+        if not options.sans_envoi and not bot.secret:
+            raise ErreurPodcast("Le jeton GitHub du bot manque (secret BOT_GITHUB_TOKEN) : "
+                                "personne à qui confier l'épisode.")
 
         # Réglages tenus par le bot ; à défaut, sa sauvegarde quotidienne.
         if export:
@@ -2585,29 +2089,11 @@ def main(arguments: list[str] | None = None) -> int:
             effectifs = (effectifs_depuis_bot(reglages, memoire, config_bot) if config_bot
                          else reglages_effectifs(reglages, memoire))
             if options.echantillons:
-                return recherche.echantillons(options.echantillons, effectifs, cle, telegram, conversation, bot,
-                                              options.sans_envoi, discret=bool((export or {}).get("app")))
+                return recherche.echantillons(options.echantillons, effectifs, cle, bot, options.sans_envoi)
             if options.format == "resume":
-                return recherche.resume_rubrique(options.recherche.strip(), effectifs, cle, maintenant, telegram,
-                                                 conversation, bot)
+                return recherche.resume_rubrique(options.recherche.strip(), effectifs, cle, maintenant, bot)
             return recherche.lancer(identifiants_recherche(options.recherche), options.format, effectifs, cle,
-                                    maintenant, telegram, conversation, bot, export or {}, options.sans_envoi)
-
-        # 1. (Sans le bot instantané) tes messages au bot, pris en compte avant l'épisode.
-        if telegram and conversation and (not export or export.get("secours")):
-            try:
-                if traiter_retours(telegram, conversation, cle, reglages, memoire, maintenant):
-                    nouvel_episode = bool(memoire.pop("_nouvel_episode", False))
-                    sauver_memoire(chemin_memoire, memoire)
-            except Exception as erreur:   # ils seront relus à la prochaine exécution
-                journal(f"Messages Telegram non traités pour l'instant : {erreur}")
-            memoire.pop("_nouvel_episode", None)
-        if options.retours:
-            if not nouvel_episode:
-                return 0
-            journal("Nouvel épisode demandé par message : on le prépare.")
-            ECHEANCE = time.monotonic() + 22 * 60
-            mode = "manuel"
+                                    maintenant, bot, export or {}, options.sans_envoi)
 
         # Épisode programmé déjà parti (rattrapage, filet, double lancement) : rien à faire.
         deja_parti = (memoire.get("dernier_programme") == aujourd_hui
@@ -2621,7 +2107,7 @@ def main(arguments: list[str] | None = None) -> int:
             journal("L'épisode de ce matin n'est pas parti : nouvel essai "
                     + ("(rattrapage)." if mode == "rattrapage" else "(filet de sécurité de GitHub)."))
 
-        # 2. L'épisode.
+        # L'épisode.
         effectifs = (effectifs_depuis_bot(reglages, memoire, config_bot) if config_bot
                      else reglages_effectifs(reglages, memoire))
         urls = separer_urls(os.environ.get("CALENDAR_ICS_URL", ""))
@@ -2657,55 +2143,33 @@ def main(arguments: list[str] | None = None) -> int:
         base_bot = f"{maintenant:%Y-%m}/{maintenant:%Y-%m-%d-%H%M%S}"
         audio_bot = f"{base_bot}.mp3" if bot.deposer(f"{base_bot}.mp3", mp3, "audio/mpeg") else None
         pochette_bot = f"{base_bot}.jpg" if audio_bot and vignette and bot.deposer(f"{base_bot}.jpg", vignette, "image/jpeg") else None
-        if audio_bot:
-            journal("Audio gardé par le bot ✅")
-        elif export:
-            journal("::warning::Le bot n'a pas pu garder l'audio : l'épisode n'est que chez Telegram.")
+        if not audio_bot:
+            raise ErreurPodcast("Le bot n'a pas pu garder l'épisode : rien n'est parti (bot injoignable ?).")
+        journal("Audio gardé par le bot ✅")
 
         details = [rid for rid, c in (contenu.collectes or {}).items() if moteur.est_recherche(c.regle)]
         avec_actus = any(c == "actualites" for c, _ in contenu.rubriques or [])
         nombre_sujets = min(len(script["sujets"]), int(effectifs["nombre_sujets"])) if avec_actus else 0
-        noms = " & ".join(a["nom"] for a in effectifs["animateurs"])
-        titre = f"{script['titre']} – {date_longue(maintenant.date(), False)}"
-        # Telegram coupé dans l'application (Réglages › Application) : l'épisode n'arrive que chez
-        # le bot (application, flux, notification). S'il n'a pas pu le garder, Telegram quand même.
-        par_telegram = telegram is not None and (
-            (((config_bot or {}).get("livraison") or {}).get("telegram", True) is not False) or not audio_bot)
-        if not par_telegram and not audio_bot:
-            raise ErreurPodcast("Le bot n'a pas pu garder l'épisode, et Telegram n'est pas configuré : rien n'est parti.")
-        envoi = None if not par_telegram else telegram.audio(
-            conversation, mp3, nom_fichier, tronquer(titre, 64), noms,
-            legende(script, maintenant, contenu.proches, contenu.articles, contenu.remarques,
-                    contenu.prochain, contenu.deplacements, chapitres, contenu.collectes,
-                    citer=effectifs.get("citer_sources", "ecrit") in ("ecrit", "les_deux")),
-            duree, vignette,
-            # Boutons seulement avec le bot de la version 3 (l'ancien ne les comprendrait pas) ;
-            # avec l'application, un seul bouton qui l'ouvre sur cet épisode.
-            clavier_application(export.get("app"), aujourd_hui) if export and export.get("app")
-            else clavier_episode(aujourd_hui, nombre_sujets, details) if export else None)
-        journal("Envoyé sur Telegram ✅" if par_telegram else "Épisode gardé par le bot seulement (Telegram coupé ou absent).")
         evenement = {
             "type": "episode", "date": aujourd_hui, "titre": script["titre"],
             "sujets": script["sujets"][:nombre_sujets] if nombre_sujets else [],
-            "message_id": (envoi or {}).get("message_id"), "transcription": texte_script[:20000],
+            "transcription": texte_script[:20000],
             "chapitres": [[round(t), t_titre] for t, t_titre in chapitres],
             "regles": list(contenu.collectes or {}), "nombre_sujets": nombre_sujets,
             "mode": mode or "planifie", "debut": debut, "details": details, "duree": duree,
-            "file_id": ((envoi or {}).get("audio") or {}).get("file_id"),
-            "taille": ((envoi or {}).get("audio") or {}).get("file_size") or len(mp3),
+            "taille": len(mp3),
             "heure": maintenant.strftime("%H:%M"),
             "sources": [{"section": s, "titre": t, "url": u}
                         for s, t, u in sources_episode(script, contenu.articles, contenu.collectes)][:30],
-            "pochette_id": (((envoi or {}).get("audio") or {}).get("thumbnail") or {}).get("file_id"),
             "audio": audio_bot, "pochette": pochette_bot,
             "rubriques": rubriques_pour_bot(script, contenu.rubriques, sources_episode(
                 script, contenu.articles, contenu.collectes)),
-            "ref": int(maintenant.strftime("%H%M%S")),   # distingue les épisodes du jour, avec ou sans Telegram
+            "ref": int(maintenant.strftime("%H%M%S")),   # distingue les épisodes d'un même jour
         }
         if bot.evenement(evenement):
-            journal("Bot prévenu : boutons et tableau de bord à jour.")
+            journal("Bot prévenu : l'épisode est dans l'application (notification envoyée).")
 
-        # 3. Mémoire : sujets du jour (pour comprendre tes retours) ; demandes traitées.
+        # Mémoire : sujets du jour ; demandes traitées.
         memoire["dernier_episode"] = {
             "date": aujourd_hui, "titre": script["titre"],
             "envoye_le": maintenant.strftime("%Y-%m-%dT%H:%M"),
@@ -2745,14 +2209,14 @@ def main(arguments: list[str] | None = None) -> int:
             f"erreur inattendue ({type(erreur).__name__} : {erreur})"
         journal(f"ÉCHEC : {message}")
         # Envoi programmé raté alors qu'un rattrapage est prévu : on prévient sans alarmer.
-        essai_suivant = os.environ.get("ESSAI_SUIVANT", "").strip() if not mode else ""
+        essai_suivant = ""
         if mode == "planifie" and config_bot and (config_bot.get("planning") or {}).get("rattrapage", True):
             delai = int(_borne((config_bot.get("planning") or {}).get("delai_rattrapage"), 20, 180, 60))
             essai_suivant = heure_plus(str((export or {}).get("heure_prevue_aujourdhui") or ""), delai)
-        if options.retours or options.sans_envoi or options.recherche or options.echantillons or options.agendas:
+        if options.sans_envoi or options.recherche or options.echantillons or options.agendas:
             essai_suivant = ""
-        # Le bot prévient aussi par notification (application), hors des modes annexes.
-        if not (options.retours or options.sans_envoi or options.recherche or options.echantillons or options.agendas):
+        # Le bot prévient par notification (application), hors des modes annexes.
+        if not (options.sans_envoi or options.recherche or options.echantillons or options.agendas):
             try:
                 Bot(os.environ.get("BOT_URL", "")).evenement({
                     "type": "echec",
@@ -2761,27 +2225,6 @@ def main(arguments: list[str] | None = None) -> int:
                     "message": (f"Nouvel essai automatique à {heure_lisible(essai_suivant)}. " if essai_suivant else "")
                                + raison_lisible(message)[:150]})
             except Exception:
-                pass
-        if telegram and conversation and (not options.retours or nouvel_episode):
-            lien = lien_execution()
-            if options.recherche or options.echantillons:
-                tete = "⚠️ <b>Recherche</b> : pas de résultats pour l'instant." if options.recherche else \
-                    "⚠️ <b>Extraits de voix</b> : pas pour l'instant."
-                message_court = raison_lisible(message)
-            elif essai_suivant:
-                tete = ("⏳ <b>Podcast du matin</b> : raté pour l'instant. Nouvel essai "
-                        f"automatique à {echapper(heure_lisible(essai_suivant))}.")
-                message_court = raison_lisible(message)
-            else:
-                tete = ("⚠️ <b>Podcast</b> : l'épisode demandé n'a pas pu être préparé." if mode == "manuel"
-                        else "⚠️ <b>Podcast du matin</b> : pas d'épisode aujourd'hui.")
-                message_court = message[:600]
-            try:
-                telegram.message(conversation, (
-                    f"{tete}\n\n{echapper(message_court)}"
-                    + (f'\n\n<a href="{html.escape(lien, quote=True)}">Voir les détails</a>'
-                       if lien else "")))
-            except ErreurPodcast:
                 pass
         if not isinstance(erreur, ErreurPodcast):
             raise

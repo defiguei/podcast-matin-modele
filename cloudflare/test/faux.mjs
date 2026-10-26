@@ -1,11 +1,10 @@
-// Faux services pour tester le bot en local : Telegram, Gemini, GitHub,
-// Nominatim, et un petit site avec flux RSS. Tout est enregistré et pilotable
+// Faux services pour tester le bot en local : Gemini, GitHub, Tavily, SNCF,
+// jours fériés, Web Push, et un petit site avec flux RSS. Tout est enregistré et pilotable
 // par /control/*.
 import http from "node:http";
 
 const PORT = Number(process.env.PORT || 8790);
 let appels = [];
-let messageId = 1000;
 let fileGemini = [];
 let fichiers = {};
 let geminiEnPanne = false;
@@ -70,32 +69,8 @@ const serveur = http.createServer(async (req, res) => {
   if (p === "/control/fichiers") return json(res, 200, fichiers);
   if (p === "/control/fichier") { fichiers[corps.chemin] = corps.texte; return json(res, 200, { ok: true }); }
 
-  // ── Telegram ──
-  let m = /^\/tg\/bot([^/]+)\/(\w+)$/.exec(p);
-  if (m) {
-    const methode = m[2];
-    appels.push({ service: "telegram", methode, corps });
-    // FAUX_LENTEUR=200 npm test : Telegram répond en 200 ms, comme une machine lente.
-    if (process.env.FAUX_LENTEUR) await new Promise((ok) => setTimeout(ok, Number(process.env.FAUX_LENTEUR)));
-    if (methode === "getFile") return json(res, 200, { ok: true, result: { file_path: "voix/vocal.ogg" } });
-    if (methode === "forwardMessage") {
-      const legende = "🎙️ Épisode\n\n🔗 Sources\n1. rts.ch Grève au Portugal\n2. 24heures.ch Budget vaudois";
-      return json(res, 200, { ok: true, result: { message_id: 9999, audio: { file_id: "AUDIO-TRANSFERE", duration: 300, thumbnail: { file_id: "POCHETTE-TRANSFEREE" } }, caption: legende,
-        caption_entities: [{ type: "text_link", offset: legende.indexOf("rts.ch"), length: 6, url: "https://www.rts.ch/info/1" },
-                           { type: "text_link", offset: legende.indexOf("24heures.ch"), length: 11, url: "https://www.24heures.ch/2" }] } });
-    }
-    if (/^(send|copy|forward)/.test(methode)) return json(res, 200, { ok: true, result: { message_id: ++messageId, chat: { id: 42 } } });
-    if (methode === "editMessageText" && corps?.message_id === 404) return json(res, 400, { ok: false, description: "Bad Request: message to edit not found" });
-    return json(res, 200, { ok: true, result: true });
-  }
-  if (/^\/tg\/file\/bot[^/]+\/voix\/vocal\.ogg$/.test(p)) {
-    appels.push({ service: "telegram", methode: "telechargement" });
-    res.writeHead(200, { "Content-Type": "audio/ogg" });
-    return res.end(Buffer.from("OggS-faux-audio"));
-  }
-
   // ── Nager.Date (jours fériés) ──
-  m = /^\/nager\/api\/v3\/PublicHolidays\/(\d{4})\/([A-Z]{2})$/.exec(p);
+  let m = /^\/nager\/api\/v3\/PublicHolidays\/(\d{4})\/([A-Z]{2})$/.exec(p);
   if (m) {
     appels.push({ service: "nager", annee: m[1], pays: m[2] });
     return json(res, 200, [
@@ -159,12 +134,6 @@ const serveur = http.createServer(async (req, res) => {
     appels.push({ service: "github", methode: "lancer", workflow: m[1], entrees: corps.inputs, ref: corps.ref });
     res.writeHead(204);
     return res.end();
-  }
-
-  // ── Nominatim ──
-  if (p === "/nominatim/reverse") {
-    appels.push({ service: "nominatim", lat: url.searchParams.get("lat") });
-    return json(res, 200, { name: "Yverdon-les-Bains", address: { town: "Yverdon-les-Bains" } });
   }
 
   // ── petit site avec flux RSS ──

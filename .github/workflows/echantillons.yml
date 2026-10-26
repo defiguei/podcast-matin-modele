@@ -34,8 +34,6 @@ jobs:
       - name: Préparer et envoyer les extraits
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}   # sans Telegram : base du secret partagé avec le bot
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}   # base du secret partagé avec le bot
           ECHANTILLONS: ${{ inputs.voix }}
         run: .venv/bin/python podcast.py

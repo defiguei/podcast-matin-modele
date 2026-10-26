@@ -1,9 +1,6 @@
-// Mini App Telegram : vérification de l'ouverture, données des écrans et
-// traduction des formulaires en modifications de la configuration.
-//
-// La page (page.js) s'ouvre dans Telegram, qui lui confie « initData » : une
-// liste de champs signée avec le jeton du bot. Le Worker vérifie cette
-// signature et que c'est bien toi (TELEGRAM_CHAT_ID) avant tout accès.
+// Application : liens audio signés, données des écrans et traduction des
+// formulaires en modifications de la configuration. L'accès est vérifié par le
+// Worker (jeton de l'appareil, donné contre un code à 6 chiffres).
 
 import {
   JOURS, NOMS_JOURS, COURTS_JOURS, LONGUEURS, SOURCES, RUBRIQUES, etatRegle, prochainPassage, decrirePeriode,
@@ -11,15 +8,14 @@ import {
   VOIX, VOIX_CONSEILLEES, VITESSES, TONS, CITER, TRANSPORTS, fluxActus, profilPays, PAYS, DELAIS_RATTRAPAGE,
   DEVISES, CANTONS, MODES_VOIX, sourcesAuto, estFerie, nomFerie, animateursDuJour, placesDuJour, normaliserTexte,
   jourDeSemaine, MODELES_RUBRIQUES, CATEGORIES_RUBRIQUES, catalogueRubriques, nouvelleRegle, modifierRegle,
-  INFOS_SOURCES, sourceConnue, sourcesUtilisables, nomSource, RENDUS, minutesPoint,
+  INFOS_SOURCES, sourceConnue, sourcesUtilisables, RENDUS, minutesPoint,
 } from "./config.js";
 
-const DUREE_VALIDITE = 24 * 3600;      // une ouverture reste valable 24 h
+const DUREE_VALIDITE = 24 * 3600;      // un lien audio reste valable 24 h
 const MOIS_CALENDRIER = 12;            // le planning se feuillette jusqu'à un an à l'avance
 export const PERIODES = ["toujours", "dates", "jours", "une_fois", "ponctuelle"];
 const MOMENTS = ["jour_meme", "veille", "jours_avant"];
 const CHAMPS_FICHE = ["quoi", "avec_qui", "ages", "ou", "quand", "attendu"];
-export const ECRANS_BOT = ["planning", "voix", "format", "agenda", "actus", "consignes", "accueil"];
 // Listes modifiables d'un bloc depuis l'application.
 export const LISTES_APP = ["consignes", "actus.sujets_preferes", "actus.sujets_a_eviter"];
 // Réglages simples modifiables depuis l'application (validés par config.js).
@@ -29,7 +25,7 @@ export const REGLAGES_APP = [
   "agenda.jours", "agenda.horizon", "agenda.notes", "agenda.deplacements", "agenda.jours_deplacements", "agenda.max_deplacements",
   "actus.locale_articles", "actus.ville", "actus.fraicheur_heures", "actus.citer_sources",
   "planning.rattrapage", "planning.delai_rattrapage", "planning.feries", "planning.avance_minutes",
-  "planning.feries_region", "voix.solo", "voix.mode", "pays", "livraison.telegram",
+  "planning.feries_region", "voix.solo", "voix.mode", "pays",
 ];
 
 // ───────────────────────────── liens audio ──────────────────────────────────
@@ -51,7 +47,7 @@ export async function verifierAudio(secret, params, maintenant = Date.now()) {
   return egal(await signerAudio(secret, cle, expiration), signature) ? cle : null;
 }
 
-// ───────────────────────────── vérification ─────────────────────────────────
+// ───────────────────────────── signatures ───────────────────────────────────
 
 async function hmac(cle, texte) {
   const k = await crypto.subtle.importKey("raw", typeof cle === "string" ? new TextEncoder().encode(cle) : cle,
@@ -66,25 +62,6 @@ function egal(a, b) {
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
-}
-
-// Renvoie { ok: true, utilisateur } si initData est authentique, récent et vient de toi.
-export async function verifierOuverture(initData, env, maintenant = Date.now()) {
-  if (!initData || typeof initData !== "string" || initData.length > 4096 || !env.TELEGRAM_BOT_TOKEN) return { ok: false, raison: "absente" };
-  const champs = new URLSearchParams(initData);
-  const signature = champs.get("hash");
-  if (!signature) return { ok: false, raison: "non signée" };
-  champs.delete("hash");
-  const aVerifier = [...champs.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([cle, valeur]) => `${cle}=${valeur}`).join("\n");
-  const cleSecrete = await hmac("WebAppData", env.TELEGRAM_BOT_TOKEN);
-  if (!egal(hex(await hmac(cleSecrete, aVerifier)), signature.toLowerCase())) return { ok: false, raison: "signature invalide" };
-  const date = Number(champs.get("auth_date"));
-  if (!date || maintenant / 1000 - date > DUREE_VALIDITE) return { ok: false, raison: "expirée" };
-  let utilisateur = null;
-  try { utilisateur = JSON.parse(champs.get("user") || "null"); } catch { /* illisible */ }
-  if (!utilisateur || String(utilisateur.id) !== String(env.TELEGRAM_CHAT_ID)) return { ok: false, raison: "utilisateur inconnu" };
-  return { ok: true, utilisateur };
 }
 
 // ─────────────────────────────── données ────────────────────────────────────
@@ -153,7 +130,7 @@ function sourcesVisibles(config) {
 }
 
 export function cleEpisode(episode) {
-  const numero = episode.message_id || episode.ref;   // message Telegram, sinon heure d'envoi (sans Telegram)
+  const numero = episode.message_id || episode.ref;   // numéro des anciens épisodes, sinon heure d'envoi (HHMMSS)
   return `ep:${episode.date}${numero ? `:${numero}` : ""}`;
 }
 
@@ -234,7 +211,6 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
       agenda: config.agenda, agendas: (etat.agendas || []).filter((x) => !(config.agenda.retires || []).includes(x.id)),
       agendas_retires: (etat.agendas || []).filter((x) => (config.agenda.retires || []).includes(x.id)), agendas_vus: etat.agendas_vus || null,
       consignes: config.consignes, a_approfondir: config.a_approfondir.map((a) => a.sujet),
-      livraison: config.livraison || { telegram: true },
       sources: sourcesVisibles(config),
       echantillons: liens.voix, temps_echantillons: etat.temps_echantillons || {},
     },
@@ -432,20 +408,6 @@ export function nettoyerSources(sources) {
   return (Array.isArray(sources) ? sources : []).slice(0, 30)
     .map((x) => ({ section: String(x?.section ?? "").replace(/\s+/g, " ").trim().slice(0, 60), titre: String(x?.titre ?? "").replace(/\s+/g, " ").trim().slice(0, 120), url: String(x?.url ?? "").slice(0, 500) }))
     .filter((x) => /^https:\/\//.test(x.url));
-}
-
-// Sources lues dans la légende d'un épisode : « 1. <lien>site</lien> titre ».
-export function sourcesDeLegende(legende, entites) {
-  const texte = String(legende || "");
-  const sources = [];
-  for (const ent of Array.isArray(entites) ? entites : []) {
-    if (ent?.type !== "text_link" || !/^https:\/\//.test(ent.url || "")) continue;
-    const site = texte.slice(ent.offset, ent.offset + ent.length);
-    const finLigne = texte.indexOf("\n", ent.offset + ent.length);
-    const suite = texte.slice(ent.offset + ent.length, finLigne < 0 ? undefined : finLigne).trim();
-    sources.push({ titre: suite ? `${site} · ${suite}` : site, url: ent.url });
-  }
-  return nettoyerSources(sources);
 }
 
 // Jours fériés d'un pays (Nager.Date, gratuit) : [[date, nom]] pour une année.

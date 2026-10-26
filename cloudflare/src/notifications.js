@@ -1,5 +1,5 @@
 // Notifications de l'application (norme Web Push) : « ton épisode est prêt »
-// sur le téléphone, sans Telegram et sans service payant. Le navigateur fournit
+// sur le téléphone, sans service payant. Le navigateur fournit
 // une adresse d'abonnement (chez Google, Apple ou Mozilla) ; le bot y envoie un
 // message chiffré pour ce seul appareil (RFC 8291), signé avec sa propre clé
 // (VAPID, RFC 8292), créée au premier besoin et gardée dans son stockage.

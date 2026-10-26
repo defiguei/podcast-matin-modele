@@ -1,6 +1,6 @@
-"""Pochette de l'épisode (vignette affichée par le lecteur de Telegram).
+"""Pochette de l'épisode (vignette affichée par l'application et le flux privé).
 
-Image carrée de 320 px en JPEG (moins de 200 ko, exigence de Telegram) :
+Image carrée de 320 px en JPEG (moins de 200 ko) :
 la date en grand sur un dégradé dont la couleur change avec le jour de la
 semaine, et le titre de l'épisode.
 """

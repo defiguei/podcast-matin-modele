@@ -1,7 +1,7 @@
 {
   "name": "podcast-bot",
   "private": true,
-  "description": "Bot Telegram du Podcast du matin (Cloudflare Worker + Durable Object)",
+  "description": "Bot du Podcast du matin (Cloudflare Worker + Durable Object)",
   "type": "module",
   "scripts": {
     "test": "node test/lancer.mjs",

@@ -8,8 +8,9 @@ dans ton bot Cloudflare, qui les garde. Le reste est recopié depuis le modèle,
 avec ton dépôt et l'adresse de ton bot à la place des repères du modèle.
 
 Variables : MODELE (ex. « auteur/podcast-matin-modele »), VERSION, ADRESSE
-(adresse du bot), TELEGRAM_BOT_TOKEN, GITHUB_REPOSITORY, GH_TOKEN, et
-BOT_GITHUB_TOKEN (facultatif : jeton avec la permission « Workflows »).
+(adresse du bot), GITHUB_REPOSITORY, GH_TOKEN, et BOT_GITHUB_TOKEN (jeton du
+bot, avec la permission « Workflows » : secret partagé avec le bot, et envoi des
+fichiers d'automatisation).
 """
 
 from __future__ import annotations
@@ -91,36 +92,21 @@ def adresse_actuelle(racine: Path) -> str:
     return trouve.group(1) if trouve and REPERE_HOTE not in trouve.group(1) else ""
 
 
-def jeton_du_bot(adresse: str) -> str:
+def jeton_du_bot() -> str:
     """Un jeton GitHub avec la permission « Workflows », nécessaire pour mettre à jour
-    les fichiers d'automatisation : le secret GitHub BOT_GITHUB_TOKEN s'il existe,
-    sinon celui du bot, qu'il ne donne que pendant une mise à jour demandée."""
+    les fichiers d'automatisation : le secret GitHub BOT_GITHUB_TOKEN."""
     jeton = os.environ.get("BOT_GITHUB_TOKEN", "").strip()
-    jeton_tg = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-    if jeton:
-        source = "secret GitHub BOT_GITHUB_TOKEN"
-    elif not (jeton_tg and adresse):
-        source = "aucun (ni secret BOT_GITHUB_TOKEN, ni bot à qui le demander)"
-    else:
-        try:
-            import requests
-            from liaison import secret_partage
-            r = requests.get(f"{adresse.rstrip('/')}/api/maj", headers={"X-Podcast-Secret": secret_partage(jeton_tg)}, timeout=20)
-            jeton = (r.json() or {}).get("jeton", "") if r.status_code == 200 else ""
-            source = "donné par le bot" if jeton else f"refusé par le bot (HTTP {r.status_code})"
-        except Exception as erreur:   # ancien bot, ou bot injoignable
-            jeton, source = "", f"bot injoignable ({type(erreur).__name__})"
     if jeton and os.environ.get("GITHUB_ACTIONS"):
         print(f"::add-mask::{jeton}", flush=True)
     # Visible dans le résumé de l'exécution : d'où vient le jeton (jamais sa valeur).
-    journal(f"::notice title=Jeton GitHub::{source}.")
+    journal(f"::notice title=Jeton GitHub::{'secret GitHub BOT_GITHUB_TOKEN' if jeton else 'aucun (secret BOT_GITHUB_TOKEN absent)'}.")
     return jeton
 
 
 def prevenir_bot(adresse: str, evenement: dict) -> None:
     try:
         from liaison import Bot
-        Bot(adresse, os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()).evenement(evenement)
+        Bot(adresse).evenement(evenement)
     except Exception as erreur:
         journal(f"Bot non prévenu : {erreur}")
 
@@ -146,7 +132,7 @@ def main() -> int:
             return 1
         infos = json.loads((modele / "version.json").read_text(encoding="utf-8")) if (modele / "version.json").exists() else {}
         version = infos.get("version") or version
-        jeton = jeton_du_bot(adresse)
+        jeton = jeton_du_bot()
         changes, supprimes = copier(modele, RACINE, depot, hote)
         workflows_changes = any(c.startswith(".github/workflows/") for c in changes + supprimes)
         journal(f"Version {version} : {len(changes)} fichier(s) mis à jour, {len(supprimes)} supprimé(s).")

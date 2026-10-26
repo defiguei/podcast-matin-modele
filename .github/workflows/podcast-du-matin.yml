@@ -5,8 +5,7 @@ on:
   # C'est le bot (Cloudflare) qui lance l'épisode à l'heure choisie, jour par
   # jour, puis un rattrapage une heure plus tard si besoin. Ces créneaux ne
   # sont qu'un filet de sécurité : horaire.py ne laisse passer un épisode que
-  # s'il n'est toujours pas parti 75 minutes après l'heure prévue (ou, sans
-  # bot, à HEURE_LOCALE comme avant : 7 h 30, rattrapage à 8 h 30).
+  # s'il n'est toujours pas parti 75 minutes après l'heure prévue.
   schedule:
     - cron: "30 5 * * *"
     - cron: "30 6 * * *"
@@ -34,7 +33,6 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  HEURE_LOCALE: "07:30" # utilisé seulement sans bot
   FUSEAU: "Europe/Zurich"
   BOT_URL: ${{ vars.BOT_URL || 'https://podcast.TON-SOUS-DOMAINE.workers.dev' }}
 
@@ -50,10 +48,8 @@ jobs:
         id: horaire
         env:
           EVENEMENT: ${{ github.event_name }}
-          PROGRAMMATION: ${{ github.event.schedule }}
           MODE_DEMANDE: ${{ inputs.mode }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}   # sans Telegram : base du secret partagé avec le bot
+          BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}   # base du secret partagé avec le bot
         run: python3 horaire.py
 
       - name: Installer les dépendances
@@ -66,16 +62,13 @@ jobs:
         if: steps.horaire.outputs.go == 'true'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}   # sans Telegram : base du secret partagé avec le bot
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}   # base du secret partagé avec le bot
           CALENDAR_ICS_URL: ${{ secrets.CALENDAR_ICS_URL }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           SNCF_API_KEY: ${{ secrets.SNCF_API_KEY }}
           MODE: ${{ steps.horaire.outputs.mode }}
           REGLES: ${{ inputs.regles }}
           RATTRAPAGE: ${{ steps.horaire.outputs.rattrapage }}
-          ESSAI_SUIVANT: ${{ steps.horaire.outputs.essai_suivant }}
         run: .venv/bin/python podcast.py
 
       - name: Enregistrer la mémoire

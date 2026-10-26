@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 """Décide si ce lancement du workflow doit préparer un épisode.
 
-Depuis la version 3, c'est le bot (Cloudflare) qui lance l'épisode à l'heure
-choisie, jour par jour (lancement « planifie », puis « rattrapage » une heure
-plus tard si besoin). Les déclenchements programmés de GitHub ne servent plus
-que de filet de sécurité :
+C'est le bot (Cloudflare) qui lance l'épisode à l'heure choisie, jour par jour
+(lancement « planifie », puis « rattrapage » si besoin). Les déclenchements
+programmés de GitHub ne servent que de filet de sécurité :
   - bot joignable : on ne fait rien, sauf si l'épisode prévu aujourd'hui n'est
     toujours pas parti 75 minutes après l'heure (mode « filet »), ou, si le bot l'a
     lancé, une fois son rattrapage réglable dépassé de 30 minutes ;
   - bot injoignable : on suit sa sauvegarde quotidienne (preferences.json) ;
-  - sans bot du tout : ancien fonctionnement, à l'heure HEURE_LOCALE (trois
-    créneaux UTC, été comme hiver, et un rattrapage une heure plus tard).
+  - ni bot ni sauvegarde (dépôt modèle, installation pas finie) : rien.
 Les lancements à la main (ou par le bot) passent toujours.
 N'utilise que la bibliothèque standard : il tourne avant toute installation.
 """
@@ -35,42 +33,6 @@ MARGE_FILET = 75   # minutes après l'heure prévue avant que GitHub ne prenne l
 def normaliser(heure: str) -> str:
     heures, _, minutes = heure.strip().replace("h", ":").partition(":")
     return f"{int(heures):02d}:{int(minutes or 0):02d}"
-
-
-def une_heure_plus_tard(heure: str) -> str:
-    heures, minutes = normaliser(heure).split(":")
-    return f"{(int(heures) + 1) % 24:02d}:{minutes}"
-
-
-def decider(evenement: str, programmation: str, heure_locale: str, fuseau: str,
-            maintenant: dt.datetime | None = None,
-            heure_rattrapage: str = "") -> tuple[str, str]:
-    """Renvoie (mode, explication) ; mode vaut "manuel", "normal", "rattrapage" ou ""."""
-    if evenement != "schedule":
-        return "manuel", f"Lancement « {evenement} » : on y va."
-    try:
-        minute, heure = (int(x) for x in programmation.split()[:2])
-    except ValueError:
-        return "manuel", f"Programmation « {programmation} » non reconnue : on y va par prudence."
-    maintenant = maintenant or dt.datetime.now(dt.timezone.utc)
-    prevu = maintenant.replace(hour=heure, minute=minute, second=0, microsecond=0)
-    if prevu > maintenant + dt.timedelta(minutes=10):   # lancé après minuit UTC
-        prevu -= dt.timedelta(days=1)
-    locale = prevu.astimezone(ZoneInfo(fuseau)).strftime("%H:%M")
-    voulue = normaliser(heure_locale)
-    rattrapage = normaliser(heure_rattrapage) if heure_rattrapage else une_heure_plus_tard(voulue)
-    if locale == voulue:
-        return "normal", f"Déclenchement prévu à {locale} ({fuseau}) : c'est l'heure de l'épisode."
-    if locale == rattrapage:
-        return "rattrapage", (f"Déclenchement prévu à {locale} ({fuseau}) : rattrapage, "
-                              "seulement si l'épisode du matin n'est pas parti.")
-    return "", f"Déclenchement prévu à {locale} ({fuseau}), heure voulue {voulue} : pas celui-ci."
-
-
-def doit_tourner(evenement: str, programmation: str, heure_locale: str, fuseau: str,
-                 maintenant: dt.datetime | None = None) -> tuple[bool, str]:
-    mode, explication = decider(evenement, programmation, heure_locale, fuseau, maintenant)
-    return mode in ("manuel", "normal"), explication
 
 
 # ─────────────────────── planning du bot (copie de config.js) ───────────────────────
@@ -169,19 +131,16 @@ def decider_filet(maintenant: dt.datetime, fuseau: str, export: dict | None, sec
 
 
 def main() -> int:
-    heure_locale = os.environ.get("HEURE_LOCALE", "05:45")
-    heure_rattrapage = os.environ.get("HEURE_RATTRAPAGE", "") or une_heure_plus_tard(heure_locale)
     fuseau = os.environ.get("FUSEAU", "Europe/Zurich")
     evenement = os.environ.get("EVENEMENT", "")
     racine = Path(os.environ.get("RACINE", ".") or ".")
-    mode_python = ""
+    mode = ""
     if evenement != "schedule":
-        mode_python = (os.environ.get("MODE_DEMANDE", "") or "").strip().lower() or "manuel"
-        mode, explication = "manuel", f"Lancement « {evenement} » (mode {mode_python}) : on y va."
+        mode = (os.environ.get("MODE_DEMANDE", "") or "").strip().lower() or "manuel"
+        explication = f"Lancement « {evenement} » (mode {mode}) : on y va."
     else:
-        # Secret partagé : jeton Telegram, sinon jeton GitHub du bot (installation sans Telegram).
-        jeton = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip() or os.environ.get("BOT_GITHUB_TOKEN", "").strip()
-        export = lire_bot(os.environ.get("BOT_URL", ""), jeton)
+        # Secret partagé : dérivé du jeton GitHub du bot.
+        export = lire_bot(os.environ.get("BOT_URL", ""), os.environ.get("BOT_GITHUB_TOKEN", "").strip())
         secours = None if export else lire_secours(racine / "preferences.json")
         config = (export or {}).get("config") or secours or {}
         if config.get("pays") in pays.PROFILS:      # le pays choisi dans l'application donne le fuseau
@@ -189,23 +148,16 @@ def main() -> int:
         if export or secours:
             mode, explication = decider_filet(dt.datetime.now(dt.timezone.utc), fuseau, export, secours,
                                               date_dernier_episode(racine / "memoire.json"))
-            mode_python = mode
-        elif not os.environ.get("TELEGRAM_BOT_TOKEN", "").strip():
-            # Dépôt modèle, installation pas encore terminée, ou bot (sans Telegram) injoignable et
-            # sans sauvegarde : personne à qui envoyer un épisode.
-            mode, explication = "", "Bot injoignable et pas de Telegram : pas d'épisode programmé ici."
-        else:      # ancien fonctionnement, sans bot
-            mode, explication = decider(evenement, os.environ.get("PROGRAMMATION", ""), heure_locale, fuseau,
-                                        heure_rattrapage=heure_rattrapage)
+        else:
+            # Dépôt modèle, installation pas encore terminée, ou bot injoignable sans sauvegarde.
+            explication = "Bot injoignable et pas de sauvegarde : pas d'épisode programmé ici."
     print(explication)
     sortie = os.environ.get("GITHUB_OUTPUT")
     if sortie:
         with open(sortie, "a", encoding="utf-8") as fichier:
             fichier.write(f"go={'true' if mode else 'false'}\n")
-            fichier.write(f"mode={mode_python}\n")
+            fichier.write(f"mode={mode}\n")
             fichier.write(f"rattrapage={'true' if mode == 'rattrapage' else 'false'}\n")
-            # Après un envoi programmé raté, le message Telegram annonce le rattrapage.
-            fichier.write(f"essai_suivant={normaliser(heure_rattrapage) if mode == 'normal' else ''}\n")
     return 0
 
 

@@ -1,5 +1,5 @@
-// Accès aux services extérieurs : Telegram, GitHub, Gemini, et l'heure locale.
-// Les adresses de base sont réglables (TELEGRAM_API, GITHUB_API, GEMINI_API)
+// Accès aux services extérieurs : GitHub, Gemini, et l'heure locale.
+// Les adresses de base sont réglables (GITHUB_API, GEMINI_API)
 // pour pouvoir tout tester en local contre de faux services.
 
 // Fuseau du pays choisi dans l'application (un bot = un auditeur) ; Suisse par défaut.
@@ -36,73 +36,6 @@ export function instantLocal(dateIso, heure) {
     t -= ecart;
   }
   return t;
-}
-
-// ───────────────────────────────── Telegram ─────────────────────────────────
-
-export class Telegram {
-  constructor(env) {
-    this.actif = telegramActif(env);   // sans Telegram, chaque appel répond « non configuré », sans rien envoyer
-    this.base = `${env.TELEGRAM_API || "https://api.telegram.org"}/bot${env.TELEGRAM_BOT_TOKEN}`;
-    this.fichiers = `${env.TELEGRAM_API || "https://api.telegram.org"}/file/bot${env.TELEGRAM_BOT_TOKEN}`;
-    this.chat = env.TELEGRAM_CHAT_ID;
-  }
-
-  async appeler(methode, corps = {}) {
-    if (!this.actif) return { ok: false, description: "Telegram non configuré" };
-    const r = await fetch(`${this.base}/${methode}`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corps),
-    });
-    const donnees = await r.json().catch(() => ({ ok: false, description: `HTTP ${r.status}` }));
-    if (!donnees.ok && !/message is not modified/.test(donnees.description || "")) {
-      console.log(`Telegram ${methode} : ${donnees.description}`);
-    }
-    return donnees;
-  }
-
-  envoyer(texte, options = {}) {
-    return this.appeler("sendMessage", {
-      chat_id: this.chat, text: tronquer(texte, 4000), parse_mode: "HTML",
-      link_preview_options: { is_disabled: true }, ...options,
-    });
-  }
-
-  modifier(messageId, texte, clavier) {
-    return this.appeler("editMessageText", {
-      chat_id: this.chat, message_id: messageId, text: tronquer(texte, 4000), parse_mode: "HTML",
-      link_preview_options: { is_disabled: true }, reply_markup: clavier ? { inline_keyboard: clavier } : undefined,
-    });
-  }
-
-  modifierBoutons(messageId, clavier) {
-    return this.appeler("editMessageReplyMarkup", {
-      chat_id: this.chat, message_id: messageId, reply_markup: { inline_keyboard: clavier || [] },
-    });
-  }
-
-  repondreBouton(id, texte = "", alerte = false) {
-    return this.appeler("answerCallbackQuery", { callback_query_id: id, text: texte.slice(0, 190), show_alert: alerte });
-  }
-
-  ecrit() {
-    return this.appeler("sendChatAction", { chat_id: this.chat, action: "typing" });
-  }
-
-  async fichier(identifiant) {
-    const infos = await this.appeler("getFile", { file_id: identifiant });
-    if (!infos.ok) return null;
-    const r = await fetch(`${this.fichiers}/${infos.result.file_path}`);
-    return r.ok ? new Uint8Array(await r.arrayBuffer()) : null;
-  }
-}
-
-export function tronquer(texte, max) {
-  const t = String(texte ?? "");
-  return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
-}
-
-export function echapper(t) {
-  return String(t ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 // ────────────────────────────────── GitHub ──────────────────────────────────
@@ -153,7 +86,7 @@ export class GitHub {
   }
 }
 
-export function base64(octets) {
+function base64(octets) {
   let binaire = "";
   for (let i = 0; i < octets.length; i += 0x8000) binaire += String.fromCharCode(...octets.subarray(i, i + 0x8000));
   return btoa(binaire);
@@ -207,32 +140,18 @@ export async function empreinte(texte, longueur = 48) {
   return [...new Uint8Array(octets)].map((o) => o.toString(16).padStart(2, "0")).join("").slice(0, longueur);
 }
 
-// Telegram est facultatif : il faut son jeton et la conversation.
-export function telegramActif(env) {
-  return Boolean(String(env.TELEGRAM_BOT_TOKEN || "").trim() && String(env.TELEGRAM_CHAT_ID || "").trim());
-}
-
-// Secrets partagés avec GitHub (en-tête X-Podcast-Secret) : dérivés du jeton Telegram
-// (installations d'avant), ou, sans Telegram, du jeton GitHub du bot (BOT_GITHUB_TOKEN,
-// que GitHub et le bot ont tous les deux). Les deux sont acceptés quand ils existent.
-export async function secretsAcceptes(env) {
-  const bases = [env.TELEGRAM_BOT_TOKEN, env.GITHUB_TOKEN].map((x) => String(x || "").trim()).filter(Boolean);
-  return Promise.all(bases.map((base) => empreinte(`podcast:${base}`)));
-}
-
-// Le secret principal : signe les liens audio, protège le webhook Telegram.
+// Secret partagé avec GitHub (en-tête X-Podcast-Secret) : dérivé du jeton GitHub du bot
+// (BOT_GITHUB_TOKEN côté GitHub, GITHUB_TOKEN côté bot). Il signe aussi les liens audio.
 export async function secretPartage(env) {
-  return (await secretsAcceptes(env))[0] || "";
+  const base = String(env.GITHUB_TOKEN || "").trim();
+  return base ? empreinte(`podcast:${base}`) : "";
 }
 
 export async function secretValide(env, recu) {
   if (!recu || typeof recu !== "string") return false;
-  for (const attendu of await secretsAcceptes(env)) {
-    if (attendu.length === recu.length) {
-      let difference = 0;
-      for (let i = 0; i < attendu.length; i++) difference |= attendu.charCodeAt(i) ^ recu.charCodeAt(i);
-      if (!difference) return true;
-    }
-  }
-  return false;
+  const attendu = await secretPartage(env);
+  if (!attendu || attendu.length !== recu.length) return false;
+  let difference = 0;
+  for (let i = 0; i < attendu.length; i++) difference |= attendu.charCodeAt(i) ^ recu.charCodeAt(i);
+  return !difference;
 }

@@ -3,8 +3,8 @@
 Le bot garde les réglages, les règles et le planning. GitHub les lit au début
 de chaque épisode (/api/config), lui confie les fichiers (/api/fichier) et lui
 signale ce qui a été envoyé (/api/evenement).
-Le secret partagé est dérivé du jeton du bot Telegram ou, sans Telegram, du jeton
-GitHub du bot (BOT_GITHUB_TOKEN) : rien de plus à régler.
+Le secret partagé est dérivé du jeton GitHub du bot (BOT_GITHUB_TOKEN, que le bot
+reçoit au déploiement) : rien de plus à régler.
 """
 
 from __future__ import annotations
@@ -20,19 +20,19 @@ import requests
 ADRESSE_PAR_DEFAUT = "https://podcast.TON-SOUS-DOMAINE.workers.dev"
 
 
-def secret_partage(jeton_telegram: str) -> str:
-    return hashlib.sha256(f"podcast:{jeton_telegram}".encode()).hexdigest()[:48]
+def secret_partage(jeton: str) -> str:
+    return hashlib.sha256(f"podcast:{jeton}".encode()).hexdigest()[:48]
 
 
-def jeton_liaison(jeton_telegram: str = "") -> str:
-    """La base du secret partagé : le jeton Telegram, sinon celui de GitHub (le bot a les deux, ou le second)."""
-    return (jeton_telegram or os.environ.get("TELEGRAM_BOT_TOKEN", "")).strip() or os.environ.get("BOT_GITHUB_TOKEN", "").strip()
+def jeton_liaison() -> str:
+    """La base du secret partagé : le jeton GitHub du bot (secret BOT_GITHUB_TOKEN)."""
+    return os.environ.get("BOT_GITHUB_TOKEN", "").strip()
 
 
 class Bot:
-    def __init__(self, adresse: str, jeton_telegram: str = "", delai: int = 20) -> None:
+    def __init__(self, adresse: str, delai: int = 20) -> None:
         self.adresse = (adresse or ADRESSE_PAR_DEFAUT).rstrip("/")
-        jeton = jeton_liaison(jeton_telegram)
+        jeton = jeton_liaison()
         self.secret = secret_partage(jeton) if jeton else ""
         self.delai = delai
 

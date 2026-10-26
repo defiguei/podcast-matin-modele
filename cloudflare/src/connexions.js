@@ -109,6 +109,8 @@ export function resumeConnexions(cles = {}, etat = {}, maintenant = Date.now()) 
   const dernierTest = (nom) => {
     const t = (etat.tests_cles || {})[nom];
     if (!t) return null;
+    // Un test réussi (encart vert) ne reste affiché qu'une journée ; un nouvel épisode l'efface aussi (etat.js).
+    if (t.ok && !t.en_cours && !(maintenant - (t.quand_ms || 0) < 24 * 3600 * 1000)) return null;
     const enCours = Boolean(t.en_cours && maintenant - (t.lance_ms || 0) < 5 * 60 * 1000);
     const perdu = Boolean(t.en_cours && !enCours);
     return { ok: t.ok ?? null, message: perdu ? "GitHub n'a pas renvoyé de résultat : regarde l'exécution « Tester mes clés » dans l'onglet Actions." : t.message || "",

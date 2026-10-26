@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """Code de connexion à l'application, demandé au bot par GitHub.
 
-Sans Telegram, c'est ainsi qu'on ouvre l'application la première fois, ou sur un
-nouvel appareil : le code (6 chiffres, valable une heure, une seule fois) et un
+C'est ainsi qu'on ouvre l'application la première fois, ou sur un nouvel
+appareil sans en avoir un autre déjà connecté sous la main : le code (6 chiffres, valable une heure, une seule fois) et un
 lien qui le contient s'affichent dans le résumé de l'exécution GitHub, visible
 de toi seul (dépôt privé).
 
     python3 code_connexion.py              # workflow « Code de connexion »
-    python3 code_connexion.py --premiere   # fin du déploiement : seulement pour une
-                                           # toute première ouverture, sans Telegram
+    python3 code_connexion.py --premiere   # fin du déploiement : seulement tant
+                                           # qu'aucun appareil n'est connecté
 
-Variables : BOT_URL, et TELEGRAM_BOT_TOKEN ou BOT_GITHUB_TOKEN (secret partagé).
+Variables : BOT_URL et BOT_GITHUB_TOKEN (secret partagé).
 Bibliothèque standard seulement : il tourne sans rien installer.
 """
 
@@ -36,7 +36,7 @@ def resume(texte: str) -> None:
 def main(arguments: list[str]) -> int:
     premiere = "--premiere" in arguments
     adresse = os.environ.get("BOT_URL", "").strip().rstrip("/")
-    jeton = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip() or os.environ.get("BOT_GITHUB_TOKEN", "").strip()
+    jeton = os.environ.get("BOT_GITHUB_TOKEN", "").strip()
     if not adresse or not jeton:
         print("::warning::Il faut la variable BOT_URL et le secret BOT_GITHUB_TOKEN (docs/INSTALLATION.md).")
         return 0 if premiere else 1
@@ -60,8 +60,7 @@ def main(arguments: list[str]) -> int:
     application = donnees.get("adresse") or f"{adresse}/app"
     if not code:
         # Fin du déploiement, quand un code n'est pas utile : on dit pourquoi, et comment en avoir un.
-        pourquoi = ("Telegram est configuré : l'application s'ouvre depuis ton bot (bouton « Application »)."
-                    if donnees.get("raison") == "telegram" else "Un appareil est déjà connecté à l'application.")
+        pourquoi = "Un appareil est déjà connecté à l'application."
         resume("\n".join([
             "## 📱 Ton application",
             "",

@@ -3,7 +3,7 @@
 // « Tester » de l'application (workflow « Tester mes clés »), ou à la main.
 // Même test que dans le bot (src/connexions.js) ; aucune clé n'est affichée ni envoyée.
 //   node tester-cles.mjs   (variables : CLES = « tavily,sncf » (vide : toutes), BOT_URL,
-//                           TELEGRAM_BOT_TOKEN ou BOT_GITHUB_TOKEN, GEMINI_API_KEY, TAVILY_API_KEY, SNCF_API_KEY)
+//                           BOT_GITHUB_TOKEN, GEMINI_API_KEY, TAVILY_API_KEY, SNCF_API_KEY)
 // Bibliothèque standard de Node seulement : rien à installer.
 import { createHash } from "node:crypto";
 import { appendFileSync } from "node:fs";
@@ -29,7 +29,7 @@ async function principal() {
   if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, `${lignes.join("\n")}\n`);
 
   const adresse = String(env.BOT_URL || "").trim().replace(/\/+$/, "");
-  const jeton = String(env.TELEGRAM_BOT_TOKEN || "").trim() || String(env.BOT_GITHUB_TOKEN || "").trim();
+  const jeton = String(env.BOT_GITHUB_TOKEN || "").trim();
   if (!adresse || !jeton) {
     console.log("::warning::Résultat non transmis au bot : il faut la variable BOT_URL et le secret BOT_GITHUB_TOKEN.");
     return 0;

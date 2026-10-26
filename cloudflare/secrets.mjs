@@ -4,11 +4,11 @@
 // remplacer une valeur réglée chez Cloudflare. Exception : BOT_GITHUB_TOKEN
 // (nom propre à GitHub, donc choix explicite) devient le GITHUB_TOKEN du bot.
 //   node secrets.mjs   (variables : CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID,
-//                       TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, GEMINI_API_KEY, BOT_GITHUB_TOKEN)
+//                       GEMINI_API_KEY, BOT_GITHUB_TOKEN)
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const SI_ABSENTS = ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "GEMINI_API_KEY"];
+const SI_ABSENTS = ["GEMINI_API_KEY"];
 
 export function aTransmettre(existants, env) {
   const deja = new Set(existants || []);
@@ -61,14 +61,10 @@ function principal() {
   console.log(avertissementManquants([...existants, ...noms]) || "Le bot a tout ce qu'il lui faut.");
 }
 
-// Le jeton GitHub est indispensable ; Telegram est facultatif, mais il lui faut ses deux secrets.
+// Le jeton GitHub est indispensable.
 export function avertissementManquants(presents) {
   const a = new Set(presents);
   if (!a.has("GITHUB_TOKEN")) return "::warning::Il manque au bot le jeton GitHub : ajoute le secret GitHub BOT_GITHUB_TOKEN, puis relance « Déployer le bot ».";
-  const telegram = ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"].filter((n) => a.has(n));
-  if (telegram.length === 1) {
-    return `::warning::Telegram à moitié réglé : il manque ${telegram[0] === "TELEGRAM_BOT_TOKEN" ? "TELEGRAM_CHAT_ID" : "TELEGRAM_BOT_TOKEN"} (ou retire l'autre pour fonctionner sans Telegram).`;
-  }
   return "";
 }
 

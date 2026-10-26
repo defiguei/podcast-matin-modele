@@ -698,11 +698,6 @@ verifier(chapitres == [(0.0, "Ouverture"), (4.1, "Agenda"), (9.6, "Saint du jour
          f"chapitres : {chapitres}")
 verifier(podcast.minute_seconde(61.8) == "1:02" and podcast.minute_seconde(0) == "0:00", "minutage lisible")
 verifier(podcast.calculer_chapitres(script, [0.0], rubriques) == [], "minutage incomplet : pas de chapitres")
-clavier = podcast.clavier_episode("2026-10-15", 3, ["R2"])
-donnees = [b.get("callback_data") for ligne in clavier for b in ligne]
-verifier(donnees[:2] == ["e:2026-10-15:up", "e:2026-10-15:down"] and "e:2026-10-15:cr3" in donnees and "e:2026-10-15:cr4" not in donnees,
-         "boutons de l'épisode")
-verifier(donnees[-1] == "a:rl:R2:ecrit" and all(len(d.encode()) <= 64 for d in donnees), "bouton « Détails des idées » (≤ 64 octets)")
 jpeg = creer_pochette(jeudi, "Grottes, grève et saint Géraud : un jeudi bien rempli pour finir la semaine")
 verifier(jpeg and jpeg[:2] == b"\xff\xd8" and len(jpeg) < 200_000, f"pochette JPEG ({len(jpeg or b'')} octets)")
 from PIL import Image  # noqa: E402
@@ -742,10 +737,9 @@ def texte_gemini(objet):
 EXPORT = {"format": "bot-v2", "version": "test", "config": config_bot(), "aujourdhui": "2026-10-15",
           "heure_prevue_aujourdhui": "06:45", "episode_envoye_aujourdhui": False,
           "derniers_resultats": {"regles": ["R2"], "idees": ["Juraparc"]}}
-etat = {"appels": [], "bot_joignable": True, "evenements": [], "message_id": 700, "poll": 0}
-SECRET = liaison.secret_partage("111:jeton-test")
-SECRET_GH = liaison.secret_partage("gh-jeton-test")      # sans Telegram : dérivé du jeton GitHub du bot
-SECRETS = {SECRET, SECRET_GH}
+etat = {"appels": [], "bot_joignable": True, "evenements": []}
+SECRET_GH = liaison.secret_partage("gh-jeton-test")      # dérivé du jeton GitHub du bot
+SECRETS = {SECRET_GH}
 
 
 def faux_get(url, timeout=None, headers=None, params=None):
@@ -794,7 +788,7 @@ def faux_post(url, json=None, data=None, files=None, timeout=None, headers=None)
                 {"animateur": "Léa", "texte": "Bonjour Daniel ! Samedi, on vous emmène sous terre."},
                 {"animateur": "Hugo", "texte": "Les grottes de Vallorbe : douze francs par enfant."},
                 {"animateur": "Léa", "texte": "Et le musée du fer, juste à côté."},
-                {"animateur": "Hugo", "texte": "Votez dans le sondage !"}]})
+                {"animateur": "Hugo", "texte": "Tout est dans l'application !"}]})
         assert "Tu écris le script" in systeme, systeme[:80]
         assert "« Saint du jour » (rubrique R1)" in systeme and "« Idées pour samedi » (rubrique R2)" in systeme
         demande = json["input"] if isinstance(json["input"], str) else str(json["input"])
@@ -807,17 +801,6 @@ def faux_post(url, json=None, data=None, files=None, timeout=None, headers=None)
             {"animateur": "Léa", "texte": "Et pensez au sac de foot pour le match de demain !", "rubrique": "R2"},
             {"animateur": "Hugo", "texte": "Côté actualité, le budget vaudois est adopté, selon la RTS.", "rubrique": "actualites"},
             {"animateur": "Léa", "texte": "Belle journée à vous !", "rubrique": "cloture"}]})
-    if "api.telegram.org" in url:
-        methode = url.rsplit("/", 1)[1]
-        etat["message_id"] += 1
-        if methode == "sendAudio":
-            return Reponse(200, {"ok": True, "result": {"message_id": etat["message_id"], "audio": {"file_id": f"FICHIER{etat['message_id']}"}}})
-        if methode == "sendPoll":
-            etat["poll"] += 1
-            return Reponse(200, {"ok": True, "result": {"message_id": etat["message_id"], "poll": {"id": f"55500{etat['poll']}"}}})
-        if methode == "sendPhoto" and "inexistante" in str((data or {}).get("photo")):
-            return Reponse(400, {"ok": False, "description": "Bad Request: wrong file identifier/HTTP URL specified"})
-        return Reponse(200, {"ok": True, "result": {"message_id": etat["message_id"]}})
     return Reponse(404, {"ok": False})
 
 
@@ -835,7 +818,7 @@ podcast.time.sleep = lambda s: None
 podcast.Sources = FaussesSources
 recherche.Sources = FaussesSources
 podcast.heure_actuelle = lambda fuseau: dt.datetime(2026, 10, 15, 6, 40, tzinfo=ZH).astimezone(fuseau)
-os.environ.update({"GEMINI_API_KEY": "cle-test", "TELEGRAM_BOT_TOKEN": "111:jeton-test", "TELEGRAM_CHAT_ID": "42",
+os.environ.update({"GEMINI_API_KEY": "cle-test", "BOT_GITHUB_TOKEN": "gh-jeton-test",
                    "CALENDAR_ICS_URL": "", "BOT_URL": "https://bot.exemple", "TAVILY_API_KEY": "tvly-test"})
 for cle_env in ("MODE", "REGLES", "RATTRAPAGE", "ESSAI_SUIVANT", "RECHERCHE", "FORMAT", "ECHANTILLONS"):
     os.environ.pop(cle_env, None)
@@ -843,34 +826,26 @@ MEMOIRE.write_text(json.dumps({"dernier_episode": {"date": "2026-10-14", "envoye
 
 code = podcast.main(["--mode", "planifie"])
 verifier(code == 0, f"épisode planifié sans erreur (code {code})")
-appels_tg = [(a[1].rsplit("/", 1)[1], a[2], a[3]) for a in etat["appels"] if a[0] == "POST" and "api.telegram.org" in a[1]]
-audio = [a for a in appels_tg if a[0] == "sendAudio"]
-verifier(len(audio) == 1, "un épisode envoyé")
-donnees_audio, fichiers_audio = audio[0][1], audio[0][2]
-legende = donnees_audio["caption"]
-print("--- légende ---\n" + legende + "\n---")
-verifier("\n0:00 Ouverture\n" in legende and "Saint du jour" in legende and "Idées pour samedi" in legende, "chapitres dans la légende")
-verifier("📌 Idées pour samedi — averses, 14 °C" in legende and "maps/dir" in legende, "règle de sortie : météo et itinéraire")
-verifier("exemple.ch/1" in legende, "sources écrites (citer : les deux)")
-clavier = json.loads(donnees_audio["reply_markup"])["inline_keyboard"]
-verifier(clavier[-1][0]["callback_data"] == "a:rl:R2:ecrit" and any(b["callback_data"] == "e:2026-10-15:cr1" for b in clavier[2]),
-         "boutons : sujet à creuser et détails de R2")
-verifier("thumbnail" in fichiers_audio, "pochette jointe")
+verifier(etat.get("secret_vu") == SECRET_GH, "réglages lus avec le secret du jeton GitHub")
 ev = [x for x in etat["evenements"] if x["type"] == "episode"][-1]
-verifier(ev["type"] == "episode" and ev["message_id"] and ev["mode"] == "planifie", "événement envoyé au bot")
-verifier(ev["regles"] == ["R1", "R2", "R3"] and "Météo" not in legende and ev["details"] == ["R2"] and ev["debut"] == "2026-10-15T06:40", f"règles appliquées : {ev['regles']}")
-verifier(len(ev["chapitres"]) >= 4 and ev["chapitres"][0] == [0, "Ouverture"] and "Léa : Bonjour Daniel" in ev["transcription"], "chapitres et texte transmis")
+verifier(ev["type"] == "episode" and isinstance(ev["ref"], int) and 0 < ev["ref"] < 240000 and ev["mode"] == "planifie"
+         and "message_id" not in ev and "file_id" not in ev, f"événement envoyé au bot (repère {ev.get('ref')})")
+verifier(ev["regles"] == ["R1", "R2", "R3"] and ev["details"] == ["R2"] and ev["debut"] == "2026-10-15T06:40", f"règles appliquées : {ev['regles']}")
+titres_chapitres = [t for _, t in ev["chapitres"]]
+verifier(len(ev["chapitres"]) >= 4 and ev["chapitres"][0] == [0, "Ouverture"] and "Saint du jour" in titres_chapitres and "Idées pour samedi" in titres_chapitres
+         and "Léa : Bonjour Daniel" in ev["transcription"], f"chapitres et texte transmis : {titres_chapitres}")
+verifier(any(x["url"] == "https://exemple.ch/1" for x in ev["sources"]), "sources de l'épisode transmises")
 verifier(ev["sujets"] == ["Budget vaudois"] and ev["nombre_sujets"] == 1, "sujets à creuser")
 depots = [a for a in etat["appels"] if a[0] == "PUT"]
 verifier(len(depots) == 2 and re.fullmatch(r"2026-10/2026-10-15-\d{6}\.mp3", depots[0][2] or "") and depots[0][4] == "audio/mpeg"
-         and depots[0][3] == fichiers_audio["audio"][1] and depots[1][2] == depots[0][2].replace(".mp3", ".jpg") and depots[1][3][:2] == b"\xff\xd8",
-         f"MP3 et pochette confiés au bot (le même fichier que Telegram) : {[d[2] for d in depots]}")
+         and depots[0][3][:1] == b"\xff" and depots[1][2] == depots[0][2].replace(".mp3", ".jpg") and depots[1][3][:2] == b"\xff\xd8",
+         f"MP3 et pochette confiés au bot : {[d[2] for d in depots]}")
 verifier(ev["audio"] == depots[0][2] and ev["pochette"] == depots[1][2], "le bot sait où il les garde")
 gemini = [a[2] for a in etat["appels"] if a[0] == "POST" and "generativelanguage" in a[1]]
 planif = [g for g in gemini if "Tu prépares les règles" in g.get("system_instruction", "")]
 verifier(len(planif) == 1 and planif[0]["model"] == "gemini-3.5-flash-lite", "planification par le modèle léger (un appel)")
 verifier(not any("Tu repères dans l'agenda" in g.get("system_instruction", "") for g in gemini), "déplacements désactivés : aucun appel")
-verifier(not any("tvly" in json.dumps(g) or "111:jeton" in json.dumps(g) for g in gemini), "aucun secret envoyé à Gemini")
+verifier(not any("tvly" in json.dumps(g) or "gh-jeton" in json.dumps(g) for g in gemini), "aucun secret envoyé à Gemini")
 mem = json.loads(MEMOIRE.read_text(encoding="utf-8"))
 verifier(mem["dernier_programme"] == "2026-10-15" and mem["dernier_episode"]["regles"] == ["R1", "R2", "R3"], "mémoire à jour")
 
@@ -880,21 +855,15 @@ verifier(code == 0 and not [a for a in etat["appels"] if a[0] == "POST" and "gen
 code = podcast.main(["--mode", "planifie"])
 verifier(code == 0 and not [a for a in etat["appels"] if a[0] == "POST" and "generativelanguage" in a[1]], "double lancement planifié : ignoré")
 
-# Telegram coupé dans l'application : l'épisode n'arrive que chez le bot (avec son heure comme repère).
-EXPORT["config"]["livraison"] = {"telegram": False}
-etat["appels"].clear()
-code = podcast.main(["--mode", "manuel"])
-ev = [x for x in etat["evenements"] if x["type"] == "episode"][-1]
-envois = [a for a in etat["appels"] if a[0] == "POST" and a[1].endswith("sendAudio")]
-verifier(code == 0 and not envois and ev["audio"] and ev["message_id"] is None and isinstance(ev["ref"], int) and 0 < ev["ref"] < 240000,
-         f"Telegram coupé : épisode chez le bot seulement (repère {ev.get('ref')})")
+# Le bot ne peut pas garder l'épisode : échec clair, signalé au bot.
 etat["stockage"] = False
 etat["appels"].clear()
+etat["evenements"].clear()
 code = podcast.main(["--mode", "manuel"])
-envois = [a for a in etat["appels"] if a[0] == "POST" and a[1].endswith("sendAudio")]
-verifier(code == 0 and len(envois) == 1, "Telegram coupé mais le bot n'a pas pu garder l'audio : Telegram quand même")
+echec = [x for x in etat["evenements"] if x["type"] == "echec"]
+verifier(code == 1 and echec and "rien n'est parti" in echec[-1]["message"] and not [x for x in etat["evenements"] if x["type"] == "episode"],
+         "le bot ne garde pas l'épisode : échec clair, signalé au bot")
 etat["stockage"] = True
-EXPORT["config"].pop("livraison")
 
 # Épisode à la demande sur une règle ponctuelle (R6), bot injoignable → sauvegarde.
 etat["appels"].clear()
@@ -921,12 +890,9 @@ def post_gemini_muet(url, **kw):
 podcast.requests.post = post_gemini_muet
 code = podcast.main(["--mode", "planifie"])
 podcast.requests.post = ancien_post
-messages = [a for a in etat["appels"] if a[0] == "POST" and a[1].endswith("sendMessage")]
-verifier(code == 0 and messages and "Nouvel essai automatique à 7 h 45" in messages[-1][2]["text"],
-         "échec planifié : rattrapage annoncé à 7 h 45 (heure prévue + 1 h)")
 echec = [x for x in etat["evenements"] if x["type"] == "echec"]
-verifier(echec and "raté pour l'instant" in echec[-1]["titre"] and "Nouvel essai automatique à 7 h 45" in echec[-1]["message"],
-         "échec signalé au bot (notification de l'application)")
+verifier(code == 0 and echec and "raté pour l'instant" in echec[-1]["titre"] and "Nouvel essai automatique à 7 h 45" in echec[-1]["message"],
+         "échec planifié : notification, rattrapage annoncé à 7 h 45 (heure prévue + 1 h)")
 
 # ───────────────────────── 8. recherche et extraits ─────────────────────────
 print("\n8. Résultats de recherche, mini-podcast, extraits de voix")
@@ -934,37 +900,20 @@ etat["appels"].clear()
 etat["evenements"].clear()
 code = podcast.main(["--recherche", "R2", "--format", "ecrit"])
 verifier(code == 0, "recherche écrite sans erreur")
-tg = [(a[1].rsplit("/", 1)[1], a[2]) for a in etat["appels"] if a[0] == "POST" and "api.telegram.org" in a[1]]
-methodes = [m for m, _ in tg]
-verifier(methodes[0] == "sendMessage" and "sendPhoto" in methodes and "sendVenue" in methodes and "sendPoll" in methodes,
-         f"séquence : {methodes}")
-entete = tg[0][1]["text"]
-verifier("Idées pour samedi" in entete and "🌦 averses" in entete and "🚆" in entete and "20 CHF maximum" in entete, "en-tête : météo, train, budget")
-photos = [d for m, d in tg if m == "sendPhoto"]
-verifier(photos and "Grottes de Vallorbe" in photos[0]["caption"] and "22 CHF adulte" in photos[0]["caption"] and "✅" in photos[0]["caption"],
-         "carte de l'idée avec photo, prix, budget")
-boutons = json.loads(photos[0]["reply_markup"])["inline_keyboard"][0]
-verifier(boutons[0]["url"] == "https://www.grottesdevallorbe.ch/tarifs" and "maps/dir" in boutons[1]["url"], "boutons Site et Itinéraire")
-cartes = [d for m, d in tg if m in ("sendPhoto", "sendMessage") and "Musée du Fer" in str(d)]
-verifier(cartes and "inventé.example" not in json.dumps(cartes, ensure_ascii=False), "lien inventé par le modèle retiré")
-lieux = [d for m, d in tg if m == "sendVenue"]
-verifier(lieux and abs(float(lieux[0]["latitude"]) - 46.703) < 0.001, "lieu sur la carte (OpenStreetMap)")
-sondage = [d for m, d in tg if m == "sendPoll"][0]
-verifier(json.loads(sondage["options"]) == [{"text": "Grottes de Vallorbe"}, {"text": "Musée du Fer"}] and sondage["is_anonymous"] == "false",
-         "sondage non anonyme")
-fin = tg[-1][1]
-fin_clavier = json.loads(fin["reply_markup"])["inline_keyboard"]
-verifier(fin_clavier[0][0]["copy_text"]["text"].startswith("Samedi : grottes") and fin_clavier[1][0]["callback_data"] == "a:rl:R2:ecrit",
-         "boutons Copier, D'autres idées")
 ev = etat["evenements"][-1]
-verifier(ev["type"] == "recherche" and ev["sondage"]["poll_id"] == "555001" and ev["idees"] == ["Grottes de Vallorbe", "Musée du Fer"],
-         "événement de recherche (sondage) envoyé au bot")
+verifier(ev["type"] == "recherche" and ev["format"] == "ecrit" and ev["idees"] == ["Grottes de Vallorbe", "Musée du Fer"] and "sondage" not in ev,
+         "événement de recherche envoyé au bot (les idées)")
+idees = ev["resultats"][0]["idees"]
+verifier(ev["resultats"][0]["intro"].startswith("Samedi s'annonce pluvieux") and idees[0]["prix"] == "22 CHF adulte, 12 CHF enfant" and idees[0]["dans_le_budget"]
+         and idees[0]["lien"] == "https://www.grottesdevallorbe.ch/tarifs", "idée complète pour l'application : prix, budget, lien")
+verifier(idees[1]["lien"] == "" and "inventé.example" not in json.dumps(ev, ensure_ascii=False), "lien inventé par le modèle retiré")
 
 etat["appels"].clear()
+etat["evenements"].clear()
 code = podcast.main(["--recherche", "R2", "--format", "audio"])
-tg = [(a[1].rsplit("/", 1)[1], a[2], a[3]) for a in etat["appels"] if a[0] == "POST" and "api.telegram.org" in a[1]]
-verifier(code == 0 and tg[0][0] == "sendAudio" and "Grottes de Vallorbe" in tg[0][1]["caption"] and "sendPoll" in [t[0] for t in tg],
-         "mini-podcast : audio, liste des idées, sondage")
+rech = [x for x in etat["evenements"] if x["type"] == "recherche"]
+verifier(code == 0 and rech and re.fullmatch(r"\d{4}-\d{2}/idees-[\d-]+\.mp3", rech[-1]["audio"] or "") and rech[-1]["titre_audio"] == "Sous terre samedi"
+         and rech[-1]["format"] == "audio", f"mini-podcast d'idées : gardé par le bot ({rech[-1].get('audio') if rech else None})")
 
 etat["appels"].clear()
 etat["evenements"].clear()
@@ -973,7 +922,7 @@ tts = [a for a in etat["appels"] if a[0] == "POST" and "generativelanguage" in a
 verifier(code == 0 and len(tts) == 2, f"deux voix par requête : {len(tts)} requêtes pour 3 voix")
 extraits = [e_ for e_ in etat["evenements"] if e_["type"] == "echantillon"]
 verifier([e_["voix"] for e_ in extraits] in (["Aoede", "Kore", "Puck"], ["Kore", "Aoede", "Puck"]) and
-         extraits[0]["file_id"] == extraits[1]["file_id"], "extraits signalés au bot (même fichier pour la paire)")
+         extraits[0]["fichier"] == extraits[1]["fichier"] and "file_id" not in extraits[0], "extraits signalés au bot (même fichier pour la paire)")
 depots = [a[2] for a in etat["appels"] if a[0] == "PUT"]
 verifier(len(depots) == 2 and all(re.fullmatch(r"voix/[A-Z][a-z]+-[A-Z][a-z]+-\d+\.mp3", d) for d in depots)
          and extraits[0]["fichier"] == extraits[1]["fichier"] == depots[0], f"extraits gardés par le bot : {depots}")
@@ -1072,58 +1021,18 @@ EXPORT["config"]["planning"]["delai_rattrapage"] = 30
 code = podcast.main(["--mode", "planifie"])
 EXPORT["config"]["planning"].pop("delai_rattrapage")
 podcast.requests.post = ancien_post
-messages = [a for a in etat["appels"] if a[0] == "POST" and a[1].endswith("sendMessage")]
-verifier(code == 0 and messages and "Nouvel essai automatique à 7 h 15" in messages[-1][2]["text"],
+echec = [x for x in etat["evenements"] if x["type"] == "echec"]
+verifier(code == 0 and echec and "Nouvel essai automatique à 7 h 15" in echec[-1]["message"],
          "échec planifié avec rattrapage à 30 min : annoncé à 7 h 15")
 
-# ───────────────────────── 12. sans Telegram ─────────────────────────────────
-print("\n12. Sans Telegram (jeton GitHub du bot seulement)")
-env_avant = {k: os.environ.get(k) for k in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "BOT_GITHUB_TOKEN")}
-os.environ.pop("TELEGRAM_BOT_TOKEN", None)
-os.environ.pop("TELEGRAM_CHAT_ID", None)
-os.environ["BOT_GITHUB_TOKEN"] = "gh-jeton-test"
-appels_tg = lambda: [a for a in etat["appels"] if a[0] == "POST" and "api.telegram.org" in a[1]]
-MEMOIRE.write_text(json.dumps({}), encoding="utf-8")
+# ───────────────────────── 12. sans jeton GitHub du bot ──────────────────────
+print("\n12. Sans jeton GitHub du bot")
+jeton_avant = os.environ.pop("BOT_GITHUB_TOKEN", None)
 etat["appels"].clear()
-etat["evenements"].clear()
-etat.pop("secret_vu", None)
 code = podcast.main(["--mode", "manuel"])
-ev = [x for x in etat["evenements"] if x["type"] == "episode"]
-depots = [a for a in etat["appels"] if a[0] == "PUT"]
-verifier(code == 0 and not appels_tg() and ev and ev[-1]["audio"] and ev[-1]["message_id"] is None and depots and etat.get("secret_vu") == SECRET_GH,
-         "épisode sans Telegram : gardé par le bot, secret dérivé du jeton GitHub, aucun appel à Telegram")
-etat["stockage"] = False
-etat["evenements"].clear()
-code = podcast.main(["--mode", "manuel"])
-echec = [x for x in etat["evenements"] if x["type"] == "echec"]
-verifier(code == 1 and echec and "rien n'est parti" in echec[-1]["message"] and not appels_tg(),
-         "sans Telegram, si le bot ne garde pas l'épisode : échec clair, signalé au bot")
-etat["stockage"] = True
-etat["appels"].clear()
-etat["evenements"].clear()
-code = podcast.main(["--recherche", "R2", "--format", "audio"])
-rech = [x for x in etat["evenements"] if x["type"] == "recherche"]
-verifier(code == 0 and not appels_tg() and rech and re.fullmatch(r"\d{4}-\d{2}/idees-[\d-]+\.mp3", rech[-1]["audio"] or "") and rech[-1]["titre_audio"],
-         f"mini-podcast d'idées sans Telegram : gardé par le bot ({rech[-1].get('audio') if rech else None})")
-etat["appels"].clear()
-etat["evenements"].clear()
-code = podcast.main(["--echantillons", "Kore,Puck"])
-extraits = [x for x in etat["evenements"] if x["type"] == "echantillon"]
-verifier(code == 0 and not appels_tg() and len(extraits) == 2 and extraits[0]["fichier"] and extraits[0]["file_id"] is None,
-         "extraits de voix sans Telegram : gardés par le bot")
-etat["appels"].clear()
-code = podcast.main(["--retours"])
-verifier(code == 0 and not appels_tg() and not [a for a in etat["appels"] if a[0] == "POST" and "generativelanguage" in a[1]],
-         "sans Telegram : pas de messages à lire, ni Telegram ni Gemini appelés")
-os.environ.pop("BOT_GITHUB_TOKEN", None)
-code = podcast.main(["--mode", "manuel"])
-verifier(code == 1, "ni Telegram ni jeton GitHub : échec clair")
-for cle_env, valeur in env_avant.items():
-    if valeur is None:
-        os.environ.pop(cle_env, None)
-    else:
-        os.environ[cle_env] = valeur
-
+verifier(code == 1 and not [a for a in etat["appels"] if a[0] == "POST" and "generativelanguage" in a[1]],
+         "sans jeton GitHub du bot : échec clair, rien de préparé pour rien")
+os.environ["BOT_GITHUB_TOKEN"] = jeton_avant or ""
 print()
 
 # ───────────── 5 quater. pays : tous les pays proposés, « Pas renseigné » ─────────────

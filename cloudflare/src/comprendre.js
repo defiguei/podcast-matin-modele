@@ -18,7 +18,9 @@ import {
   INFOS_SOURCES, sourcesAuto, sourcesUtilisables, nomSource, RENDUS, minutesPoint, formatRecherche,
 } from "./config.js";
 import { formulaireNeuf, formulaireDepuisRegle, enregistrerRubrique, PERIODES } from "./miniapp.js";
-import { GRATUIT } from "./assistant.js";
+
+// Une demande « gratuite » : budget à 0.
+export const GRATUIT = /gratuit|gratis|sans frais|(?<!\d)0\s*(?:chf|fr|francs?|€|eur|euros?)(?![a-z])|rien d[ée]penser|pas d['’]argent/i;
 
 export const ACTIONS = [
   "regler", "ajouter_liste", "retirer_liste", "horaire", "exception", "retirer_exception", "pause", "retirer_pause",
@@ -29,7 +31,7 @@ export const ACTIONS = [
 ];
 
 const LISTES = ["actus.sujets_preferes", "actus.sujets_a_eviter", "consignes"];
-const MENUS = ["reglages", "planning", "format", "voix", "deroule", "agenda", "actus", "consignes", "regles", "aide", "tableau"];
+const MENUS = ["reglages", "planning", "format", "voix", "deroule", "agenda", "actus", "consignes", "regles"];
 const LONGUEURS_FORMULAIRE = ["aucune", ...Object.keys(LONGUEURS)];
 // Couper au moins ce nombre de jours d'un coup demande une confirmation.
 const JOURS_COUPES_LOURD = 3;
@@ -582,7 +584,7 @@ export function resumerJours(jours) {
 
 // ─────────────────────────── ce qu'on montre ───────────────────────────────
 
-// Le message pour l'auditeur, le même dans Telegram et dans l'application. La phrase de
+// Le message pour l'auditeur, montré dans l'application. La phrase de
 // Gemini n'est gardée que si elle ne risque pas de contredire ce qui a été fait : elle
 // accompagne des changements réussis, ou répond quand il n'y a rien à changer.
 export function messageCompris(resultat) {

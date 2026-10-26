@@ -1,5 +1,5 @@
 // Fichiers des épisodes (MP3, pochettes, extraits de voix), gardés par le bot
-// lui-même : plus besoin de Telegram pour les écouter.
+// lui-même et servis à l'application et au flux privé.
 //
 // Un Durable Object par mois (« 2026-10 ») et un pour les extraits de voix
 // (« voix ») : chacun reste petit, et un mois entier s'efface d'un coup quand

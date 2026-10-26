@@ -11,7 +11,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Podcast Matin">
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
@@ -22,7 +21,7 @@
   --aube: #F2A65A; --aube-clair: #F7C48E; --sur-aube: #1A1206; --aube-fond: #2A2620;
   --bleu: #8DB8F2; --bleu-fond: #1F2836; --vert: #8FD3A8; --vert-fond: #1E2A24; --rouge: #F28B82;
   --titre: "Bricolage Grotesque", system-ui, sans-serif; --corps: "Figtree", system-ui, sans-serif;
-  --bas: max(env(safe-area-inset-bottom, 0px), var(--tg-content-safe-area-inset-bottom, 0px));
+  --bas: env(safe-area-inset-bottom, 0px);
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; background: var(--fond); color: var(--texte); font-family: var(--corps); font-size: 15px; }
@@ -42,6 +41,15 @@ h2 { margin: 0; font-family: var(--titre); font-weight: 700; font-size: 18px; }
 .sous { font-size: 14px; color: var(--doux); }
 .groupe { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--doux); padding: 6px 2px 0; }
 .carte { background: var(--carte); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.appareil { display: flex; align-items: center; gap: 8px; padding: 8px 6px 8px 12px; min-width: 0; }
+.appareil .textes { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.appareil .nom { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.appareil .aide { margin: 0; font-size: 12px; }
+.appareil .corbeille { flex: none; width: 36px; height: 36px; color: var(--rouge); }
+.appareil .mini-inter[disabled] { opacity: .4; }
+.tete-repli { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: none; border: 0; padding: 0; min-height: 32px; color: var(--texte); text-align: left; width: 100%; }
+.tete-repli svg { color: var(--doux); transition: transform .15s; }
+.tete-repli[aria-expanded="true"] svg { transform: rotate(90deg); }
 .ligne { display: flex; align-items: center; gap: 10px; }
 .entre { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .vide { color: var(--doux); font-size: 14px; text-align: center; padding: 24px 12px; background: var(--carte); border-radius: 16px; }
@@ -69,6 +77,7 @@ h2 { margin: 0; font-family: var(--titre); font-weight: 700; font-size: 18px; }
 .soleil .puces { display: flex; flex-wrap: wrap; gap: 8px; font-size: 13px; font-weight: 600; }
 .soleil .puces span { background: rgba(26, 18, 6, 0.12); border-radius: 999px; padding: 6px 10px; }
 .soleil .actions { display: flex; gap: 8px; }
+.soleil .prochain { background: none; border: 0; padding: 0; margin: 0; color: inherit; font: inherit; width: 100%; cursor: pointer; }
 .soleil .actions .bouton { flex: 1; }
 .soleil .saute { font-size: 13px; font-weight: 500; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid rgba(26, 18, 6, 0.2); padding-top: 10px; }
 .soleil .saute button { background: none; border: 0; color: var(--sur-aube); font-weight: 700; text-decoration: underline; min-height: 36px; }
@@ -314,15 +323,16 @@ input.avance { width: 100%; accent-color: var(--aube); margin: 0; height: 24px; 
 .ajout .bouton { flex: none; }
 .compacte { min-height: 40px; background: var(--carte-2); border: 0; border-radius: 10px; padding: 0 10px; color: var(--texte); font-variant-numeric: tabular-nums; }
 /* voix : chacune est un animateur possible */
-.voix-ligne { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "nom inter" "detail inter"; align-items: center; column-gap: 8px; row-gap: 6px; padding: 10px 6px 10px 12px; }
-.voix-ligne .nom-voix { grid-area: nom; min-height: 40px; width: 100%; min-width: 0; border: 0; border-radius: 10px; background: var(--carte); color: var(--texte); padding: 0 10px; font-size: 15px; font-weight: 600; }
+/* une voix = une ligne : prénom, timbre (raccourci), écoute ou préparation (icône), interrupteur */
+.voix-ligne { display: flex; align-items: center; gap: 6px; padding: 6px 4px 6px 8px; min-width: 0; }
+.voix-ligne .nom-voix { flex: 0 0 6.5em; min-height: 36px; min-width: 0; border: 0; border-radius: 10px; background: var(--carte); color: var(--texte); padding: 0 8px; font-size: 15px; font-weight: 600; }
 .voix-ligne .nom-voix::placeholder { color: var(--texte); opacity: 1; }
-.voix-ligne .mini-inter { grid-area: inter; }
-.voix-ligne .detail { grid-area: detail; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding-left: 2px; }
-.voix-ligne .detail .aide { margin: 0; min-width: 0; }
+.voix-ligne .timbre { flex: 1; min-width: 0; margin: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.voix-ligne .mini-inter { flex: none; }
 .voix-ligne.eteinte .nom-voix, .voix-ligne.eteinte .nom-voix::placeholder { color: var(--doux); font-weight: 500; }
-.coche.ecoute { display: inline-flex; align-items: center; gap: 4px; padding: 0 12px 0 8px; color: var(--texte); }
-.coche.ecoute svg { width: 16px; height: 16px; }
+.voix-ligne .rond { flex: none; width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--trait-2); background: transparent; color: var(--texte); display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.voix-ligne .rond svg { width: 16px; height: 16px; }
+.voix-ligne .rond[aria-checked="true"] { background: var(--aube-fond); border-color: var(--aube); color: var(--aube); }
 .choix-voix { min-width: 0; max-width: 100%; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
 .reglage .choix-voix { width: 168px; flex: none; }
 .jour-voix { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center; gap: 8px; padding: 6px 10px 6px 14px; min-height: 52px; }
@@ -334,7 +344,7 @@ input.avance { width: 100%; accent-color: var(--aube); margin: 0; height: 24px; 
 .idee .infos { display: flex; flex-wrap: wrap; gap: 6px; }
 .idee .infos span { font-size: 12px; background: var(--carte-2); border-radius: 999px; padding: 4px 10px; color: var(--doux-2); }
 .idee .infos span.ok { background: var(--vert-fond); color: var(--vert); }
-/* feuille de choix (plus de 2 actions : la fenêtre Telegram n'en accepte que 3 avec « Annuler ») */
+/* feuille de choix (plusieurs actions, avec « Annuler ») */
 #feuille { position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-end; justify-content: center; background: rgba(5,7,10,.55); }
 #feuille .panneau { width: 100%; max-width: 560px; background: var(--fond-nav); border-radius: 22px 22px 0 0; padding: 18px 16px calc(16px + var(--bas)); display: flex; flex-direction: column; gap: 10px; }
 #feuille .entete { display: flex; flex-direction: column; gap: 4px; padding: 0 4px 4px; }
@@ -345,7 +355,7 @@ input.avance { width: 100%; accent-color: var(--aube); margin: 0; height: 24px; 
 #feuille .choix button + button { border-top: 1px solid var(--trait); }
 #feuille .choix button.danger { color: var(--rouge); }
 #feuille { overscroll-behavior: contain; touch-action: none; }
-#feuille .panneau { max-height: calc(var(--tg-viewport-stable-height, 100dvh) - 24px); overflow: hidden; touch-action: pan-y; }
+#feuille .panneau { max-height: calc(100dvh - 24px); overflow: hidden; touch-action: pan-y; }
 #feuille .panneau > * { flex: none; }
 #feuille .panneau:not(:has(.defile)) { overflow-y: auto; overscroll-behavior: contain; }
 #feuille .panneau > .defile { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
@@ -375,33 +385,15 @@ select.compacte { appearance: none; background-image: url("data:image/svg+xml,%3
 <div id="feuille" class="cache" role="dialog" aria-modal="true" aria-labelledby="feuille-titre"></div>
 <script>
 "use strict";
-// Dans Telegram : l'objet WebApp et sa signature. Ailleurs (navigateur, écran d'accueil) : rien.
-const tg = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData ? window.Telegram.WebApp : null;
-// Hors de Telegram, chaque appareil a son propre jeton (donné contre un code à 6 chiffres).
+// Chaque appareil a son propre jeton (donné contre un code à 6 chiffres).
 const APPAREIL = "podcast-matin-appareil";
-// Dans Telegram : un identifiant au hasard gardé sur l'appareil, juste pour le reconnaître dans la liste (pas un droit d'accès).
-const APPAREIL_LOCAL = "podcast-matin-appareil-local";
-function idLocal() {
-  try {
-    let v = localStorage.getItem(APPAREIL_LOCAL) || "";
-    if (!/^t-[0-9a-f]{10}$/.test(v)) {
-      v = "t-" + [...crypto.getRandomValues(new Uint8Array(5))].map((o) => o.toString(16).padStart(2, "0")).join("");
-      localStorage.setItem(APPAREIL_LOCAL, v);
-    }
-    return v;
-  } catch (e) { return ""; }   // stockage refusé : l'appareil n'est pas listé
-}
-function nomTelegram() {
-  const systeme = { ios: "iPhone ou iPad", android: "Android", tdesktop: "ordinateur", macos: "Mac", weba: "navigateur", webk: "navigateur", web: "navigateur" }[(tg && tg.platform) || ""];
-  return systeme ? `Telegram · ${systeme}` : "Telegram";
-}
-// Identifiant de cet appareil dans la liste du bot (même forme que côté bot : 8 premiers caractères du jeton, ou « t-… »).
-const idCourant = () => (tg ? idLocal() : jetonAppareil.lire().slice(0, 8));
+// Identifiant de cet appareil dans la liste du bot (même forme que côté bot : 8 premiers caractères du jeton).
+const idCourant = () => jetonAppareil.lire().slice(0, 8);
 
 const jetonAppareil = { lire() { try { return localStorage.getItem(APPAREIL) || ""; } catch (e) { return ""; } },
   ecrire(v) { try { if (v) localStorage.setItem(APPAREIL, v); else localStorage.removeItem(APPAREIL); } catch (e) { /* stockage refusé */ } } };
 const S = { d: null, ecran: "accueil", integree: null, fiche: null, mois: 0, occupe: false,
-            reglage: null, episode: null, texte: null, discussion: [], charge: 0, choisi: null, jourVue: { rubriques: "", deroule: "" }, jourDernier: {}, moisEpisodes: null, archives: {}, aPreparer: [] };
+            reglage: null, episode: null, texte: null, discussion: [], charge: 0, choisi: null, jourVue: { rubriques: "", deroule: "" }, replis: { sources: false, texte: false }, jourDernier: {}, moisEpisodes: null, archives: {}, aPreparer: [] };
 const ecranEl = document.getElementById("ecran");
 const navEl = document.getElementById("nav");
 const miniEl = document.getElementById("mini");
@@ -449,6 +441,7 @@ const ICONES = {
   sources: '<path d="M5 19a1 1 0 1 0 0-.01M5 12a7 7 0 0 1 7 7M5 5a14 14 0 0 1 14 14"/>',
   consignes: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
   creuser: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4M11 8v6M8 11h6"/>',
+  telecharger: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
   telephone: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
   stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
   idees: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
@@ -474,8 +467,8 @@ const PAUSE = '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true
 const POIGNEE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
 const interrupteur = (nom, coche, attributs) => `<button type="button" class="interrupteur" role="switch" aria-checked="${Boolean(coche)}" ${attributs}>${nom}<span class="rail"><span></span></span></button>`;
 
-function vibrer(type) { try { tg && tg.HapticFeedback && (type === "choix" ? tg.HapticFeedback.selectionChanged() : tg.HapticFeedback.notificationOccurred(type)); } catch (e) { /* ancien Telegram */ } }
-const recent = (v) => tg && tg.isVersionAtLeast && tg.isVersionAtLeast(v);
+// Petite vibration (Android) ; sans effet ailleurs.
+function vibrer(type) { try { if (navigator.vibrate) navigator.vibrate(type === "choix" ? 5 : 12); } catch (e) { /* pas de vibreur */ } }
 
 let minuterie = null;
 function annoncer(texte, erreur = false) {
@@ -488,19 +481,11 @@ function annoncer(texte, erreur = false) {
 }
 
 function confirmer(message, ok) {
-  if (tg && tg.showConfirm && recent("6.2")) tg.showConfirm(message, (oui) => { if (oui) ok(); });
-  else if (window.confirm(message)) ok();
+  if (window.confirm(message)) ok();
 }
 
-// Fenêtre Telegram : 3 boutons au plus, « Annuler » compris. Au-delà (ou si
-// Telegram refuse), une feuille de choix dans l'application prend le relais.
+// Choix entre plusieurs actions : une feuille de choix dans l'application.
 function choisir(titre, message, boutons, suite) {
-  if (tg && tg.showPopup && recent("6.2") && boutons.length <= 2) {
-    try {
-      tg.showPopup({ title: titre, message, buttons: [...boutons, { type: "cancel" }] }, (id) => { if (id) suite(id); });
-      return;
-    } catch (e) { /* on passe à la feuille */ }
-  }
   feuilleDeChoix(titre, message, boutons, suite);
 }
 
@@ -529,7 +514,7 @@ function feuilleDeChoix(titre, message, boutons, suite) {
 }
 
 function ouvrirLien(url) {
-  if (tg && tg.openLink) tg.openLink(url); else window.open(url, "_blank", "noopener");
+  window.open(url, "_blank", "noopener");
 }
 
 // ──────────────────────────────── serveur ───────────────────────────────
@@ -539,9 +524,8 @@ async function demander(action, extra = {}, options = {}) {
   try {
     const r = await fetch("/app/api", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Telegram-Init-Data": (tg && tg.initData) || "", ...(tg ? {} : { "X-Appareil": jetonAppareil.lire() }) },
-      // Dans Telegram, l'ouverture se signale (identifiant gardé ici + nom) : l'appareil apparaît dans « Appareils connectés ».
-      body: JSON.stringify({ action, ...extra, ...(tg && action === "etat" ? { appareil_local: { id: idLocal(), nom: nomTelegram() } } : {}) }),
+      headers: { "Content-Type": "application/json", "X-Appareil": jetonAppareil.lire() },
+      body: JSON.stringify({ action, ...extra }),
     });
     const j = await r.json().catch(() => ({ ok: false, erreur: `Le bot ne répond pas (erreur ${r.status}).` }));
     if (j.appareil === "inconnu") { jetonAppareil.ecrire(""); setTimeout(vueConnexionAppareil, 0); }
@@ -611,7 +595,7 @@ async function chargerMois(mois) {
 }
 
 function jouer(ep, depuis = null) {
-  if (!ep || !ep.audio) return annoncer("Cet épisode s'écoute dans la conversation.", true);
+  if (!ep || !ep.audio) return annoncer("L'audio de cet épisode n'est plus disponible.", true);
   if (L.cle !== ep.cle) {
     L.cle = ep.cle; L.ep = ep;
     audio.src = ep.audio;
@@ -642,8 +626,7 @@ function vueLecteur(ep) {
   const position = actif ? audio.currentTime : 0;
   const total = duree(ep);
   if (!ep.audio) {
-    return `<div class="lecteur"><p class="aide">Cet épisode a été envoyé avant l'application : il s'écoute dans la conversation.</p>
-      <button type="button" class="bouton gris" data-action="fermer">Écouter dans la conversation</button></div>`;
+    return `<div class="lecteur"><p class="aide">L'audio de cet épisode n'est plus disponible : il date d'avant que ton bot garde les fichiers lui-même.</p></div>`;
   }
   return `<div class="lecteur" data-lecteur="${h(ep.cle)}">
     <div class="haut">
@@ -740,7 +723,6 @@ function dessiner() {
   navEl.classList.toggle("cache", pleinEcran);
   const onglet = parent(S.ecran) || S.ecran;
   navEl.innerHTML = ONGLETS.map(([cle, nom]) => `<button type="button" data-aller="${cle}" ${onglet === cle ? 'aria-current="page"' : ""}>${icone(cle)}${nom}</button>`).join("");
-  if (tg && tg.BackButton) { if (parent(S.ecran)) tg.BackButton.show(); else tg.BackButton.hide(); }
   if (S.ecran === "programme") brancherGlisser();
   const choisi = document.querySelector('#dates [aria-pressed="true"]');
   if (choisi) choisi.scrollIntoView({ block: "nearest", inline: "center" });
@@ -808,16 +790,15 @@ function vueAccueil() {
       <span class="surtitre">${h(majuscule(dateLongue(d.aujourdhui)))}</span>
       <h1 style="font-size:32px">Podcast Matin</h1>
     </div>
-    <span class="badge ok">Bot actif</span>
   </div>
   <section class="soleil" aria-labelledby="t-prochain">
-    <div class="entre" style="align-items:flex-start">
-      <div style="display:flex;flex-direction:column;gap:4px">
+    <button type="button" class="entre prochain" style="align-items:flex-start" ${p ? `data-prochain="${p.date}" aria-label="Voir le programme du prochain épisode"` : 'data-aller="programme"'}>
+      <span style="display:flex;flex-direction:column;gap:4px;text-align:left">
         <span id="t-prochain" style="font-size:13px;font-weight:600;opacity:.85">Prochain épisode</span>
         ${p ? `<span class="heure">${heure(p.heure)}</span><span style="font-size:14px;font-weight:500">${h(quand)}</span>` : `<span class="heure" style="font-size:28px">Aucun prévu</span>`}
-      </div>
+      </span>
       <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true">${ICONES.aube}</svg>
-    </div>
+    </button>
     <div class="puces"><span>${actifs} passages</span><span>≈ ${h(nombre(d.format.duree_minutes))} min</span><span>${h(d.animateurs.join(" & "))}</span></div>
     <div class="actions">
       <button type="button" class="bouton sombre" data-action="generer">Générer maintenant</button>
@@ -846,7 +827,6 @@ function vueAccueil() {
       <span style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600">Nouvelle version disponible</span>
       <span class="sous" style="font-size:13px">${h(d.maj.titre || `Version ${d.maj.version}`)}</span></span>${icone("suite", 18, 2)}</button>` : ""}
   <button type="button" class="demander" data-aller="parler">${icone("bulle", 20)}<span>Demande-moi quelque chose…</span></button>
-  ${d.annulation ? `<div class="annul"><span>Dernier changement : ${h(d.annulation)}</span><button type="button" class="lien" style="min-height:36px;padding:0 10px" data-action="annuler">Annuler</button></div>` : ""}
 `;
 }
 
@@ -925,14 +905,18 @@ function vueEpisode() {
     ${ep.sujets.length ? `<span class="etiquette" style="font-size:13px;color:var(--doux)">Creuser un sujet au prochain épisode</span>
       <div class="gestes">${ep.sujets.map((s, i) => geste(`cr${i + 1}`, h(s))).join("")}</div>` : ""}
   </section>`}
-  <section class="carte"><h2>Sources</h2>
-    ${sections.length ? sections.map((g) => `${sections.length > 1 || g.nom !== "Sources" ? `<span class="groupe" style="padding-top:4px">${h(g.nom)}</span>` : ""}
+  <section class="carte">${enteteRepli("Sources", "sources", !S.replis.sources)}
+    ${S.replis.sources ? "" : sections.length ? sections.map((g) => `${sections.length > 1 || g.nom !== "Sources" ? `<span class="groupe" style="padding-top:4px">${h(g.nom)}</span>` : ""}
       <div class="sources">${g.liste.map((x) => `<button type="button" data-lien="${h(x.url)}"><span>${++numero}</span><span>${h(x.titre || x.url)}<br><span class="aide">${h(x.url.replace(/^https:\/\/(www\.)?/, "").split("/")[0])}</span></span></button>`).join("")}</div>`).join("")
-      : `<p class="aide">Pas de source enregistrée pour cet épisode. Les épisodes envoyés avant ce soir n'avaient pas la place de les garder (légende Telegram limitée) : elles s'afficheront ici à partir du prochain.</p>`}
+      : `<p class="aide">Pas de source enregistrée pour cet épisode.</p>`}
   </section>
-  ${S.texte && S.texte.cle === ep.cle ? `<section class="carte"><h2>Texte de l'épisode</h2><div class="transcription">${h(S.texte.texte)}</div></section>`
-    : ep.texte_dispo ? `<button type="button" class="bouton gris" data-texte="${h(ep.cle)}">Lire le texte de l'épisode</button>` : ""}
-  <button type="button" class="bouton gris" data-action="generer">Refaire un épisode maintenant</button>`;
+  ${S.texte && S.texte.cle === ep.cle ? `<section class="carte">${enteteRepli("Texte de l'épisode", "texte", !S.replis.texte)}${S.replis.texte ? "" : `<div class="transcription">${h(S.texte.texte)}</div>`}</section>`
+    : ep.texte_dispo ? `<button type="button" class="bouton gris" data-texte="${h(ep.cle)}">Lire le texte de l'épisode</button>` : ""}`;
+}
+
+// Titre d'une carte qu'on peut réduire (Sources, Texte de l'épisode) : le toucher l'ouvre ou la referme.
+function enteteRepli(titre, cle, ouvert) {
+  return `<button type="button" class="tete-repli" data-replier="${cle}" aria-expanded="${ouvert}"><h2>${h(titre)}</h2>${icone("suite", 18, 2)}</button>`;
 }
 
 async function geste(cle, g) {
@@ -1027,7 +1011,7 @@ function dateCourteLocale(iso) {
   try { return new Date(`${iso}T12:00:00Z`).toLocaleDateString("fr-CH", { day: "numeric", month: "short", timeZone: "UTC" }); } catch (e) { return iso; }
 }
 
-// Le message du bot, construit d'après ce qui a vraiment été appliqué (le même que dans Telegram).
+// Le message du bot, construit d'après ce qui a vraiment été appliqué.
 function htmlCompris(m) {
   return [m.titre ? `<b>${h(m.titre)}</b>` : "",
     m.lignes.length ? `<ul>${m.lignes.map((c) => `<li>${h(c)}</li>`).join("")}</ul>` : "",
@@ -1092,7 +1076,7 @@ async function demarrerVocal() {
   try {
     V.flux = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
   } catch (e) {
-    return annoncer("Micro refusé : autorise-le dans les réglages du téléphone (pour Telegram ou ton navigateur).", true);
+    return annoncer("Micro refusé : autorise-le pour ce site dans les réglages du navigateur ou du téléphone.", true);
   }
   const Contexte = window.AudioContext || window.webkitAudioContext;
   V.contexte = new Contexte();
@@ -2100,7 +2084,14 @@ function vueReglage() {
         <button type="button" class="lien" style="align-self:flex-end;color:var(--rouge)" data-retirer-liste="consignes" data-i="${i}">Supprimer</button></div>`).join("")}
       <div class="champ"><label for="n-consigne">Nouvelle consigne</label><textarea id="n-consigne" class="saisie" rows="2" maxlength="300" data-nouveau="consignes" placeholder="Ex. plus d'humour le vendredi"></textarea>
         <button type="button" class="bouton gris" data-ajouter-liste="consignes">Ajouter</button></div>`,
-    application: () => `${vueNotifs(d)}
+    application: () => `${vueAppareils(d)}
+      <section class="carte" aria-labelledby="t-ajout"><h2 id="t-ajout">Ajouter un appareil</h2>
+        <p class="aide">Ouvre ton podcast dans le navigateur de n'importe quel appareil, à l'adresse <b style="word-break:break-all">${h(d.adresse_app)}</b>, puis entre un code.</p>
+        ${d.code_appareil ? `<div class="code-geant" aria-label="Code ${h(d.code_appareil.code.split("").join(" "))}">${h(d.code_appareil.code)}</div>
+          <p class="aide" style="text-align:center">Valable jusqu'à ${h(new Date(d.code_appareil.expire).toLocaleTimeString("fr-CH", { hour: "2-digit", minute: "2-digit" }))}, pour un seul appareil.</p>`
+          : `<button type="button" class="bouton gris" data-action="code-appareil">Afficher un code</button>`}
+        <p class="aide"><b>Sur l'écran d'accueil</b> — iPhone (Safari) : bouton Partager › « Sur l'écran d'accueil ». Android (Chrome) : menu ⋮ › « Installer l'application » ou « Ajouter à l'écran d'accueil ».</p>
+      </section>
       <section class="carte" aria-labelledby="t-flux"><h2 id="t-flux">Dans ton appli de podcasts</h2>
         <p class="aide">Écoute tes épisodes dans Apple Podcasts, AntennaPod… : téléchargés pendant la nuit, sur l'écran verrouillé et en voiture.</p>
         ${d.flux ? `<input class="saisie" id="adresse-flux" readonly value="${h(d.flux)}" aria-label="Adresse de ton flux privé" style="font-size:13px">
@@ -2109,29 +2100,8 @@ function vueReglage() {
           <p class="aide"><b>Apple Podcasts</b> : Bibliothèque › ⋯ › Ajouter une émission par URL. <b>AntennaPod</b> : + › Ajouter un podcast par son adresse RSS. Garde cette adresse pour toi : qui l'a peut écouter tes épisodes.</p>`
           : `<button type="button" class="bouton plein" data-action="creer-flux">Créer mon flux privé</button>`}
       </section>
-      <section class="carte" aria-labelledby="t-hors"><h2 id="t-hors">${d.telegram ? "Hors de Telegram" : "Autres appareils"}</h2>
-        <p class="aide">Ouvre ton podcast dans le navigateur de n'importe quel appareil, à l'adresse <b style="word-break:break-all">${h(d.adresse_app)}</b>, puis entre un code. Tu peux ensuite l'ajouter à l'écran d'accueil comme une vraie application.</p>
-        ${d.code_appareil ? `<div class="code-geant" aria-label="Code ${h(d.code_appareil.code.split("").join(" "))}">${h(d.code_appareil.code)}</div>
-          <p class="aide" style="text-align:center">Valable jusqu'à ${h(new Date(d.code_appareil.expire).toLocaleTimeString("fr-CH", { hour: "2-digit", minute: "2-digit" }))}, pour un seul appareil.</p>`
-          : `<button type="button" class="bouton gris" data-action="code-appareil">Afficher un code</button>`}
-      </section>
-      ${d.appareils.length ? `<section class="carte" aria-labelledby="t-appareils"><h2 id="t-appareils">Appareils connectés</h2>
-        <p class="aide">Tous les appareils qui ouvrent ton podcast, dans Telegram ou avec un code. Retirer un appareil à code l'oblige à entrer un nouveau code.</p>
-        <div class="bloc" style="background:var(--carte-2)">${[...d.appareils].sort((a, b) => String(b.vu_le).localeCompare(String(a.vu_le))).map((a) => {
-          const ici = a.id === idCourant();
-          return `<div class="reglage"><span>${h(a.nom)}${ici ? " · <b>cet appareil</b>" : ""}<br><span class="aide">${a.telegram ? "Telegram · " : ""}vu le ${h(dateLongue(String(a.vu_le).slice(0, 10)))}</span></span>
-            ${ici ? "" : `<button type="button" class="lien" style="color:var(--rouge)" data-appareil-retirer="${h(a.id)}">Retirer</button>`}</div>`;
-        }).join("")}</div>
-      </section>` : ""}
-      <section class="carte"><h2>Sur ton écran d'accueil</h2>
-        ${tg ? `<p class="aide">Ajoute une icône sur ton téléphone pour ouvrir le podcast directement, sans passer par la conversation.</p>
-          ${tg.addToHomeScreen && recent("8.0") ? `<button type="button" class="bouton plein" data-action="ecran-accueil">Ajouter à l'écran d'accueil</button>`
-            : `<p class="aide">Ta version de Telegram ne le permet pas encore : mets-la à jour.</p>`}`
-          : `<p class="aide"><b>iPhone</b> (Safari) : bouton Partager › « Sur l'écran d'accueil ».<br><b>Android</b> (Chrome) : menu ⋮ › « Installer l'application » ou « Ajouter à l'écran d'accueil ».</p>
-          <button type="button" class="bouton gris" data-action="deconnecter-appareil">Déconnecter cet appareil</button>`}
-      </section>
       <section class="carte" aria-labelledby="t-version"><h2 id="t-version">Version</h2>
-        <p class="aide">Tu as la version ${h(d.version)}. Tout changement fait ici s'annule avec « Annuler » sur l'accueil.</p>
+        <p class="aide">Tu as la version ${h(d.version)}. Le dernier changement de réglage s'annule depuis la page Réglages.</p>
         ${d.stockage ? `<p class="aide">Épisodes gardés par ton bot (un an) : ${h(tailleLisible(d.stockage))} sur 5 Go offerts.</p>` : ""}
         ${d.maj_etat && d.maj_etat.etat === "en_cours" ? `<p class="aide" style="color:var(--aube-clair)">Mise à jour vers la version ${h(d.maj_etat.version)} en cours : compte deux à trois minutes, puis rouvre l'application.</p>` : ""}
         ${d.maj_etat && d.maj_etat.etat === "erreur" ? `<p class="aide" style="color:var(--rouge)">La mise à jour n'a pas abouti : ${h(d.maj_etat.message)}</p>` : ""}
@@ -2171,12 +2141,13 @@ function vueVoix() {
     const nom = nomDe(x.nom), active = utilisee(x.nom), habituelle = habituelles.includes(x.nom);
     const pret = r.echantillons[x.nom] && r.temps_echantillons[x.nom];
     const enCours = X.voix === x.nom && !extrait.paused;
+    const timbre = `${nom !== x.nom ? `${x.nom} · ` : ""}${x.description}${habituelle ? " · habituel" : ""}`;
     return `<div class="voix-ligne${active ? "" : " eteinte"}">
       <input class="nom-voix" maxlength="20" value="${h(nom === x.nom ? "" : nom)}" placeholder="${x.nom}" data-nom-voix="${x.nom}" autocomplete="off" spellcheck="false" enterkeyhint="done" aria-label="Prénom de la voix ${x.nom}">
-      <button type="button" class="mini-inter" role="switch" aria-checked="${active}" data-voix-active="${x.nom}" aria-label="Utiliser ${h(nom)}"><span class="rail"><span></span></span></button>
-      <div class="detail"><span class="aide">${nom !== x.nom ? `${x.nom} · ` : ""}${h(x.description)}${habituelle ? " · habituel" : active ? "" : " · pas utilisée"}</span>
-        ${pret ? `<button type="button" class="coche ecoute" data-extrait="${x.nom}" aria-label="${enCours ? "Pause" : "Écouter"} ${h(nom)}">${enCours ? PAUSE : LECTURE}${enCours ? "Pause" : "Écouter"}</button>`
-          : `<button type="button" class="coche" role="checkbox" aria-checked="${S.aPreparer.includes(x.nom)}" data-a-preparer="${x.nom}" aria-label="Préparer l'extrait de ${h(nom)}">${S.aPreparer.includes(x.nom) ? "✓ " : ""}Préparer</button>`}</div></div>`;
+      <span class="aide timbre" title="${h(timbre)}">${h(timbre)}</span>
+      ${pret ? `<button type="button" class="rond" data-extrait="${x.nom}" aria-label="${enCours ? "Pause" : "Écouter"} ${h(nom)}">${enCours ? PAUSE : LECTURE}</button>`
+        : `<button type="button" class="rond" role="checkbox" aria-checked="${S.aPreparer.includes(x.nom)}" data-a-preparer="${x.nom}" aria-label="Préparer l'extrait de ${h(nom)}">${S.aPreparer.includes(x.nom) ? icone("coche", 16, 2.2) : icone("telecharger", 16, 2)}</button>`}
+      <button type="button" class="mini-inter" role="switch" aria-checked="${active}" data-voix-active="${x.nom}" aria-label="Utiliser ${h(nom)}"><span class="rail"><span></span></span></button></div>`;
   };
   return `<section class="bloc">
       <div class="reglage"><span>Vitesse</span>${choix("voix.vitesse", v.vitesse, d.listes.vitesses.map((x) => [x, majuscule(x)]))}</div>
@@ -2200,7 +2171,7 @@ function vueVoix() {
     </section>
     <section class="carte" aria-labelledby="t-ecoute"><h2 id="t-ecoute">Les voix</h2>
       <p class="aide">Chaque voix est un animateur possible, appelé par son prénom : écris-en un pour la renommer, ou laisse vide pour garder son nom. Coupe celles que tu ne veux pas entendre.</p>
-      <p class="aide">Pour écouter une voix, coche « Préparer » puis prépare les extraits (16 par jour au plus). Ils restent ici${d.telegram ? ", pas dans la conversation" : ""}.</p>
+      <p class="aide">Pour écouter une voix, touche sa flèche de téléchargement puis « Préparer » (16 extraits par jour au plus) ; la flèche devient alors un bouton lecture.</p>
       ${[["Conseillées", (x) => x.conseillee], ["Voix féminines", (x) => !x.conseillee && x.genre === "f"], ["Voix masculines", (x) => !x.conseillee && x.genre === "m"]]
         .map(([groupe, filtre]) => `<span class="groupe">${groupe}</span><div class="bloc" style="background:var(--carte-2)">${d.listes.voix.filter(filtre).map(ligneVoix).join("")}</div>`).join("")}
       ${S.aPreparer.length ? `<button type="button" class="bouton plein" data-action="extraits">Préparer ${S.aPreparer.length > 1 ? `ces ${S.aPreparer.length} extraits` : "cet extrait"}</button>` : ""}
@@ -2488,10 +2459,12 @@ document.addEventListener("click", (ev) => {
     if (((S.d.notifications || {}).abonnements || []).some((a) => a.id === ds.notifRetirer && a.fin === NOTIF.fin)) return couperNotifs();
     return changer("notif_retirer", { id: ds.notifRetirer });
   });
+  // Interrupteur des notifications d'un appareil abonné : coupées ou remises, l'abonnement reste.
+  if (ds.notifAppareil) return changer("notif_couper", { id: ds.notifAppareil, coupe: el.getAttribute("aria-checked") === "true" });
   if (ds.appareilRetirer) {
-    const cible = S.d.appareils.find((a) => a.id === ds.appareilRetirer);
-    return confirmer(cible && cible.telegram ? "Retirer cet appareil de la liste ? Il y reviendra s'il rouvre l'application dans Telegram." : "Retirer cet appareil ? Il devra entrer un nouveau code.",
-      () => changer("appareil_retirer", { id: ds.appareilRetirer }));
+    const cetAppareil = ds.appareilRetirer === idCourant();
+    return confirmer(cetAppareil ? "Supprimer cet appareil ? L'application s'y fermera : il faudra un nouveau code pour la rouvrir." : "Supprimer cet appareil ? Il devra entrer un nouveau code.",
+      () => changer("appareil_retirer", { id: ds.appareilRetirer }, (j) => { if (j.ok && cetAppareil) { jetonAppareil.ecrire(""); vueConnexionAppareil(); } else dessiner(); }));
   }
   if (ds.agendaRetirer) return confirmer("Retirer cet agenda ?", () => changer("agenda_retirer", { id: ds.agendaRetirer }));
   if (ds.agendaRemettre) return changer("agenda_remettre", { id: ds.agendaRemettre });
@@ -2503,13 +2476,16 @@ document.addEventListener("click", (ev) => {
   if (ds.lire) return basculer(episodeParCle(ds.lire));
   if (ds.chapitre) return jouer(episodeParCle(ds.chapitre), Number(ds.t));
   if (ds.geste) return geste(ds.cle, ds.geste);
-  if (ds.texte) return demander("texte", { cle: ds.texte }).then((j) => { if (j.ok) { S.texte = { cle: ds.texte, texte: j.texte }; dessiner(); } });
+  if (ds.texte) return demander("texte", { cle: ds.texte }).then((j) => { if (j.ok) { S.texte = { cle: ds.texte, texte: j.texte }; S.replis.texte = false; dessiner(); } });
+  if (ds.replier) { S.replis[ds.replier] = !S.replis[ds.replier]; return dessiner(); }
   if (ds.extrait) return basculerExtrait(ds.extrait);
   if (ds.aPreparer) { S.aPreparer = S.aPreparer.includes(ds.aPreparer) ? S.aPreparer.filter((x) => x !== ds.aPreparer) : [...S.aPreparer, ds.aPreparer]; vibrer("choix"); return dessiner(); }
   if (ds.voixActive) return changer("voix_active", { voix: ds.voixActive, active: el.getAttribute("aria-checked") !== "true" });
   if (ds.lien) return ouvrirLien(ds.lien);
   if (ds.creuser) return changer("creuser", { sujet: ds.creuser }, () => {});
   if (ds.chercher) return chercher(ds.chercher, "ecrit");
+  // « Prochain épisode » (accueil) : l'onglet Épisode, réglé sur le jour de ce prochain épisode.
+  if (ds.prochain) { S.jourVue.deroule = S.jourDernier.deroule = ds.prochain; return aller("programme"); }
   if (ds.sauter) return confirmer(`Pas d'épisode le ${dateLongue(ds.sauter)} ?`, () => changer("sauter", { date: ds.sauter }));
   if (ds.retablir) return changer("retablir", { date: ds.retablir });
   if (ds.jourcal) return toucherJour(ds.jourcal);
@@ -2557,8 +2533,7 @@ document.addEventListener("click", (ev) => {
   }
   switch (ds.action) {
     case "generer":
-      return confirmer(`Générer un nouvel épisode maintenant ? Il arrivera ici${S.d.telegram && S.d.reglages.livraison.telegram !== false ? " et dans la conversation" : ""}.`, () => changer("generer", {}, () => {}));
-    case "fermer": return tg ? tg.close() : null;
+      return confirmer("Générer un nouvel épisode maintenant ? Il arrivera ici d'ici trois ou quatre minutes.", () => changer("generer", {}, () => {}));
     case "nouvelle": return aller("catalogue");
     case "nouvelle-recherche": return ouvrirFiche(null, { id: "recherche" });
     case "nouveau-point": return ouvrirFiche(null, { id: "point" });
@@ -2640,7 +2615,6 @@ document.addEventListener("click", (ev) => {
       });
     }
     case "extraits": return changer("extraits", { voix: S.aPreparer }, (j) => { if (j.ok) S.aPreparer = []; dessiner(); });
-    case "ecran-accueil": try { tg.addToHomeScreen(); } catch (e) { annoncer("Impossible ici : mets Telegram à jour.", true); } return;
     case "recharger": return demarrer();
   }
 });
@@ -2699,7 +2673,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // ─────────────────────────────── démarrage ──────────────────────────────
-// Hors de Telegram, sans jeton : on demande le code affiché dans l'application.
+// Sans jeton : on demande le code affiché dans l'application ouverte ailleurs.
 function vueConnexionAppareil() {
   navEl.classList.add("cache");
   miniEl.classList.add("cache");
@@ -2730,12 +2704,12 @@ function nomAppareil() {
 }
 
 // ───────────────────────────── notifications ──────────────────────────────
-// Hors de Telegram : le navigateur s'abonne (Web Push) et le bot y envoie
+// Le navigateur s'abonne (Web Push) et le bot y envoie
 // « ton épisode est prêt ». Sur iPhone, seulement depuis l'icône de l'écran d'accueil.
 const NOTIF = { fin: null, lu: false };
 const estIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const autonome = () => (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
-const notifsPossibles = () => !tg && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const notifsPossibles = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 const octetsDe = (b64) => Uint8Array.from(atob(b64.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(b64.length / 4) * 4, "=")), (c) => c.charCodeAt(0));
 
 async function abonnementLocal(mettreAJour = false) {
@@ -2771,7 +2745,7 @@ async function activerNotifs() {
     }
     if (!abo) abo = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: cle });
     NOTIF.fin = abo.endpoint.slice(-16);
-    await changer("notif_abonner", { abonnement: abo.toJSON(), nom: nomAppareil() });
+    await changer("notif_abonner", { abonnement: abo.toJSON(), nom: nomAppareil(), activer: true });
   } catch (e) {
     annoncer("Ce navigateur n'a pas pu s'abonner aux notifications.", true);
   }
@@ -2785,28 +2759,40 @@ async function couperNotifs() {
   if (fiche) await changer("notif_retirer", { id: fiche.id }); else dessiner();
 }
 
-function vueNotifs(d) {
+// Appareils : chacun sur une ligne, avec l'interrupteur de ses notifications et de quoi le retirer.
+// Un appareil s'abonne lui-même (autorisation du navigateur) ; ensuite, ses notifications se coupent
+// et se remettent d'ici, depuis n'importe quel appareil.
+function vueAppareils(d) {
   const n = d.notifications || { abonnements: [] };
-  const ici = n.abonnements.find((a) => a.fin && a.fin === NOTIF.fin);
-  let local;
-  if (tg) local = `<p class="aide">Les notifications s'activent dans le navigateur de ton téléphone : ouvre ton podcast hors de Telegram (ci-dessous), puis reviens ici.</p>`;
-  else if (estIOS() && !autonome()) local = `<p class="aide">Sur iPhone, ajoute d'abord l'application à ton écran d'accueil (bouton Partager › « Sur l'écran d'accueil »), ouvre-la depuis l'icône et entre un code : tu pourras alors activer les notifications.</p>`;
-  else if (!notifsPossibles()) local = `<p class="aide">Ce navigateur ne sait pas recevoir de notifications.</p>`;
-  else if (Notification.permission === "denied") local = `<p class="aide">Les notifications sont bloquées pour ce site : autorise-les dans les réglages du navigateur, puis reviens ici.</p>`;
-  else if (ici) local = `<div class="entre"><p class="aide">✅ Activées sur cet appareil.</p>
-      <button type="button" class="lien" data-action="notif-couper">Couper ici</button></div>`;
-  else local = `<button type="button" class="bouton plein" data-action="notif-activer">Activer sur cet appareil</button>`;
-  return `<section class="carte" aria-labelledby="t-notifs"><h2 id="t-notifs">Notifications</h2>
-      <p class="aide">Une notification sur ton téléphone dès que ton épisode est prêt, ou si quelque chose coince. Touche-la : l'épisode s'ouvre.</p>
-      ${local}
-      ${n.abonnements.length ? `<span class="etiquette" style="font-size:13px;color:var(--doux)">Appareils prévenus</span>
-        <div class="bloc" style="background:var(--carte-2)">${n.abonnements.map((a) => `<div class="reglage"><span>${h(a.nom)}${a.fin === NOTIF.fin ? " (celui-ci)" : ""}<br>
-          <span class="aide">${a.erreur ? `Dernier envoi ${h(a.erreur)}` : `Depuis le ${h(dateLongue(String(a.cree_le).slice(0, 10)))}`}</span></span>
-          <button type="button" class="lien" style="color:var(--rouge)" data-notif-retirer="${h(a.id)}">Retirer</button></div>`).join("")}</div>
-        <button type="button" class="bouton gris" data-action="notif-tester">Envoyer un essai</button>` : ""}
-      ${d.telegram ? `${interrupteur("Recevoir aussi l'épisode dans Telegram", d.reglages.livraison.telegram !== false, 'data-regler-bool="livraison.telegram"')}
-      <p class="aide">${d.reglages.livraison.telegram !== false ? "Tu le reçois dans Telegram et ici."
-        : `Ton épisode n'arrive plus dans Telegram : il t'attend ici${d.flux ? ", dans ton appli de podcasts" : ""}${n.abonnements.length ? " et par notification" : ""}. Les alertes (épisode raté…) restent dans Telegram.`}</p>` : ""}
+  const ici = idCourant();
+  const aboDe = (id) => n.abonnements.find((a) => a.appareil === id);
+  // Ce qui empêche cet appareil de s'abonner (rien : null).
+  const blocage = estIOS() && !autonome() ? "Sur iPhone : ouvre l'application depuis son icône d'écran d'accueil pour activer les notifications."
+    : !notifsPossibles() ? "Ce navigateur ne sait pas recevoir de notifications."
+    : Notification.permission === "denied" ? "Notifications bloquées pour ce site : autorise-les dans les réglages du navigateur." : null;
+  const ligne = (nom, sous, interrupteurNotifs, retirer) => `<div class="appareil">
+      <span class="textes"><span class="nom">${nom}</span><span class="aide">${sous}</span></span>
+      ${interrupteurNotifs}
+      <button type="button" class="icone corbeille" ${retirer} >${icone("croix", 18, 2)}</button></div>`;
+  const inter = (actif, attributs, etiquette, desactive = false) => `<button type="button" class="mini-inter" role="switch" aria-checked="${actif}" ${attributs} aria-label="${h(etiquette)}" ${desactive ? "disabled" : ""}><span class="rail"><span></span></span></button>`;
+  const lignes = [...d.appareils].sort((a, b) => (b.id === ici) - (a.id === ici) || String(b.vu_le).localeCompare(String(a.vu_le))).map((a) => {
+    const abo = aboDe(a.id), cetAppareil = a.id === ici;
+    const actif = Boolean(abo && !abo.coupe);
+    const sous = `${cetAppareil ? "<b>cet appareil</b> · " : ""}vu le ${h(dateLongue(String(a.vu_le).slice(0, 10)))}${abo && abo.erreur ? ` · dernier envoi ${h(abo.erreur)}` : ""}${!abo && !cetAppareil ? " · notifications à autoriser sur l'appareil" : ""}${!abo && cetAppareil && blocage ? ` · ${h(blocage)}` : ""}`;
+    const notifs = abo ? inter(actif, `data-notif-appareil="${h(abo.id)}"`, `Notifications sur ${a.nom}`)
+      : cetAppareil ? inter(false, 'data-action="notif-activer"', "Activer les notifications sur cet appareil", Boolean(blocage))
+      : inter(false, "", `Notifications sur ${a.nom} : à autoriser depuis cet appareil`, true);
+    return ligne(h(a.nom), sous, notifs, `data-appareil-retirer="${h(a.id)}" aria-label="Supprimer ${h(a.nom)}"`);
+  });
+  // Abonnements d'avant, sans appareil connu : on peut encore les couper ou les retirer.
+  for (const abo of n.abonnements.filter((x) => !d.appareils.some((a) => a.id === x.appareil))) {
+    lignes.push(ligne(h(abo.nom), `notifications depuis le ${h(dateLongue(String(abo.cree_le).slice(0, 10)))}`,
+      inter(!abo.coupe, `data-notif-appareil="${h(abo.id)}"`, `Notifications sur ${abo.nom}`), `data-notif-retirer="${h(abo.id)}" aria-label="Supprimer ${h(abo.nom)}"`));
+  }
+  return `<section class="carte" aria-labelledby="t-appareils"><h2 id="t-appareils">Appareils</h2>
+      <p class="aide">Les appareils qui ouvrent ton podcast. L'interrupteur gère leurs notifications (épisode prêt, souci) ; la croix retire l'appareil, qui devra entrer un nouveau code.</p>
+      ${lignes.length ? `<div class="bloc" style="background:var(--carte-2)">${lignes.join("")}</div>` : `<p class="aide">Aucun appareil.</p>`}
+      ${n.abonnements.some((a) => !a.coupe) ? `<button type="button" class="bouton gris" data-action="notif-tester">Envoyer une notification d'essai</button>` : ""}
     </section>`;
 }
 
@@ -2827,7 +2813,7 @@ async function connecterAppareil() {
 }
 
 async function demarrer() {
-  if (!tg && !jetonAppareil.lire()) return vueConnexionAppareil();
+  if (!jetonAppareil.lire()) return vueConnexionAppareil();
   const j = await demander("etat", {}, { toujours: true });
   if (!j.ok || !S.d) {
     ecranEl.innerHTML = `<div class="chargement"><h1 style="margin-bottom:12px">Oups</h1>${h(j.erreur || "Le bot ne répond pas.")}<br><br>
@@ -2844,21 +2830,10 @@ async function demarrer() {
   else if (parametres.get("ecran") === "resultats" && S.d.resultats) S.ecran = "resultats";
   if (parametres.toString() && history.replaceState) history.replaceState(null, "", "/app");
   dessiner();
-  if (!tg) lireNotifs().then(() => { if (S.ecran === "reglage") dessiner(); });
+  lireNotifs().then(() => { if (S.ecran === "reglage") dessiner(); });
   if (clesEnTest().length) suivreTestsCles();     // un test de clé lancé sur GitHub avant de fermer
 }
 
-if (tg) {
-  tg.ready();
-  tg.expand();
-  try {
-    tg.setHeaderColor("#12151C"); tg.setBackgroundColor("#12151C");
-    if (tg.setBottomBarColor) tg.setBottomBarColor("#161A22");
-    if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
-    if (tg.onEvent) tg.onEvent("homeScreenAdded", () => annoncer("Icône ajoutée à ton écran d'accueil"));
-  } catch (e) { /* ancien Telegram */ }
-  if (tg.BackButton) tg.BackButton.onClick(retour);
-}
 demarrer();
 </script>
 </body>

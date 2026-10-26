@@ -1,15 +1,19 @@
 {
-  "version": "2026-10-25.1",
-  "date": "2026-10-25",
-  "titre": "Tous les appareils dans la liste",
+  "version": "2026-10-26.1",
+  "date": "2026-10-26",
+  "titre": "Tout dans l'application",
   "nouveautes": [
-    "Réglages › Application : « Appareils connectés » montre maintenant tous tes appareils, ceux qui ouvrent le podcast dans Telegram comme ceux connectés par code, avec la mention « cet appareil ».",
-    "Quand un autre appareil entre le code, la liste se met à jour toute seule : plus besoin de rouvrir l'application pour le voir."
+    "L'ancienne conversation est retirée : ton podcast arrive dans l'application (avec une notification) et dans ton flux privé. Tout se règle dans l'application.",
+    "Réglages › Application : un seul bloc « Appareils », avec pour chacun l'interrupteur de ses notifications et une croix pour le retirer.",
+    "Accueil : toucher « Prochain épisode » ouvre l'onglet Épisode réglé sur ce jour-là ; « Annuler » le dernier changement se trouve dans Réglages.",
+    "Épisode : Sources et Texte se replient ; la liste des voix tient sur une ligne par voix ; l'encart vert d'une clé testée s'efface après un épisode ou une journée."
   ],
   "supprimes": [
-    "cloudflare/worker.js",
     ".github/workflows/retours.yml",
     ".github/workflows/sondes.yml",
+    "cloudflare/src/assistant.js",
+    "cloudflare/src/ui.js",
+    "cloudflare/worker.js",
     "docs/PARTAGER.md",
     "outils/preparer_partage.py",
     "outils/sonde.py",

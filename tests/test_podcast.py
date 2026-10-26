@@ -70,31 +70,7 @@ def oublier_remplissage():
 
 
 # ───────────────────────── 1. créneau horaire ─────────────────────────
-print("1. Créneau horaire (été / hiver)")
-cas = [
-    ("schedule", "45 3 * * *", dt.datetime(2026, 10, 12, 3, 47, tzinfo=UTC), True),   # été
-    ("schedule", "45 4 * * *", dt.datetime(2026, 10, 12, 4, 47, tzinfo=UTC), False),
-    ("schedule", "45 3 * * *", dt.datetime(2026, 11, 12, 3, 46, tzinfo=UTC), False),  # hiver
-    ("schedule", "45 4 * * *", dt.datetime(2026, 11, 12, 4, 46, tzinfo=UTC), True),
-    ("schedule", "45 3 * * *", dt.datetime(2026, 10, 25, 3, 50, tzinfo=UTC), False),  # jour du changement
-    ("schedule", "45 4 * * *", dt.datetime(2026, 10, 25, 4, 50, tzinfo=UTC), True),
-    ("schedule", "45 3 * * *", dt.datetime(2026, 7, 1, 4, 40, tzinfo=UTC), True),     # 55 min de retard
-    ("schedule", "45 3 * * *", dt.datetime(2026, 3, 29, 3, 46, tzinfo=UTC), True),    # passage à l'heure d'été
-    ("workflow_dispatch", "", dt.datetime(2026, 10, 12, 12, 0, tzinfo=UTC), True),
-    ("schedule", "*/5 * * * *", dt.datetime(2026, 10, 12, 12, 0, tzinfo=UTC), True),
-]
-for evenement, prog, instant, attendu in cas:
-    ok, texte = horaire.doit_tourner(evenement, prog, "05:45", "Europe/Zurich", instant)
-    verifier(ok == attendu, f"{evenement} {prog!r} à {instant:%Y-%m-%d %H:%M} UTC → {ok}")
-modes = {}
-for jour, nom in ((dt.datetime(2026, 10, 12, tzinfo=UTC), "été"), (dt.datetime(2026, 11, 12, tzinfo=UTC), "hiver")):
-    for heure_utc in (3, 4, 5):
-        instant = jour.replace(hour=heure_utc, minute=46)
-        modes[(nom, heure_utc)] = horaire.decider("schedule", f"45 {heure_utc} * * *", "05:45", "Europe/Zurich", instant)[0]
-verifier(modes == {("été", 3): "normal", ("été", 4): "rattrapage", ("été", 5): "",
-                   ("hiver", 3): "", ("hiver", 4): "normal", ("hiver", 5): "rattrapage"},
-         f"trois créneaux : épisode à 5 h 45, rattrapage à 6 h 45, été comme hiver : {modes}")
-verifier(horaire.une_heure_plus_tard("23:30") == "00:30", "rattrapage après minuit")
+print("1. Créneau horaire")
 verifier(horaire.normaliser("5h45") == "05:45" and horaire.normaliser("6:30") == "06:30",
          "normalisation de l'heure")
 
@@ -269,20 +245,12 @@ verifier(r[0].resume.startswith("Le gouvernement a validé un budget équilibré
 # ───────────────────── 4. préférences et mémoire ───────────────────────
 print("\n4. Préférences et mémoire")
 m = podcast.memoire_vide()
-m["a_approfondir"] = [{"sujet": "IA en Suisse", "demande_le": "2026-10-10"}]
-podcast.appliquer_retours(m, {
-    "vitesse_parole": "lente", "duree_minutes": 5, "ville_habituelle": "Lausanne",
-    "sujets_preferes": ["Technologie", "sport", "technologie"], "sujets_a_eviter": ["Sport"],
-    "consignes": ["plus d'humour"], "a_approfondir": ["IA en Suisse", "réforme des retraites"],
-    "reponse": "ok"}, reglages, maintenant)
-p = m["preferences"]
-verifier(p["vitesse_parole"] == "lente" and p["duree_minutes"] is None and p["ville_habituelle"] == "Lausanne",
-         f"seules les valeurs différentes de reglages.toml sont gardées : {p}")
-verifier(p["sujets_preferes"] == ["Technologie"] and p["sujets_a_eviter"] == ["Sport"],
-         "doublons retirés ; un thème évité n'est pas aussi préféré")
-verifier(m["a_approfondir"] == [{"sujet": "IA en Suisse", "demande_le": "2026-10-10"},
-                                {"sujet": "réforme des retraites", "demande_le": "2026-10-12"}],
-         "sujets à approfondir datés (date d'origine conservée)")
+verifier(not any(cle in m for cle in ("telegram_dernier_update", "historique_retours", "episodes_refaits")),
+         "mémoire : plus rien de l'ancienne conversation")
+m["preferences"].update({"vitesse_parole": "lente", "ville_habituelle": "Lausanne", "sujets_preferes": ["Technologie"],
+                         "sujets_a_eviter": ["Sport"], "consignes": ["plus d'humour"]})
+m["a_approfondir"] = [{"sujet": "IA en Suisse", "demande_le": "2026-10-10"},
+                      {"sujet": "réforme des retraites", "demande_le": "2026-10-12"}]
 eff = podcast.reglages_effectifs(reglages, m)
 verifier(eff["vitesse_parole"] == "lente" and eff["ville_habituelle"] == "Lausanne"
          and reglages["vitesse_parole"] == "normale", "la mémoire l'emporte sur reglages.toml (sans le modifier)")
@@ -297,8 +265,6 @@ verifier(len(var) == 6 and var[0]["input"][0]["content"][0]["annotations"][0].ge
          == "speaking a little slowly" and "style" not in var[3]["input"][0]["content"][0]["annotations"][0],
          "consigne de vitesse envoyée à la voix, puis retirée en dernier recours")
 verifier(len(podcast.variantes_voix([("Lea", "x")], {"Lea": "Aoede"})) == 3, "vitesse normale : pas de consigne de style")
-html_reglages = podcast.resume_preferences(reglages, m)
-verifier("Vitesse de parole : lente" in html_reglages and "Lausanne" in html_reglages, "/reglages lisible")
 
 # ───────────────────── 5. bout en bout (réseau simulé) ─────────────────
 print("\n5. Bout en bout, réseau simulé")
@@ -320,13 +286,11 @@ SCRIPT = {
 }
 os.environ.update({
     "GEMINI_API_KEY": "cle-test-123",
-    "TELEGRAM_BOT_TOKEN": "111:jeton-test",
-    "TELEGRAM_CHAT_ID": "",
+    "BOT_GITHUB_TOKEN": "gh-jeton-test",
     "CALENDAR_ICS_URL": "webcal://p01-caldav.icloud.com/published/2/SECRET  https://calendar.google.com/calendar/ical/x/private-SECRET/basic.ics",
     "GITHUB_SERVER_URL": "https://github.com", "GITHUB_REPOSITORY": "moi/podcast-matin",
     "GITHUB_RUN_ID": "42",
 })
-VOCAL = b"OggS\x00\x02" + b"\x01" * 200     # faux message vocal Telegram
 
 
 def pcm_ton(secondes, taux=24000):
@@ -354,10 +318,10 @@ class Reponse:
 
 
 appels = []
+fichiers_bot: dict[str, bytes] = {}        # ce que le bot garde (PUT /api/fichier)
 scenario = {
     "quota_premier_modele_voix": True, "refuser_mode": True, "refuser_style": False, "wav": False,
-    "tronquer_une_fois": False, "agenda": ICS, "deplacements": [], "retours": None,
-    "retours_quota": False, "updates": [], "pannes": {},
+    "tronquer_une_fois": False, "agenda": ICS, "deplacements": [], "pannes": {}, "stockage": True,
 }
 
 
@@ -383,9 +347,7 @@ def faux_get(url, timeout=None, headers=None):
         return Reponse(200, contenu=GOOGLE)
     if "rts.ch" in url:
         return Reponse(200, contenu=RTS)
-    if "api.telegram.org/file/bot111:jeton-test/voice/file_7.oga" in url:
-        return Reponse(200, contenu=VOCAL)
-    return Reponse(403, contenu=b"<html>blocked</html>")
+    return Reponse(403, contenu=b"<html>blocked</html>")    # le bot ne donne pas de réglages : reglages.toml
 
 
 def faux_gemini(corps, headers):
@@ -422,11 +384,6 @@ def faux_gemini(corps, headers):
 
     systeme = corps["system_instruction"]
     proprietes = corps.get("response_format", {}).get("schema", {}).get("properties", {})
-    if "Tu gères les réglages" in systeme:
-        assert "reponse" in proprietes
-        if scenario["retours_quota"]:
-            return Reponse(429, {"error": {"code": 429, "message": "Quota exceeded for metric: generate_requests_per_model_per_day, limit: 0"}})
-        return reponse_texte(scenario["retours"])
     if "Tu repères dans l'agenda" in systeme:
         assert "deplacements" in proprietes
         return reponse_texte({"deplacements": scenario["deplacements"]})
@@ -445,29 +402,23 @@ def faux_gemini(corps, headers):
     return reponse_texte(SCRIPT)
 
 
-def faux_telegram(methode, data):
-    if methode == "getUpdates":
-        offset = int(data.get("offset", 0))
-        if offset:      # Telegram oublie les messages déjà confirmés
-            scenario["updates"] = [u for u in scenario["updates"] if u["update_id"] >= offset]
-        return Reponse(200, {"ok": True, "result": list(scenario["updates"])})
-    if methode == "getFile":
-        assert data["file_id"] == "VOIX7"
-        return Reponse(200, {"ok": True, "result": {"file_id": "VOIX7", "file_path": "voice/file_7.oga"}})
-    if methode == "getMe":
-        return Reponse(200, {"ok": True, "result": {"username": "MonPodcastDuMatin_bot"}})
-    if methode in ("sendMessage", "sendAudio"):
-        return Reponse(200, {"ok": True, "result": {"message_id": 5}})
-    return Reponse(404, {"ok": False, "description": "inconnu"})
-
-
 def faux_post(url, json=None, data=None, files=None, timeout=None, headers=None):
     appels.append(("POST", url, json if json is not None else data, files))
     if "generativelanguage" in url:
         return faux_gemini(json, headers)
-    if "api.telegram.org" in url:
-        return faux_telegram(url.rsplit("/", 1)[1], data or {})
+    if url.endswith("/api/evenement"):
+        assert headers["X-Podcast-Secret"] == podcast.Bot("").secret
+        return Reponse(200, {"ok": True})
     return Reponse(404, {"ok": False, "description": "inconnu"})
+
+
+def faux_put(url, params=None, data=None, timeout=None, headers=None):
+    nom = (params or {}).get("nom")
+    appels.append(("PUT", url, nom, len(data or b"")))
+    if not scenario["stockage"]:
+        return Reponse(503, contenu=b"indisponible")
+    fichiers_bot[nom] = data
+    return Reponse(200, {"ok": True, "taille": len(data or b"")})
 
 
 def appels_gemini(sorte):
@@ -478,8 +429,6 @@ def appels_gemini(sorte):
         corps = a[2]
         if corps["model"].endswith("-tts"):
             genre = "voix"
-        elif "Tu gères les réglages" in corps["system_instruction"]:
-            genre = "retours"
         elif "Tu repères dans l'agenda" in corps["system_instruction"]:
             genre = "deplacements"
         else:
@@ -489,8 +438,8 @@ def appels_gemini(sorte):
     return resultat
 
 
-def appels_telegram():
-    return [(a[1].rsplit("/", 1)[1], a[2], a[3]) for a in appels if a[0] == "POST" and "api.telegram.org" in a[1]]
+def evenements_bot(sorte=None):
+    return [a[2] for a in appels if a[0] == "POST" and a[1].endswith("/api/evenement") and (sorte is None or a[2].get("type") == sorte)]
 
 
 def recherches():
@@ -502,11 +451,6 @@ def a_la_date(annee, mois, jour, heure=5, minute=46):
     podcast.heure_actuelle = lambda fuseau: dt.datetime(annee, mois, jour, heure, minute, tzinfo=ZH).astimezone(fuseau)
 
 
-def faux_put(url, params=None, data=None, timeout=None, headers=None):
-    appels.append(("PUT", url, (params or {}).get("nom"), len(data or b"")))
-    return Reponse(404, contenu=b"introuvable")   # bot d'avant le stockage des fichiers
-
-
 podcast.requests.get = faux_get
 podcast.requests.post = faux_post
 podcast.requests.put = faux_put
@@ -515,11 +459,8 @@ podcast.time.sleep = sommeils.append
 podcast.SEUIL_SCRIPT_COURT = 0   # le faux script est court : testé à part (5l)
 a_la_date(2026, 10, 12)
 
-# 5a. Tout premier épisode : le bot trouve la conversation, répond à /start.
+# 5a. Premier épisode : confié au bot (audio et pochette), puis l'événement qui le décrit.
 print("5a. Premier épisode")
-scenario["updates"] = [{"update_id": 1, "message": {"chat": {"id": 987654321, "type": "private"},
-                                                    "from": {"id": 987654321, "is_bot": False},
-                                                    "text": "/start"}}]
 code = podcast.main([])
 verifier(code == 0, f"main() termine sans erreur (code {code})")
 textes_gemini = appels_gemini("script")
@@ -555,95 +496,39 @@ verifier("<breath>" in textes and "<laugh>" in textes and "|ah oui|" in textes a
 speakers = [c["annotations"][0]["speaker"] for c in contenu]
 verifier(all(x != y for x, y in zip(speakers, speakers[1:])), "répliques consécutives fusionnées (alternance)")
 
-tg = appels_telegram()
-methodes = [t[0] for t in tg]
-verifier(methodes == ["getUpdates", "sendMessage", "getUpdates", "sendMessage", "getUpdates", "sendAudio"],
-         f"séquence Telegram : {methodes}")
-verifier("987654321" in tg[1][1]["text"], "identifiant de conversation communiqué")
-verifier("Écris-moi, ou envoie-moi un vocal" in tg[3][1]["text"], "/start → mode d'emploi du bot")
-donnees, fichiers = tg[-1][1], tg[-1][2]
-mp3 = fichiers["audio"][1]
+depots = [a[2] for a in appels if a[0] == "PUT"]
+verifier(len(depots) == 2 and depots[0] == "2026-10/2026-10-12-054600.mp3" and depots[1] == "2026-10/2026-10-12-054600.jpg",
+         f"audio puis pochette confiés au bot, rangés par mois : {depots}")
+mp3 = fichiers_bot[depots[0]]
+pochette = fichiers_bot[depots[1]]
+verifier(pochette[:2] == b"\xff\xd8" and len(pochette) < 200_000, "pochette JPEG (moins de 200 ko)")
+episode = evenements_bot("episode")[-1]
 (RACINE_TEST / "test.mp3").write_bytes(mp3)
-print("\n--- légende Telegram ---\n" + donnees["caption"] + "\n---")
-verifier(len(donnees["caption"]) <= 1024, f"légende ≤ 1024 caractères ({len(donnees['caption'])})")
-verifier("Budget, neige et yoga" in donnees["caption"] and "**" not in donnees["caption"], "titre nettoyé")
-verifier("news.google.com/rss/articles/AAA" in donnees["caption"], "lien de la source citée")
-verifier("Écris-moi ou utilise les boutons" in donnees["caption"], "invitation à répondre au bot")
-verifier("reply_markup" not in donnees, "sans le bot de la version 3 : pas de boutons sous l'épisode")
-verifier("thumbnail" in fichiers and fichiers["thumbnail"][1][:2] == b"\xff\xd8" and len(fichiers["thumbnail"][1]) < 200_000,
-         "pochette JPEG jointe (moins de 200 ko)")
+verifier(episode["audio"] == depots[0] and episode["pochette"] == depots[1] and episode["taille"] == len(mp3)
+         and episode["ref"] == 54600 and "message_id" not in episode and "file_id" not in episode,
+         "l'événement de l'épisode désigne les fichiers gardés par le bot")
+verifier(episode["titre"] == "Budget, neige et yoga", f"titre nettoyé : {episode['titre']}")
+verifier(any("news.google.com/rss/articles/AAA" in s["url"] for s in episode["sources"]), "lien de la source citée")
 if shutil.which("ffprobe"):
     sonde = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_name,channels:format=duration",
                             "-of", "json", str(RACINE_TEST / "test.mp3")], capture_output=True, text=True)
     infos = json.loads(sonde.stdout)
     verifier(infos["streams"][0]["codec_name"] == "mp3" and infos["streams"][0]["channels"] == 1, "MP3 mono valide")
-    verifier(abs(float(infos["format"]["duration"]) - int(donnees["duration"])) < 3, "durée annoncée ≈ durée réelle")
+    verifier(abs(float(infos["format"]["duration"]) - int(episode["duree"])) < 3, "durée annoncée ≈ durée réelle")
 else:   # sans ffmpeg (machine de test GitHub) : en-tête MPEG et durée d'après le débit (64 kbit/s)
     verifier(mp3[0] == 0xFF and (mp3[1] & 0xE0) == 0xE0 and (mp3[3] >> 6) == 3, "MP3 valide (en-tête MPEG, mono)")
-    verifier(abs(len(mp3) * 8 / 64000 - int(donnees["duration"])) < 3, "durée annoncée ≈ durée réelle")
+    verifier(abs(len(mp3) * 8 / 64000 - int(episode["duree"])) < 3, "durée annoncée ≈ durée réelle")
 mem = memoire()
-verifier(mem["telegram_dernier_update"] == 1, "message /start marqué comme lu")
 verifier(mem["dernier_episode"] == {"date": "2026-10-12", "titre": "Budget, neige et yoga", "envoye_le": "2026-10-12T05:46",
                                     "sujets": ["Agenda du jour", "Budget 2027", "Premières neiges"],
                                     "deplacements": [], "regles": []}, f"épisode mémorisé : {mem['dernier_episode']}")
 
-# 5b. Messages de l'auditeur (texte + vocal), lus par le passage de la journée.
-print("\n5b. Messages au bot (passage de la journée)")
-os.environ["TELEGRAM_CHAT_ID"] = "987654321"
-appels.clear()
-moi = {"id": 987654321, "is_bot": False}
-scenario["updates"] = [
-    {"update_id": 10, "message": {"chat": {"id": 987654321, "type": "private"}, "from": moi,
-                                  "text": "Parle un peu plus lentement, et le sport ne m'intéresse pas."}},
-    {"update_id": 11, "message": {"chat": {"id": 987654321, "type": "private"}, "from": moi,
-                                  "voice": {"file_id": "VOIX7", "duration": 7, "mime_type": "audio/ogg"}}},
-    {"update_id": 12, "message": {"chat": {"id": 555, "type": "private"}, "from": {"id": 555, "is_bot": False},
-                                  "text": "Je suis un inconnu"}},
-    {"update_id": 13, "message": {"chat": {"id": 987654321, "type": "private"}, "from": moi, "text": "/reglages"}},
-]
-scenario["retours"] = {
-    "vitesse_parole": "lente", "duree_minutes": 5, "ville_habituelle": "Lausanne",
-    "sujets_preferes": ["technologie"], "sujets_a_eviter": ["sport"], "consignes": ["plus d'humour"],
-    "a_approfondir": ["la réforme des retraites"],
-    "reponse": "C'est noté : je parle plus lentement, sans sport, et demain on creuse la réforme des retraites.",
-}
-a_la_date(2026, 10, 12, 9, 17)
-code = podcast.main(["--retours"])
-verifier(code == 0, "mode --retours : code 0")
-retours = appels_gemini("retours")
-verifier(len(retours) == 1 and retours[0]["model"] == "gemini-3.5-flash-lite", "un appel au modèle léger")
-entree = retours[0]["input"]
-textes_entree = " ".join(c.get("text", "") for c in entree)
-verifier("Réglages actuels" in textes_entree and "Budget 2027" in textes_entree,
-         "contexte transmis : réglages et sujets du dernier épisode")
-verifier("Parle un peu plus lentement" in textes_entree and "Je suis un inconnu" not in textes_entree,
-         "message de l'auditeur transmis, celui d'un inconnu ignoré")
-audio = [c for c in entree if c.get("type") == "audio"]
-verifier(len(audio) == 1 and base64.b64decode(audio[0]["data"]) == VOCAL and audio[0]["mime_type"] == "audio/ogg",
-         "message vocal transmis à Gemini")
-verifier(not appels_gemini("script") and not appels_gemini("voix"), "pas d'épisode en mode --retours")
-tg = appels_telegram()
-envoyes = [t[1]["text"] for t in tg if t[0] == "sendMessage"]
-verifier(len(envoyes) == 2 and envoyes[0].startswith("✅ C'est noté") and "Vitesse de parole : lente" in envoyes[1],
-         f"réponse ✅ puis /reglages : {[e[:40] for e in envoyes]}")
-verifier(not any(t[0] == "sendAudio" for t in tg), "aucun audio envoyé")
-mem = memoire()
-verifier(mem["telegram_dernier_update"] == 13, "messages marqués comme lus")
-verifier([x[1].get("offset") for x in tg if x[0] == "getUpdates"] == [2, 14],
-         "messages confirmés auprès de Telegram après traitement (pour le relais Cloudflare)")
-verifier(mem["preferences"]["vitesse_parole"] == "lente" and mem["preferences"]["sujets_a_eviter"] == ["sport"],
-         "préférences mémorisées")
-verifier(mem["a_approfondir"] == [{"sujet": "la réforme des retraites", "demande_le": "2026-10-12"}],
-         "sujet à creuser mémorisé")
-verifier(mem["historique_retours"][-1]["messages"] == ["Parle un peu plus lentement, et le sport ne m'intéresse pas.", "(vocal)"],
-         "historique : le texte est gardé, pas l'audio")
-appels.clear()
-code = podcast.main(["--retours"])
-verifier(code == 0 and not appels_gemini("retours") and not [t for t in appels_telegram() if t[0] == "sendMessage"],
-         "passage suivant sans nouveau message : rien à faire")
-offsets = [t[1].get("offset") for t in appels_telegram() if t[0] == "getUpdates"]
-verifier(offsets == [14], f"lecture à partir du message suivant (offset {offsets})")
-confirmations = [t[1].get("offset") for t in appels_telegram() if t[0] == "getUpdates"]
+# Préférences d'une installation d'avant le bot (gardées dans memoire.json) : elles s'appliquent encore.
+m = memoire()
+m["preferences"].update({"vitesse_parole": "lente", "ville_habituelle": "Lausanne", "sujets_preferes": ["technologie"],
+                         "sujets_a_eviter": ["sport"], "consignes": ["plus d'humour"]})
+m["a_approfondir"] = [{"sujet": "la réforme des retraites", "demande_le": "2026-10-12"}]
+MEMOIRE.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
 
 # 5c. Épisode du lendemain : préférences appliquées, agenda vide → prochain événement + voyage.
 print("\n5c. Épisode du lendemain (agenda vide, voyage à venir)")
@@ -681,58 +566,28 @@ voix = appels_gemini("voix")
 styles = [c["input"][0]["content"][0]["annotations"][0].get("style") for c in voix]
 verifier(styles[0] == "speaking a little slowly" and styles[-1] is None,
          f"vitesse lente demandée à la voix, retirée si l'API la refuse : {styles}")
-tg = appels_telegram()
-legende_html = [t[1]["caption"] for t in tg if t[0] == "sendAudio"][0]
-print("\n--- légende Telegram ---\n" + legende_html + "\n---")
-verifier("🔭 Prochain : Week-end à Barcelone, du vendredi 6 novembre au dimanche 8 novembre" in legende_html
-         and "🧳 Barcelone" in legende_html, "légende : prochain événement et déplacement")
 mem = memoire()
 verifier(mem["a_approfondir"] == [] and mem["dernier_episode"]["deplacements"] == ["Barcelone"]
          and mem["dernier_episode"]["date"] == "2026-10-13", "sujets creusés oubliés, épisode mémorisé")
 verifier(mem["preferences"]["vitesse_parole"] == "lente", "préférences durables conservées")
 
-# 5d. Gemini indisponible pour lire un message : on prévient une seule fois, on réessaie.
-print("\n5d. Message non compris (quota) : un seul avertissement")
-appels.clear()
-scenario.update({"retours_quota": True, "agenda": ICS, "refuser_style": False, "deplacements": []})
-scenario["updates"] = [{"update_id": 20, "message": {"chat": {"id": 987654321, "type": "private"}, "from": moi,
-                                                     "text": "Fais des épisodes de 7 minutes"}}]
-a_la_date(2026, 10, 13, 11, 17)
-code = podcast.main(["--retours"])
-envoyes = [t[1]["text"] for t in appels_telegram() if t[0] == "sendMessage"]
-verifier(code == 0 and len(envoyes) == 1 and envoyes[0].startswith("⏳"), f"avertissement envoyé : {envoyes}")
-verifier(memoire()["telegram_dernier_update"] == 13, "message non marqué comme lu (sera relu)")
-appels.clear()
-code = podcast.main(["--retours"])
-verifier(code == 0 and not [t for t in appels_telegram() if t[0] == "sendMessage"], "pas de second avertissement")
-appels.clear()
-scenario["retours_quota"] = False
-scenario["retours"] = dict(scenario["retours"], duree_minutes=7, a_approfondir=[],
-                           reponse="Les épisodes dureront désormais 7 minutes.")
-code = podcast.main(["--retours"])
-mem = memoire()
-verifier(code == 0 and mem["preferences"]["duree_minutes"] == 7.0 and mem["telegram_dernier_update"] == 20,
-         "quota revenu : message traité au passage suivant")
-
 # 5e. Audio WAV et audio tronqué.
 print("\n5e. Audio WAV et audio tronqué")
 appels.clear()
 oublier_remplissage()
-scenario.update({"wav": True, "tronquer_une_fois": True})
+m = memoire()
+m["preferences"]["duree_minutes"] = 7.0
+MEMOIRE.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
+scenario.update({"wav": True, "tronquer_une_fois": True, "agenda": ICS, "refuser_style": False, "deplacements": []})
 a_la_date(2026, 10, 14)
 code = podcast.main([])
 voix = appels_gemini("voix")
 verifier(code == 0, "WAV accepté")
 verifier(len(voix) == 3, f"audio tronqué → nouvelle tentative en deux moitiés ({len(voix)} appels)")
 verifier("mode" in voix[0]["generation_config"]["speech_config"], "option conversational envoyée quand elle est acceptée")
-verifier([t[0] for t in appels_telegram()] == ["getUpdates", "sendAudio"], "avec TELEGRAM_CHAT_ID : lecture puis envoi")
-depots = [a for a in appels if a[0] == "PUT"]
-evenements_bot = [a[2] for a in appels if a[0] == "POST" and a[1].endswith("/api/evenement")]
-episodes_bot = [e for e in evenements_bot if e.get("type") == "episode"]
-verifier(episodes_bot and episodes_bot[-1].get("rubriques") and all(r["texte"] and r["titre"] for r in episodes_bot[-1]["rubriques"].values()),
+episodes = evenements_bot("episode")
+verifier(episodes and episodes[-1].get("rubriques") and all(r["texte"] and r["titre"] for r in episodes[-1]["rubriques"].values()),
          "l'événement de l'épisode porte le texte de chaque rubrique (pour son résumé dans l'application)")
-verifier(len(depots) == 1 and depots[0][2].endswith(".mp3") and evenements_bot and evenements_bot[-1]["audio"] is None,
-         "bot sans stockage (ancienne version) : un seul essai, l'épisode part quand même")
 debit = memoire()["debit_mots_minute"]["lente"]
 verifier(f"entre {7 * debit} et" in appels_gemini("script")[0]["system_instruction"],
          f"durée de 7 minutes appliquée, au débit mesuré pour « lente » ({debit} mots/min)")
@@ -752,25 +607,25 @@ appels.clear()
 with contextlib.redirect_stdout(io.StringIO()):
     code = podcast.main(["--sans-envoi"])
 verifier(code == 0 and (RACINE_TEST / "sortie" / "podcast-2026-10-14.mp3").exists(), "MP3 écrit dans sortie/")
-verifier(MEMOIRE.read_text(encoding="utf-8") == avant and not appels_telegram(), "ni Telegram ni mémoire touchés")
+verifier(MEMOIRE.read_text(encoding="utf-8") == avant and not [a for a in appels if a[0] == "PUT"] and not evenements_bot(),
+         "rien confié au bot, mémoire intacte")
 
-# 5g. /reinitialiser : retour aux réglages de base, demandes précédentes annulées.
-print("\n5g. /reinitialiser")
+# 5g. Le bot ne peut pas garder l'épisode : rien n'est parti, la mémoire le sait.
+print("\n5g. Bot sans stockage")
 appels.clear()
-scenario["updates"] = [
-    {"update_id": 30, "message": {"chat": {"id": 987654321, "type": "private"}, "from": moi, "text": "Parle très vite"}},
-    {"update_id": 31, "message": {"chat": {"id": 987654321, "type": "private"}, "from": moi, "text": "/reinitialiser"}},
-    {"update_id": 32, "message": {"chat": {"id": 987654321, "type": "private"}, "from": moi, "text": "/reglages@MonPodcastDuMatin_bot"}},
-]
-a_la_date(2026, 10, 14, 13, 17)
-code = podcast.main(["--retours"])
-envoyes = [t[1]["text"] for t in appels_telegram() if t[0] == "sendMessage"]
-verifier(code == 0 and not appels_gemini("retours"), "message annulé par /reinitialiser : pas d'appel à Gemini")
-verifier(len(envoyes) == 2 and envoyes[0].startswith("🔄") and "Vitesse de parole : normale" in envoyes[1]
-         and "Durée : 5 min" in envoyes[1], f"confirmation puis réglages de base : {[e[:30] for e in envoyes]}")
-mem = memoire()
-verifier(mem["preferences"] == podcast.memoire_vide()["preferences"] and mem["telegram_dernier_update"] == 32,
-         "préférences effacées, messages marqués comme lus")
+scenario["stockage"] = False
+a_la_date(2026, 10, 15, 5, 46)
+with contextlib.redirect_stdout(io.StringIO()):
+    code = podcast.main(["--mode", "manuel"])
+echec = evenements_bot("echec")
+verifier(code == 1 and len([a for a in appels if a[0] == "PUT"]) == 2 and not evenements_bot("episode"),
+         "dépôt refusé (deux essais) : pas d'épisode annoncé, code 1")
+verifier(echec and "garder" in echec[-1]["message"], f"échec signalé par notification : {echec}")
+verifier(memoire()["dernier_episode"]["date"] == "2026-10-14", "épisode non marqué comme envoyé")
+scenario["stockage"] = True
+m = memoire()
+m["preferences"] = podcast.memoire_vide()["preferences"]
+MEMOIRE.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
 
 # 5h. Gemini surchargé : on passe vite au modèle suivant, jusqu'au modèle léger.
 print("\n5h. Gemini surchargé")
@@ -804,32 +659,43 @@ print("\n5j. Rattrapage")
 appels.clear()
 os.environ["RATTRAPAGE"] = "true"
 code = podcast.main([])
-verifier(code == 0 and not appels_gemini("script") and not [t for t in appels_telegram() if t[0] == "sendAudio"],
+verifier(code == 0 and not appels_gemini("script") and not evenements_bot("episode"),
          "épisode déjà parti ce matin → le rattrapage ne refait rien")
 appels.clear()
 a_la_date(2026, 10, 17, 6, 46)
 code = podcast.main([])
-verifier(code == 0 and appels_gemini("script") and [t for t in appels_telegram() if t[0] == "sendAudio"],
+verifier(code == 0 and appels_gemini("script") and evenements_bot("episode"),
          "épisode pas encore parti → le rattrapage l'envoie")
 del os.environ["RATTRAPAGE"]
 
-# 5k. Échec à l'heure prévue : message rassurant, pas d'e-mail d'échec, rattrapage annoncé.
+# 5k. Échec à l'heure prévue : notification rassurante, pas d'e-mail d'échec, rattrapage annoncé.
 print("\n5k. Échec avec rattrapage prévu")
 appels.clear()
 sommeils.clear()
 scenario["pannes"] = {m: ["timeout"] * 3 for m in ("gemini-3.8-flash", "gemini-3.6-flash",
                                                    "gemini-3.5-flash-lite", "gemini-3.1-flash-lite")}
-os.environ["ESSAI_SUIVANT"] = "06:45"
+ancien_get = podcast.requests.get
+
+
+def get_bot_planning(url, timeout=None, headers=None):
+    if url.endswith("/api/config"):
+        appels.append(("GET", url))
+        return Reponse(200, {"format": "bot-v2", "version": "test", "heure_prevue_aujourdhui": "05:45",
+                             "config": {"planning": {"rattrapage": True, "delai_rattrapage": 60}}})
+    return ancien_get(url, timeout=timeout, headers=headers)
+
+
+podcast.requests.get = get_bot_planning
 a_la_date(2026, 10, 18)
 with contextlib.redirect_stdout(io.StringIO()) as sortie:
-    code = podcast.main([])
-alerte = [t[1]["text"] for t in appels_telegram() if t[0] == "sendMessage"]
+    code = podcast.main(["--mode", "planifie"])
+podcast.requests.get = ancien_get
+alerte = evenements_bot("echec")
 verifier(code == 0 and "::warning::" in sortie.getvalue(), "code 0 (le rattrapage s'en charge) + avertissement dans GitHub")
-verifier(alerte and alerte[-1].startswith("⏳") and "Nouvel essai automatique à 6 h 45" in alerte[-1]
-         and "Les serveurs de Gemini ne répondent pas" in alerte[-1], f"message Telegram clair : {alerte}")
+verifier(alerte and alerte[-1]["titre"].startswith("⏳") and "Nouvel essai automatique à 6 h 45" in alerte[-1]["message"]
+         and "Les serveurs de Gemini ne répondent pas" in alerte[-1]["message"], f"notification claire : {alerte}")
 verifier(sommeils.count(60) == 1 and sommeils.count(180) == 1, f"trois tours espacés : {sommeils}")
 verifier(memoire()["dernier_episode"]["date"] == "2026-10-17", "épisode du jour non marqué comme envoyé")
-del os.environ["ESSAI_SUIVANT"]
 scenario["pannes"] = {}
 
 # 5l. Script trop court : une seconde demande, plus longue, au même modèle.
@@ -845,67 +711,26 @@ mem = memoire()
 verifier(isinstance(mem["debit_mots_minute"].get("lente"), int), f"débit mesuré mémorisé : {mem['debit_mots_minute']}")
 podcast.SEUIL_SCRIPT_COURT = 0
 
-# 5m. « Refais le podcast » : nouvel épisode tout de suite, au plus 3 par jour.
-print("\n5m. Nouvel épisode à la demande")
-appels.clear()
-scenario["updates"] = [{"update_id": 40, "message": {"chat": {"id": 987654321, "type": "private"}, "from": moi,
-                                                     "text": "Refais le podcast en creusant l'actu locale"}}]
-scenario["retours"] = dict(scenario["retours"], a_approfondir=["actu locale"], nouvel_episode=True,
-                           reponse="D'accord, je creuse l'actu locale dans un nouvel épisode.")
-a_la_date(2026, 10, 19, 15, 2)
-code = podcast.main(["--retours"])
-tg = appels_telegram()
-envoyes = [x[1]["text"] for x in tg if x[0] == "sendMessage"]
-verifier(code == 0 and any(x[0] == "sendAudio" for x in tg) and appels_gemini("script"),
-         "message « refais le podcast » → épisode préparé et envoyé dans la foulée")
-verifier(len(envoyes) == 2 and envoyes[0].startswith("✅") and envoyes[1].startswith("🎙️"), f"réponses : {envoyes}")
-verifier("actu locale" in appels_gemini("script")[0]["input"], "la demande du même message s'applique au nouvel épisode")
-mem = memoire()
-verifier(mem["episodes_refaits"] == {"date": "2026-10-19", "nombre": 1} and "_nouvel_episode" not in mem
-         and mem["a_approfondir"] == [], f"compteur du jour, sujet creusé puis oublié : {mem['episodes_refaits']}")
-for numero in (41, 42, 43):
-    appels.clear()
-    scenario["updates"] = [{"update_id": numero, "message": {"chat": {"id": 987654321, "type": "private"},
-                                                             "from": moi, "text": "/podcast"}}]
-    code = podcast.main(["--retours"])
-envoyes = [x[1]["text"] for x in appels_telegram() if x[0] == "sendMessage"]
-verifier(code == 0 and envoyes and envoyes[-1].startswith("🚫") and not appels_gemini("script"),
-         "/podcast : au-delà de 3 épisodes refaits dans la journée, refus poli sans rien générer")
-scenario["retours"]["nouvel_episode"] = False
-
-# 5n. Bot instantané : réglages dans preferences.json, Telegram réservé au webhook.
-print("\n5n. Bot instantané (preferences.json)")
+# 5n. Ancien format de preferences.json (réglages et sujets à creuser).
+print("\n5n. Ancien preferences.json")
 appels.clear()
 (RACINE_TEST / "preferences.json").write_text(json.dumps({
     "preferences": {"vitesse_parole": "rapide", "duree_minutes": 4, "ville_habituelle": "Yverdon",
                     "sujets_preferes": [], "sujets_a_eviter": ["sport"], "consignes": []},
-    "a_approfondir": [{"sujet": "ancien sujet", "demande_le": "2026-10-19T10:00"},
+    "a_approfondir": [{"sujet": "ancien sujet", "demande_le": "2026-10-19T04:00"},
                       {"sujet": "élections fédérales", "demande_le": "2026-10-19T21:40"}]}), encoding="utf-8")
-ancien_post_tg = podcast.requests.post
-
-
-def post_webhook_actif(url, **kw):
-    if url.endswith("getUpdates"):
-        appels.append(("POST", url, kw.get("data"), None))
-        return Reponse(409, {"ok": False, "error_code": 409,
-                             "description": "Conflict: can't use getUpdates method while webhook is active; use deleteWebhook to delete the webhook first"})
-    return ancien_post_tg(url, **kw)
-
-
-podcast.requests.post = post_webhook_actif
 a_la_date(2026, 10, 20, 7, 31)
 code = podcast.main([])
 systeme = appels_gemini("script")[0]["system_instruction"]
 demande = appels_gemini("script")[0]["input"]
-verifier(code == 0 and any(x[0] == "sendAudio" for x in appels_telegram()), "webhook actif : getUpdates refusé sans casser l'épisode")
+verifier(code == 0 and evenements_bot("episode"), "épisode confié au bot")
 verifier("pour durer 5 minutes" in systeme, "durée lue dans preferences.json (4 min + 1 pour l'approfondissement)")
 verifier("élections fédérales" in demande and "ancien sujet" not in demande,
          "seul le sujet demandé après le dernier épisode est approfondi")
 verifier("Thèmes qui ne l'intéressent pas : sport" in systeme, "thèmes évités lus dans preferences.json")
-podcast.requests.post = ancien_post_tg
 (RACINE_TEST / "preferences.json").unlink()
 
-# ─────────────── 6. erreurs : clé invalide, bot jamais démarré ───────────────
+# ─────────────── 6. erreurs : clé invalide, jeton du bot absent ───────────────
 print("\n6. Messages d'erreur")
 ancien_post = podcast.requests.post
 
@@ -920,34 +745,19 @@ def post_cle_invalide(url, **kw):
 
 appels.clear()
 podcast.requests.post = post_cle_invalide
-code = podcast.main([])
-alerte = [t[1]["text"] for t in appels_telegram() if t[0] == "sendMessage"]
-verifier(code == 1 and alerte and "clé Gemini est refusée" in alerte[-1], "clé invalide → code 1 + alerte Telegram claire")
-verifier(alerte and "actions/runs/42" in alerte[-1], "lien vers l'exécution GitHub dans l'alerte")
-appels.clear()
-code = podcast.main(["--retours"])
-verifier(code == 0 and not [t for t in appels_telegram() if t[0] == "sendMessage"],
-         "mode --retours : pas d'alerte si rien à lire")
+with contextlib.redirect_stdout(io.StringIO()):
+    code = podcast.main([])
+alerte = evenements_bot("echec")
+verifier(code == 1 and alerte and "clé Gemini est refusée" in alerte[-1]["message"], f"clé invalide → code 1 + notification claire : {alerte}")
 podcast.requests.post = ancien_post
-
-
-def post_sans_conversation(url, **kw):
-    if url.endswith("getUpdates"):
-        return Reponse(200, {"ok": True, "result": []})
-    return ancien_post(url, **kw)
-
-
-os.environ["TELEGRAM_CHAT_ID"] = ""
-podcast.requests.post = post_sans_conversation
+os.environ["BOT_GITHUB_TOKEN"] = ""
+appels.clear()
 journal_capture = io.StringIO()
 with contextlib.redirect_stdout(journal_capture):
     code = podcast.main([])
-verifier(code == 1 and "@MonPodcastDuMatin_bot" in journal_capture.getvalue(),
-         "bot jamais démarré → message d'aide avec le nom du bot, et code 1")
-with contextlib.redirect_stdout(io.StringIO()):
-    code = podcast.main(["--retours"])
-verifier(code == 0, "mode --retours sans TELEGRAM_CHAT_ID : rien à faire, code 0")
-podcast.requests.post = ancien_post
+verifier(code == 1 and "BOT_GITHUB_TOKEN" in journal_capture.getvalue() and not appels_gemini("script"),
+         "sans jeton GitHub du bot : message clair, rien de préparé pour rien")
+os.environ["BOT_GITHUB_TOKEN"] = "gh-jeton-test"
 
 # Consignes : une vraie phrase n'est pas coupée ; les autres listes restent courtes.
 longue = "Rappelle-moi uniquement la veille et le jour de l'événement piscine de prendre mon maillot et ma serviette"
@@ -960,9 +770,9 @@ verifier(podcast.effectifs_depuis_bot(podcast.charger_reglages(podcast.RACINE / 
 import tempfile
 with tempfile.TemporaryDirectory() as dossier:
     sortie = Path(dossier) / "sortie.txt"
-    anciens = {k: os.environ.get(k) for k in ("EVENEMENT", "TELEGRAM_BOT_TOKEN", "BOT_URL", "RACINE", "GITHUB_OUTPUT", "PROGRAMMATION")}
-    os.environ.update({"EVENEMENT": "schedule", "TELEGRAM_BOT_TOKEN": "", "BOT_URL": "", "RACINE": dossier,
-                       "GITHUB_OUTPUT": str(sortie), "PROGRAMMATION": "30 5 * * *"})
+    anciens = {k: os.environ.get(k) for k in ("EVENEMENT", "BOT_GITHUB_TOKEN", "BOT_URL", "RACINE", "GITHUB_OUTPUT")}
+    os.environ.update({"EVENEMENT": "schedule", "BOT_GITHUB_TOKEN": "", "BOT_URL": "", "RACINE": dossier,
+                       "GITHUB_OUTPUT": str(sortie)})
     with contextlib.redirect_stdout(io.StringIO()):
         horaire.main()
     for cle, valeur in anciens.items():
@@ -971,16 +781,17 @@ with tempfile.TemporaryDirectory() as dossier:
         else:
             os.environ[cle] = valeur
     verifier("go=false" in sortie.read_text(), "dépôt sans bot : pas d'épisode programmé")
-    # Sans Telegram, le filet de sécurité lit le bot avec le secret du jeton GitHub.
+    # Le filet de sécurité lit le bot avec le secret du jeton GitHub.
     vus, lire_bot = [], horaire.lire_bot
     horaire.lire_bot = lambda adresse, jeton: vus.append(jeton) or None
-    os.environ.update({"EVENEMENT": "schedule", "TELEGRAM_BOT_TOKEN": "", "BOT_GITHUB_TOKEN": "gh-jeton", "BOT_URL": "https://bot.exemple",
-                       "RACINE": dossier, "GITHUB_OUTPUT": str(sortie), "PROGRAMMATION": "30 5 * * *"})
+    ancien_jeton = os.environ.get("BOT_GITHUB_TOKEN")
+    os.environ.update({"EVENEMENT": "schedule", "BOT_GITHUB_TOKEN": "gh-jeton", "BOT_URL": "https://bot.exemple",
+                       "RACINE": dossier, "GITHUB_OUTPUT": str(sortie)})
     with contextlib.redirect_stdout(io.StringIO()):
         horaire.main()
     horaire.lire_bot = lire_bot
-    os.environ.pop("BOT_GITHUB_TOKEN", None)
-    verifier(vus == ["gh-jeton"], f"filet de sécurité sans Telegram : le bot est lu avec le jeton GitHub ({vus})")
+    os.environ["BOT_GITHUB_TOKEN"] = ancien_jeton or ""
+    verifier(vus == ["gh-jeton"] and "go=false" in sortie.read_text(), f"filet de sécurité : le bot est lu avec le jeton GitHub ({vus})")
 
 # Clés et agendas saisis dans l'application : appliqués et masqués dans le journal de GitHub.
 import liaison
@@ -1101,7 +912,7 @@ def essai_maj(jeton_github: str) -> tuple[Path, list[dict], list[str]]:
     mise_a_jour.relancer_deploiement = lambda: relances.append("deployer-bot")
     ancien_env = dict(os.environ)
     os.environ.update({"MODELE": "auteur/modele", "GITHUB_REPOSITORY": "alice/podcast-matin", "ADRESSE": "",
-                       "VERSION": "", "TELEGRAM_BOT_TOKEN": "", "BOT_GITHUB_TOKEN": jeton_github})
+                       "VERSION": "", "BOT_GITHUB_TOKEN": jeton_github})
     journal = io.StringIO()   # ses notices iraient sinon dans le résumé de l'exécution GitHub
     try:
         with contextlib.redirect_stdout(journal):
@@ -1137,7 +948,7 @@ verifier("::notice title=Jeton GitHub::secret GitHub BOT_GITHUB_TOKEN." in journ
          and "::notice title=Jeton GitHub::aucun" in journaux_maj[""] and not re.search(r"\bbon\b", journaux_maj["bon"].replace("::add-mask::bon", "")),
          "mise à jour : d'où vient le jeton, dans le résumé (jamais sa valeur)")
 
-# Code de connexion à l'application (sans Telegram) : demandé au bot, affiché dans le résumé de GitHub.
+# Code de connexion à l'application : demandé au bot, affiché dans le résumé de GitHub.
 print("\nCode de connexion")
 import code_connexion
 import urllib.error
@@ -1162,7 +973,7 @@ def essai_code(arguments, reponse, env=None):
     with tempfile.TemporaryDirectory() as dossier:
         resume_fichier = Path(dossier) / "resume.md"
         env_avant = dict(os.environ)
-        os.environ.update({"BOT_URL": "https://podcast.alice.workers.dev", "TELEGRAM_BOT_TOKEN": "", "BOT_GITHUB_TOKEN": "gh-jeton",
+        os.environ.update({"BOT_URL": "https://podcast.alice.workers.dev", "BOT_GITHUB_TOKEN": "gh-jeton",
                            "GITHUB_STEP_SUMMARY": str(resume_fichier), **(env or {})})
         ancien = code_connexion.urllib.request.urlopen
         code_connexion.urllib.request.urlopen = ouvrir
@@ -1181,9 +992,9 @@ verifier(code == 0 and "**123456**" in resume_md and "https://podcast.alice.work
          and vu["url"].endswith("/api/code-connexion?si=premiere") and vu["secret"] == liaison.secret_partage("gh-jeton"),
          "code de connexion : demandé avec le secret du jeton GitHub, affiché dans le résumé (code et lien)")
 verifier("::notice title=Code de connexion::123456" in sortie, "code aussi en annotation de l'exécution")
-code, sortie, resume_md, _ = essai_code(["--premiere"], {"ok": True, "code": None, "raison": "telegram"})
-verifier(code == 0 and "Telegram est configuré" in resume_md and "Code de connexion" in resume_md and not re.search(r"\*\*\d{6}\*\*", resume_md),
-         "avec Telegram : pas de code à la fin du déploiement, mais le résumé dit pourquoi et comment en avoir un")
+code, sortie, resume_md, _ = essai_code(["--premiere"], {"ok": True, "code": None, "raison": "deja_connecte"})
+verifier(code == 0 and "déjà connecté" in resume_md and "Code de connexion" in resume_md and not re.search(r"\*\*\d{6}\*\*", resume_md),
+         "appareil déjà connecté : pas de code à la fin du déploiement, mais le résumé dit pourquoi et comment en avoir un")
 code, sortie, _, _ = essai_code([], urllib.error.HTTPError("u", 403, "interdit", {}, None))
 verifier(code == 1 and "::error::" in sortie and "Déployer le bot" in sortie, "secret refusé : erreur claire (workflow « Code de connexion »)")
 code, sortie, _, _ = essai_code(["--premiere"], urllib.error.URLError("pas de réseau"))
@@ -1229,7 +1040,7 @@ try:
     _bot = _BotPoint()
     _effectifs = {"animateurs": [{"nom": "Kore"}, {"nom": "Puck"}], "mots_par_minute": 150, "tutoiement": True,
                   "modeles_texte": ["m"], "modeles_rapides": [], "debit_mp3_kbps": 64}
-    _code = _recherche.lancer_point([_regle], [_collecte], _effectifs, "cle", dt.datetime(2026, 10, 23, 21, 0, tzinfo=ZH), None, "", _bot)
+    _code = _recherche.lancer_point([_regle], [_collecte], _effectifs, "cle", dt.datetime(2026, 10, 23, 21, 0, tzinfo=ZH), _bot)
 finally:
     podcast.demander_json, podcast.synthetiser, podcast.encoder_mp3 = _anciens
 _ev = _bot.evenements[0] if _bot.evenements else {}
@@ -1275,14 +1086,6 @@ verifier(_plans["deplacements"]["requetes"] == ["Lisbonne novembre"] and _plans[
          and _plans["deplacements"]["evenement"] == "Vol pour Lisbonne", "planificateur : identifiants minuscules retrouvés")
 
 
-class _TelegramEcrit:
-    def __init__(self):
-        self.messages = []
-
-    def message(self, conversation, texte, *_, **__):
-        self.messages.append((conversation, texte))
-
-
 _anciens = (podcast.demander_json, podcast.lire_actualites, _moteur.collecter, podcast.telecharger)
 _vus = {}
 try:
@@ -1293,15 +1096,15 @@ try:
     podcast.lire_actualites = lambda reglages, maintenant: ([podcast.Article("Les CFF en retard", "Chantiers en cours", "https://exemple.ch/cff",
                                                                               "Le Temps"), podcast.Article("Sans lien", "", "http://non-https.ch", "X")], [])
     _moteur.collecter = lambda regle, plan, sources, jour, ville, *a, **k: _moteur.Collecte(regle=regle, plan=plan, texte="Sources lues : medias")
-    _bot_e, _tg_e = _BotPoint(), _TelegramEcrit()
+    _bot_e = _BotPoint()
     _eff = {"animateurs": [{"nom": "Kore"}, {"nom": "Puck"}], "mots_par_minute": 150, "tutoiement": True, "modeles_texte": ["m"],
             "modeles_rapides": ["r"], "debit_mp3_kbps": 64, "ville_habituelle": "Yverdon", "config_bot": _config, "flux": [], "fraicheur_heures": 24,
             "articles_par_flux": 3}
-    _code_e = _recherche.lancer(["actualites"], "ecrit", _eff, "cle", dt.datetime(2026, 10, 24, 8, 0, tzinfo=ZH), _tg_e, "42", _bot_e, {})
+    _code_e = _recherche.lancer(["actualites"], "ecrit", _eff, "cle", dt.datetime(2026, 10, 24, 8, 0, tzinfo=ZH), _bot_e, {})
     _entree_e = _vus.get("entree", "")
     _agenda_env = os.environ.pop("CALENDAR_ICS_URL", None)
     try:
-        _essai_agenda = _echoue(_recherche.lancer, ["agenda"], "ecrit", _eff, "cle", dt.datetime(2026, 10, 24, 8, 0, tzinfo=ZH), None, "", _bot_e, {})
+        _essai_agenda = _echoue(_recherche.lancer, ["agenda"], "ecrit", _eff, "cle", dt.datetime(2026, 10, 24, 8, 0, tzinfo=ZH), _bot_e, {})
     finally:
         if _agenda_env is not None:
             os.environ["CALENDAR_ICS_URL"] = _agenda_env
@@ -1314,7 +1117,6 @@ verifier(_code_e == 0 and _ev_e.get("format") == "ecrit" and _ev_e.get("idees") 
 verifier(_res_e.get("intro", "").startswith("Deux sujets dominent la journée.") and "\n" not in _res_e.get("intro", ""), "point écrit : texte sur une ligne")
 verifier(_res_e.get("sources") == [{"titre": "Les CFF en retard", "lien": "https://exemple.ch/cff"}], "point écrit : sources de tes médias (https seulement)")
 verifier("Articles récents de ses médias" in _entree_e and "Les CFF en retard" in _entree_e, "actualités : les médias de l'auditeur sont lus")
-verifier(_tg_e.messages and _tg_e.messages[0][0] == "42" and "Actualités" in _tg_e.messages[0][1], "point écrit : aussi dans Telegram s'il est là")
 verifier("agenda" in _essai_agenda.lower() and "Réglages › Connexions" in _essai_agenda, "agenda sans agenda branché : message clair")
 
 print("\nRÉSULTAT :", "tout est vert ✅" if not echecs else f"{len(echecs)} échec(s) ❌")

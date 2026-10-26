@@ -1,7 +1,7 @@
 """Modes lancés par le bot en dehors de l'épisode du matin.
 
-  - Résultats de recherche (« 📝 Résultats écrits ») : idées concrètes pour une
-    ou plusieurs règles, avec photo, lieu sur la carte, liens, sondage.
+  - Résultats de recherche (« Chercher maintenant ») : idées concrètes pour une
+    ou plusieurs règles (prix, accès, liens), montrées dans l'application.
   - Mini-podcast (« 🎧 ») : les mêmes idées, racontées par les deux voix.
   - Point (recherche ponctuelle « point ») : un podcast de quelques minutes qui fait l'état
     des lieux d'un sujet à l'heure actuelle (« les retards CFF en ce moment »), hors épisode.
@@ -13,7 +13,6 @@
 from __future__ import annotations
 
 import datetime as dt
-import html
 import json
 import os
 import re
@@ -23,7 +22,7 @@ from typing import Any
 import pays
 import podcast as p
 import regles as moteur
-from sources import Sources, cle, lien_itineraire
+from sources import Sources
 
 VOIX = {
     "Aoede": "aérienne", "Kore": "ferme", "Leda": "jeune", "Zephyr": "lumineuse", "Callirrhoe": "décontractée",
@@ -34,7 +33,6 @@ VOIX = {
     "Rasalgethi": "informative", "Alnilam": "solide", "Schedar": "égale", "Achird": "amicale",
     "Zubenelgenubi": "familière", "Sadachbia": "vive", "Sadaltager": "savante",
 }
-e = p.echapper
 
 
 # ──────────────────────────────── idées ─────────────────────────────────────
@@ -92,40 +90,6 @@ def valider_lien(lien: str, autorises: set[str]) -> str:
     return ""
 
 
-def situer(idee: dict, collecte: moteur.Collecte, sources: Sources, ville: str) -> dict | None:
-    """Coordonnées de l'idée : lieu OpenStreetMap correspondant, Wikipédia, puis Nominatim."""
-    nom = cle(idee.get("lieu") or idee.get("titre") or "")
-    if not nom:
-        return None
-    for lieu in collecte.lieux:
-        nom_lieu = cle(lieu["nom"])
-        if nom_lieu and (nom_lieu in nom or nom in nom_lieu):
-            return {"lat": lieu["lat"], "lon": lieu["lon"], "adresse": lieu.get("adresse", "")}
-    requete = ", ".join(x for x in (idee.get("adresse") or idee.get("lieu"), "" if idee.get("adresse") else ville) if x)
-    trouve = sources.nominatim_chercher(requete)
-    if trouve:
-        return trouve
-    article = sources.wikipedia(idee.get("lieu") or idee.get("titre"))
-    if article and article.get("lat") is not None and cle(article["titre"])[:12] in nom:
-        return {"lat": article["lat"], "lon": article["lon"], "adresse": ""}
-    return None
-
-
-def image_pour(idee: dict, collecte: moteur.Collecte, sources: Sources, utilisees: set[str]) -> str:
-    nom = cle(idee.get("lieu") or idee.get("titre") or "")
-    for lieu in collecte.lieux:      # photo Wikipédia du lieu lui-même, si on l'a déjà
-        if lieu.get("image") and lieu["image"] not in utilisees and nom and (cle(lieu["nom"]) in nom or nom in cle(lieu["nom"])):
-            return lieu["image"]
-    article = sources.wikipedia(idee.get("lieu") or idee.get("titre"))
-    if article and article.get("image") and cle(article["titre"])[:10] in cle(f"{idee.get('lieu', '')} {idee.get('titre', '')}"):
-        if article["image"] not in utilisees:
-            return article["image"]
-    for image in collecte.images:
-        if image not in utilisees and re.search(r"\.(jpe?g|png|webp)(\?|$)", image, re.I):
-            return image
-    return ""
-
-
 def trouver_idees(collecte: moteur.Collecte, effectifs: dict, cle_gemini: str, exclues: list[str]) -> dict:
     systeme = consigne_idees(effectifs["ville_habituelle"], exclues, effectifs.get("tutoiement", True))
     modeles = list(dict.fromkeys(effectifs["modeles_texte"] + effectifs["modeles_rapides"]))
@@ -147,117 +111,6 @@ def trouver_idees(collecte: moteur.Collecte, effectifs: dict, cle_gemini: str, e
             "resume_partage": str(brut.get("resume_partage") or "")[:250]}
 
 
-# ─────────────────────────────── envoi écrit ────────────────────────────────
-
-def carte_idee(numero: int, idee: dict) -> str:
-    lignes = [f"<b>{numero}. {e(idee['titre'])}</b>", e(idee["resume"])]
-    if idee["pourquoi"]:
-        lignes.append(f"💡 {e(idee['pourquoi'])}")
-    infos = []
-    if idee["prix"]:
-        infos.append(f"💰 {e(idee['prix'])}{' ✅' if idee['dans_le_budget'] else ''}")
-    if idee["duree"]:
-        infos.append(f"⏱ {e(idee['duree'])}")
-    if infos:
-        lignes.append(" · ".join(infos))
-    if idee["horaires"]:
-        lignes.append(f"🕒 {e(idee['horaires'])}")
-    if idee["acces"]:
-        lignes.append(f"🚆 {e(idee['acces'])}")
-    if idee["lien"]:
-        lignes.append(f'🔗 <a href="{html.escape(idee["lien"], quote=True)}">{e(idee["source"] or "Source")}</a>')
-    return "\n".join(lignes)[:1020]
-
-
-def boutons_idee(idee: dict, ville: str, transport: str) -> list[list[dict]]:
-    ligne = []
-    if idee["lien"]:
-        ligne.append({"text": "🌐 Site", "url": idee["lien"]})
-    destination = ", ".join(x for x in (idee["lieu"] or idee["titre"], idee["adresse"]) if x)
-    if ville and destination and transport != "aucun":
-        ligne.append({"text": "🗺️ Itinéraire", "url": lien_itineraire(ville, destination, transport)})
-    return [ligne] if ligne else []
-
-
-def envoyer_ecrit(telegram: p.Telegram, conversation: str, regle: dict, collecte: moteur.Collecte,
-                  resultat: dict, sources: Sources, effectifs: dict) -> dict:
-    ville = effectifs["ville_habituelle"]
-    fiche = (regle.get("recherche") or {}).get("fiche") or {}
-    titre = (regle.get("rubrique") or {}).get("titre") or regle.get("titre", "Recherche")
-    entete = [f"🔎 <b>{e(titre)}</b> · {regle['id']}"]
-    if resultat["intro"]:
-        entete.append(e(resultat["intro"]))
-    if collecte.meteo:
-        entete.append(f"🌦 {e(Sources.meteo_en_mots(collecte.meteo))}")
-    if collecte.trajets:
-        entete.append(f"🚆 {e(Sources.trajets_en_mots(collecte.trajets))}")
-    budget = moteur.budget_en_mots(fiche)
-    if budget:
-        entete.append(f"💰 {e(budget)}")
-    if not resultat["idees"]:
-        entete.append("\nJe n'ai rien trouvé d'assez fiable cette fois. Essaie de préciser la recherche (lieu, type d'activité).")
-    telegram.message(conversation, "\n".join(entete))
-    utilisees: set[str] = set()
-    for numero, idee in enumerate(resultat["idees"], 1):
-        texte = carte_idee(numero, idee)
-        clavier = boutons_idee(idee, ville, fiche.get("transport", ""))
-        image = image_pour(idee, collecte, sources, utilisees)
-        envoye = False
-        if image:
-            donnees = {"chat_id": conversation, "photo": image, "caption": texte, "parse_mode": "HTML"}
-            if clavier:
-                donnees["reply_markup"] = json.dumps({"inline_keyboard": clavier}, ensure_ascii=False)
-            try:
-                telegram.appeler("sendPhoto", donnees)
-                utilisees.add(image)
-                envoye = True
-            except p.ErreurPodcast as erreur:
-                p.journal(f"Photo refusée par Telegram ({erreur}) : texte seul.")
-        if not envoye:
-            telegram.message(conversation, texte, clavier)
-        position = situer(idee, collecte, sources, ville)
-        if position:
-            try:
-                telegram.appeler("sendVenue", {
-                    "chat_id": conversation, "latitude": position["lat"], "longitude": position["lon"],
-                    "title": idee["titre"][:64], "address": (idee["adresse"] or position.get("adresse") or idee["lieu"])[:120],
-                    "disable_notification": "true"})
-            except p.ErreurPodcast as erreur:
-                p.journal(f"Lieu non envoyé ({erreur}).")
-    return envoyer_suite(telegram, conversation, regle, resultat)
-
-
-def envoyer_suite(telegram: p.Telegram, conversation: str, regle: dict, resultat: dict) -> dict:
-    """Sondage « laquelle te tente ? » et boutons pour la suite."""
-    sondage = None
-    titres = [i["titre"][:100] for i in resultat["idees"]]
-    if len(titres) >= 2:
-        base = {"chat_id": conversation, "question": "Laquelle te tente ?", "is_anonymous": "false"}
-        for options in (json.dumps([{"text": t} for t in titres], ensure_ascii=False), json.dumps(titres, ensure_ascii=False)):
-            try:
-                envoi = telegram.appeler("sendPoll", {**base, "options": options})
-                sondage = {"poll_id": str((envoi.get("poll") or {}).get("id", "")), "options": titres, "regle": regle["id"]}
-                break
-            except p.ErreurPodcast as erreur:
-                p.journal(f"Sondage refusé ({erreur}).")
-    lignes = []
-    if resultat["conseil"]:
-        lignes.append(f"👉 {e(resultat['conseil'])}")
-    lignes.append("Et maintenant ?")
-    clavier = []
-    if resultat["resume_partage"]:
-        clavier.append([{"text": "📋 Copier pour mes amis", "copy_text": {"text": resultat["resume_partage"][:256]}}])
-    clavier.append([{"text": "🔁 D'autres idées", "callback_data": f"a:rl:{regle['id']}:ecrit"},
-                    {"text": "🎧 En mini-podcast", "callback_data": f"a:rl:{regle['id']}:audio"}])
-    clavier.append([{"text": f"📌 Rubrique {regle['id']}", "callback_data": f"m:regle:{regle['id']}"}])
-    try:
-        telegram.message(conversation, "\n".join(lignes), clavier)
-    except p.ErreurPodcast:
-        clavier = [ligne for ligne in clavier if not any("copy_text" in b for b in ligne)]
-        telegram.message(conversation, "\n".join(lignes), clavier)
-    return sondage or {}
-
-
 # ───────────────────────────── mini-podcast ─────────────────────────────────
 
 def mini_podcast(regles_traitees: list[tuple[dict, moteur.Collecte, dict]], effectifs: dict, cle_gemini: str,
@@ -267,7 +120,7 @@ def mini_podcast(regles_traitees: list[tuple[dict, moteur.Collecte, dict]], effe
     adresse = "Tutoie" if effectifs.get("tutoiement", True) else "Vouvoie"
     mots = round(2.5 * effectifs.get("mots_par_minute", 180))
     systeme = f"""Tu écris un mini-podcast audio de deux minutes et demie, animé par {a} et {b} à la manière de NotebookLM : une conversation vivante et claire. {adresse} l'auditeur.
-Il présente les idées de sortie trouvées pour lui (fournies ci-dessous) : pour chacune, ce que c'est, pourquoi elle lui convient, le prix et l'accès si on les connaît. Termine en l'invitant à voter dans le sondage qui suit.
+Il présente les idées de sortie trouvées pour lui (fournies ci-dessous) : pour chacune, ce que c'est, pourquoi elle lui convient, le prix et l'accès si on les connaît. Termine en lui rappelant que les détails et les liens l'attendent dans l'application.
 N'invente rien qui ne soit pas fourni. Pas d'adresse web, pas de markdown, pas d'emoji ; heures et prix écrits comme on les dit.
 Longueur : environ {mots} mots. Remplis « titre » (court), « sujets » (les idées, dans l'ordre) et « sources » (liste vide)."""
     matiere = []
@@ -314,8 +167,8 @@ def point_podcast(regle: dict, collecte: moteur.Collecte, effectifs: dict, cle_g
 
 
 def lancer_point(regles: list[dict], collectes: list[moteur.Collecte], effectifs: dict, cle_gemini: str,
-                 maintenant: dt.datetime, telegram: p.Telegram | None, conversation: str, bot: Any) -> int:
-    """Un podcast par recherche « point », déposé chez le bot (écoute dans l'application) et envoyé dans Telegram."""
+                 maintenant: dt.datetime, bot: Any) -> int:
+    """Un podcast par recherche « point », déposé chez le bot (écoute dans l'application)."""
     for regle, collecte in zip(regles, collectes):
         script, pcm, taux = point_podcast(regle, collecte, effectifs, cle_gemini, maintenant)
         mp3 = p.encoder_mp3(pcm, taux, effectifs["debit_mp3_kbps"])
@@ -323,13 +176,9 @@ def lancer_point(regles: list[dict], collectes: list[moteur.Collecte], effectifs
         nom_bot = f"{maintenant:%Y-%m}/point-{regle['id']}-{maintenant:%Y-%m-%d-%H%M%S}.mp3"
         audio_bot = nom_bot if bot.deposer(nom_bot, mp3, "audio/mpeg") else None
         sources = [{"titre": t, "lien": u} for t, u in dict.fromkeys(collecte.liens) if u.startswith("https://")][:8]
-        if telegram and conversation:
-            lignes = [f"🎧 <b>{e(script['titre'])}</b>", e(regle.get("titre", ""))]
-            lignes += [f'• <a href="{html.escape(s["lien"], quote=True)}">{e(p.tronquer(s["titre"], 70))}</a>' for s in sources[:5]]
-            telegram.audio(conversation, mp3, f"point-{regle['id']}.mp3", p.tronquer(script["titre"], 64),
-                           " & ".join(x["nom"] for x in effectifs["animateurs"]), "\n".join(lignes)[:1024], duree,
-                           p.creer_pochette(maintenant.date(), script["titre"], "LE POINT"))
-        bot.evenement({"type": "recherche", "regles": [regle["id"]], "idees": [], "sondage": None, "format": "point",
+        if not audio_bot:
+            raise p.ErreurPodcast("Le bot n'a pas pu garder le podcast : rien n'est parti (bot injoignable ?).")
+        bot.evenement({"type": "recherche", "regles": [regle["id"]], "idees": [], "format": "point",
                        "audio": audio_bot, "titre_audio": script["titre"], "duree": duree,
                        "resultats": [{"regle": regle["id"], "titre": regle.get("titre", ""),
                                       "intro": " · ".join(script.get("sujets") or [])[:400], "conseil": "", "idees": [],
@@ -418,14 +267,12 @@ Remplis « titre » (court) et « texte »."""
 
 
 def lancer_ecrit_essentielles(regles: list[dict], collectes: list[moteur.Collecte], effectifs: dict, cle_gemini: str,
-                              maintenant: dt.datetime, telegram: p.Telegram | None, conversation: str, bot: Any) -> int:
-    """Un point écrit par rubrique essentielle, montré dans l'application (et envoyé dans Telegram s'il est là)."""
+                              maintenant: dt.datetime, bot: Any) -> int:
+    """Un point écrit par rubrique essentielle, montré dans l'application."""
     for regle, collecte in zip(regles, collectes):
         resume = resume_ecrit(regle, collecte, effectifs, cle_gemini, maintenant)
         sources = [{"titre": t, "lien": u} for t, u in dict.fromkeys(collecte.liens) if u.startswith("https://")][:8]
-        if telegram and conversation:
-            telegram.message(conversation, f"🔎 <b>{e(regle.get('titre', ''))}</b>\n{e(resume['texte'])}")
-        bot.evenement({"type": "recherche", "regles": [regle["id"]], "idees": [], "sondage": None, "format": "ecrit",
+        bot.evenement({"type": "recherche", "regles": [regle["id"]], "idees": [], "format": "ecrit",
                        "audio": None, "titre_audio": "", "duree": 0,
                        "resultats": [{"regle": regle["id"], "titre": regle.get("titre", ""), "intro": resume["texte"],
                                       "conseil": "", "idees": [], "sources": sources}]})
@@ -435,8 +282,7 @@ def lancer_ecrit_essentielles(regles: list[dict], collectes: list[moteur.Collect
 
 # ───────────────────────── synthèse d'une rubrique ──────────────────────────
 
-def resume_rubrique(identifiant: str, effectifs: dict, cle_gemini: str, maintenant: dt.datetime,
-                    telegram: p.Telegram | None, conversation: str, bot: Any) -> int:
+def resume_rubrique(identifiant: str, effectifs: dict, cle_gemini: str, maintenant: dt.datetime, bot: Any) -> int:
     """Mini-podcast qui résume ce que la rubrique a raconté ces derniers jours (texte et sources gardés par le bot)."""
     entrees = bot.rubrique(identifiant)
     if not entrees:
@@ -465,10 +311,8 @@ Longueur : environ {mots} mots. Remplis « titre » (court), « sujets » (les t
     duree = round(len(pcm) / (2 * taux))
     nom_bot = f"{maintenant:%Y-%m}/resume-{identifiant}-{maintenant:%Y-%m-%d-%H%M%S}.mp3"
     audio_bot = nom_bot if bot.deposer(nom_bot, mp3, "audio/mpeg") else None
-    if telegram and conversation:
-        telegram.audio(conversation, mp3, f"resume-{identifiant}.mp3", p.tronquer(script["titre"], 64),
-                       " & ".join(a["nom"] for a in effectifs["animateurs"]), f"🎧 <b>{e(script['titre'])}</b>\nSynthèse : {e(titre_rubrique)}",
-                       duree, p.creer_pochette(maintenant.date(), script["titre"], "SYNTHÈSE"))
+    if not audio_bot:
+        raise p.ErreurPodcast("Le bot n'a pas pu garder la synthèse : rien n'est parti (bot injoignable ?).")
     bot.evenement({"type": "resume", "rubrique": identifiant, "audio": audio_bot, "titre": script["titre"], "duree": duree})
     p.journal(f"Synthèse de « {titre_rubrique} » envoyée ✅")
     return 0
@@ -477,7 +321,7 @@ Longueur : environ {mots} mots. Remplis « titre » (court), « sujets » (les t
 # ──────────────────────────────── principal ─────────────────────────────────
 
 def lancer(identifiants: list[str], format_: str, effectifs: dict, cle_gemini: str, maintenant: dt.datetime,
-           telegram: p.Telegram | None, conversation: str, bot: Any, export: dict, sans_envoi: bool = False) -> int:
+           bot: Any, export: dict, sans_envoi: bool = False) -> int:
     config = effectifs.get("config_bot") or {}
     jour = maintenant.date()
     ville = effectifs["ville_habituelle"]
@@ -533,53 +377,38 @@ def lancer(identifiants: list[str], format_: str, effectifs: dict, cle_gemini: s
         p.journal(f"Recherche web : {sources.credits_tavily} crédit(s) Tavily.")
 
     if ecrit_essentielle:
-        if sans_envoi or not (telegram or bot.secret):
+        if sans_envoi or not bot.secret:
             for regle, collecte in zip(regles, collectes):
                 print(f"{regle['id']} :\n{collecte.texte}")
             return 0
-        return lancer_ecrit_essentielles(regles[:1], collectes, effectifs, cle_gemini, maintenant, telegram, conversation, bot)
+        return lancer_ecrit_essentielles(regles[:1], collectes, effectifs, cle_gemini, maintenant, bot)
 
     if point:
-        if sans_envoi or not (telegram or bot.secret):
+        if sans_envoi or not bot.secret:
             for regle, collecte in zip(regles, collectes):
                 print(f"{regle['id']} :\n{collecte.texte}")
             return 0
-        return lancer_point(regles[:3], collectes, effectifs, cle_gemini, maintenant, telegram, conversation, bot)
+        return lancer_point(regles[:3], collectes, effectifs, cle_gemini, maintenant, bot)
 
-    if sans_envoi or not (telegram or bot.secret):
+    if sans_envoi or not bot.secret:
         for regle, _, resultat in traitees:
             print(json.dumps({"regle": regle["id"], **resultat}, ensure_ascii=False, indent=2))
         return 0
 
-    sondages = []
     audio_bot, titre_audio, duree = None, "", 0
     if format_ == "audio":
         script, pcm, taux, minutage = mini_podcast(traitees, effectifs, cle_gemini, maintenant)
         mp3 = p.encoder_mp3(pcm, taux, effectifs["debit_mp3_kbps"])
         duree = round(len(pcm) / (2 * taux))
         titre_audio = script["titre"]
-        # Gardé par le bot : il s'écoute dans l'application (Idées trouvées), avec ou sans Telegram.
+        # Gardé par le bot : il s'écoute dans l'application (Idées trouvées).
         nom_bot = f"{maintenant:%Y-%m}/idees-{maintenant:%Y-%m-%d-%H%M%S}.mp3"
         audio_bot = nom_bot if bot.deposer(nom_bot, mp3, "audio/mpeg") else None
-    if format_ == "audio" and telegram:
-        lignes = [f"🎧 <b>{e(script['titre'])}</b>", ""]
-        for regle, _, resultat in traitees:
-            for numero, idee in enumerate(resultat["idees"], 1):
-                lien = f' — <a href="{html.escape(idee["lien"], quote=True)}">{e(idee["source"] or "site")}</a>' if idee["lien"] else ""
-                lignes.append(f"{numero}. {e(idee['titre'])}{lien}")
-        vignette = p.creer_pochette(jour, script["titre"], "IDÉES DE SORTIE")
-        telegram.audio(conversation, mp3, f"idees-{jour.isoformat()}.mp3", p.tronquer(script["titre"], 64),
-                       " & ".join(a["nom"] for a in effectifs["animateurs"]), "\n".join(lignes)[:1024], duree, vignette)
-        for regle, _, resultat in traitees:
-            sondages.append(envoyer_suite(telegram, conversation, regle, resultat))
-    elif telegram:
-        for regle, collecte, resultat in traitees:
-            sondages.append(envoyer_ecrit(telegram, conversation, regle, collecte, resultat, sources, effectifs))
-
-    sondage = next((s for s in sondages if s.get("poll_id")), None)
+        if not audio_bot:
+            raise p.ErreurPodcast("Le bot n'a pas pu garder le mini-podcast : rien n'est parti (bot injoignable ?).")
     bot.evenement({"type": "recherche", "regles": [r["id"] for r, _, _ in traitees],
                    "idees": [i["titre"] for _, _, res in traitees for i in res["idees"]][:10],
-                   "sondage": sondage, "format": format_, "audio": audio_bot, "titre_audio": titre_audio, "duree": duree,
+                   "format": format_, "audio": audio_bot, "titre_audio": titre_audio, "duree": duree,
                    # Pour l'application : les idées complètes, rubrique par rubrique.
                    "resultats": [{"regle": r["id"], "titre": r.get("titre", ""), "intro": res.get("intro", ""),
                                   "conseil": res.get("conseil", ""), "idees": res["idees"]} for r, _, res in traitees]})
@@ -587,12 +416,10 @@ def lancer(identifiants: list[str], format_: str, effectifs: dict, cle_gemini: s
     return 0
 
 
-def echantillons(liste: str, effectifs: dict, cle_gemini: str, telegram: p.Telegram | None, conversation: str,
-                 bot: Any, sans_envoi: bool = False, discret: bool = False) -> int:
-    """Extraits de voix, deux par deux (une requête de voix pour deux voix).
-    Le bot reçoit le début et la fin de chaque voix dans le fichier : l'application
-    lit ainsi une seule voix à la fois. « discret » : le message est retiré de la
-    conversation dès que Telegram a gardé le fichier (écoute dans l'application)."""
+def echantillons(liste: str, effectifs: dict, cle_gemini: str, bot: Any, sans_envoi: bool = False) -> int:
+    """Extraits de voix, deux par deux (une requête de voix pour deux voix), gardés par le bot.
+    Il reçoit le début et la fin de chaque voix dans le fichier : l'application
+    lit ainsi une seule voix à la fois."""
     voix = [v for v in (x.strip().capitalize() for x in liste.split(",")) if v in VOIX][:8]
     if not voix:
         raise p.ErreurPodcast("aucune voix reconnue.")
@@ -615,20 +442,12 @@ def echantillons(liste: str, effectifs: dict, cle_gemini: str, telegram: p.Teleg
         duree = round(len(pcm) / (2 * taux), 1)
         coupure = minutage[1] if len(minutage) == 2 else round(duree / 2, 1)
         temps = {premiere: [0.0, coupure], seconde: [coupure, duree]} if seconde != premiere else {premiere: [0.0, duree]}
-        if sans_envoi or not (telegram or bot.secret):
+        if sans_envoi or not bot.secret:
             p.journal(f"Extrait {premiere}/{seconde} prêt ({len(mp3)} octets).")
             continue
-        legende_audio = f"🎤 <b>{premiere}</b> ({VOIX[premiere]})" + (f" puis <b>{seconde}</b> ({VOIX[seconde]})" if seconde != premiere else "")
-        # Le bot garde l'extrait (l'application le lit chez lui) ; Telegram en a une copie.
         nom_bot = f"voix/{premiere}-{seconde}-{int(time.time())}.mp3"
-        fichier = nom_bot if bot.deposer(nom_bot, mp3, "audio/mpeg") else None
-        envoi = telegram.audio(conversation, mp3, f"voix-{premiere}-{seconde}.mp3", f"Voix : {premiere} & {seconde}",
-                               "Podcast du matin", legende_audio, round(len(pcm) / (2 * taux))) if telegram else None
-        file_id = ((envoi or {}).get("audio") or {}).get("file_id")
-        if file_id or fichier:
-            for nom in set(paire):
-                bot.evenement({"type": "echantillon", "voix": nom, "file_id": file_id, "fichier": fichier, "legende": legende_audio,
-                               "debut": temps[nom][0], "fin": temps[nom][1]})
-            if telegram and discret and (envoi or {}).get("message_id"):
-                telegram.appeler("deleteMessage", {"chat_id": conversation, "message_id": envoi["message_id"]})
+        if not bot.deposer(nom_bot, mp3, "audio/mpeg"):
+            raise p.ErreurPodcast("Le bot n'a pas pu garder l'extrait (bot injoignable ?).")
+        for nom in set(paire):
+            bot.evenement({"type": "echantillon", "voix": nom, "fichier": nom_bot, "debut": temps[nom][0], "fin": temps[nom][1]})
     return 0

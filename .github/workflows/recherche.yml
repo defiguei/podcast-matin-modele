@@ -44,9 +44,7 @@ jobs:
       - name: Chercher et envoyer les résultats
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}   # sans Telegram : base du secret partagé avec le bot
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}   # base du secret partagé avec le bot
           CALENDAR_ICS_URL: ${{ secrets.CALENDAR_ICS_URL }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           SNCF_API_KEY: ${{ secrets.SNCF_API_KEY }}

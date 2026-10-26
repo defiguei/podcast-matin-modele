@@ -1,7 +1,7 @@
 // Flux privé du podcast (RSS) : pour écouter les épisodes dans Apple Podcasts,
 // AntennaPod ou toute application qui accepte une adresse de flux. L'adresse
 // contient un jeton secret ; la changer coupe l'ancienne. Les fichiers sont gardés
-// par le bot (audio.js) ; ceux d'avant la version 2026-10-21.4 restent chez Telegram.
+// par le bot (audio.js).
 
 const xml = (t) => String(t ?? "").replace(/[<>&'"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" }[c]));
 const MOIS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -28,8 +28,8 @@ export function episodeDeCle(episodes, cle) {
 
 // ep.instant : millisecondes de l'envoi (calculé par l'appelant, avec le fuseau du pays).
 export function fluxRss({ episodes, base, titre, auteur, langue = "fr" }) {
-  const avecAudio = (episodes || []).filter((ep) => ep.audio || ep.file_id).slice(-30).reverse();
-  const derniere = avecAudio.find((ep) => ep.pochette || ep.pochette_id);
+  const avecAudio = (episodes || []).filter((ep) => ep.audio).slice(-30).reverse();
+  const derniere = avecAudio.find((ep) => ep.pochette);
   const image = derniere ? `${base}/${cleFlux(derniere)}.jpg` : "";
   const items = avecAudio.map((ep) => {
     const cle = cleFlux(ep);

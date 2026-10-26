@@ -58,7 +58,6 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
           ADRESSE: ${{ inputs.adresse || vars.BOT_URL }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
           GH_TOKEN: ${{ github.token }}
         run: /tmp/venv/bin/python mise_a_jour.py

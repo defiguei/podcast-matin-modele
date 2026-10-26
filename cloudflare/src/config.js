@@ -1,6 +1,6 @@
 // Modèle de configuration du podcast : valeurs par défaut, validation des
 // réglages, règles (création, état, période), planning et jours fériés.
-// Tout ce qui est modifiable depuis Telegram passe par ce fichier.
+// Tout ce qui est modifiable depuis l'application (ou une demande libre) passe par ce fichier.
 
 // Profils des pays (fuseau, actualités, devise, jours fériés) : même fichier que pour GitHub.
 import PROFILS_PAYS from "../../donnees/pays.json" with { type: "json" };
@@ -155,7 +155,6 @@ export const VOIX = [
 export const VOIX_CONSEILLEES = ["Aoede", "Kore", "Leda", "Sulafat", "Puck", "Charon", "Fenrir", "Achird"];
 export const MAX_PRENOM = 20;   // prénom donné à une voix
 
-export const FLUX_DEFAUT = PAYS[PAYS_DEFAUT].flux;
 
 export function configParDefaut() {
   return {
@@ -189,9 +188,6 @@ export function configParDefaut() {
               max_deplacements: 2, exclus: [], retires: [] },
     actus: { ville: "", sujets_preferes: [], sujets_a_eviter: [], flux: null, fraicheur_heures: 36, citer_sources: "ecrit",
              locale_articles: 3 },
-    // Où arrive l'épisode : toujours dans l'application, le flux et les notifications ;
-    // dans Telegram aussi, sauf si on le coupe.
-    livraison: { telegram: true },
     // Réglages › Sources : catégories coupées (aucune rubrique ne les lit) et flux RSS
     // spécialisés qu'une rubrique peut choisir ([{ id, nom, url }]).
     sources: { coupees: [], flux: [] },
@@ -264,7 +260,6 @@ export const REGLAGES = {
   "actus.citer_sources": { nom: "Citer les sources", valider: parmi(Object.keys(CITER)) },
   "consignes": { nom: "Consignes", valider: liste(20, LONGUEUR_CONSIGNE) },
   "planning.rattrapage": { nom: "Rattrapage si l'envoi rate", valider: booleen },
-  "livraison.telegram": { nom: "Épisode aussi dans Telegram", valider: booleen },
   "planning.delai_rattrapage": { nom: "Délai avant le rattrapage (min)", valider: entier(20, 180) },
   "planning.feries": { nom: "Jours fériés", valider: parmi(["normal", "dimanche", "aucun"]) },
   "planning.avance_minutes": { nom: "Préparation lancée en avance (min)", valider: entier(0, 20) },
@@ -440,56 +435,6 @@ export function modifierRegle(config, id, champs, aujourdHui) {
   return regle;
 }
 
-// Modifie un champ d'une rubrique à partir d'un texte tapé (« - » pour vider).
-export const CHAMPS_RUBRIQUE = {
-  titre: "Titre", consigne: "Consigne", quoi: "Quoi", avec_qui: "Avec qui", ages: "Âges", ou: "Où", rayon_km: "Rayon (km)",
-  quand: "Quand", attendu: "Résultat attendu", inclure: "À inclure", exclure: "À exclure", requetes: "Recherches web",
-  condition: "Condition d'agenda",
-};
-
-export function modifierChamp(config, id, champ, texte, aujourdHui) {
-  const regle = config.regles.find((r) => r.id === id);
-  if (!regle) throw new Error(`rubrique ${id} introuvable`);
-  if (!CHAMPS_RUBRIQUE[champ]) throw new Error(`champ inconnu : ${champ}`);
-  const brut = String(texte ?? "").trim();
-  const vide = /^(-|—|aucun|aucune|rien|vide)$/i.test(brut);
-  let valeur = vide ? "" : brut;
-  let champs;
-  switch (champ) {
-    case "titre":
-      if (!valeur) throw new Error("le titre ne peut pas être vide");
-      valeur = texteCourt(50)(valeur);
-      champs = { titre: valeur, ...(regle.rubrique ? { rubrique: { titre: valeur } } : {}) };
-      break;
-    case "consigne":
-      if (!valeur) throw new Error("la consigne ne peut pas être vide");
-      champs = { consigne: valeur };
-      break;
-    case "ou":
-      champs = { recherche: { fiche: { ou: valeur, lat: null, lon: null } } };
-      break;
-    case "rayon_km": {
-      const n = vide ? null : Number(brut.replace(",", ".").replace(/[^\d.]/g, ""));
-      if (n !== null && (!Number.isFinite(n) || n < 1 || n > 200)) throw new Error("rayon attendu entre 1 et 200 km");
-      champs = { recherche: { fiche: { rayon_km: n } } };
-      break;
-    }
-    case "inclure": case "exclure":
-      champs = { recherche: { fiche: { [champ]: vide ? [] : nettoyerListe(brut.split(/[,;\n]/), 8) } } };
-      break;
-    case "requetes":
-      champs = { recherche: { requetes: vide ? [] : nettoyerListe(brut.split(/[;\n]/), 6) } };
-      break;
-    case "condition":
-      champs = { condition: vide ? null : { texte: valeur, moment: regle.condition?.moment || "jour_meme", n: regle.condition?.n || 1 } };
-      break;
-    default:
-      champs = { recherche: { fiche: { [champ]: valeur } } };
-  }
-  const modifiee = modifierRegle(config, id, champs, aujourdHui);
-  return `${id} · ${CHAMPS_RUBRIQUE[champ]} : ${vide ? "vidé" : valeur.slice(0, 60)}`;
-}
-
 export function supprimerRegle(config, id) {
   const avant = config.regles.length;
   config.regles = config.regles.filter((r) => r.id !== id);
@@ -545,51 +490,6 @@ export function prochainPassage(regle, aujourdHui) {
 
 export const LIBELLES_ETATS = { active: "active", pause: "en pause", a_venir: "à venir", terminee: "terminée", ponctuelle: "ponctuelle" };
 
-// Comprend une période écrite à la main : « jusqu'au 15 novembre », « du 20 au 24 octobre »,
-// « à partir du 3/11 ». Renvoie { debut, fin } (null si absent) ou null si rien n'est compris.
-const NOMS_MOIS = ["janv", "fevr", "mars", "avr", "mai", "juin", "juil", "aout", "sept", "oct", "nov", "dec"];
-export function analyserPeriode(texte, aujourdHui) {
-  const t = normaliserTexte(texte).replace(/1er/g, "1");
-  const annee = Number(aujourdHui.slice(0, 4));
-  const date = (jour, mois, an) => {
-    const j = Number(jour), m = Number(mois);
-    if (!(j >= 1 && j <= 31 && m >= 1 && m <= 12)) return null;
-    let a = an ? Number(an.length === 2 ? `20${an}` : an) : annee;
-    let iso = `${a}-${String(m).padStart(2, "0")}-${String(j).padStart(2, "0")}`;
-    if (!an && iso < aujourdHui) iso = `${a + 1}-${iso.slice(5)}`;
-    return iso;
-  };
-  const motif = "(\\d{4})-(\\d{2})-(\\d{2})|(\\d{1,2})\\s*[/.]\\s*(\\d{1,2})(?:\\s*[/.]\\s*(\\d{2,4}))?|(\\d{1,2})(?:\\s*([a-z]{3,9})\\.?)?(?:\\s+(\\d{4}))?";
-  const trouvees = [];
-  for (const m of t.matchAll(new RegExp(motif, "g"))) {
-    let iso = null, jourSeul = null;
-    if (m[1]) iso = `${m[1]}-${m[2]}-${m[3]}`;
-    else if (m[4]) iso = date(m[4], m[5], m[6]);
-    else if (m[7]) {
-      const mois = m[8] ? NOMS_MOIS.findIndex((n) => m[8].startsWith(n)) + 1 : 0;
-      if (mois) iso = date(m[7], mois, m[9]);
-      else if (!m[8]) jourSeul = Number(m[7]);
-      else continue;
-    }
-    if (iso || jourSeul) trouvees.push({ iso, jourSeul, index: m.index });
-  }
-  // « du 20 au 24 octobre » : le premier jour hérite du mois du second.
-  for (let i = 0; i < trouvees.length; i++) {
-    const d = trouvees[i];
-    if (!d.iso && d.jourSeul && trouvees[i + 1]?.iso) {
-      const suivant = trouvees[i + 1].iso;
-      let iso = `${suivant.slice(0, 8)}${String(d.jourSeul).padStart(2, "0")}`;
-      if (iso > suivant) iso = `${suivant.slice(0, 5)}${String(Number(suivant.slice(5, 7)) - 1).padStart(2, "0")}-${String(d.jourSeul).padStart(2, "0")}`;
-      d.iso = iso;
-    }
-  }
-  const dates = trouvees.filter((d) => d.iso).map((d) => d.iso);
-  if (!dates.length) return null;
-  if (dates.length >= 2 && /\bdu\b|entre|\bau\b|\ba\b/.test(t)) return { debut: dates[0], fin: dates[1] };
-  if (/(partir|des le|depuis|a compter|apres le)/.test(t)) return { debut: dates[0], fin: null };
-  return { debut: null, fin: dates[0] };   // « jusqu'au 15 novembre » ou une date seule
-}
-
 export function decrirePeriode(p) {
   const d = (x) => (x ? dateCourte(x) : "");
   switch (p.type) {
@@ -616,14 +516,6 @@ export function placerRubrique(config, cle, apres) {
 
 export function retirerRubrique(config, cle) {
   config.deroule = config.deroule.filter((r) => r.cle !== cle);
-}
-
-export function deplacerRubrique(config, cle, sens) {
-  const i = config.deroule.findIndex((r) => r.cle === cle);
-  const j = i + sens;
-  if (i < 0 || j < 0 || j >= config.deroule.length) return false;
-  [config.deroule[i], config.deroule[j]] = [config.deroule[j], config.deroule[i]];
-  return true;
 }
 
 export function placerRubriqueApres(config, cle, apres) {
@@ -682,12 +574,6 @@ export function heureValide(texte) {
   const h = Number(m[1]), mn = Number(m[2] || 0);
   if (h > 23 || mn > 59) throw new Error(`heure non reconnue : ${texte}`);
   return `${String(h).padStart(2, "0")}:${String(mn).padStart(2, "0")}`;
-}
-
-export function decalerHeure(heure, minutes) {
-  const [h, m] = (heure || "07:30").split(":").map(Number);
-  const total = Math.max(0, Math.min(23 * 60 + 45, h * 60 + m + minutes));
-  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
 // Jour férié selon le canton ou le pays choisi (Vaud : calculé ici ; autres : liste téléchargée).
@@ -1007,8 +893,9 @@ function migrerSources(regles, anciennes) {
 export function completerConfig(config) {
   const base = configParDefaut();
   const resultat = { ...base, ...(config || {}) };
+  delete resultat.livraison;   // ancien réglage (épisode aussi envoyé dans une conversation)
   if (!PAYS[resultat.pays]) resultat.pays = PAYS_DEFAUT;
-  for (const cle of ["planning", "format", "agenda", "actus", "livraison"]) resultat[cle] = { ...base[cle], ...(config?.[cle] || {}) };
+  for (const cle of ["planning", "format", "agenda", "actus"]) resultat[cle] = { ...base[cle], ...(config?.[cle] || {}) };
   resultat.voix = completerVoix(config?.voix, base.voix);
   resultat.planning.jours = { ...base.planning.jours, ...(config?.planning?.jours || {}) };
   if (!Array.isArray(resultat.deroule) || !resultat.deroule.length) resultat.deroule = base.deroule;

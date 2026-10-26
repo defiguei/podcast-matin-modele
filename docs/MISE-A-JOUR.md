@@ -20,7 +20,7 @@ Pour que le bouton mette aussi à jour les fichiers d'automatisation (`.github/w
 
 ## La première fois (installations d'avant l'application)
 
-Si ton podcast se règle encore en écrivant au bot dans Telegram, ton dépôt n'a pas encore le bouton. Cette première mise à jour se fait à la main, une seule fois, en 10 minutes environ. Ton podcast continue de marcher pendant ce temps.
+Si ton podcast se règle encore en écrivant au bot dans une conversation, ton dépôt n'a pas encore le bouton. Cette première mise à jour se fait à la main, une seule fois, en 10 minutes environ. Ton podcast continue de marcher pendant ce temps.
 
 ### 1. Un jeton GitHub avec la permission « Workflows »
 
@@ -45,7 +45,7 @@ Dans ton dépôt : **Add file** → **Create new file**.
 
 Onglet **Actions** → *Mettre à jour* (à gauche) → **Run workflow** → laisse les champs vides → **Run workflow**.
 
-Le code du modèle est recopié dans ton dépôt, puis *Déployer le bot* démarre tout seul (deux à trois minutes). Ton bot t'écrit alors dans Telegram, avec le bouton **Ouvrir l'application**.
+Le code du modèle est recopié dans ton dépôt, puis *Déployer le bot* démarre tout seul (deux à trois minutes). Ouvre cette exécution de *Déployer le bot* une fois finie : son **résumé** donne l'adresse de ton application et un **code de connexion** à 6 chiffres. Sur ton téléphone, ouvre l'adresse (sur iPhone : d'abord Partager › « Sur l'écran d'accueil », puis depuis l'icône) et entre le code.
 
 ### 4. Vérifier dans l'application
 
@@ -61,21 +61,21 @@ Le code du modèle est recopié dans ton dépôt, puis *Déployer le bot* démar
 | *Mettre à jour* en rouge : « le modèle n'est pas accessible » | Le modèle n'est pas encore public : réessaie plus tard. |
 | Message « Fichiers d'automatisation non mis à jour » | Le secret `BOT_GITHUB_TOKEN` manque ou n'a pas la permission *Workflows* : corrige-le (étape 1), puis relance *Mettre à jour* à la main (étape 3). |
 | *Déployer le bot* en orange | Il manque `CLOUDFLARE_API_TOKEN` ou `CLOUDFLARE_ACCOUNT_ID` (voir [INSTALLATION.md](INSTALLATION.md), étape 2). |
-| Pas de message du bot après le déploiement | Ouvre `https://podcast.TON-SOUS-DOMAINE.workers.dev/installer` dans ton navigateur. |
+| Pas de code dans le résumé du déploiement | Onglet *Actions* › *Code de connexion* › *Run workflow* : le code est dans le résumé de l'exécution. |
+| Le bot ne semble pas activé | Ouvre `https://podcast.TON-SOUS-DOMAINE.workers.dev/installer` dans ton navigateur. |
 
 Relancer *Mettre à jour* ne fait jamais de mal : quand tout est déjà à jour, rien ne change.
 
 ---
 
-## Se passer de Telegram (facultatif)
+## Version 2026-10-26.1 : tout passe par l'application
 
-Depuis la version 2026-10-21.6, Telegram est facultatif. Pour une installation qui l'utilise déjà :
+L'ancienne conversation avec le bot est retirée : ton épisode arrive dans l'application (avec une notification) et dans ton flux privé, et tout se règle dans l'application. Avant de lancer cette mise à jour :
 
-1. **Ouvre l'application sur ton téléphone**, hors de Telegram : Réglages › Application › *Afficher un code*, puis l'adresse de ton bot (`…workers.dev/app`) dans le navigateur du téléphone (sur iPhone : d'abord « Sur l'écran d'accueil », puis depuis l'icône).
-2. **Active les notifications** (Réglages › Application › Notifications).
-3. **Coupe « Recevoir aussi l'épisode dans Telegram »** au même endroit.
+1. **Vérifie le secret `BOT_GITHUB_TOKEN`** (étape 1 ci-dessus) : c'est désormais lui seul qui relie GitHub et ton bot. Sans lui, plus d'épisode.
+2. **Ouvre l'application sur ton téléphone avec un code**, si ce n'est pas déjà fait : Réglages › Application › *Afficher un code* (depuis l'application déjà ouverte), ou onglet *Actions* › *Code de connexion* › *Run workflow*. Puis, dans **Réglages › Application › Appareils**, mets l'interrupteur de notifications de ton téléphone.
 
-C'est suffisant : le bot garde Telegram pour les alertes. Pour l'enlever complètement, supprime les secrets `TELEGRAM_BOT_TOKEN` et `TELEGRAM_CHAT_ID` sur GitHub **et** chez Cloudflare (*Workers & Pages* › `podcast` › *Settings* › *Variables and Secrets*), puis relance *Déployer le bot*. Le jeton GitHub du bot (`BOT_GITHUB_TOKEN`) protège alors seul les échanges entre GitHub et le bot ; pour ouvrir l'application sur un nouvel appareil : onglet *Actions* › *Code de connexion*.
+Après la mise à jour, les secrets de l'ancienne conversation ne servent plus : tu peux supprimer `TELEGRAM_BOT_TOKEN` et `TELEGRAM_CHAT_ID` sur GitHub et chez Cloudflare (*Workers & Pages* › `podcast` › *Settings* › *Variables and Secrets*). Les épisodes d'avant le 21 octobre 2026, que seule la conversation gardait, ne s'écoutent plus dans l'application ; tous les suivants sont gardés par ton bot pendant un an.
 
 ---
 
