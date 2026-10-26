@@ -20,7 +20,7 @@ Sur ton téléphone, ouvre l'adresse de ton bot (`https://podcast.TON-SOUS-DOMAI
 |---|---|
 | **Accueil** | Le prochain épisode (le toucher montre son programme ; *Générer maintenant*, *Sauter*), le lecteur avec ses chapitres, 👍 👎, les idées trouvées, et **« Demande-moi quelque chose »** pour tout régler en une phrase, écrite ou dite. |
 | **Épisode** | **Ton épisode, dans l'ordre** : chaque passage (agenda, actualités, actu locale, déplacements, à creuser, et tes rubriques) avec sa fiche. Glisser pour réordonner, pause, et le bouton **+** pour ajouter une rubrique. |
-| **Idées** | Les recherches ponctuelles : « une sortie avec les enfants samedi, en train, moins de 20 € » ; les résultats arrivent par écrit (prix, accès, liens) ou en mini-podcast. |
+| **Recherches** | Les recherches ponctuelles : « une sortie avec les enfants samedi, en train, moins de 20 € » ; les résultats arrivent par écrit (prix, accès, liens) ou en mini-podcast. |
 | **Planning** | Heure et activation de chaque jour, jours fériés, rattrapage, exceptions, pauses, calendrier. |
 | **Réglages** | **Moi** (prénom, ville, pays) · **Voix** · **Durée et style** (ton, consignes) · **Connexions** (clés et agendas) · **Application** (appareils et notifications, flux privé, version). |
 

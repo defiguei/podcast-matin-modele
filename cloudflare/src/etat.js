@@ -11,7 +11,8 @@ import {
   VOIX, animateursDuJour, renommerVoix, activerVoix, choisirVoixJour, LONGUEUR_CONSIGNE, PAYS, profilPays, fluxActus, FERIES_CALCULES,
   SOURCES, MAX_FLUX_SPECIALISES, RUBRIQUES_A_CHERCHER,
 } from "./config.js";
-import { consigneComprehension, contexteComprehension, schemaOperations, appliquerOperations, messageCompris } from "./comprendre.js";
+import { consigneComprehension, contexteComprehension, schemaOperations, appliquerOperations, messageCompris,
+  rubriquesARediger, CONSIGNE_REDACTION, schemaRedaction, contenuRedaction, appliquerRedaction } from "./comprendre.js";
 import { GitHub, demanderGemini, maintenantLocal, instantLocal, secretPartage, definirFuseau, empreinte } from "./services.js";
 import { CLES, testerCle, lireAgenda, identifiantAgenda, resumeConnexions } from "./connexions.js";
 import { fluxRss, chapitresJson, episodeDeCle, jetonValide, nouveauJeton } from "./flux.js";
@@ -19,7 +20,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-26.1";
+export const VERSION = "2026-10-27.1";
 const MAX_REFAITS = 6;
 const MAX_RECHERCHES = 15;
 const MAX_EPISODES = 60;      // épisodes récents, dans l'état ; les plus anciens vont dans l'archive de leur mois
@@ -28,10 +29,11 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
-  "L'ancienne conversation est retirée : tout passe par l'application, ses notifications et ton flux privé.",
-  "Réglages › Application : un seul bloc « Appareils », avec l'interrupteur des notifications et une croix pour retirer chaque appareil.",
-  "Accueil : toucher « Prochain épisode » ouvre l'onglet Épisode sur ce jour-là ; « Annuler » le dernier changement est dans Réglages.",
-  "Épisode : Sources et Texte se replient ; voix sur une ligne chacune ; l'encart vert du test d'une clé s'efface après un épisode ou une journée.",
+  "Une rubrique demandée à la voix ou par écrit reçoit un titre et une consigne rédigés par l'IA, plus jamais ta phrase telle quelle.",
+  "Plus de tons (enthousiaste, calme, journal radio, pédagogue, conteur…) et des consignes de style toutes prêtes à choisir dans une liste.",
+  "L'onglet Idées devient « Recherches » : un seul bouton, et ce que tu reçois (podcast, idées écrites ou en podcast) se choisit en haut de la recherche.",
+  "Le nombre d'articles ou de sujets se choisit dans une liste ; Appareils et « Ajouter un appareil » sont réunis ; les boutons j'aime / j'aime pas sont retirés.",
+  "Épisode : les rubriques fournies restent dorées quand tu regardes un jour précis, et revenir de l'accueil remet « Tous les jours ».",
 ];
 
 // « 2026-10 » décalé de n mois.
@@ -353,6 +355,15 @@ export class Etat extends DurableObject {
       operations: Array.isArray(reponse?.operations) ? reponse.operations.slice(0, 20) : [],
       reponse: String(reponse?.reponse || "").trim().slice(0, 600),
     };
+    // Une rubrique créée reçoit un titre et une consigne rédigés, jamais la phrase de l'auditeur.
+    const message = compris.texte || compris.entendu;
+    for (const op of rubriquesARediger(compris.operations, message).slice(0, 3)) {
+      try {
+        appliquerRedaction(op.regle, await this.gemini(CONSIGNE_REDACTION, contenuRedaction(message, op.regle), schemaRedaction()), message);
+      } catch (erreur) {
+        console.log("Rédaction de la rubrique :", erreur.message);
+      }
+    }
     return this.appliquerCompris(compris, false);
   }
 
@@ -800,7 +811,7 @@ export class Etat extends DurableObject {
       if (action.type === "nouvel_episode") suites.push((await this.lancerEpisode(action.ids)).ok ? "Nouvel épisode lancé." : "Épisode non lancé (limite du jour).");
       if (action.type === "resultats") {
         const lance = await this.lancerRecherche(action.ids, action.format);
-        suites.push(lance.ok ? (lance.format === "point" ? "Podcast lancé : il arrive dans « Idées » d'ici trois ou quatre minutes." : "Recherche lancée.")
+        suites.push(lance.ok ? (lance.format === "point" ? "Podcast lancé : il arrive dans « Recherches » d'ici trois ou quatre minutes." : "Recherche lancée.")
           : `Recherche non lancée (${lance.erreur || "limite du jour"}).`);
       }
       if (action.type === "annuler") { const annule = await this.annulerCoeur(); suites.push(annule ? `Annulé : ${annule}` : "Rien à annuler."); }
@@ -1237,11 +1248,6 @@ export class Etat extends DurableObject {
             const i = VITESSES.indexOf(config.voix.vitesse) + sens;
             return regler(config, "voix.vitesse", VITESSES[Math.max(0, Math.min(VITESSES.length - 1, i))]);
           };
-          if (geste === "up" || geste === "down") {
-            episode.avis = episode.avis === geste ? null : geste;
-            await this.ecrireEtat(etat);
-            return reponse({ message: episode.avis === "up" ? "Merci !" : episode.avis === "down" ? "Noté. Qu'est-ce qui n'allait pas ?" : "Avis retiré" });
-          }
           if (geste === "court") libelle = regler(config, "format.duree_minutes", Math.max(2, config.format.duree_minutes - 1));
           else if (geste === "long") libelle = regler(config, "format.duree_minutes", Math.min(12, config.format.duree_minutes + 1));
           else if (geste === "lent") libelle = vitesse(-1);
@@ -1294,10 +1300,12 @@ export class Etat extends DurableObject {
         // ── recherche, demande libre, annulation ──
         case "recherche": {
           if (!config.regles.some((r) => r.id === demande.id) && !RUBRIQUES_A_CHERCHER.includes(demande.id)) return refus("Cette rubrique n'existe plus.");
-          const lance = await this.lancerRecherche([demande.id], demande.format === "audio" ? "audio" : "ecrit");
+          // Sans format demandé, une recherche ponctuelle suit ce qu'elle a choisi (écrit ou mini-podcast).
+          const enAudio = demande.format === "audio" || (!demande.format && Boolean(config.regles.find((r) => r.id === demande.id)?.recherche?.audio));
+          const lance = await this.lancerRecherche([demande.id], enAudio ? "audio" : "ecrit");
           if (!lance.ok) return refus(lance.erreur);
           return reponse({ message: lance.format === "point" ? "Je fais le point : le podcast arrive ici d'ici trois ou quatre minutes."
-            : demande.format === "audio"
+            : enAudio
             ? "Je prépare le mini-podcast : il arrive d'ici trois ou quatre minutes."
             : "Je cherche : les résultats arrivent ici d'ici une à deux minutes." });
         }
@@ -1452,7 +1460,7 @@ export class Etat extends DurableObject {
       const episode = {
         date: ev.date || ctx.aujourdHui, titre: ev.titre || "", sujets: ev.sujets || [],
         texte: Boolean(ev.transcription), chapitres: ev.chapitres || [], regles: ev.regles || [],
-        nombre_sujets: ev.nombre_sujets ?? (ev.sujets || []).length, coches: [], avis: null, mode: ev.mode || "",
+        nombre_sujets: ev.nombre_sujets ?? (ev.sujets || []).length, coches: [], mode: ev.mode || "",
         details: (ev.details || []).slice(0, 2), duree: ev.duree || null,
         heure: /^\d{2}:\d{2}$/.test(ev.heure || "") ? ev.heure : null, taille: Number(ev.taille) || null,
         sources: nettoyerSources(ev.sources),

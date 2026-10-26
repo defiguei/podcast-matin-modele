@@ -5,7 +5,7 @@
 import {
   JOURS, NOMS_JOURS, COURTS_JOURS, LONGUEURS, SOURCES, RUBRIQUES, etatRegle, prochainPassage, decrirePeriode,
   heurePrevue, prochainEpisode, ajouterJours, dateCourte, nomRubrique, dateOuNull, nettoyerListe,
-  VOIX, VOIX_CONSEILLEES, VITESSES, TONS, CITER, TRANSPORTS, fluxActus, profilPays, PAYS, DELAIS_RATTRAPAGE,
+  VOIX, VOIX_CONSEILLEES, VITESSES, TONS, DESCRIPTIONS_TONS, CONSIGNES_PRETES, CITER, TRANSPORTS, fluxActus, profilPays, PAYS, DELAIS_RATTRAPAGE,
   DEVISES, CANTONS, MODES_VOIX, sourcesAuto, estFerie, nomFerie, animateursDuJour, placesDuJour, normaliserTexte,
   jourDeSemaine, MODELES_RUBRIQUES, CATEGORIES_RUBRIQUES, catalogueRubriques, nouvelleRegle, modifierRegle,
   INFOS_SOURCES, sourceConnue, sourcesUtilisables, RENDUS, minutesPoint,
@@ -111,7 +111,7 @@ function regleVisible(r, aujourdHui) {
     fiche: Object.fromEntries(CHAMPS_FICHE.map((c) => [c, fiche[c] || ""])),
     transport: fiche.transport || "", budget: fiche.budget || { max: null, unite: "personne", transport_inclus: false },
     inclure: fiche.inclure || [], exclure: fiche.exclure || [], recherche: Boolean(r.recherche),
-    rendu: r.recherche?.rendu || "idees", minutes: r.recherche?.minutes || 3,
+    rendu: r.recherche?.rendu || "idees", audio: Boolean(r.recherche?.audio), minutes: r.recherche?.minutes || 3,
     place: r.rubrique?.apres || null,
     derniere_application: r.derniere_application, servie: Boolean(r.servie), id_condition: Boolean(r.condition),
   };
@@ -138,7 +138,7 @@ export function cleEpisode(episode) {
 export function episodeApp(ep, liens) {
   return {
     cle: cleEpisode(ep), date: ep.date, texte: dateCourte(ep.date), titre: ep.titre || "Épisode", duree: ep.duree || null,
-    chapitres: (ep.chapitres || []).slice(0, 20), sujets: (ep.sujets || []).slice(0, 5), avis: ep.avis || null,
+    chapitres: (ep.chapitres || []).slice(0, 20), sujets: (ep.sujets || []).slice(0, 5),
     coches: ep.coches || [], audio: liens.episodes[cleEpisode(ep)] || null, texte_dispo: Boolean(ep.transcription || ep.texte),
     image: (liens.pochettes || {})[cleEpisode(ep)] || null,
     sources: ep.sources || [],
@@ -235,7 +235,7 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
                 delai_rattrapage: config.planning.delai_rattrapage, avance_minutes: config.planning.avance_minutes },
     listes: { sources: SOURCES, longueurs: LONGUEURS, jours: JOURS.map((j) => [j, COURTS_JOURS[j], NOMS_JOURS[j]]),
               voix: VOIX.map(([nom, description, genre]) => ({ nom, description, genre, conseillee: VOIX_CONSEILLEES.includes(nom) })),
-              vitesses: VITESSES, tons: TONS, citer: CITER, transports: Object.fromEntries(Object.entries(TRANSPORTS).filter(([k]) => k !== "peu_importe")),
+              vitesses: VITESSES, tons: TONS, descriptions_tons: DESCRIPTIONS_TONS, consignes_pretes: CONSIGNES_PRETES, citer: CITER, transports: Object.fromEntries(Object.entries(TRANSPORTS).filter(([k]) => k !== "peu_importe")),
               delais: DELAIS_RATTRAPAGE, devises: DEVISES, regions: CANTONS, modes_voix: MODES_VOIX,
               pays: Object.entries(PAYS).map(([code, p]) => [code, p.nom]) },
   };
@@ -289,6 +289,7 @@ export function champsDepuisFormulaire(f, ancienne, aujourdHui, devise = "CHF", 
   const recherche = { sources, fiche };
   // Une recherche ponctuelle : un point en audio (état des lieux) ou des idées concrètes.
   if (RENDUS.includes(f.rendu)) recherche.rendu = f.rendu;
+  if (f.audio !== undefined) recherche.audio = Boolean(f.audio) && f.rendu !== "point";
   if (f.minutes !== undefined && f.minutes !== null && f.minutes !== "") recherche.minutes = minutesPoint(f.minutes);
 
   const c = f.condition;
@@ -325,7 +326,7 @@ export function formulaireNeuf(config, idModele = "libre", ponctuelle = false, r
     periode: ponctuelle ? { type: "ponctuelle", debut: "", fin: "", jours: [] }
       : { type: "toujours", debut: "", fin: "", jours: [], ...(base.periode || {}) },
     sources: sourcesUtilisables(ponctuelle ? (rendu === "point" ? ["web", "actus"] : ["web", "lieux"]) : modele.sources || [], config),
-    rendu: ponctuelle ? rendu : "idees", minutes: 3,
+    rendu: ponctuelle ? rendu : "idees", audio: false, minutes: 3,
     fiche: Object.fromEntries(CHAMPS_FICHE.map((c) => [c, ""])),
     transport: "aucun", budget: { max: "", unite: "personne", devise: profilPays(config).devise, transport_inclus: false },
     inclure: [], exclure: [], condition: base.condition ? { ...base.condition } : null,
@@ -342,7 +343,7 @@ export function formulaireDepuisRegle(r, devise = "CHF") {
     longueur: r.rubrique?.longueur || "aucune",
     periode: { type: r.periode.type, debut: r.periode.debut || "", fin: r.periode.fin || "", jours: [...(r.periode.jours || [])] },
     sources: [...(r.recherche?.sources || [])],
-    rendu: r.recherche?.rendu || "idees", minutes: r.recherche?.minutes || 3,
+    rendu: r.recherche?.rendu || "idees", audio: Boolean(r.recherche?.audio), minutes: r.recherche?.minutes || 3,
     fiche: Object.fromEntries(CHAMPS_FICHE.map((c) => [c, fiche[c] || ""])),
     transport: fiche.transport || "",
     budget: { max: budget.max ?? "", unite: budget.unite || "personne", devise: budget.devise || devise, transport_inclus: Boolean(budget.transport_inclus) },

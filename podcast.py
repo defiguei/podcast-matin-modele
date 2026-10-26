@@ -113,6 +113,15 @@ TONS = {
     "serieux": "Ton sérieux et posé : peu de plaisanteries, des transitions sobres.",
     "detendu": "Ton détendu et complice, comme entre amis.",
     "humour": "Beaucoup d'humour et de légèreté, sans jamais tourner en dérision un sujet grave.",
+    "enthousiaste": "Ton enthousiaste et énergique, curieux, qui donne envie de s'intéresser à chaque sujet.",
+    "calme": "Ton calme et doux, rythme tranquille, phrases apaisées : on accompagne un réveil en douceur.",
+    "radio": "Ton de matinale d'information radio : précis, rythmé, factuel, transitions nettes.",
+    "pedagogue": "Ton pédagogue : explique le contexte et les mots difficiles simplement, sans être condescendant.",
+    "direct": "Ton direct et concis : l'essentiel d'abord, phrases courtes, pas de bavardage.",
+    "pince_sans_rire": "Humour pince-sans-rire : ironie légère et discrète, jamais sur un sujet grave.",
+    "chaleureux": "Ton chaleureux et bienveillant, proche de l'auditeur, attentionné.",
+    "motivant": "Ton motivant et encourageant, tourné vers ce que l'auditeur peut faire de sa journée.",
+    "conteur": "Ton de conteur : raconte chaque sujet comme une petite histoire, avec un début et une chute.",
 }
 CITER_SOURCES = ("non", "oral", "ecrit", "les_deux")
 INSTRUCTIONS_RUBRIQUES = {

@@ -1,12 +1,13 @@
 {
-  "version": "2026-10-26.1",
-  "date": "2026-10-26",
-  "titre": "Tout dans l'application",
+  "version": "2026-10-27.1",
+  "date": "2026-10-27",
+  "titre": "Plus de choix, moins de clics",
   "nouveautes": [
-    "L'ancienne conversation est retirée : ton podcast arrive dans l'application (avec une notification) et dans ton flux privé. Tout se règle dans l'application.",
-    "Réglages › Application : un seul bloc « Appareils », avec pour chacun l'interrupteur de ses notifications et une croix pour le retirer.",
-    "Accueil : toucher « Prochain épisode » ouvre l'onglet Épisode réglé sur ce jour-là ; « Annuler » le dernier changement se trouve dans Réglages.",
-    "Épisode : Sources et Texte se replient ; la liste des voix tient sur une ligne par voix ; l'encart vert d'une clé testée s'efface après un épisode ou une journée."
+    "Une rubrique demandée à la voix ou par écrit reçoit un titre et une consigne rédigés par l'IA, plus jamais ta phrase telle quelle.",
+    "Plus de tons (enthousiaste, calme, journal radio, pédagogue, conteur…) et des consignes de style toutes prêtes à choisir dans une liste.",
+    "L'onglet Idées devient « Recherches » : un seul bouton, et ce que tu reçois (podcast, idées écrites ou en podcast) se choisit en haut de la recherche.",
+    "Le nombre d'articles ou de sujets se choisit dans une liste ; Appareils et « Ajouter un appareil » sont réunis ; les boutons j'aime / j'aime pas sont retirés.",
+    "Épisode : les rubriques fournies restent dorées quand tu regardes un jour précis, et revenir de l'accueil remet « Tous les jours »."
   ],
   "supprimes": [
     ".github/workflows/retours.yml",

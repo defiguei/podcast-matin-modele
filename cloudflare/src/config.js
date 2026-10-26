@@ -22,7 +22,45 @@ export const JOURS = ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"];
 export const NOMS_JOURS = { lun: "lundi", mar: "mardi", mer: "mercredi", jeu: "jeudi", ven: "vendredi", sam: "samedi", dim: "dimanche" };
 export const COURTS_JOURS = { lun: "Lun", mar: "Mar", mer: "Mer", jeu: "Jeu", ven: "Ven", sam: "Sam", dim: "Dim" };
 export const VITESSES = ["très lente", "lente", "normale", "rapide", "très rapide"];
-export const TONS = { naturel: "Naturel", serieux: "Sérieux", detendu: "Détendu", humour: "Avec humour" };
+// Tons de l'épisode : mêmes clés que TONS dans podcast.py (un test compare), qui donne la consigne à Gemini.
+export const TONS = {
+  naturel: "Naturel", serieux: "Sérieux", detendu: "Détendu", humour: "Avec humour", enthousiaste: "Enthousiaste",
+  calme: "Calme et doux", radio: "Journal radio", pedagogue: "Pédagogue", direct: "Direct et concis",
+  pince_sans_rire: "Pince-sans-rire", chaleureux: "Chaleureux", motivant: "Motivant", conteur: "Conteur",
+};
+export const DESCRIPTIONS_TONS = {
+  naturel: "Comme deux amis bien informés, sans effet particulier.",
+  serieux: "Posé, peu de plaisanteries, des transitions sobres.",
+  detendu: "Complice et décontracté, comme entre amis.",
+  humour: "Beaucoup de légèreté, sans se moquer des sujets graves.",
+  enthousiaste: "Plein d'énergie, curieux, qui donne envie.",
+  calme: "Voix posées, rythme tranquille, idéal au réveil.",
+  radio: "Comme une matinale d'information : précis, rythmé, factuel.",
+  pedagogue: "Prend le temps d'expliquer le contexte et les mots difficiles.",
+  direct: "L'essentiel d'abord, phrases courtes, pas de bavardage.",
+  pince_sans_rire: "Humour discret et ironie légère, l'air de rien.",
+  chaleureux: "Bienveillant et attentionné, proche de l'auditeur.",
+  motivant: "Encourageant, tourné vers ce qu'on peut faire de sa journée.",
+  conteur: "Raconte les sujets comme de petites histoires.",
+};
+// Consignes de style toutes prêtes, ajoutées d'un geste (Réglages › Durée et style).
+export const CONSIGNES_PRETES = [
+  "Commence par la nouvelle la plus importante du jour.",
+  "Pas de résultats sportifs.",
+  "Évite les faits divers.",
+  "Plus d'humour le vendredi.",
+  "Termine par une note positive ou une bonne nouvelle.",
+  "Explique les termes techniques en quelques mots.",
+  "Donne des chiffres concrets quand c'est utile.",
+  "Évite les sujets anxiogènes au réveil.",
+  "Fais des transitions courtes entre les rubriques.",
+  "Termine par une citation inspirante.",
+  "Propose une petite idée ou un conseil pour la journée.",
+  "Parle-moi en me tutoyant.",
+  "Pas de politique politicienne, seulement les décisions qui changent quelque chose.",
+  "Le week-end, prends plus ton temps et sois plus léger.",
+  "Donne la météo en une phrase, sans détails.",
+];
 export const CITER = { non: "Non", oral: "À l'oral", ecrit: "Dans le message", les_deux: "Les deux" };
 export const LONGUEURS = { phrase: "une phrase", courte: "courte", developpee: "développée" };
 // Où une rubrique va chercher son contenu. Chaque catégorie dit ce qu'elle apporte et où
@@ -334,7 +372,7 @@ export function minutesPoint(valeur) {
 // Le format de lancement (workflow Recherche) d'une rubrique ponctuelle.
 export function formatRecherche(regle, format = "ecrit") {
   if (regle?.recherche?.rendu === "point") return "point";
-  return format === "audio" ? "audio" : "ecrit";
+  return format === "audio" || regle?.recherche?.audio ? "audio" : "ecrit";
 }
 
 export function normaliserRegle(r) {
@@ -364,6 +402,8 @@ export function normaliserRegle(r) {
     // Ce qu'une recherche ponctuelle rend : « point » = un podcast qui fait l'état des lieux
     // d'un sujet (durée en minutes) ; « idees » = des idées concrètes (sorties, activités…).
     rendu: RENDUS.includes(r.recherche.rendu) ? r.recherche.rendu : "idees",
+    // Des idées reçues en mini-podcast plutôt que par écrit (choisi en haut de la fiche).
+    audio: Boolean(r.recherche.audio),
     minutes: minutesPoint(r.recherche.minutes),
   } : null;
   const condition = r.condition && r.condition.texte ? {

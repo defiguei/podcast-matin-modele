@@ -146,7 +146,7 @@ Voix disponibles (nom de la voix, « prénom » donné par l'auditeur) : ${voix}
 RUBRIQUES : une rubrique est un passage de l'épisode avec ses propres paramètres. Pour en créer une, choisis d'abord dans « modele » le modèle du catalogue le plus proche :
 ${MODELES_RUBRIQUES.map((m) => `- ${m.id} : ${m.titre} — ${m.texte}`).join("\n")}
 Le modèle règle déjà la place, la longueur et les sources : ne remplis que ce que l'auditeur précise. Champs de « regle » :
-- titre (court, 2 à 5 mots) et consigne (ce que les animateurs doivent dire ou faire, en une ou deux phrases claires) : toujours les DEUX, une rubrique sans consigne est refusée, sauf pour prenom, journee et meteo si l'auditeur ne précise rien.
+- titre (court, 2 à 5 mots) et consigne (ce que les animateurs doivent dire ou faire, en une ou deux phrases claires) : toujours les DEUX, une rubrique sans consigne est refusée, sauf pour prenom, journee et meteo si l'auditeur ne précise rien. Ce sont TES mots, pas les siens : le titre nomme le sujet (« Optique et innovations », pas « crée une rubrique sur… ») et la consigne résume pour les animateurs tout ce qu'il a précisé (sujet, angle, détails utiles), rédigée comme une consigne (« Présentez chaque matin… »). Ne recopie JAMAIS sa phrase, ni ses formules de demande (« je voudrais », « crée », « ajoute une rubrique », « tu peux »), ni ce qui sert à la régler (jours, heure, place, durée : ces champs ont les leurs).
 - periode_type : toujours | dates (debut/fin) | jours (jours = codes) | une_fois (prochain épisode) | ponctuelle (recherche hors podcast, résultats à part)
 - condition_texte : si la rubrique dépend de l'agenda (« un match de foot ») ; condition_moment : jour_meme | veille | jours_avant (+ condition_n)
 - place : clé ou id après lequel elle passe (seulement si l'auditeur le dit) ; longueur : ${LONGUEURS_FORMULAIRE.join(" | ")} (aucune = glissée dans l'épisode, sans passage à elle)
@@ -232,6 +232,63 @@ export function completerFormulaire(f, r = {}, texte = "") {
   return f;
 }
 
+// ───────────── titre et consigne rédigés (jamais la phrase de l'auditeur) ─────────────
+// Une formule de demande au début d'un texte : c'est la phrase de l'auditeur, pas une consigne.
+const FORMULE_DEMANDE = /^\s*(?:(?:est-ce que|stp|s'il te pla[iî]t|bonjour|salut)\b[\s,]*)*(?:tu peux|peux-tu|pourrais-tu|tu pourrais|je (?:veux|voudrais|souhaite|souhaiterais|aimerais)|j'aimerais|il faudrait|cr[ée]e|cr[ée]er|ajoute|ajouter|rajoute|fais|faire|mets|mettre|on (?:ajoute|cr[ée]e|fait))\b/i;
+const motsDe = (t) => normaliserTexte(t).split(/[^a-z0-9]+/).filter((m) => m.length > 2);
+
+// Vrai si le texte est (presque) la phrase de l'auditeur : formule de demande, ou mêmes mots.
+export function recopie(texte, message) {
+  if (!rempli(texte)) return false;
+  if (FORMULE_DEMANDE.test(texte)) return true;
+  if (!rempli(message) || message === "(vocal)") return false;
+  const t = normaliserTexte(texte).replace(/[^a-z0-9 ]/g, ""), m = normaliserTexte(message).replace(/[^a-z0-9 ]/g, "");
+  if (t === m || (t.length >= 30 && m.includes(t))) return true;
+  const mt = motsDe(texte), mm = new Set(motsDe(message));
+  if (mt.length < 6) return false;
+  return mt.filter((x) => mm.has(x)).length / mt.length >= 0.9 && mt.length >= 0.7 * mm.size;
+}
+
+// Les rubriques créées dont le titre ou la consigne manque ou recopie la demande : à faire rédiger.
+export function rubriquesARediger(operations, message) {
+  return (operations || []).filter((op) => op && op.action === "nouvelle_regle" && op.regle && typeof op.regle === "object"
+    && !["prenom", "journee", "meteo"].includes(op.regle.modele)
+    && (!rempli(op.regle.consigne) || recopie(op.regle.consigne, message) || !rempli(op.regle.titre)
+        || recopie(op.regle.titre, message) || String(op.regle.titre).length > 50));
+}
+
+// Consigne et schéma de la rédaction : un titre et une consigne tirés de ce que l'auditeur a dit.
+export const CONSIGNE_REDACTION = `Tu rédiges une rubrique de podcast matinal à partir de la demande d'un auditeur (écrite ou transcrite d'un vocal).
+Donne :
+- titre : 2 à 5 mots qui nomment le sujet, comme un titre de chronique (pas de verbe à l'impératif, pas de « rubrique », pas de date ni d'heure) ;
+- consigne : une ou deux phrases adressées aux animateurs (« Présentez… », « Faites le point sur… ») qui résument tout ce que l'auditeur a précisé : sujet, angle, ton, détails utiles. Reformule avec tes mots : ne recopie pas sa phrase ni ses formules (« je voudrais », « crée », « peux-tu »). Laisse de côté ce qui règle la rubrique (jours, heure, place dans l'épisode, durée).
+Réponds en français.`;
+export function schemaRedaction() {
+  return { type: "object", properties: { titre: { type: "string" }, consigne: { type: "string" } }, required: ["titre", "consigne"] };
+}
+// Ce qu'on envoie à la rédaction : la demande et ce que la compréhension en a déjà tiré.
+export function contenuRedaction(message, regle) {
+  const utile = Object.fromEntries(Object.entries(regle || {}).filter(([, v]) => rempli(v) || (Array.isArray(v) && v.length)));
+  return `Demande de l'auditeur : « ${String(message || "").slice(0, 1500)} »\nDéjà compris : ${JSON.stringify(utile).slice(0, 1500)}`;
+}
+// Applique la rédaction à l'opération, si elle est bonne (ni vide ni recopiée).
+export function appliquerRedaction(regle, redaction, message) {
+  const titre = String(redaction?.titre || "").replace(/^[«"\s]+|[»"\s.]+$/g, "").trim().slice(0, 50);
+  const consigne = String(redaction?.consigne || "").replace(/\s+/g, " ").trim().slice(0, 400);
+  if (rempli(consigne) && !recopie(consigne, message)) regle.consigne = consigne;
+  if (rempli(titre) && !recopie(titre, message)) regle.titre = titre;
+}
+
+// La demande sans ses formules (« je voudrais une rubrique qui… »), en dernier recours si la rédaction échoue.
+export function sujetDeLaDemande(message) {
+  let t = String(message || "").replace(/\s+/g, " ").trim();
+  for (let i = 0; i < 3; i++) {
+    t = t.replace(FORMULE_DEMANDE, "").replace(/^[\s,]*(?:-?moi\s+|me\s+|nous\s+)?(?:une?|la|le|des)?\s*(?:nouvelle\s+)?(?:rubrique|chronique|section|partie|podcast)?\s*(?:quotidienne|chaque (?:jour|matin))?\s*(?:qui (?:parle|parlerait|parlera) (?:des|du|de la|de|d')|qui|pour|sur|avec|à propos (?:des|du|de la|de|d')|concernant)?\s*/i, "").trim();
+  }
+  t = t.replace(/[.!?]+$/, "");
+  return t.charAt(0).toLowerCase() + t.slice(1);
+}
+
 // Titre court tiré de la consigne, quand Gemini n'en donne pas.
 function titreDepuisConsigne(consigne) {
   const mots = String(consigne || "").replace(/[.!?;:].*$/, "").split(/\s+/).filter(Boolean);
@@ -248,14 +305,14 @@ function nouvelleRubrique(config, r = {}, ctx) {
   const parDefaut = [...f.sources];
   completerFormulaire(f, r, ctx.message);
   f.sources = [...new Set([...parDefaut, ...f.sources])];
-  // Gemini oublie parfois la consigne (il ne donne que le titre) : on reprend alors les mots de l'auditeur
-  // plutôt que de refuser la rubrique.
-  if (!rempli(f.consigne) && rempli(ctx.message) && ctx.message !== "(vocal)") {
-    f.consigne = rempli(f.titre) ? `Parle de : ${f.titre}. Demande de l'auditeur : ${ctx.message}` : String(ctx.message);
-    f.consigne = f.consigne.replace(/\s+/g, " ").trim().slice(0, 400);
+  // Sans consigne rédigée (Gemini ne l'a pas donnée, la rédaction a échoué) : le sujet de la demande,
+  // sans ses formules, plutôt que de refuser la rubrique ; jamais la phrase telle quelle.
+  if ((!rempli(f.consigne) || recopie(f.consigne, ctx.message)) && rempli(ctx.message) && ctx.message !== "(vocal)") {
+    const sujet = sujetDeLaDemande(ctx.message);
+    if (rempli(sujet)) f.consigne = `Présentez ${rempli(f.titre) && !recopie(f.titre, ctx.message) ? `« ${f.titre} »` : "ce sujet"} : ${sujet}.`.replace(/\s+/g, " ").slice(0, 400);
   }
   if (!rempli(f.consigne)) throw new Error("je n'ai pas compris ce que la rubrique doit dire");
-  if (!rempli(f.titre)) f.titre = titreDepuisConsigne(f.consigne);
+  if (!rempli(f.titre) || recopie(f.titre, ctx.message)) f.titre = titreDepuisConsigne(rempli(ctx.message) && ctx.message !== "(vocal)" ? sujetDeLaDemande(ctx.message) : f.consigne);
   // Où elle cherche : le modèle ou Gemini l'ont dit ; sinon d'après le sujet. Toujours affiché.
   if (!sourcesUtilisables(f.sources, config).length) {
     f.sources = sourcesAuto({ titre: f.titre, consigne: f.consigne, fiche: f.fiche, condition: f.condition && f.condition.texte ? f.condition : null }, config);

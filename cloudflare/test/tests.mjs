@@ -3,7 +3,7 @@ import { createHash, createECDH, createDecipheriv, createPublicKey, hkdfSync, ra
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { MODELES_PODCAST } from "../src/connexions.js";
-import { RUBRIQUES_A_CHERCHER } from "../src/config.js";
+import { RUBRIQUES_A_CHERCHER, TONS, DESCRIPTIONS_TONS } from "../src/config.js";
 
 const BOT = "http://127.0.0.1:8799";
 const FAUX = "http://127.0.0.1:8790";
@@ -461,14 +461,30 @@ await scenario("Rubriques intégrées : actu locale, déplacements, à creuser",
   verifier(exp.config.deroule.some((x) => x.cle === "actu_locale") && exp.agendas.length === 2, "export : actu_locale et agendas", exp.agendas);
 });
 
-await scenario("Rubrique : Gemini ne donne que le titre, la consigne vient des mots de l'auditeur", async () => {
+await scenario("Rubrique : titre et consigne rédigés par l'IA, jamais la phrase de l'auditeur", async () => {
   const avant = (await etat()).config.regles.length;
-  await gemini({ operations: [{ action: "nouvelle_regle", regle: { titre: "Tech Optique", transport: "peu_importe" } }], reponse: "" });
+  // Gemini ne donne que le titre : la rédaction écrit la consigne à partir de la demande.
+  await gemini({ operations: [{ action: "nouvelle_regle", regle: { titre: "Tech Optique", transport: "peu_importe" } }], reponse: "" },
+               { titre: "Optique et innovations", consigne: "Présentez une avancée récente des technologies optiques, en expliquant simplement à quoi elle sert." });
   await app("parler", { texte: "crée une rubrique pour demain sur les nouvelles technologies dans l'optique" });
-  const regles = (await etat()).config.regles;
-  const r = regles.find((x) => x.titre === "Tech Optique");
-  verifier(regles.length === avant + 1 && r && r.consigne.includes("nouvelles technologies dans l'optique"), "rubrique créée sans consigne de Gemini", r);
+  let regles = (await etat()).config.regles;
+  let r = regles.find((x) => x.titre === "Optique et innovations");
+  verifier(regles.length === avant + 1 && r && r.consigne.startsWith("Présentez une avancée récente"), "consigne rédigée (Gemini n'en donnait pas)", r);
   verifier(["", "aucun", undefined].includes(r?.recherche?.fiche?.transport), "« peu importe » = aucun critère de transport", r?.recherche?.fiche);
+  // Gemini recopie la phrase dite : elle est réécrite.
+  const dit = "je voudrais une rubrique qui parle des sorties cinéma de la semaine avec un avis court sur chaque film";
+  await gemini({ entendu: dit, operations: [{ action: "nouvelle_regle", regle: { titre: "Je voudrais une rubrique cinéma", consigne: dit } }], reponse: "" },
+               { titre: "Sorties cinéma", consigne: "Présentez les films qui sortent cette semaine, avec un avis court sur chacun." });
+  await app("parler", { audio: wav, mime: "audio/wav" });
+  r = (await etat()).config.regles.find((x) => x.titre === "Sorties cinéma");
+  verifier(r && r.consigne === "Présentez les films qui sortent cette semaine, avec un avis court sur chacun.", "consigne recopiée d'un vocal : réécrite", r);
+  // Rédaction indisponible : le sujet sans les formules de demande, jamais la phrase telle quelle.
+  await gemini({ operations: [{ action: "nouvelle_regle", regle: { titre: "", consigne: "Ajoute une rubrique sur la météo des neiges en Valais" } }], reponse: "" });
+  await app("parler", { texte: "Ajoute une rubrique sur la météo des neiges en Valais" });
+  regles = (await etat()).config.regles;
+  r = regles.at(-1);
+  verifier(r && !/ajoute/i.test(r.consigne) && r.consigne.includes("météo des neiges en Valais") && !/ajoute/i.test(r.titre), "sans rédaction : formules retirées", r);
+  for (const x of (await etat()).config.regles.slice(avant)) await app("supprimer", { id: x.id });
 });
 
 // ─────────────────────────── application ─────────────────────────
@@ -611,7 +627,7 @@ await scenario("Application : épisodes, lecteur, gestes, texte", async () => {
   verifier((await fetch(`${BOT}${ep.audio.replace(/s=[0-9a-f]+/, "s=deadbeef")}`)).status === 403, "lien audio falsifié refusé");
   verifier((await fetch(`${BOT}/app/audio?c=voix:Aoede&e=1&s=0`)).status === 403, "lien audio expiré refusé");
   r = await app("geste", { cle: ep.cle, geste: "up" });
-  verifier(r.ok && r.donnees.episodes[0].avis === "up", "avis positif");
+  verifier(r.ok === false && !("avis" in (await app("etat")).donnees.episodes[0]), "plus d'avis j'aime / j'aime pas");
   const avant = (await etat()).config.format.duree_minutes;
   r = await app("geste", { cle: ep.cle, geste: "court" });
   verifier(r.ok && (await etat()).config.format.duree_minutes === avant - 1 && r.donnees.episodes[0].coches.includes("court"), "plus court", r.erreur);
@@ -619,7 +635,7 @@ await scenario("Application : épisodes, lecteur, gestes, texte", async () => {
   verifier(r.ok && r.donnees.reglages.a_approfondir.includes("Sujet B"), "sujet à creuser depuis l'épisode");
   r = await app("texte", { cle: ep.cle });
   verifier(r.ok && r.texte === "Léa : Bonjour !", "texte de l'épisode");
-  verifier((await app("geste", { cle: "ep:2020-01-01", geste: "up" })).ok === false, "épisode inconnu refusé");
+  verifier((await app("geste", { cle: "ep:2020-01-01", geste: "court" })).ok === false, "épisode inconnu refusé");
   await app("regler", { chemin: "format.duree_minutes", valeur: avant });
 });
 
@@ -984,6 +1000,9 @@ await scenario("Connexions : tester une clé déjà enregistrée (application ou
   // Les modèles annoncés par le test de la clé Gemini sont bien ceux du podcast.
   const podcast = readFileSync(new URL("../../podcast.py", import.meta.url), "utf8");
   const liste = (cle) => JSON.parse((new RegExp(`"${cle}": (\\[[^\\]]*\\])`).exec(podcast) || [, "[]"])[1]);
+  const tonsPy = [...(/^TONS = \{([\s\S]*?)^\}/m.exec(podcast) || [, ""])[1].matchAll(/^    "([a-z_]+)":/gm)].map((m) => m[1]);
+  verifier(JSON.stringify(tonsPy) === JSON.stringify(Object.keys(TONS)) && Object.keys(TONS).every((t) => DESCRIPTIONS_TONS[t]),
+    "tons du bot = ceux de podcast.py, chacun décrit", { tonsPy, bot: Object.keys(TONS) });
   verifier(JSON.stringify(liste("modeles_texte")) === JSON.stringify(MODELES_PODCAST.texte) && JSON.stringify(liste("modeles_voix")) === JSON.stringify(MODELES_PODCAST.voix),
     "modèles du test Gemini = ceux de podcast.py", { texte: liste("modeles_texte"), voix: liste("modeles_voix") });
   // Gemini dans l'application : le bot la teste et liste les modèles.
