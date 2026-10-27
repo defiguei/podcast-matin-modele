@@ -20,7 +20,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-27.1";
+export const VERSION = "2026-10-27.2";
 const MAX_REFAITS = 6;
 const MAX_RECHERCHES = 15;
 const MAX_EPISODES = 60;      // épisodes récents, dans l'état ; les plus anciens vont dans l'archive de leur mois
@@ -29,6 +29,7 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
+  "Connexions : Tavily et tes agendas du secret GitHub ne disparaissent plus après la préparation des extraits de voix.",
   "Une rubrique demandée à la voix ou par écrit reçoit un titre et une consigne rédigés par l'IA, plus jamais ta phrase telle quelle.",
   "Plus de tons (enthousiaste, calme, journal radio, pédagogue, conteur…) et des consignes de style toutes prêtes à choisir dans une liste.",
   "L'onglet Idées devient « Recherches » : un seul bouton, et ce que tu reçois (podcast, idées écrites ou en podcast) se choisit en haut de la recherche.",
@@ -220,7 +221,7 @@ export class Etat extends DurableObject {
 
   async lireEtat() {
     const etat = { annulations: [], episodes: [], declenchements: {},
-                   refaits: {}, recherches: {}, echantillons: {}, historique: [], ...(await this.ctx.storage.get("etat") || {}) };
+                   refaits: {}, recherches: {}, historique: [], ...(await this.ctx.storage.get("etat") || {}) };
     // Une fois : on oublie l'ancienne conversation et ses appareils (sans jeton, ils ne s'ouvrent plus).
     if (ANCIENNES_CLES.some((cle) => cle in etat) || (etat.appareils || []).some((a) => !a.empreinte)) {
       for (const cle of ANCIENNES_CLES) delete etat[cle];

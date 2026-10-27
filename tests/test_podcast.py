@@ -667,6 +667,29 @@ code = podcast.main([])
 verifier(code == 0 and appels_gemini("script") and evenements_bot("episode"),
          "épisode pas encore parti → le rattrapage l'envoie")
 del os.environ["RATTRAPAGE"]
+# Les secrets GitHub présents sont signalés au bot (écran Connexions) par l'épisode, pas par la lecture
+# des agendas, qui n'en reçoit qu'une partie (sinon Tavily semblerait avoir disparu).
+ancien_get_secrets = podcast.requests.get
+
+
+def get_bot_secrets(url, timeout=None, headers=None):
+    if url.endswith("/api/config"):
+        return Reponse(200, {"format": "bot-v2", "version": "test", "config": {}})
+    return ancien_get_secrets(url, timeout=timeout, headers=headers)
+
+
+podcast.requests.get = get_bot_secrets
+os.environ["RATTRAPAGE"] = "true"
+appels.clear()
+with contextlib.redirect_stdout(io.StringIO()):
+    podcast.main([])
+verifier(evenements_bot("secrets"), "l'épisode signale au bot les secrets GitHub présents")
+del os.environ["RATTRAPAGE"]
+appels.clear()
+with contextlib.redirect_stdout(io.StringIO()):
+    podcast.main(["--agendas"])
+podcast.requests.get = ancien_get_secrets
+verifier(not evenements_bot("secrets"), "lecture des agendas : secrets GitHub pas signalés")
 
 # 5k. Échec à l'heure prévue : notification rassurante, pas d'e-mail d'échec, rattrapage annoncé.
 print("\n5k. Échec avec rattrapage prévu")

@@ -1,8 +1,9 @@
 {
-  "version": "2026-10-27.1",
+  "version": "2026-10-27.2",
   "date": "2026-10-27",
   "titre": "Plus de choix, moins de clics",
   "nouveautes": [
+    "Connexions : Tavily et tes agendas du secret GitHub ne disparaissent plus après la préparation des extraits de voix.",
     "Une rubrique demandée à la voix ou par écrit reçoit un titre et une consigne rédigés par l'IA, plus jamais ta phrase telle quelle.",
     "Plus de tons (enthousiaste, calme, journal radio, pédagogue, conteur…) et des consignes de style toutes prêtes à choisir dans une liste.",
     "L'onglet Idées devient « Recherches » : un seul bouton, et ce que tu reçois (podcast, idées écrites ou en podcast) se choisit en haut de la recherche.",

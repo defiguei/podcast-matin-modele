@@ -2068,7 +2068,11 @@ def main(arguments: list[str] | None = None) -> int:
         # Réglages tenus par le bot ; à défaut, sa sauvegarde quotidienne.
         if export:
             journal(f"Réglages lus auprès du bot (version {export.get('version', '?')}).")
-            bot.evenement({"type": "secrets", "presents": presents})   # pour l'écran Connexions
+            # Pour l'écran Connexions : seuls l'épisode et les recherches reçoivent tous les secrets suivis ;
+            # les extraits de voix et la lecture des agendas n'en ont qu'une partie (ils feraient croire
+            # que Tavily ou l'agenda ont disparu).
+            if not (options.echantillons or options.agendas):
+                bot.evenement({"type": "secrets", "presents": presents})
         else:
             export = config_de_secours(RACINE / FICHIER_PREFERENCES)
             if export:
