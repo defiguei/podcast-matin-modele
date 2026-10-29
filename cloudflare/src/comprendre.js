@@ -512,7 +512,7 @@ function appliquerUne(config, op, ctx) {
     }
     case "nouvelle_regle": {
       const regle = nouvelleRubrique(config, op.regle || {}, ctx);
-      const changement = `Rubrique ${regle.id} créée : ${regle.titre} (${decrirePlace(config, regle)} ; ${sourcesEnMots(config, regle)})`;
+      const changement = `Rubrique « ${regle.titre} » créée (${decrirePlace(config, regle)} ; ${sourcesEnMots(config, regle)})`;
       // Une recherche ponctuelle part tout de suite, dans son format (point en audio, ou idées écrites).
       const action = regle.periode.type === "ponctuelle" ? { type: "resultats", ids: [regle.id], format: formatRecherche(regle) } : null;
       return { changement, regle, action };
@@ -537,14 +537,14 @@ function appliquerUne(config, op, ctx) {
         placerRubriqueApres(config, id, nouvellePlace);
         regle.rubrique.apres = nouvellePlace;
       }
-      return { changement: `Rubrique ${regle.id} modifiée : ${regle.titre} (${decrirePlace(config, regle)})`, regle };
+      return { changement: `Rubrique « ${regle.titre} » modifiée (${decrirePlace(config, regle)})`, regle };
     }
     case "supprimer_regle": {
       const id = identifiantRegle(op.id);
       const regle = config.regles.find((r) => r.id === id);
       if (!regle) throw new Error(`rubrique ${id} introuvable`);
       const table = supprimerRegle(config, id);
-      const changement = `Rubrique ${id} « ${regle.titre} » supprimée`;
+      const changement = `Rubrique « ${regle.titre} » supprimée`;
       return { changement, lourd: changement, suppression: { table, id } };
     }
     case "pause_regle":
@@ -557,7 +557,7 @@ function appliquerUne(config, op, ctx) {
       // Comme dans l'application : un seul interrupteur, le passage suit.
       const passage = config.deroule.find((el) => el.cle === id);
       if (passage) passage.actif = regle.etat === "active";
-      return { changement: `Rubrique ${id} ${regle.etat === "pause" ? "en pause" : "réactivée"}` };
+      return { changement: `Rubrique « ${regle.titre} » ${regle.etat === "pause" ? "en pause" : "réactivée"}` };
     }
     case "deplacer_rubrique": {
       const cle = cleRubrique(config, op.rubrique), apres = op.apres === "debut" ? "debut" : cleRubrique(config, op.apres);

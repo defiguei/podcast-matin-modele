@@ -230,8 +230,8 @@ export const MODELES_RUBRIQUES = [
     formulaire: (ville) => ({ place: "ouverture", titre: "Météo", consigne: `La météo du jour${ville ? ` à ${ville}` : ""} : températures, risque de pluie, et un conseil pour s'habiller.`, longueur: "phrase" }) },
   { id: "rappel", categorie: "alertes", sources: ["agenda"], famille: "agenda", titre: "Rappel selon l'agenda", texte: "« La veille d'un match, rappelle-moi de préparer mon sac »",
     formulaire: () => ({ place: "agenda", titre: "Rappel", consigne: "Rappelle-moi de ", longueur: "phrase", condition: { texte: "", moment: "veille", n: 1 } }) },
-  { id: "train", categorie: "alertes", sources: ["transports"], famille: "sortie", titre: "Mon train", texte: "Retard ou suppression de ton train habituel (Suisse, France, Belgique)",
-    formulaire: (ville) => ({ place: "agenda", titre: "Mon train", consigne: `Retard du train de ${ville || "…"} vers … à …h…`, longueur: "phrase",
+  { id: "train", categorie: "alertes", sources: ["transports"], famille: "sortie", titre: "Mes transports en commun", texte: "Retard ou suppression de ton train habituel (Suisse, France, Belgique)",
+    formulaire: (ville) => ({ place: "agenda", titre: "Mes transports en commun", consigne: `Retard du train de ${ville || "…"} vers … à …h…`, longueur: "phrase",
                               periode: { type: "jours", jours: ["lun", "mar", "mer", "jeu", "ven"] } }) },
   { id: "actu_pays", categorie: "actus", sources: ["actus"], famille: "info", titre: "Actu d'un pays", texte: "« L'actualité du Portugal », « ce qui se passe au Canada »",
     formulaire: () => ({ place: "actualites", titre: "Actu de ", consigne: "Les nouvelles importantes de ce pays : ", longueur: "courte" }) },
@@ -240,7 +240,7 @@ export const MODELES_RUBRIQUES = [
   { id: "sortie", categorie: "guide", sources: ["web", "lieux", "meteo", "wikivoyage"], famille: "sortie", titre: "Idée de sortie", texte: "Une sortie proposée dans tes épisodes, selon tes critères (lieu, budget, transport)", recherche: true, pret: true,
     formulaire: () => ({ place: "deplacements", titre: "Sortie du week-end", consigne: "Propose une idée de sortie pour le week-end.", longueur: "courte",
                          periode: { type: "jours", jours: ["jeu", "ven"] } }) },
-  { id: "libre", categorie: "libre", sources: [], famille: "info", titre: "Rubrique libre", texte: "Tu écris la consigne et tu choisis où elle cherche",
+  { id: "libre", categorie: "libre", sources: [], famille: "info", titre: "Rubrique sur mesure", texte: "Tu écris la consigne et tu choisis où elle cherche, parmi toutes tes sources",
     formulaire: () => ({ place: "actualites", titre: "", consigne: "", longueur: "courte" }) },
 ];
 
@@ -706,7 +706,7 @@ export function placerRubriqueApres(config, cle, apres) {
 export function nomRubrique(config, cle) {
   if (RUBRIQUES[cle]) return RUBRIQUES[cle];
   const regle = config.regles.find((r) => r.id === cle);
-  return regle ? `${regle.rubrique?.titre || regle.titre} (${cle})` : cle;
+  return regle ? regle.rubrique?.titre || regle.titre : cle;
 }
 
 // ───────────────────────────────── planning ─────────────────────────────────

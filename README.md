@@ -32,10 +32,10 @@ Une rubrique est un passage de ton épisode. **Toutes se règlent de la même fa
 
 - **Fête du prénom**, **Journée mondiale**, **Météo** ;
 - **Rappel selon l'agenda** : « la veille d'un match, rappelle-moi de préparer mon sac » ;
-- **Mon train** : retard ou suppression de ton train habituel (CFF, SNCF, SNCB) ;
+- **Mes transports en commun** : retard ou suppression de ton train habituel (CFF, SNCF, SNCB) ;
 - **Actu d'un pays ou d'un thème** : « l'actualité du Portugal », « les nouvelles du vélo » ;
 - **Idée de sortie** : quoi, avec qui, où, quand, transport, budget ; présentée dans tes épisodes ;
-- ou **une rubrique libre**, décrite en une phrase.
+- ou **une rubrique sur mesure**, décrite en une phrase, qui peut lire toutes tes sources.
 
 L'application choisit les sources utiles à chaque rubrique (tu peux les changer dans la fiche), et règle sa place et sa longueur.
 

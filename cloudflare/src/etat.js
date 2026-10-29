@@ -21,7 +21,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-29.3";
+export const VERSION = "2026-10-29.4";
 const MAX_REFAITS = 6;
 const MAX_RECHERCHES = 15;
 const MAX_EPISODES = 60;      // épisodes récents, dans l'état ; les plus anciens vont dans l'archive de leur mois
@@ -30,10 +30,8 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
-  "Chaque rubrique choisit ses sources : l'Agenda et Mes déplacements leurs agendas, l'Actu locale et À creuser leurs flux ; une rubrique du catalogue ne propose que les sources utiles.",
-  "Une rubrique sur mesure range toutes les sources en groupes qu'on ouvre un à un.",
-  "Tes agendas se renomment (Réglages › Sources › Agendas) ; la fiche Agenda ne montre plus la liste des rendez-vous.",
-  "Google Actualités refuse parfois les questions du bot : le test passe alors par GitHub, d'où le podcast le lit.",
+  "En haut de chaque rubrique, son type, le même nom que dans « Ajouter une rubrique » ; les numéros R1, R2… ne s'affichent plus.",
+  "« Mon train » devient « Mes transports en commun », et « Rubrique libre » devient « Rubrique sur mesure ».",
 ];
 
 // « 2026-10 » décalé de n mois.
@@ -884,8 +882,9 @@ export class Etat extends DurableObject {
           const existante = demande.id ? config.regles.find((r) => r.id === demande.id) : null;
           if (demande.id && !existante) return refus("Cette rubrique n'existe plus.");
           // Même chemin que les rubriques demandées à la voix (comprendre.js).
-          id = enregistrerRubrique(config, demande.formulaire || {}, existante, ctx.aujourdHui, "application").id;
-          libelle = existante ? `${id} modifiée` : `Rubrique ${id} créée`;
+          const enregistree = enregistrerRubrique(config, demande.formulaire || {}, existante, ctx.aujourdHui, "application");
+          id = enregistree.id;
+          libelle = existante ? `« ${enregistree.titre} » modifiée` : `Rubrique « ${enregistree.titre} » créée`;
           break;
         }
         case "supprimer": {

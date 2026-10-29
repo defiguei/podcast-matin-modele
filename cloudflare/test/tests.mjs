@@ -595,6 +595,9 @@ await scenario("Sources des rubriques : fournies, filtrées par modèle, test de
   // Le modèle d'une rubrique est gardé : il dit quelles sources elle peut choisir.
   r = await app("rubrique", { formulaire: { titre: "Mon train", consigne: "Retard du 7h12", periode: { type: "toujours" }, sources: ["transports"], modele: "train" } });
   const train = r.id;
+  verifier(r.message === "Rubrique « Mon train » créée" && r.donnees.regles.find((x) => x.id === train).genre === "train"
+           && r.donnees.modeles.find((m) => m.id === "train").titre === "Mes transports en commun" && r.donnees.modeles.find((m) => m.id === "libre").titre === "Rubrique sur mesure",
+    "message sans numéro ; type et icône venus du modèle", { m: r.message });
   verifier(r.ok && r.donnees.regles.find((x) => x.id === train).modele === "train" && r.donnees.listes.sources_par_modele.train.join() === "transports,agendas",
     "rubrique d'un modèle : modèle gardé, sources proposées filtrées", r.erreur);
   r = await app("rubrique", { formulaire: { titre: "Point CFF", consigne: "Les retards", periode: { type: "ponctuelle" }, sources: ["actus"], modele: "train" } });

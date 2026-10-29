@@ -78,9 +78,13 @@ function familleRegle(r) {
   return "info";
 }
 
-// Genre de la rubrique (son icône et sa couleur dans l'application), plus fin que la famille :
-// météo, fête du prénom et journée du jour n'ont pas le même ; mon train et idée de sortie non plus.
+// Genre de la rubrique (son icône et sa couleur dans l'application) : celui de son modèle, comme
+// le nom en haut de sa fiche ; une rubrique sur mesure a le sien. Une recherche ponctuelle, sans
+// modèle, le tire de ce qu'elle cherche.
+const GENRE_DU_MODELE = { prenom: "prenom", journee: "journee", meteo: "meteo", rappel: "rappel", train: "train",
+  actu_pays: "actu", actu_theme: "actu", sortie: "sortie", libre: "libre" };
 export function genreRegle(r) {
+  if (r.periode?.type !== "ponctuelle" && GENRE_DU_MODELE[r.modele]) return GENRE_DU_MODELE[r.modele];
   const sources = r.recherche?.sources || [];
   const fiche = r.recherche?.fiche || {};
   const titre = normaliserTexte(r.titre || "");

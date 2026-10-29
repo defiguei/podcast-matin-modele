@@ -1,12 +1,10 @@
 {
-  "version": "2026-10-29.3",
+  "version": "2026-10-29.4",
   "date": "2026-10-29",
-  "titre": "Chaque rubrique choisit ses sources",
+  "titre": "Un nom par type de rubrique",
   "nouveautes": [
-    "Chaque rubrique choisit ses sources : l'Agenda et Mes déplacements leurs agendas, l'Actu locale et À creuser leurs flux ; une rubrique du catalogue ne propose que les sources utiles.",
-    "Une rubrique sur mesure range toutes les sources en groupes qu'on ouvre un à un.",
-    "Tes agendas se renomment (Réglages › Sources › Agendas) ; la fiche Agenda ne montre plus la liste des rendez-vous.",
-    "Google Actualités refuse parfois les questions du bot : le test passe alors par GitHub, d'où le podcast le lit."
+    "En haut de chaque rubrique, son type, le même nom que dans « Ajouter une rubrique » ; les numéros R1, R2… ne s'affichent plus.",
+    "« Mon train » devient « Mes transports en commun », et « Rubrique libre » devient « Rubrique sur mesure »."
   ],
   "supprimes": [
     ".github/workflows/retours.yml",

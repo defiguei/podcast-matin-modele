@@ -1403,10 +1403,14 @@ function blocRecherche(f) {
     </div>`;
 }
 
+// Le nom d'un type de rubrique (modèle du catalogue « + ») ; sur mesure par défaut.
+const nomModele = (id) => ((S.d.modeles || []).find((m) => m.id === id) || {}).titre || "Rubrique sur mesure";
+
 function vueFiche() {
   const F = S.fiche, f = F.f, r = F.id ? S.d.regles.find((x) => x.id === F.id) : null;
   const ponctuelle = f.periode.type === "ponctuelle";
-  const famille = r ? { jour: "Le jour", info: "Veille et actualité", sortie: "Sorties et lieux", agenda: "Selon l'agenda" }[r.famille] : ponctuelle ? "Nouvelle recherche" : "Nouvelle rubrique";
+  // En haut de la fiche : le type de rubrique, le même nom que dans « Ajouter une rubrique ».
+  const famille = ponctuelle ? (r ? "Recherche" : "Nouvelle recherche") : nomModele(f.modele);
   const segments = [["aucune", "Glissée"], ["phrase", "Une phrase"], ["courte", "Courte"], ["developpee", "Développée"]];
   const avant = r && r.place ? (S.d.deroule.find((x) => x.cle === r.place) || {}).nom : null;
   const point = ponctuelle && f.rendu === "point";
@@ -1414,7 +1418,7 @@ function vueFiche() {
   return `
   <div class="entete-fiche">
     <button type="button" class="icone" data-action="retour" aria-label="Retour">${icone("retour", 22, 2)}</button>
-    <span class="surtitre">${h(famille)}${r ? ` · ${h(r.id)}` : ""}</span>
+    <span class="surtitre">${h(famille)}</span>
     ${r ? `<button type="button" class="icone" data-action="plus" aria-label="Plus d'options">${icone("plusieurs", 22, 2)}</button>` : ""}
   </div>
   ${r && r.prochain && r.etat !== "active" && !ponctuelle ? `<p class="aide">Prochain passage : ${h(r.prochain)}</p>` : ""}
@@ -1601,7 +1605,7 @@ function blocSourcesFournie(cle) {
 // Réglages › Sources : tous les outils, rangés par type. Chacun se règle, se teste et dit
 // quelles rubriques s'en servent ; Gemini, le moteur, a son écran à lui.
 function utilisePar(x) {
-  const noms = x.rubriques.map((r) => `${r.id} ${r.titre}`);
+  const noms = x.rubriques.map((r) => r.titre);
   if (x.aussi) noms.push(x.aussi);
   return noms.length ? noms.join(" · ") : "aucune rubrique pour l'instant";
 }
@@ -1641,7 +1645,7 @@ function ongletServices() {
 }
 
 function luParFlux(f) {
-  const noms = [...(f.fournies || []), ...f.rubriques.map((r) => `${r.id} ${r.titre}`)];
+  const noms = [...(f.fournies || []), ...f.rubriques.map((r) => r.titre)];
   return noms.length ? noms.join(" · ") : "aucune rubrique pour l'instant";
 }
 
@@ -1694,7 +1698,7 @@ function ongletAgendas() {
     <label class="aide" for="nom-ag-${a.id}" style="margin:0">Son nom dans l'application${a.nom_fichier ? ` (dans le fichier : « ${h(a.nom_fichier)} »)` : ""}</label>
     <input id="nom-ag-${a.id}" class="nom-agenda" maxlength="40" value="${h(a.nom)}" placeholder="${h(a.nom_fichier || a.nom)}" data-agenda-nom="${h(a.id)}" autocomplete="off" spellcheck="false" enterkeyhint="done">
     <p class="aide" style="margin:0">${app ? "Ajouté dans l'application" : "Vient du secret GitHub CALENDAR_ICS_URL"}</p>
-    <div class="ou-cherche"><span><b>Lu par</b> · ${h([...(info.fournies || []), ...info.rubriques.map((x) => `${x.id} ${x.titre}`)].join(" · ") || "aucune rubrique pour l'instant")}</span></div>
+    <div class="ou-cherche"><span><b>Lu par</b> · ${h([...(info.fournies || []), ...info.rubriques.map((x) => x.titre)].join(" · ") || "aucune rubrique pour l'instant")}</span></div>
     ${resultatTest(info.test)}
     <div class="bloc" style="background:var(--carte-2)">${interrupteur("Lu par le podcast", !r.agenda.exclus.includes(a.id), `data-agenda="${h(a.id)}"`)}</div>
     <div class="deux">${boutonTester(`agenda:${a.id}`)}<button type="button" class="bouton gris" style="color:var(--rouge)" data-agenda-retirer="${h(a.id)}">Retirer</button></div>
@@ -1779,7 +1783,7 @@ async function enregistrerFiche() {
   }
   if (nouvelleRecherche) {
     const k = await demander("recherche", { id: j.id });
-    annoncer(k.ok ? k.message : `Recherche ${j.id} créée`);
+    annoncer(k.ok ? k.message : "Recherche créée");
     S.ecran = "idees";
     return dessiner();
   }
@@ -2630,7 +2634,7 @@ document.addEventListener("click", (ev) => {
   if (ds.fluxPropose) { annoncer("J'ajoute ce média…"); return changer("flux_ajouter", { valeur: ds.fluxPropose, nom: ds.nom || "", actualites: true, propose: true }); }
   if (ds.siteRetirer) {
     const x = S.d.reglages.sources.sites.find((y) => y.id === ds.siteRetirer);
-    return confirmer(`Retirer le site « ${x ? x.nom : ""} » ?${x && x.rubriques.length ? ` ${x.rubriques.map((r) => r.id).join(", ")} n'y chercheront plus.` : ""}`, () => changer("site_retirer", { id: ds.siteRetirer }));
+    return confirmer(`Retirer le site « ${x ? x.nom : ""} » ?${x && x.rubriques.length ? ` ${x.rubriques.map((r) => `« ${r.titre} »`).join(", ")} n'y chercheront plus.` : ""}`, () => changer("site_retirer", { id: ds.siteRetirer }));
   }
   if (ds.integree) { S.integree = ds.integree; return aller("integree"); }
   if (ds.modele) { const m = modeles().find((x) => x.id === ds.modele); return m && ouvrirFiche(null, m); }
@@ -2651,13 +2655,13 @@ document.addEventListener("click", (ev) => {
     const c = S.d.reglages.sources.categories.find((x) => x.cle === ds.sourceUtilisable);
     if (!c) return;
     if (!c.coupee && c.rubriques.length) {
-      return confirmer(`Retirer « ${c.nom} » ? ${c.rubriques.map((r) => r.id).join(", ")} ne la liront plus.`, () => changer("source_coupee", { cle: c.cle, coupee: true }));
+      return confirmer(`Retirer « ${c.nom} » ? ${c.rubriques.map((r) => `« ${r.titre} »`).join(", ")} ne la liront plus.`, () => changer("source_coupee", { cle: c.cle, coupee: true }));
     }
     return changer("source_coupee", { cle: c.cle, coupee: !c.coupee });
   }
   if (ds.fluxRetirer) {
     const f = S.d.reglages.sources.flux.find((x) => x.id === ds.fluxRetirer);
-    const lecteurs = f ? [...(f.actualites ? ["les Actualités globales"] : []), ...f.rubriques.map((r) => r.id)] : [];
+    const lecteurs = f ? [...(f.fournies || []), ...f.rubriques.map((r) => `« ${r.titre} »`)] : [];
     return confirmer(`Retirer le flux « ${f ? f.nom : ""} » ?${lecteurs.length ? ` ${lecteurs.join(", ")} ne le liront plus.` : ""}`, () => changer("flux_retirer", { id: ds.fluxRetirer }));
   }
   if (ds.testerCle) {
