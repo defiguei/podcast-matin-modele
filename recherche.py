@@ -197,7 +197,7 @@ ESSENTIELLES = {
     "deplacements": ("Mes déplacements", ["agenda", "web", "actus"]),
     "actu_locale": ("Actu locale", ["actus"]),
     "approfondissements": ("À creuser", ["web", "actus"]),
-    "actualites": ("Actualités", ["medias"]),   # tes médias, lus directement (voir ajouter_medias)
+    "actualites": ("Actualités globales", ["medias"]),   # tes médias, lus directement (voir ajouter_medias)
 }
 assert set(ESSENTIELLES) == set(p.RUBRIQUES_ESSENTIELLES)
 
@@ -215,8 +215,11 @@ def regle_essentielle(rubrique: str, config: dict, ville: str) -> dict:
         ville_locale = str(actus.get("ville") or ville or "").strip()
         if not ville_locale:
             raise p.ErreurPodcast("Ta ville n'est pas précisée : ajoute-la dans Réglages › Moi pour avoir l'actu locale.")
-        requetes = [f"actualité {ville_locale}"]
-        consigne = f"Une ou deux nouvelles de {ville_locale}, et ce qu'elles changent au quotidien."
+        themes = p.nettoyer_liste(actus.get("locale_preferes"))[:2]
+        requetes = [f"actualité {ville_locale}"] + [f"{ville_locale} {t}" for t in themes]
+        n = int(p._borne(actus.get("locale_sujets"), 1, 5, 2))
+        infos = p.infos_locales(n)
+        consigne = f"{infos[0].upper()}{infos[1:]} de {ville_locale}, et ce que ça change au quotidien."
     elif rubrique == "approfondissements":
         sujets = [str(a.get("sujet") or "").strip() for a in config.get("a_approfondir") or [] if isinstance(a, dict)]
         sujets = [x for x in sujets if x]
@@ -226,6 +229,11 @@ def regle_essentielle(rubrique: str, config: dict, ville: str) -> dict:
         consigne = "Fais le point sur les sujets que j'ai demandé de creuser : " + " ; ".join(sujets) + "."
     else:
         consigne = "Les sujets importants du jour : mon pays d'abord, puis l'international."
+    # Comme dans l'épisode : les thèmes et les consignes de la rubrique.
+    consigne += p.precisions_rubrique(rubrique, {
+        "sujets_preferes": p.nettoyer_liste(actus.get("sujets_preferes")), "sujets_a_eviter": p.nettoyer_liste(actus.get("sujets_a_eviter")),
+        "locale_preferes": p.nettoyer_liste(actus.get("locale_preferes")), "locale_a_eviter": p.nettoyer_liste(actus.get("locale_a_eviter")),
+        "consignes_rubriques": config.get("consignes_rubriques") or {}})
     return {"id": rubrique, "titre": titre, "consigne": consigne, "rubrique": {"titre": titre},
             "recherche": {"fiche": {}, "sources": list(sources), "requetes": requetes, "rendu": "point", "minutes": 3}}
 

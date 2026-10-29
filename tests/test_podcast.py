@@ -559,7 +559,7 @@ verifier("=== ÉPISODE PRÉCÉDENT ===" in demande and "Épisode d'hier : « Bud
          "rappel de l'épisode de la veille (pour ne pas se répéter)")
 faites = recherches()
 verifier("la réforme des retraites when:14d" in faites and "Barcelone when:7d" in faites
-         and "technologie when:2d" in faites and "Lausanne when:7d" in faites, f"recherches : {faites}")
+         and "technologie when:36h" in faites and "Lausanne when:7d" in faites, f"recherches : {faites}")
 verifier("Thèmes qui ne l'intéressent pas : sport" in systeme and "plus d'humour" in systeme
          and "entre 960 et" in systeme, "préférences et vitesse transmises au rédacteur")
 voix = appels_gemini("voix")
@@ -1100,6 +1100,18 @@ verifier(all(r["id"] == c and r["recherche"]["rendu"] == "point" and r["recherch
          "essentielles : identifiant, rendu « point », au moins une source")
 verifier("Réglages › Moi" in _echoue(_recherche.regle_essentielle, "actu_locale", {}, ""), "actu locale sans ville : message clair")
 verifier("À creuser" in _echoue(_recherche.regle_essentielle, "approfondissements", {}, "Yverdon"), "à creuser vide : message clair")
+_config_reglee = {"actus": {"ville": "Yverdon", "locale_sujets": 1, "locale_preferes": ["travaux"], "sujets_a_eviter": ["sport"]},
+                  "consignes_rubriques": {"agenda": ["Ne parle pas de la piscine"], "actualites": ["Commence par l'économie."]}}
+_loc = _recherche.regle_essentielle("actu_locale", _config_reglee, "")
+verifier(_loc["recherche"]["requetes"] == ["actualité Yverdon", "Yverdon travaux"] and _loc["consigne"].startswith("Une seule information de Yverdon")
+         and "Thèmes préférés de l'auditeur : travaux" in _loc["consigne"], f"chercher maintenant : réglages de l'actu locale ({_loc['consigne']})")
+verifier("à respecter : Ne parle pas de la piscine." in _recherche.regle_essentielle("agenda", _config_reglee, "")["consigne"]
+         and all(x in _recherche.regle_essentielle("actualites", _config_reglee, "")["consigne"]
+                 for x in ("Thèmes qui ne l'intéressent pas : sport", "Commence par l'économie.")),
+         "chercher maintenant : consignes et thèmes de la rubrique")
+verifier(_recherche.ESSENTIELLES["actualites"][0] == "Actualités globales" == podcast.moteur.RUBRIQUES["actualites"], "Actualités globales")
+verifier([podcast.periode_recherche(h) for h in (12, 36, 48, 72, 168, 336)] == ["12h", "36h", "2d", "3d", "7d", "14d"],
+         "âge des nouvelles en heures ou en jours pour Google Actualités")
 
 # Le planificateur répond avec des identifiants en majuscules : les nôtres (« deplacements ») doivent les retrouver.
 _plans = _moteur.planifier([_ess["deplacements"]], ["mar. 3 nov. 09:00 — Vol pour Lisbonne"], dt.date(2026, 10, 24), "Yverdon",

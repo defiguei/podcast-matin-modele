@@ -1,14 +1,13 @@
 {
-  "version": "2026-10-27.2",
-  "date": "2026-10-27",
-  "titre": "Plus de choix, moins de clics",
+  "version": "2026-10-29.1",
+  "date": "2026-10-29",
+  "titre": "Des consignes pour chaque rubrique",
   "nouveautes": [
-    "Connexions : Tavily et tes agendas du secret GitHub ne disparaissent plus après la préparation des extraits de voix.",
-    "Une rubrique demandée à la voix ou par écrit reçoit un titre et une consigne rédigés par l'IA, plus jamais ta phrase telle quelle.",
-    "Plus de tons (enthousiaste, calme, journal radio, pédagogue, conteur…) et des consignes de style toutes prêtes à choisir dans une liste.",
-    "L'onglet Idées devient « Recherches » : un seul bouton, et ce que tu reçois (podcast, idées écrites ou en podcast) se choisit en haut de la recherche.",
-    "Le nombre d'articles ou de sujets se choisit dans une liste ; Appareils et « Ajouter un appareil » sont réunis ; les boutons j'aime / j'aime pas sont retirés.",
-    "Épisode : les rubriques fournies restent dorées quand tu regardes un jour précis, et revenir de l'accueil remet « Tous les jours »."
+    "Chaque rubrique fournie (Agenda, Actualités globales, Actu locale…) a ses propres consignes ; tes consignes qui parlaient de l'agenda sont rangées dans l'Agenda.",
+    "Actualités globales et Actu locale se règlent pareil : thèmes préférés et à éviter, âge des nouvelles, nombre de sujets et d'articles lus.",
+    "La rubrique Actualités s'appelle désormais « Actualités globales ».",
+    "« Citer les sources » disparaît : les sources restent dans la fiche de chaque épisode et dans le résumé de chaque rubrique.",
+    "Consignes de style : une consigne qui parle de ton agenda se range dans l'Agenda d'un geste ; des consignes toutes prêtes dans chaque rubrique."
   ],
   "supprimes": [
     ".github/workflows/retours.yml",

@@ -25,7 +25,7 @@ MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août
         "septembre", "octobre", "novembre", "décembre"]
 RUBRIQUES = {
     "ouverture": "Ouverture", "agenda": "Agenda", "deplacements": "Mes déplacements",
-    "actu_locale": "Actu locale", "approfondissements": "À creuser", "actualites": "Actualités", "cloture": "Clôture",
+    "actu_locale": "Actu locale", "approfondissements": "À creuser", "actualites": "Actualités globales", "cloture": "Clôture",
 }
 LONGUEURS = {"phrase": "une seule phrase", "courte": "courte (2 à 4 répliques)",
              "developpee": "développée (6 à 10 répliques)"}

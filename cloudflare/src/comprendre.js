@@ -10,7 +10,8 @@
 //   que la fiche de l'application (miniapp.js : formulaireNeuf, enregistrerRubrique).
 
 import {
-  JOURS, NOMS_JOURS, REGLAGES, RUBRIQUES, SOURCES, TRANSPORTS, LONGUEURS, VOIX, VITESSES, TONS, CITER,
+  JOURS, NOMS_JOURS, REGLAGES, RUBRIQUES, SOURCES, TRANSPORTS, LONGUEURS, VOIX, VITESSES, TONS,
+  CHEMINS_CONSIGNES, estListeConsignes,
   regler, supprimerRegle, heureValide, dateOuNull, placerRubriqueApres,
   nettoyerListe, LONGUEUR_CONSIGNE, normaliserTexte, etatRegle, decrirePeriode, nomRubrique, jourDeSemaine,
   heureParlee, dateCourte, nettoyerPlanning, fluxActus, profilPays, MODELES_RUBRIQUES,
@@ -30,7 +31,10 @@ export const ACTIONS = [
   "nouvel_episode", "resultats", "assistant", "afficher", "annuler", "aucune",
 ];
 
-const LISTES = ["actus.sujets_preferes", "actus.sujets_a_eviter", "consignes"];
+const LISTES = ["actus.sujets_preferes", "actus.sujets_a_eviter", "actus.locale_preferes", "actus.locale_a_eviter",
+  "consignes", ...CHEMINS_CONSIGNES];
+// Un thème à éviter n'est plus un thème préféré de la même rubrique.
+const PREFERES_DE = { "actus.sujets_a_eviter": "sujets_preferes", "actus.locale_a_eviter": "locale_preferes" };
 const MENUS = ["reglages", "planning", "format", "voix", "deroule", "agenda", "actus", "consignes", "regles"];
 const LONGUEURS_FORMULAIRE = ["aucune", ...Object.keys(LONGUEURS)];
 // Couper au moins ce nombre de jours d'un coup demande une confirmation.
@@ -116,6 +120,7 @@ ENTENDU : si le message est vocal, écris d'abord dans « entendu » ce que l'au
 OPÉRATIONS (champ « action ») :
 - regler : change un réglage simple. chemin parmi la liste ci-dessous, valeur = nouvelle valeur (texte). Pas pour les listes ni pour l'horaire.
 - ajouter_liste / retirer_liste : ajoute ou retire UN élément d'une liste. chemin parmi ${LISTES.join(", ")} ; valeur = l'élément.
+  CONSIGNES : une consigne qui concerne une rubrique fournie va dans SA liste, consignes_rubriques.<clé> (« dans l'agenda, ne parle de la piscine que la veille » → consignes_rubriques.agenda ; « pas de faits divers dans les actualités » → consignes_rubriques.actualites) ; « consignes » ne garde que le style de tout l'épisode (« plus d'humour le vendredi »). Les thèmes d'actualité vont dans les listes de thèmes : actus.sujets_* pour les actualités globales, actus.locale_* pour l'actu locale.
 - horaire : heure d'envoi de l'épisode. jours = liste de codes (ou ["tous"], ["semaine"] pour lun-ven, ["weekend"]) ; heure = HH:MM. L'heure va TOUJOURS dans « heure », jamais dans « valeur ». heure = "aucun" seulement si l'auditeur demande de ne PAS avoir d'épisode ces jours-là.
 - exception : un jour précis. date ; heure = HH:MM, ou "aucun" pour pas d'épisode ce jour-là.
 - retirer_exception : date.
@@ -140,7 +145,7 @@ OPÉRATIONS (champ « action ») :
 
 RÉGLAGES SIMPLES (chemin → valeurs) :
 ${Object.entries(REGLAGES).filter(([c]) => !LISTES.includes(c)).map(([c, d]) => `- ${c} : ${d.gemini || d.nom}`).join("\n")}
-Valeurs : vitesse parmi ${VITESSES.join(", ")} (« plus lentement » = un cran plus lent) ; ton parmi ${Object.keys(TONS).join(", ")} ; citer_sources parmi ${Object.keys(CITER).join(", ")} ; planning.feries parmi normal, dimanche (horaire du dimanche), aucun.
+Valeurs : vitesse parmi ${VITESSES.join(", ")} (« plus lentement » = un cran plus lent) ; ton parmi ${Object.keys(TONS).join(", ")} ; planning.feries parmi normal, dimanche (horaire du dimanche), aucun.
 Voix disponibles (nom de la voix, « prénom » donné par l'auditeur) : ${voix}. Les animateurs s'appellent par le prénom de leur voix ; « au hasard » (voix.mode = aleatoire) tire parmi les voix utilisées.
 
 RUBRIQUES : une rubrique est un passage de l'épisode avec ses propres paramètres. Pour en créer une, choisis d'abord dans « modele » le modèle du catalogue le plus proche :
@@ -170,7 +175,7 @@ export function contexteComprehension(config, ctx) {
   const planning = JOURS.map((j) => `${j} ${config.planning.jours[j] || "aucun"}`).join(", ");
   const sujets = ctx.dernierEpisode?.sujets?.map((s, i) => `${i + 1}. ${s}`).join("; ") || "(pas encore d'épisode)";
   return `RÉGLAGES ACTUELS (JSON) :
-${JSON.stringify({ format: config.format, voix: config.voix, agenda: config.agenda, actus: { ...config.actus, flux: (config.actus.flux || []).map((f) => f.nom) }, consignes: config.consignes })}
+${JSON.stringify({ format: config.format, voix: config.voix, agenda: config.agenda, actus: { ...config.actus, flux: (config.actus.flux || []).map((f) => f.nom) }, consignes: config.consignes, consignes_rubriques: config.consignes_rubriques })}
 Planning : ${planning}. Rattrapage : ${config.planning.rattrapage ? `${config.planning.delai_rattrapage} min après l'heure prévue` : "désactivé"}. Exceptions : ${JSON.stringify(config.planning.exceptions)}. Pauses : ${JSON.stringify(config.planning.pauses)}.
 Déroulé : ${config.deroule.map((r) => `${r.cle}${r.actif ? "" : " (désactivé)"}`).join(" → ")}
 Rubriques :
@@ -420,7 +425,7 @@ function appliquerUne(config, op, ctx) {
       if (!rempli(op.valeur) && typeof op.valeur !== "boolean") throw new Error("valeur manquante");
       // Une liste ne se remplace pas d'un bloc depuis une phrase (on perdrait le reste) : on ajoute.
       if (LISTES.includes(op.chemin)) {
-        const elements = op.chemin === "consignes" ? [op.valeur] : String(op.valeur).split(/[,;\n]/).filter((x) => x.trim());
+        const elements = estListeConsignes(op.chemin) ? [op.valeur] : String(op.valeur).split(/[,;\n]/).filter((x) => x.trim());
         const faits = elements.map((valeur) => appliquerUne(config, { ...op, action: "ajouter_liste", valeur }, ctx).changement);
         return { changement: faits.join(" ; ") };
       }
@@ -447,9 +452,10 @@ function appliquerUne(config, op, ctx) {
       if (actuelle.length >= 20 && !actuelle.some((x) => normaliserTexte(x) === normaliserTexte(valeur))) {
         throw new Error("la liste est pleine (20 au plus) : retire d'abord un élément");
       }
-      conteneur[cle] = nettoyerListe([...actuelle, valeur], 20, op.chemin === "consignes" ? LONGUEUR_CONSIGNE : 80);
-      if (op.chemin === "actus.sujets_a_eviter") {
-        config.actus.sujets_preferes = config.actus.sujets_preferes.filter((x) => normaliserTexte(x) !== normaliserTexte(valeur));
+      conteneur[cle] = nettoyerListe([...actuelle, valeur], 20, estListeConsignes(op.chemin) ? LONGUEUR_CONSIGNE : 80);
+      if (PREFERES_DE[op.chemin]) {
+        const preferes = PREFERES_DE[op.chemin];
+        config.actus[preferes] = config.actus[preferes].filter((x) => normaliserTexte(x) !== normaliserTexte(valeur));
       }
       return { changement: `${nom} : + ${valeur}` };
     }

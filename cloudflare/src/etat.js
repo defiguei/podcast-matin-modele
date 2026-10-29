@@ -9,7 +9,7 @@ import {
   ajouterJours, dateCourte, heureParlee, nettoyerListe, VOIX_CONSEILLEES,
   NOMS_JOURS, heureValide,
   VOIX, animateursDuJour, renommerVoix, activerVoix, choisirVoixJour, LONGUEUR_CONSIGNE, PAYS, profilPays, fluxActus, FERIES_CALCULES,
-  SOURCES, MAX_FLUX_SPECIALISES, RUBRIQUES_A_CHERCHER,
+  SOURCES, MAX_FLUX_SPECIALISES, RUBRIQUES_A_CHERCHER, nomRubrique,
 } from "./config.js";
 import { consigneComprehension, contexteComprehension, schemaOperations, appliquerOperations, messageCompris,
   rubriquesARediger, CONSIGNE_REDACTION, schemaRedaction, contenuRedaction, appliquerRedaction } from "./comprendre.js";
@@ -20,7 +20,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-27.2";
+export const VERSION = "2026-10-29.1";
 const MAX_REFAITS = 6;
 const MAX_RECHERCHES = 15;
 const MAX_EPISODES = 60;      // épisodes récents, dans l'état ; les plus anciens vont dans l'archive de leur mois
@@ -29,12 +29,11 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
-  "Connexions : Tavily et tes agendas du secret GitHub ne disparaissent plus après la préparation des extraits de voix.",
-  "Une rubrique demandée à la voix ou par écrit reçoit un titre et une consigne rédigés par l'IA, plus jamais ta phrase telle quelle.",
-  "Plus de tons (enthousiaste, calme, journal radio, pédagogue, conteur…) et des consignes de style toutes prêtes à choisir dans une liste.",
-  "L'onglet Idées devient « Recherches » : un seul bouton, et ce que tu reçois (podcast, idées écrites ou en podcast) se choisit en haut de la recherche.",
-  "Le nombre d'articles ou de sujets se choisit dans une liste ; Appareils et « Ajouter un appareil » sont réunis ; les boutons j'aime / j'aime pas sont retirés.",
-  "Épisode : les rubriques fournies restent dorées quand tu regardes un jour précis, et revenir de l'accueil remet « Tous les jours ».",
+  "Chaque rubrique fournie (Agenda, Actualités globales, Actu locale…) a ses propres consignes ; tes consignes qui parlaient de l'agenda sont rangées dans l'Agenda.",
+  "Actualités globales et Actu locale se règlent pareil : thèmes préférés et à éviter, âge des nouvelles, nombre de sujets et d'articles lus.",
+  "La rubrique Actualités s'appelle désormais « Actualités globales ».",
+  "« Citer les sources » disparaît : les sources restent dans la fiche de chaque épisode et dans le résumé de chaque rubrique.",
+  "Consignes de style : une consigne qui parle de ton agenda se range dans l'Agenda d'un geste ; des consignes toutes prêtes dans chaque rubrique.",
 ];
 
 // « 2026-10 » décalé de n mois.
@@ -977,6 +976,17 @@ export class Etat extends DurableObject {
           if (!LISTES_APP.includes(demande.chemin) || !Array.isArray(demande.valeurs)) return refus("Liste inconnue.");
           libelle = regler(config, demande.chemin, demande.valeurs);
           break;
+        // Une consigne de style rangée dans une rubrique fournie (« elle parle de ton agenda »).
+        case "consigne_ranger": {
+          const cle = String(demande.rubrique || "");
+          const consigne = config.consignes[Number(demande.index)];
+          if (!config.consignes_rubriques[cle]) return refus("Rubrique inconnue.");
+          if (consigne === undefined) return refus("Cette consigne n'est plus dans la liste.");
+          config.consignes.splice(Number(demande.index), 1);
+          config.consignes_rubriques[cle] = nettoyerListe([...config.consignes_rubriques[cle], consigne], 20, LONGUEUR_CONSIGNE);
+          libelle = `Consigne rangée dans ${nomRubrique(config, cle)}`;
+          break;
+        }
         case "creuser": {
           const sujet = String(demande.sujet || "").replace(/\s+/g, " ").trim().slice(0, 80);
           if (!sujet) return refus("Écris le sujet à creuser.");

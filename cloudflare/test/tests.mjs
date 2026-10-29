@@ -3,7 +3,7 @@ import { createHash, createECDH, createDecipheriv, createPublicKey, hkdfSync, ra
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { MODELES_PODCAST } from "../src/connexions.js";
-import { RUBRIQUES_A_CHERCHER, TONS, DESCRIPTIONS_TONS } from "../src/config.js";
+import { RUBRIQUES_A_CHERCHER, TONS, DESCRIPTIONS_TONS, RUBRIQUES, completerConfig } from "../src/config.js";
 
 const BOT = "http://127.0.0.1:8799";
 const FAUX = "http://127.0.0.1:8790";
@@ -443,6 +443,58 @@ await scenario("Agendas : liste, choix, lecture", async () => {
   await vider();
   await app("lire_agendas");
   verifier(lancements(await appels())[0]?.workflow === "agendas.yml", "lecture des agendas demandée");
+});
+
+await scenario("Consignes par rubrique, Actualités globales et Actu locale réglées pareil", async () => {
+  // Les consignes de style qui parlent de l'agenda sont rangées une fois dans la rubrique Agenda.
+  const migree = completerConfig({ consignes: ["Mentionne l'événement BG3 uniquement la veille", "Plus d'humour le vendredi", "Si le rendez-vous est à Berne, préviens-moi"],
+                                   actus: { citer_sources: "oral" } });
+  verifier(migree.consignes.join() === "Plus d'humour le vendredi" && migree.consignes_rubriques.agenda.length === 2
+           && Object.keys(migree.consignes_rubriques).join() === Object.keys(RUBRIQUES).join() && !("citer_sources" in migree.actus),
+    "consignes d'agenda rangées dans l'Agenda, plus de « Citer les sources »", migree);
+  migree.consignes.push("Ne parle pas de mon agenda le dimanche");
+  verifier(completerConfig(migree).consignes.length === 2, "rangées une seule fois (après, l'auditeur décide)");
+  verifier(RUBRIQUES.actualites === "Actualités globales", "Actualités devient Actualités globales");
+
+  let r = await app("liste", { chemin: "consignes_rubriques.agenda", valeurs: ["Ne parle de la piscine que la veille", "Signale les journées chargées."] });
+  verifier(r.ok && r.donnees.reglages.consignes_rubriques.agenda.length === 2 && r.donnees.listes.consignes_pretes_rubriques.agenda.length > 0,
+    "consignes de l'Agenda (et consignes toutes prêtes de la rubrique)", r.donnees.reglages.consignes_rubriques);
+  verifier((await app("liste", { chemin: "consignes_rubriques.inconnue", valeurs: ["x"] })).ok === false, "rubrique inconnue refusée");
+  for (const [chemin, valeur] of [["actus.locale_sujets", 3], ["actus.locale_articles", 7], ["actus.locale_fraicheur_heures", 72], ["actus.articles", 20], ["format.nombre_sujets", 4]]) {
+    r = await app("regler", { chemin, valeur });
+  }
+  await app("liste", { chemin: "actus.locale_preferes", valeurs: ["travaux", "culture"] });
+  r = await app("liste", { chemin: "actus.locale_a_eviter", valeurs: ["culture"] });
+  let { config } = await etat();
+  verifier(config.actus.locale_sujets === 3 && config.actus.locale_articles === 7 && config.actus.locale_fraicheur_heures === 72 && config.actus.articles === 20
+           && config.actus.locale_preferes.join() === "travaux" && config.actus.locale_a_eviter.join() === "culture",
+    "actu locale : sujets, articles lus, âge, thèmes (un thème évité n'est plus préféré)", config.actus);
+  verifier((await app("regler", { chemin: "actus.citer_sources", valeur: "oral" })).ok === false && !("citer" in r.donnees.listes),
+    "« Citer les sources » a disparu");
+  verifier(r.donnees.deroule.find((x) => x.cle === "actualites")?.nom === "Actualités globales", "nom affiché dans l'épisode");
+
+  // Une consigne de style qui parle d'un rendez-vous se range dans l'Agenda d'un geste.
+  await app("liste", { chemin: "consignes", valeurs: ["Plus d'humour", "Mentionne l'événement piscine la veille"] });
+  r = await app("consigne_ranger", { index: 1, rubrique: "agenda" });
+  ({ config } = await etat());
+  verifier(r.ok && config.consignes.join() === "Plus d'humour" && config.consignes_rubriques.agenda.at(-1) === "Mentionne l'événement piscine la veille"
+           && r.message === "Consigne rangée dans Agenda", "consigne rangée dans l'Agenda", { c: config.consignes, a: config.consignes_rubriques.agenda, m: r.message });
+  verifier((await app("consigne_ranger", { index: 0, rubrique: "nulle_part" })).ok === false, "rangement vers une rubrique inconnue refusé");
+
+  // À la voix : une consigne propre à une rubrique va dans sa liste, entière.
+  await gemini({ operations: [
+    { action: "ajouter_liste", chemin: "consignes_rubriques.actualites", valeur: "Commence par l'économie, puis la Suisse, puis le reste" },
+    { action: "regler", chemin: "actus.locale_preferes", valeur: "circulation" },
+  ], reponse: "" });
+  r = await app("parler", { texte: "dans les actualités globales commence par l'économie, puis la Suisse, puis le reste ; et dans l'actu locale, la circulation" });
+  ({ config } = await etat());
+  verifier(config.consignes_rubriques.actualites.join() === "Commence par l'économie, puis la Suisse, puis le reste"
+           && config.actus.locale_preferes.includes("circulation") && config.actus.locale_preferes.includes("travaux"),
+    "à la voix : consigne d'une rubrique (pas coupée aux virgules) et thème local ajouté", { a: config.consignes_rubriques.actualites, l: config.actus.locale_preferes });
+  const appelGemini = (await appels()).filter((x) => x.service === "gemini").at(-1)?.corps;
+  verifier(JSON.stringify(appelGemini).includes("consignes_rubriques.agenda"), "Gemini connaît les consignes par rubrique");
+  await app("liste", { chemin: "consignes", valeurs: [] });
+  for (const cle of Object.keys(RUBRIQUES)) await app("liste", { chemin: `consignes_rubriques.${cle}`, valeurs: [] });
 });
 
 await scenario("Rubriques intégrées : actu locale, déplacements, à creuser", async () => {

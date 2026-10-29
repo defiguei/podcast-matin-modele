@@ -5,7 +5,7 @@
 import {
   JOURS, NOMS_JOURS, COURTS_JOURS, LONGUEURS, SOURCES, RUBRIQUES, etatRegle, prochainPassage, decrirePeriode,
   heurePrevue, prochainEpisode, ajouterJours, dateCourte, nomRubrique, dateOuNull, nettoyerListe,
-  VOIX, VOIX_CONSEILLEES, VITESSES, TONS, DESCRIPTIONS_TONS, CONSIGNES_PRETES, CITER, TRANSPORTS, fluxActus, profilPays, PAYS, DELAIS_RATTRAPAGE,
+  VOIX, VOIX_CONSEILLEES, VITESSES, TONS, DESCRIPTIONS_TONS, CONSIGNES_PRETES, CONSIGNES_PRETES_RUBRIQUES, CHEMINS_CONSIGNES, TRANSPORTS, fluxActus, profilPays, PAYS, DELAIS_RATTRAPAGE,
   DEVISES, CANTONS, MODES_VOIX, sourcesAuto, estFerie, nomFerie, animateursDuJour, placesDuJour, normaliserTexte,
   jourDeSemaine, MODELES_RUBRIQUES, CATEGORIES_RUBRIQUES, catalogueRubriques, nouvelleRegle, modifierRegle,
   INFOS_SOURCES, sourceConnue, sourcesUtilisables, RENDUS, minutesPoint,
@@ -17,13 +17,15 @@ export const PERIODES = ["toujours", "dates", "jours", "une_fois", "ponctuelle"]
 const MOMENTS = ["jour_meme", "veille", "jours_avant"];
 const CHAMPS_FICHE = ["quoi", "avec_qui", "ages", "ou", "quand", "attendu"];
 // Listes modifiables d'un bloc depuis l'application.
-export const LISTES_APP = ["consignes", "actus.sujets_preferes", "actus.sujets_a_eviter"];
+export const LISTES_APP = ["consignes", ...CHEMINS_CONSIGNES, "actus.sujets_preferes", "actus.sujets_a_eviter",
+  "actus.locale_preferes", "actus.locale_a_eviter"];
 // Réglages simples modifiables depuis l'application (validés par config.js).
 export const REGLAGES_APP = [
   "format.duree_minutes", "format.nombre_sujets", "format.ton", "voix.vitesse", "voix.tutoiement", "voix.prenom",
   "voix.animateurs.0.nom", "voix.animateurs.0.voix", "voix.animateurs.1.nom", "voix.animateurs.1.voix",
   "agenda.jours", "agenda.horizon", "agenda.notes", "agenda.deplacements", "agenda.jours_deplacements", "agenda.max_deplacements",
-  "actus.locale_articles", "actus.ville", "actus.fraicheur_heures", "actus.citer_sources",
+  "actus.ville", "actus.fraicheur_heures", "actus.articles",
+  "actus.locale_sujets", "actus.locale_articles", "actus.locale_fraicheur_heures",
   "planning.rattrapage", "planning.delai_rattrapage", "planning.feries", "planning.avance_minutes",
   "planning.feries_region", "voix.solo", "voix.mode", "pays",
 ];
@@ -205,12 +207,10 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
               // Mode « selon le jour » : les deux voix de chaque jour (habituels aux places vides).
               jours: Object.fromEntries(JOURS.map((j) => [j, placesDuJour(config.voix, j)])),
               du_prochain: animateursDuJour(config, prochain?.date || aujourdHui) },
-      actus: { ville: config.actus.ville, sujets_preferes: config.actus.sujets_preferes, sujets_a_eviter: config.actus.sujets_a_eviter,
-               fraicheur_heures: config.actus.fraicheur_heures, citer_sources: config.actus.citer_sources,
-               locale_articles: config.actus.locale_articles, flux: fluxActus(config), flux_defaut: !config.actus.flux },
+      actus: { ...config.actus, flux: fluxActus(config), flux_defaut: !config.actus.flux },
       agenda: config.agenda, agendas: (etat.agendas || []).filter((x) => !(config.agenda.retires || []).includes(x.id)),
       agendas_retires: (etat.agendas || []).filter((x) => (config.agenda.retires || []).includes(x.id)), agendas_vus: etat.agendas_vus || null,
-      consignes: config.consignes, a_approfondir: config.a_approfondir.map((a) => a.sujet),
+      consignes: config.consignes, consignes_rubriques: config.consignes_rubriques, a_approfondir: config.a_approfondir.map((a) => a.sujet),
       sources: sourcesVisibles(config),
       echantillons: liens.voix, temps_echantillons: etat.temps_echantillons || {},
     },
@@ -235,7 +235,8 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
                 delai_rattrapage: config.planning.delai_rattrapage, avance_minutes: config.planning.avance_minutes },
     listes: { sources: SOURCES, longueurs: LONGUEURS, jours: JOURS.map((j) => [j, COURTS_JOURS[j], NOMS_JOURS[j]]),
               voix: VOIX.map(([nom, description, genre]) => ({ nom, description, genre, conseillee: VOIX_CONSEILLEES.includes(nom) })),
-              vitesses: VITESSES, tons: TONS, descriptions_tons: DESCRIPTIONS_TONS, consignes_pretes: CONSIGNES_PRETES, citer: CITER, transports: Object.fromEntries(Object.entries(TRANSPORTS).filter(([k]) => k !== "peu_importe")),
+              vitesses: VITESSES, tons: TONS, descriptions_tons: DESCRIPTIONS_TONS, consignes_pretes: CONSIGNES_PRETES,
+              consignes_pretes_rubriques: CONSIGNES_PRETES_RUBRIQUES, transports: Object.fromEntries(Object.entries(TRANSPORTS).filter(([k]) => k !== "peu_importe")),
               delais: DELAIS_RATTRAPAGE, devises: DEVISES, regions: CANTONS, modes_voix: MODES_VOIX,
               pays: Object.entries(PAYS).map(([code, p]) => [code, p.nom]) },
   };

@@ -43,25 +43,35 @@ export const DESCRIPTIONS_TONS = {
   motivant: "Encourageant, tourné vers ce qu'on peut faire de sa journée.",
   conteur: "Raconte les sujets comme de petites histoires.",
 };
-// Consignes de style toutes prêtes, ajoutées d'un geste (Réglages › Durée et style).
+// Consignes de style toutes prêtes, pour tout l'épisode (Réglages › Durée et style).
 export const CONSIGNES_PRETES = [
-  "Commence par la nouvelle la plus importante du jour.",
-  "Pas de résultats sportifs.",
-  "Évite les faits divers.",
   "Plus d'humour le vendredi.",
-  "Termine par une note positive ou une bonne nouvelle.",
   "Explique les termes techniques en quelques mots.",
   "Donne des chiffres concrets quand c'est utile.",
-  "Évite les sujets anxiogènes au réveil.",
   "Fais des transitions courtes entre les rubriques.",
-  "Termine par une citation inspirante.",
-  "Propose une petite idée ou un conseil pour la journée.",
   "Parle-moi en me tutoyant.",
-  "Pas de politique politicienne, seulement les décisions qui changent quelque chose.",
   "Le week-end, prends plus ton temps et sois plus léger.",
   "Donne la météo en une phrase, sans détails.",
 ];
-export const CITER = { non: "Non", oral: "À l'oral", ecrit: "Dans le message", les_deux: "Les deux" };
+// Consignes toutes prêtes d'une rubrique fournie (fiche de la rubrique, bloc « Consignes »).
+const PRETES_ACTUS = [
+  "Commence par la nouvelle la plus importante.",
+  "Évite les faits divers.",
+  "Évite les sujets anxiogènes au réveil.",
+  "Pas de politique politicienne, seulement les décisions qui changent quelque chose.",
+  "Donne des chiffres concrets quand c'est utile.",
+];
+export const CONSIGNES_PRETES_RUBRIQUES = {
+  ouverture: ["Commence par une phrase d'accroche sur le jour qui commence.", "Annonce le programme en une seule phrase."],
+  agenda: ["Pour chaque rendez-vous, dis ce qu'il faut préparer ou emporter.", "Ne parle pas des rendez-vous de routine (travail, cours habituels).",
+           "Signale les journées chargées et les trous dans la journée."],
+  deplacements: ["Propose une seule idée par lieu, la plus originale.", "Donne une idée qui convient à un temps de pluie."],
+  actu_locale: [...PRETES_ACTUS, "Dis ce que ça change concrètement pour les habitants."],
+  approfondissements: ["Termine chaque sujet par ce qui va se passer ensuite.", "Explique le contexte comme à quelqu'un qui découvre le sujet."],
+  actualites: PRETES_ACTUS,
+  cloture: ["Termine par une note positive ou une bonne nouvelle.", "Termine par une citation inspirante.",
+            "Propose une petite idée ou un conseil pour la journée."],
+};
 export const LONGUEURS = { phrase: "une phrase", courte: "courte", developpee: "développée" };
 // Où une rubrique va chercher son contenu. Chaque catégorie dit ce qu'elle apporte et où
 // elle cherche (Réglages › Sources) ; une rubrique en coche au moins une. Les flux
@@ -73,7 +83,7 @@ export const SOURCES = {
 };
 export const INFOS_SOURCES = {
   actus: { apporte: "Les articles récents sur le sujet de la rubrique, tous médias confondus.", ou: "Google Actualités (news.google.com)",
-           aussi: "Actu locale, À creuser, Mes déplacements, thèmes préférés des Actualités" },
+           aussi: "Actu locale, À creuser, Mes déplacements, thèmes préférés des Actualités globales" },
   web: { apporte: "Des pages web sur le sujet : adresses, horaires, prix, activités.", ou: "Tavily (recherche sur internet)", cle_api: "tavily" },
   meteo: { apporte: "La météo prévue le jour visé, chez toi ou au lieu de la rubrique.", ou: "Open-Meteo (open-meteo.com)" },
   transports: { apporte: "Horaires, retards et suppressions de trains.", ou: "CFF et search.ch (Suisse), iRail (Belgique), SNCF (France)", cle_api: "sncf" },
@@ -126,7 +136,7 @@ export const MODES_VOIX = { fixe: "Toujours les mêmes", jours: "Selon le jour",
 // s'ajoutent à celles-ci. « approfondissements » garde sa clé pour les anciennes sauvegardes.
 export const RUBRIQUES = {
   ouverture: "Ouverture", agenda: "Agenda", deplacements: "Mes déplacements",
-  actu_locale: "Actu locale", approfondissements: "À creuser", actualites: "Actualités", cloture: "Clôture",
+  actu_locale: "Actu locale", approfondissements: "À creuser", actualites: "Actualités globales", cloture: "Clôture",
 };
 // Celles qu'on peut chercher à la demande (menu « ··· » de leur fiche) : mêmes clés que ESSENTIELLES de recherche.py.
 export const RUBRIQUES_A_CHERCHER = ["agenda", "deplacements", "actu_locale", "approfondissements", "actualites"];
@@ -194,6 +204,14 @@ export const VOIX_CONSEILLEES = ["Aoede", "Kore", "Leda", "Sulafat", "Puck", "Ch
 export const MAX_PRENOM = 20;   // prénom donné à une voix
 
 
+// Une liste de consignes par rubrique fournie (Agenda, Actualités globales…).
+export function consignesRubriquesVides() {
+  return Object.fromEntries(Object.keys(RUBRIQUES).map((cle) => [cle, []]));
+}
+export const CHEMINS_CONSIGNES = Object.keys(RUBRIQUES).map((cle) => `consignes_rubriques.${cle}`);
+// Une liste de consignes (des phrases entières, 300 caractères) plutôt qu'une liste de mots.
+export const estListeConsignes = (chemin) => chemin === "consignes" || CHEMINS_CONSIGNES.includes(chemin);
+
 export function configParDefaut() {
   return {
     version: 1,
@@ -224,12 +242,15 @@ export function configParDefaut() {
     deroule: Object.keys(RUBRIQUES).map((cle) => ({ cle, actif: true })),
     agenda: { jours: 7, horizon: 90, notes: true, deplacements: true, jours_deplacements: 14,
               max_deplacements: 2, exclus: [], retires: [] },
-    actus: { ville: "", sujets_preferes: [], sujets_a_eviter: [], flux: null, fraicheur_heures: 36, citer_sources: "ecrit",
-             locale_articles: 3 },
+    // Actualités globales et Actu locale se règlent de la même façon : thèmes préférés et à
+    // éviter, âge maximum des nouvelles, nombre de sujets racontés et d'articles lus.
+    actus: { ville: "", sujets_preferes: [], sujets_a_eviter: [], flux: null, fraicheur_heures: 36, articles: 30,
+             locale_sujets: 2, locale_articles: 3, locale_fraicheur_heures: 168, locale_preferes: [], locale_a_eviter: [] },
     // Réglages › Sources : catégories coupées (aucune rubrique ne les lit) et flux RSS
     // spécialisés qu'une rubrique peut choisir ([{ id, nom, url }]).
     sources: { coupees: [], flux: [] },
-    consignes: [],
+    consignes: [],                                // consignes de style, pour tout l'épisode
+    consignes_rubriques: consignesRubriquesVides(), // consignes propres à chaque rubrique fournie
     a_approfondir: [],
     regles: [],
     prochain_numero: 1,
@@ -268,7 +289,7 @@ const liste = (max = 15, longueur = 80) => (v) => nettoyerListe(Array.isArray(v)
 export const REGLAGES = {
   "pays": { nom: "Pays", valider: (v) => { const c = String(v || "").toUpperCase(); if (!PAYS[c]) throw new Error("pays non proposé"); return c; } },
   "format.duree_minutes": { nom: "Durée (min)", valider: decimal(2, 12) },
-  "format.nombre_sujets": { nom: "Nombre de sujets", valider: entier(1, 8) },
+  "format.nombre_sujets": { nom: "Nombre de sujets (actualités globales)", valider: entier(1, 8) },
   "format.ton": { nom: "Ton", valider: parmi(Object.keys(TONS)) },
   "voix.vitesse": { nom: "Vitesse", valider: parmi(VITESSES) },
   "voix.tutoiement": { nom: "Tutoiement", valider: booleen },
@@ -290,13 +311,21 @@ export const REGLAGES = {
   "agenda.deplacements": { nom: "Repérer les déplacements", valider: booleen },
   "agenda.jours_deplacements": { nom: "Déplacements repérés jusqu'à (jours)", valider: entier(1, 60) },
   "agenda.max_deplacements": { nom: "Nombre maximum de lieux présentés", valider: entier(1, 4) },
-  "actus.locale_articles": { nom: "Articles d'actu locale lus", valider: entier(1, 8) },
   "actus.ville": { nom: "Ville", valider: texteCourt(60) },
-  "actus.sujets_preferes": { nom: "Thèmes préférés", valider: liste() },
-  "actus.sujets_a_eviter": { nom: "Thèmes à éviter", valider: liste() },
-  "actus.fraicheur_heures": { nom: "Âge max. des actus (h)", valider: entier(6, 168) },
-  "actus.citer_sources": { nom: "Citer les sources", valider: parmi(Object.keys(CITER)) },
-  "consignes": { nom: "Consignes", valider: liste(20, LONGUEUR_CONSIGNE) },
+  // Actualités globales (nombre de sujets : format.nombre_sujets)
+  "actus.sujets_preferes": { nom: "Thèmes préférés (actualités globales)", valider: liste() },
+  "actus.sujets_a_eviter": { nom: "Thèmes à éviter (actualités globales)", valider: liste() },
+  "actus.fraicheur_heures": { nom: "Âge max. des actualités globales (h)", valider: entier(6, 168) },
+  "actus.articles": { nom: "Articles lus (actualités globales)", valider: entier(5, 60) },
+  // Actu locale
+  "actus.locale_sujets": { nom: "Nombre de sujets (actu locale)", valider: entier(1, 5) },
+  "actus.locale_articles": { nom: "Articles lus (actu locale)", valider: entier(1, 10) },
+  "actus.locale_fraicheur_heures": { nom: "Âge max. de l'actu locale (h)", valider: entier(6, 336) },
+  "actus.locale_preferes": { nom: "Thèmes préférés (actu locale)", valider: liste() },
+  "actus.locale_a_eviter": { nom: "Thèmes à éviter (actu locale)", valider: liste() },
+  "consignes": { nom: "Consignes de style", gemini: "Consignes de style, pour tout l'épisode", valider: liste(20, LONGUEUR_CONSIGNE) },
+  ...Object.fromEntries(Object.entries(RUBRIQUES).map(([cle, nom]) => [`consignes_rubriques.${cle}`,
+    { nom: `Consignes · ${nom}`, gemini: `Consignes propres à la rubrique ${nom}`, valider: liste(20, LONGUEUR_CONSIGNE) }])),
   "planning.rattrapage": { nom: "Rattrapage si l'envoi rate", valider: booleen },
   "planning.delai_rattrapage": { nom: "Délai avant le rattrapage (min)", valider: entier(20, 180) },
   "planning.feries": { nom: "Jours fériés", valider: parmi(["normal", "dimanche", "aucun"]) },
@@ -332,9 +361,11 @@ export function regler(config, chemin, valeurBrute) {
     config.planning.feries_region = valeur === "CH" ? (canton.startsWith("CH-") ? canton : "CH-VD") : profilPays(config).feries;
     config.planning.feries_cache = {};
   }
-  if (chemin === "actus.sujets_a_eviter") {
+  // Un thème à éviter n'est plus un thème préféré (de la même rubrique).
+  const preferes = { "actus.sujets_a_eviter": "sujets_preferes", "actus.locale_a_eviter": "locale_preferes" }[chemin];
+  if (preferes) {
     const exclus = new Set(valeur.map(normaliserTexte));
-    config.actus.sujets_preferes = config.actus.sujets_preferes.filter((s) => !exclus.has(normaliserTexte(s)));
+    config.actus[preferes] = config.actus[preferes].filter((s) => !exclus.has(normaliserTexte(s)));
   }
   return `${definition.nom} : ${afficherValeur(chemin, valeur)}`;
 }
@@ -346,7 +377,6 @@ export function afficherValeur(chemin, valeur) {
   if (chemin === "voix.mode") return MODES_VOIX[valeur] || valeur;
   if (chemin === "planning.feries_region") return (REGIONS_FERIES.find(([c]) => c === valeur) || [, valeur])[1];
   if (chemin === "pays") return PAYS[valeur]?.nom || valeur;
-  if (chemin === "actus.citer_sources") return CITER[valeur] || valeur;
   if (valeur === "" || valeur == null) return "—";
   return String(valeur);
 }
@@ -930,12 +960,33 @@ function migrerSources(regles, anciennes) {
 }
 
 // Complète une configuration lue (anciennes versions, champs manquants).
+// Une consigne de style qui parle de l'agenda (« mentionne l'événement piscine la veille seulement »)
+// est une consigne de la rubrique Agenda : rangée là une fois, quand les consignes par rubrique arrivent.
+const MOTS_AGENDA = /\b(agenda|calendrier|evenements?|rendez-vous|rdv|reunions?)\b/;
+export const parleDeLAgenda = (consigne) => MOTS_AGENDA.test(normaliserTexte(consigne));
+
+function completerConsignes(resultat, config) {
+  const anciennes = config?.consignes_rubriques;
+  const consignes = consignesRubriquesVides();
+  for (const cle of Object.keys(consignes)) {
+    consignes[cle] = nettoyerListe(Array.isArray(anciennes?.[cle]) ? anciennes[cle] : [], 20, LONGUEUR_CONSIGNE);
+  }
+  resultat.consignes = nettoyerListe(Array.isArray(resultat.consignes) ? resultat.consignes : [], 20, LONGUEUR_CONSIGNE);
+  if (!anciennes) {
+    consignes.agenda = resultat.consignes.filter(parleDeLAgenda);
+    resultat.consignes = resultat.consignes.filter((c) => !parleDeLAgenda(c));
+  }
+  resultat.consignes_rubriques = consignes;
+}
+
 export function completerConfig(config) {
   const base = configParDefaut();
   const resultat = { ...base, ...(config || {}) };
   delete resultat.livraison;   // ancien réglage (épisode aussi envoyé dans une conversation)
   if (!PAYS[resultat.pays]) resultat.pays = PAYS_DEFAUT;
   for (const cle of ["planning", "format", "agenda", "actus"]) resultat[cle] = { ...base[cle], ...(config?.[cle] || {}) };
+  delete resultat.actus.citer_sources;   // ancien réglage : les sources sont toujours dans la fiche de l'épisode
+  completerConsignes(resultat, config);
   resultat.voix = completerVoix(config?.voix, base.voix);
   resultat.planning.jours = { ...base.planning.jours, ...(config?.planning?.jours || {}) };
   if (!Array.isArray(resultat.deroule) || !resultat.deroule.length) resultat.deroule = base.deroule;

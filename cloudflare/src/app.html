@@ -1125,7 +1125,7 @@ const INTEGREES = {
   ouverture: { icone: "aube", texte: "Salutation, date du jour et ce qui t'attend dans l'épisode.", fixe: "Toujours au début de l'épisode." },
   agenda: { icone: "agenda", texte: "Tes rendez-vous du jour (heure, lieu, ce qu'il faut préparer), puis un aperçu des jours suivants." },
   deplacements: { icone: "valise", texte: "Quand ton agenda annonce un voyage ou une sortie ailleurs : quand c'est, deux ou trois idées sur place et les actus du lieu." },
-  actu_locale: { icone: "ville", texte: "Une ou deux nouvelles de ta ville, et ce qu'elles changent au quotidien." },
+  actu_locale: { icone: "ville", texte: "Les nouvelles de ta ville, et ce qu'elles changent au quotidien." },
   approfondissements: { icone: "creuser", texte: "Un moment plus fouillé sur les sujets que tu as demandé de creuser. Il ne passe qu'au prochain épisode, puis la liste se vide." },
   actualites: { icone: "actus", texte: "Les sujets importants du jour : ton pays d'abord, puis l'international." },
   cloture: { icone: "lune", texte: "Rappel de ton premier rendez-vous du jour, puis le mot de la fin.", fixe: "Toujours à la fin de l'épisode." },
@@ -1162,14 +1162,23 @@ function pastille(genre, taille = 20, mini = false) {
 }
 
 function resumeIntegree(cle) {
+  const r = S.d.reglages;
+  const n = ((r.consignes_rubriques || {})[cle] || []).length;
+  const base = resumeReglagesIntegree(cle);
+  return n ? `${base}${base ? " · " : ""}${n} consigne${n > 1 ? "s" : ""}` : base;
+}
+
+const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? "s" : ""}`;
+
+function resumeReglagesIntegree(cle) {
   const r = S.d.reglages, lus = r.agendas.filter((a) => !r.agenda.exclus.includes(a.id)).length;
   switch (cle) {
     case "ouverture": return "Salutation et programme";
     case "agenda": return `${r.agenda.jours} jours à l'avance${r.agendas.length ? ` · ${lus} agenda${lus > 1 ? "s" : ""}` : ""}`;
     case "deplacements": return r.agenda.deplacements ? `Si un voyage approche (${r.agenda.jours_deplacements} j)` : "Repérage désactivé";
-    case "actu_locale": return r.actus.ville ? `${r.actus.ville} · ${r.actus.locale_articles} articles lus` : "Ville à préciser (Réglages › Moi)";
+    case "actu_locale": return r.actus.ville ? `${r.actus.ville} · ${pluriel(r.actus.locale_sujets, "sujet")} · ${r.actus.locale_articles} lus` : "Ville à préciser (Réglages › Moi)";
     case "approfondissements": return r.a_approfondir.length ? `${r.a_approfondir.length} sujet${r.a_approfondir.length > 1 ? "s" : ""} au prochain épisode` : "Quand tu demandes de creuser";
-    case "actualites": return `${r.format.nombre_sujets} sujets · ${r.actus.flux.length} médias`;
+    case "actualites": return `${pluriel(r.format.nombre_sujets, "sujet")} · ${r.actus.articles} lus · ${pluriel(r.actus.flux.length, "média")}`;
     case "cloture": return "Premier rendez-vous et mot de la fin";
     default: return "";
   }
@@ -1532,7 +1541,7 @@ function vueSources() {
   return `<p class="aide" style="font-size:14px;color:var(--doux-2)">D'où viennent les informations de tes épisodes. Chaque rubrique coche dans sa fiche les sources où elle cherche, et rien d'autre n'est lu.</p>
   <section class="carte" aria-labelledby="t-medias">
     <div class="entre"><h2 id="t-medias">Tes médias</h2><span class="badge neutre">${s.medias.length}</span></div>
-    <p class="aide">Les flux RSS lus chaque matin pour la rubrique Actualités${s.medias_defaut ? " (ceux proposés pour ton pays)" : ""}.</p>
+    <p class="aide">Les flux RSS lus chaque matin pour la rubrique Actualités globales${s.medias_defaut ? " (ceux proposés pour ton pays)" : ""}.</p>
     <div class="bloc" style="background:var(--carte-2)">${s.medias.map((f, i) => ligne(f.nom, f.url, `data-retirer-source="${i}"`)).join("")}</div>
     <div class="ajout"><input class="saisie" maxlength="300" placeholder="Nom du média ou adresse de son flux" data-nouveau="source" aria-label="Ajouter un média">
       <button type="button" class="bouton gris" data-action="ajouter-source">Ajouter</button></div>
@@ -1540,7 +1549,7 @@ function vueSources() {
   </section>
   <section class="carte" aria-labelledby="t-flux">
     <div class="entre"><h2 id="t-flux">Tes flux spécialisés</h2><span class="badge neutre">${s.flux.length}</span></div>
-    <p class="aide">Des sites précis (un magazine, un blog, un labo…) qu'une rubrique peut choisir dans « Où elle cherche ». Ils ne se mêlent pas à tes Actualités.</p>
+    <p class="aide">Des sites précis (un magazine, un blog, un labo…) qu'une rubrique peut choisir dans « Où elle cherche ». Ils ne se mêlent pas à tes Actualités globales.</p>
     ${s.flux.length ? `<div class="bloc" style="background:var(--carte-2)">${s.flux.map((f) => `<div class="reglage"><span>${h(f.nom)}<br><span class="aide" style="word-break:break-all">${h(f.url)}</span><br><span class="aide">Lu par : ${h(utilisePar(f))}</span></span>
       <button type="button" class="icone" data-flux-retirer="${h(f.id)}" aria-label="Retirer ${h(f.nom)}">${icone("croix", 18, 2)}</button></div>`).join("")}</div>` : ""}
     <div class="ajout"><input class="saisie" maxlength="300" placeholder="Nom du site ou adresse de son flux" data-nouveau="flux" aria-label="Ajouter un flux spécialisé">
@@ -2035,7 +2044,23 @@ function etiquettes(chemin, valeurs, exemple) {
   <div class="ajout"><input class="saisie" type="text" maxlength="80" placeholder="${h(exemple)}" data-nouveau="${chemin}" aria-label="Ajouter"><button type="button" class="bouton gris" data-ajouter-liste="${chemin}">Ajouter</button></div>`;
 }
 
-// Une consigne qui parle d'un rendez-vous est un rappel selon l'agenda déguisé.
+// Une liste de consignes (le style de tout l'épisode, ou celles d'une rubrique fournie) : chacune se
+// corrige sur place ; on en ajoute une toute prête ou la sienne. « chemin » : consignes ou consignes_rubriques.<clé>.
+const sansPoint = (c) => String(c).replace(/[ .;,]+$/, "");
+function blocConsignes(chemin, valeurs, pretes, exemple, suggestion = () => "") {
+  const id = chemin.replace(/\W+/g, "-");
+  const deja = new Set(valeurs.map(sansPoint));
+  const restantes = (pretes || []).filter((c) => !deja.has(sansPoint(c)));
+  return `${valeurs.map((c, i) => `<div class="sous-bloc"><textarea class="saisie" rows="2" maxlength="300" data-consigne="${i}" data-liste="${chemin}" aria-label="Consigne ${i + 1}">${h(c)}</textarea>
+      ${suggestion(c, i)}
+      <button type="button" class="lien" style="align-self:flex-end;color:var(--rouge)" data-retirer-liste="${chemin}" data-i="${i}">Supprimer</button></div>`).join("")}
+    ${restantes.length ? `<div class="champ"><label for="prete-${id}">Consigne toute prête</label><select id="prete-${id}" class="saisie" data-consigne-prete="${chemin}">
+      <option value="">Choisir dans la liste…</option>${restantes.map((c) => `<option>${h(c)}</option>`).join("")}</select></div>` : ""}
+    <div class="champ"><label for="n-${id}">${restantes.length ? "Ou écris la tienne" : "Écris ta consigne"}</label><textarea id="n-${id}" class="saisie" rows="2" maxlength="300" data-nouveau="${chemin}" placeholder="${h(exemple)}"></textarea>
+      <button type="button" class="bouton gris" data-ajouter-liste="${chemin}">Ajouter</button></div>`;
+}
+
+// Une consigne qui parle d'un rendez-vous est une consigne d'agenda (ou un rappel selon l'agenda) déguisée.
 const RAPPEL_AGENDA = /(é|e)v(é|e)nement|rendez-vous|\brdv\b|agenda|la veille|jour m(ê|e)me|rappelle|n'oublie|quand j'ai|si mon/i;
 function rubriqueDepuisConsigne(i) {
   const texte = S.d.reglages.consignes[i] || "";
@@ -2072,16 +2097,11 @@ function vueReglage() {
         ${Object.entries(d.listes.tons).map(([v, n]) => `<option value="${v}"${r.format.ton === v ? " selected" : ""}>${h(n)}</option>`).join("")}</select>
         <p class="aide">${h((d.listes.descriptions_tons || {})[r.format.ton] || "")}</p></div>
       <h2 style="margin-top:6px">Consignes de style</h2>
-      <p class="aide">Transmises telles quelles pour chaque épisode : « plus d'humour le vendredi », « pas de résultats sportifs ». Pour parler d'un rendez-vous, crée plutôt un rappel selon l'agenda.</p>
-      ${r.consignes.map((c, i) => `<div class="sous-bloc"><textarea class="saisie" rows="2" maxlength="300" data-consigne="${i}" aria-label="Consigne ${i + 1}">${h(c)}</textarea>
-        ${RAPPEL_AGENDA.test(c) ? `<div class="suggestion"><span>Elle parle d'un rendez-vous : un rappel selon l'agenda serait plus fiable.</span>
-          <button type="button" class="lien" data-consigne-rubrique="${i}">En faire un rappel</button></div>` : ""}
-        <button type="button" class="lien" style="align-self:flex-end;color:var(--rouge)" data-retirer-liste="consignes" data-i="${i}">Supprimer</button></div>`).join("")}
-      ${(() => { const pretes = (d.listes.consignes_pretes || []).filter((c) => !r.consignes.includes(c));
-        return pretes.length ? `<div class="champ"><label for="consigne-prete">Consigne toute prête</label><select id="consigne-prete" class="saisie" data-consigne-prete>
-          <option value="">Choisir dans la liste…</option>${pretes.map((c) => `<option>${h(c)}</option>`).join("")}</select></div>` : ""; })()}
-      <div class="champ"><label for="n-consigne">Ou écris la tienne</label><textarea id="n-consigne" class="saisie" rows="2" maxlength="300" data-nouveau="consignes" placeholder="Ex. plus d'humour le vendredi"></textarea>
-        <button type="button" class="bouton gris" data-ajouter-liste="consignes">Ajouter</button></div>`,
+      <p class="aide">Pour tout l'épisode : le ton, le rythme, les transitions. Une consigne propre à une rubrique (l'agenda, les actualités…) se met dans sa fiche, depuis l'onglet Épisode.</p>
+      ${blocConsignes("consignes", r.consignes, d.listes.consignes_pretes, "Ex. plus d'humour le vendredi", (c, i) => RAPPEL_AGENDA.test(c)
+        ? `<div class="suggestion"><span>Elle parle de ton agenda : sa place est dans la rubrique Agenda.</span>
+          <button type="button" class="lien" data-consigne-agenda="${i}">La ranger dans l'Agenda</button>
+          <button type="button" class="lien" data-consigne-rubrique="${i}">En faire un rappel selon l'agenda</button></div>` : "")}`,
     application: () => `${vueAppareils(d)}
       <section class="carte" aria-labelledby="t-flux"><h2 id="t-flux">Dans ton appli de podcasts</h2>
         <p class="aide">Écoute tes épisodes dans Apple Podcasts, AntennaPod… : téléchargés pendant la nuit, sur l'écran verrouillé et en voiture.</p>
@@ -2332,13 +2352,7 @@ const CORPS_INTEGREES = {
       </section>
       <p class="aide">Un rendez-vous ailleurs que dans ta ville (${h(r.actus.ville || "à préciser dans Réglages › Moi")}) compte comme un déplacement. Pour une sortie à préparer selon tes critères, ajoute plutôt une rubrique « Idée de sortie ».</p>`;
   },
-  actu_locale: () => {
-    const r = S.d.reglages;
-    return `<section class="bloc">
-        <div class="reglage"><span>Ville<br><span class="aide">${h(r.actus.ville || "pas encore précisée")}</span></span><button type="button" class="lien" data-reglage="moi">Changer</button></div>
-        <div class="reglage"><span>Articles lus</span>${pas("actus.locale_articles", r.actus.locale_articles, 1, 8, 1)}</div>
-      </section>`;
-  },
+  actu_locale: () => corpsActus(true),
   approfondissements: () => {
     const r = S.d.reglages;
     return `${r.a_approfondir.length ? `<div class="bloc">${r.a_approfondir.map((s, i) => `<div class="reglage"><span>${h(s)}</span>
@@ -2346,19 +2360,40 @@ const CORPS_INTEGREES = {
       : `<p class="aide">Rien à creuser pour l'instant. Sous un épisode, touche un sujet pour le creuser le lendemain, ou ajoute-le ici.</p>`}
       <div class="ajout"><input class="saisie" maxlength="80" placeholder="Ex. la réforme des retraites" data-nouveau="creuser" aria-label="Sujet à creuser"><button type="button" class="bouton gris" data-action="ajouter-creuser">Ajouter</button></div>`;
   },
-  actualites: () => {
-    const d = S.d, r = d.reglages;
-    return `<section class="bloc">
-        <div class="reglage"><span>Nombre de sujets</span>${pas("format.nombre_sujets", r.format.nombre_sujets, 1, 8, 1)}</div>
-        <div class="reglage"><span>Âge maximum des nouvelles</span>${choix("actus.fraicheur_heures", r.actus.fraicheur_heures, [[12, "12 h"], [24, "24 h"], [36, "36 h"], [48, "2 jours"], [72, "3 jours"], [168, "1 semaine"]].concat([12, 24, 36, 48, 72, 168].includes(Number(r.actus.fraicheur_heures)) ? [] : [[r.actus.fraicheur_heures, `${r.actus.fraicheur_heures} h`]]))}</div>
-        <div class="reglage"><span>Citer les sources</span>${choix("actus.citer_sources", r.actus.citer_sources, Object.entries(d.listes.citer))}</div>
-      </section>
-      <div class="champ"><span class="etiquette">Thèmes préférés</span>${etiquettes("actus.sujets_preferes", r.actus.sujets_preferes, "Ex. vélo, économie")}</div>
-      <div class="champ"><span class="etiquette">Thèmes à éviter</span>${etiquettes("actus.sujets_a_eviter", r.actus.sujets_a_eviter, "Ex. sport, people")}</div>
-      <section class="bloc"><div class="reglage"><span>Tes médias<br><span class="aide">${h(r.actus.flux.map((f) => f.nom || f.url).join(", "))}</span></span>
-        <button type="button" class="lien" data-reglage="sources">Gérer</button></div></section>
-      <p class="aide">Les flux RSS de tes médias, plus une recherche Google Actualités sur tes thèmes préférés. Médias et autres sources se gèrent dans Réglages › Sources.</p>`;
-  },
+  actualites: () => corpsActus(false),
+};
+
+// Actualités globales et Actu locale : la même fiche (où elle lit, combien de sujets et
+// d'articles, l'âge maximum des nouvelles, les thèmes préférés et à éviter).
+const AGES_ACTUS = [[12, "12 h"], [24, "24 h"], [36, "36 h"], [48, "2 jours"], [72, "3 jours"], [168, "1 semaine"], [336, "2 semaines"]];
+function corpsActus(locale) {
+  const r = S.d.reglages, a = r.actus;
+  const c = locale
+    ? { sujets: "actus.locale_sujets", articles: "actus.locale_articles", age: "actus.locale_fraicheur_heures", preferes: "actus.locale_preferes", eviter: "actus.locale_a_eviter" }
+    : { sujets: "format.nombre_sujets", articles: "actus.articles", age: "actus.fraicheur_heures", preferes: "actus.sujets_preferes", eviter: "actus.sujets_a_eviter" };
+  const valeur = (chemin) => chemin === "format.nombre_sujets" ? r.format.nombre_sujets : a[chemin.split(".")[1]];
+  const age = Number(valeur(c.age));
+  const ages = AGES_ACTUS.filter(([v]) => locale ? v >= 24 : v <= 168);
+  return `<section class="bloc">
+      ${locale ? `<div class="reglage"><span>Ta ville<br><span class="aide">${h(a.ville || "pas encore précisée")}</span></span><button type="button" class="lien" data-reglage="moi">Changer</button></div>`
+        : `<div class="reglage"><span>Tes médias<br><span class="aide">${h(a.flux.map((f) => f.nom || f.url).join(", ") || "aucun")}</span></span><button type="button" class="lien" data-reglage="sources">Gérer</button></div>`}
+      <div class="reglage"><span>Nombre de sujets</span>${pas(c.sujets, valeur(c.sujets), 1, locale ? 5 : 8, 1)}</div>
+      <div class="reglage"><span>Articles lus</span>${locale ? pas(c.articles, valeur(c.articles), 1, 10, 1) : pas(c.articles, valeur(c.articles), 5, 60, 5)}</div>
+      <div class="reglage"><span>Âge maximum des nouvelles</span>${choix(c.age, age, ages.concat(ages.some(([v]) => v === age) ? [] : [[age, `${age} h`]]))}</div>
+    </section>
+    <div class="champ"><span class="etiquette">Thèmes préférés</span>${etiquettes(c.preferes, valeur(c.preferes), locale ? "Ex. travaux, culture" : "Ex. vélo, économie")}</div>
+    <div class="champ"><span class="etiquette">Thèmes à éviter</span>${etiquettes(c.eviter, valeur(c.eviter), locale ? "Ex. faits divers" : "Ex. sport, people")}</div>
+    <p class="aide">${locale
+      ? "Chaque matin, une recherche Google Actualités sur ta ville, plus une par thème préféré (trois au plus). Parmi les articles lus, les animateurs racontent les sujets les plus utiles ; la rubrique ne passe que s'il y a du nouveau."
+      : "Chaque matin, les flux de tes médias, plus une recherche Google Actualités par thème préféré (trois au plus). Parmi les articles lus, les animateurs choisissent les sujets à raconter. Médias et autres sources se gèrent dans Réglages › Sources."}
+      Les actus déjà racontées les jours précédents sont écartées.</p>`;
+}
+
+// Exemples de consigne, rubrique par rubrique.
+const EXEMPLES_CONSIGNE = {
+  ouverture: "Ex. commence par une phrase sur la saison", agenda: "Ex. ne parle de la piscine que la veille et le jour même",
+  deplacements: "Ex. des idées qui plaisent aux enfants", actu_locale: "Ex. surtout les travaux et la circulation",
+  approfondissements: "Ex. donne les chiffres clés", actualites: "Ex. commence par l'économie", cloture: "Ex. termine par une citation",
 };
 
 function vueIntegree() {
@@ -2376,7 +2411,11 @@ function vueIntegree() {
       : x.actif ? `<p class="aide">${avant ? `Après « ${h(avant)} ». ` : ""}${SI_CONTENU.includes(cle) ? "Elle ne passe que s'il y a de quoi en parler. " : ""}L'ordre se change dans « Ton épisode ».</p>`
       : `<p class="aide">Retirée de tes épisodes pour l'instant. Remets-la depuis « Ajouter une rubrique » › L'essentiel.</p>`}
   </section>
-  ${corps ? `<section class="section-fiche"><h2>${cle === "actualites" ? "Ce qu'elle lit" : "Réglages"}</h2>${corps()}</section>` : ""}
+  ${corps ? `<section class="section-fiche"><h2>${["actualites", "actu_locale"].includes(cle) ? "Ce qu'elle lit" : "Réglages"}</h2>${corps()}</section>` : ""}
+  <section class="section-fiche"><h2>Consignes</h2>
+    <p class="aide">Transmises telles quelles aux animateurs quand la rubrique passe.</p>
+    ${blocConsignes(`consignes_rubriques.${cle}`, (d.reglages.consignes_rubriques || {})[cle] || [], (d.listes.consignes_pretes_rubriques || {})[cle], EXEMPLES_CONSIGNE[cle] || "Ex. sois bref")}
+  </section>
   ${cle !== "ouverture" && cle !== "cloture" ? blocResume(cle) : ""}`;
 }
 
@@ -2388,9 +2427,10 @@ async function majListe(chemin, valeurs) {
   return changer("liste", { chemin, valeurs });
 }
 
+// Une liste des réglages (« consignes », « actus.sujets_preferes », « consignes_rubriques.agenda »…), copiée.
 function listeActuelle(chemin) {
-  const r = S.d.reglages;
-  return chemin === "consignes" ? [...r.consignes] : [...r.actus[chemin.split(".")[1]]];
+  const r = S.d.reglages, [section, cle] = chemin.split(".");
+  return [...((cle ? (r[section] || {})[cle] : r[section]) || [])];
 }
 
 // ─────────────────────────────── événements ─────────────────────────────
@@ -2411,6 +2451,7 @@ document.addEventListener("click", (ev) => {
   if (ds.integree) { S.integree = ds.integree; return aller("integree"); }
   if (ds.modele) { const m = modeles().find((x) => x.id === ds.modele); return m && ouvrirFiche(null, m); }
   if (ds.consigneRubrique !== undefined) return rubriqueDepuisConsigne(Number(ds.consigneRubrique));
+  if (ds.consigneAgenda !== undefined) return changer("consigne_ranger", { index: Number(ds.consigneAgenda), rubrique: "agenda" });
   if (ds.actifRegle) {
     const actif = el.getAttribute("aria-checked") !== "true";
     el.setAttribute("aria-checked", String(actif));
@@ -2489,7 +2530,7 @@ document.addEventListener("click", (ev) => {
   if (ds.retirerListe) { const l = listeActuelle(ds.retirerListe); l.splice(Number(ds.i), 1); return majListe(ds.retirerListe, l); }
   if (ds.ajouterListe) {
     const champ = document.querySelector(`[data-nouveau="${ds.ajouterListe}"]`);
-    const valeurs = String(champ && champ.value || "").split(ds.ajouterListe === "consignes" ? /\n/ : /[,;]/).map((x) => x.trim()).filter(Boolean);
+    const valeurs = String(champ && champ.value || "").split(ds.ajouterListe.startsWith("consignes") ? /\n/ : /[,;]/).map((x) => x.trim()).filter(Boolean);
     if (!valeurs.length) return annoncer("Écris d'abord ce que tu veux ajouter.", true);
     return majListe(ds.ajouterListe, [...listeActuelle(ds.ajouterListe), ...valeurs]);
   }
@@ -2645,14 +2686,16 @@ document.addEventListener("change", (ev) => {
   if (t.dataset.heureJour) return t.value && changer("jour", { jour: t.dataset.heureJour, heure: t.value });
   if (t.dataset.consignePrete !== undefined) {
     if (!t.value) return;
-    const l = listeActuelle("consignes");
-    if (!l.includes(t.value)) l.push(t.value);
-    return majListe("consignes", l);
+    const chemin = t.dataset.consignePrete || "consignes";
+    const l = listeActuelle(chemin);
+    if (!l.map(sansPoint).includes(sansPoint(t.value))) l.push(t.value);
+    return majListe(chemin, l);
   }
   if (t.dataset.consigne !== undefined) {
-    const l = listeActuelle("consignes");
+    const chemin = t.dataset.liste || "consignes";
+    const l = listeActuelle(chemin);
     if (t.value.trim()) l[Number(t.dataset.consigne)] = t.value.trim(); else l.splice(Number(t.dataset.consigne), 1);
-    return majListe("consignes", l);
+    return majListe(chemin, l);
   }
 });
 document.addEventListener("keydown", (ev) => {

@@ -77,8 +77,12 @@ def config_bot():
         "agenda": {"jours": 5, "horizon": 60, "notes": False, "deplacements": False, "jours_deplacements": 14},
         "actus": {"ville": "Yverdon-les-Bains", "sujets_preferes": ["vélo"], "sujets_a_eviter": ["sport"],
                   "flux": [{"nom": "RTS Info", "url": "https://www.rts.ch/info/?format=rss/news"}],
-                  "fraicheur_heures": 48, "citer_sources": "les_deux"},
+                  "fraicheur_heures": 48, "articles": 20, "citer_sources": "les_deux",
+                  "locale_sujets": 3, "locale_articles": 6, "locale_fraicheur_heures": 72,
+                  "locale_preferes": ["travaux"], "locale_a_eviter": ["faits divers"]},
         "consignes": ["toujours un point sur Yverdon"],
+        "consignes_rubriques": {"agenda": ["Ne parle de la piscine que la veille."], "actualites": ["Commence par l'économie"],
+                                "inconnue": ["ignorée"], "cloture": "pas une liste"},
         "a_approfondir": [{"sujet": "Grève CFF", "demande_le": "2026-10-12T18:00"},
                           {"sujet": "Vieux sujet", "demande_le": "2026-10-10T09:00"}],
         "regles": [
@@ -163,7 +167,12 @@ verifier(e["duree_minutes"] == 4 and e["nombre_sujets"] == 3 and e["ton"] == "hu
 verifier(e["vitesse_parole"] == "rapide" and e["mots_par_minute"] == 212, "vitesse et débit mesuré")
 verifier(e["tutoiement"] is False and e["prenom_auditeur"] == "Daniel" and e["animateurs"][0]["voix"] == "Kore", "voix")
 verifier(e["jours_agenda"] == 5 and e["jours_deplacements"] == 0 and e["inclure_notes_agenda"] is False, "agenda")
-verifier(e["ville_habituelle"] == "Yverdon-les-Bains" and e["flux"][0]["nom"] == "RTS Info" and e["citer_sources"] == "les_deux", "actus")
+verifier(e["ville_habituelle"] == "Yverdon-les-Bains" and e["flux"][0]["nom"] == "RTS Info" and "citer_sources" not in e, "actus")
+verifier(e["articles_actus"] == 20 and e["articles_par_flux"] == 20 and e["fraicheur_heures"] == 48, "actualités globales : articles lus, répartis entre les médias")
+verifier(e["locale_sujets"] == 3 and e["locale_articles"] == 6 and e["locale_fraicheur_heures"] == 72
+         and e["locale_preferes"] == ["travaux"] and e["locale_a_eviter"] == ["faits divers"], "actu locale : réglée comme les actualités globales")
+verifier(e["consignes_rubriques"] == {"agenda": ["Ne parle de la piscine que la veille"], "actualites": ["Commence par l'économie"]},
+         f"consignes par rubrique fournie (inconnues et mal formées écartées) : {e['consignes_rubriques']}")
 verifier([a["sujet"] for a in e["a_approfondir"]] == ["Grève CFF"], "seuls les sujets demandés après le dernier épisode")
 verifier(e["modeles_texte"] == reglages["modeles_texte"] and e["debit_mp3_kbps"] == reglages["debit_mp3_kbps"],
          "la partie technique reste celle de reglages.toml")
@@ -676,7 +685,19 @@ verifier("3. « Saint du jour » (rubrique R1) : Dire le saint du jour. Longueur
 verifier("4. « Idées pour samedi » (rubrique R2)" in consigne and "développée (6 à 10 répliques)" in consigne, "rubrique développée de R2")
 verifier("- R3 : Rappeler de préparer le sac de foot." in consigne, "règle sans rubrique à intégrer")
 verifier("Vouvoie l'auditeur, qui s'appelle Daniel" in consigne and "Beaucoup d'humour" in consigne, "vouvoiement, prénom, ton")
-verifier("Cite brièvement la source" in consigne and "toujours un point sur Yverdon" in consigne, "sources citées à l'oral, consignes")
+verifier("Cite brièvement la source" not in consigne and "Consigne de style de l'auditeur, pour tout l'épisode, à respecter : toujours un point sur Yverdon" in consigne,
+         "consignes de style pour tout l'épisode, plus de sources citées à l'oral")
+ligne = lambda cle: next(l for l in consigne.splitlines() if l[:3].rstrip(". ").isdigit() and (cle in l))
+verifier("Consignes de l'auditeur pour cette rubrique, à respecter : Ne parle de la piscine que la veille." in ligne("L'agenda"),
+         "consignes de l'agenda dans sa ligne du déroulé")
+verifier(all(x in ligne("Les actualités") for x in ("Thèmes préférés de l'auditeur : vélo", "Thèmes qui ne l'intéressent pas : sport",
+                                                     "à respecter : Commence par l'économie.")),
+         "actualités globales : thèmes et consignes dans leur ligne")
+verifier("Thèmes préférés" not in consigne.split("Style et règles")[1], "les thèmes ne sont plus des règles de tout l'épisode")
+locale = podcast.consigne_systeme(e, [("actu_locale", "Actu locale")], {})
+verifier("3 informations au plus de Yverdon-les-Bains" in locale and "Thèmes préférés de l'auditeur : travaux" in locale
+         and "Thèmes qui ne l'intéressent pas : faits divers" in locale and "vélo" not in locale,
+         "actu locale : nombre de sujets et ses propres thèmes")
 verifier("parmi ouverture, agenda, R1, R2, approfondissements, actualites, cloture" in consigne, "liste des rubriques pour les chapitres")
 verifier("DÉPLACEMENTS" not in consigne.split("Style et règles")[0], "rubrique désactivée absente")
 verifier(podcast.minutes_visees(e, collectes) == 5.5, f"durée : 4 min + 1 (approfondissement) + 0,5 (rubrique développée) = {podcast.minutes_visees(e, collectes)}")
@@ -694,7 +715,7 @@ script = podcast.nettoyer_script(brut, ["Léa", "Hugo"], cles)
 verifier([r["rubrique"] for r in script["repliques"]] == ["ouverture", "ouverture", "agenda", "R1", "actualites", "cloture"],
          "rubrique inconnue → celle d'avant ; même animateur, autre rubrique : pas fusionnés")
 chapitres = podcast.calculer_chapitres(script, [0.3, 2.0, 4.1, 9.6, 15.2, 61.8], rubriques)
-verifier(chapitres == [(0.0, "Ouverture"), (4.1, "Agenda"), (9.6, "Saint du jour"), (15.2, "Actualités"), (61.8, "Clôture")],
+verifier(chapitres == [(0.0, "Ouverture"), (4.1, "Agenda"), (9.6, "Saint du jour"), (15.2, "Actualités globales"), (61.8, "Clôture")],
          f"chapitres : {chapitres}")
 verifier(podcast.minute_seconde(61.8) == "1:02" and podcast.minute_seconde(0) == "0:00", "minutage lisible")
 verifier(podcast.calculer_chapitres(script, [0.0], rubriques) == [], "minutage incomplet : pas de chapitres")

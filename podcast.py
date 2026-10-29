@@ -123,7 +123,6 @@ TONS = {
     "motivant": "Ton motivant et encourageant, tourné vers ce que l'auditeur peut faire de sa journée.",
     "conteur": "Ton de conteur : raconte chaque sujet comme une petite histoire, avec un début et une chute.",
 }
-CITER_SOURCES = ("non", "oral", "ecrit", "les_deux")
 INSTRUCTIONS_RUBRIQUES = {
     "ouverture": "Ouverture (2 ou 3 répliques) : salutation, jour et date, ce qui attend l'auditeur aujourd'hui.",
     "agenda": ("L'agenda : d'abord les rendez-vous d'aujourd'hui (heure, lieu, ce qu'il faut préparer ou ne pas "
@@ -137,8 +136,8 @@ INSTRUCTIONS_RUBRIQUES = {
                      "spécialités), sans inventer d'événement daté, d'horaire ni de prix. Si la section indique "
                      "qu'un lieu a déjà été présenté, fais court : un rappel de la date et une seule idée "
                      "nouvelle, jamais une des idées déjà proposées. Note chaque idée proposée dans « idees »."),
-    "actu_locale": ("L'actu locale, seulement si la section ACTU LOCALE est fournie : une ou deux informations de "
-                    "{ville}, en quelques répliques : de quoi il s'agit et ce que ça change au quotidien. "
+    "actu_locale": ("L'actu locale, seulement si la section ACTU LOCALE est fournie : {infos_locales} de "
+                    "{ville}, en quelques répliques chacune : de quoi il s'agit et ce que ça change au quotidien. "
                     "Appuie-toi uniquement sur les articles fournis."),
     "approfondissements": ("À creuser, seulement si la section À APPROFONDIR est fournie : un segment "
                            "plus fouillé par sujet demandé (contexte, enjeux, ce qui va suivre), en t'appuyant "
@@ -163,6 +162,9 @@ REGLAGES_PAR_DEFAUT: dict[str, Any] = {
     "jours_deplacements": 14,
     "max_deplacements": 2,
     "locale_articles": 3,
+    "locale_sujets": 2,
+    "locale_fraicheur_heures": 168,
+    "articles_actus": 40,
     "agendas_exclus": [],
     "inclure_notes_agenda": True,
     "articles_par_flux": 8,
@@ -544,7 +546,9 @@ def reglages_effectifs(reglages: dict, memoire: dict) -> dict[str, Any]:
     effectifs["a_approfondir"] = [a for a in memoire.get("a_approfondir") or []
                                   if isinstance(a, dict) and a.get("sujet")][:5]
     effectifs.setdefault("ton", "naturel")
-    effectifs.setdefault("citer_sources", "ecrit")
+    effectifs.setdefault("locale_preferes", [])
+    effectifs.setdefault("locale_a_eviter", [])
+    effectifs.setdefault("consignes_rubriques", {})
     effectifs.setdefault("deroule", [{"cle": c, "actif": True} for c in moteur.RUBRIQUES])
     effectifs.setdefault("config_bot", None)
     return effectifs
@@ -582,15 +586,25 @@ def effectifs_depuis_bot(reglages: dict, memoire: dict, config: dict) -> dict[st
     e["jours_deplacements"] = int(_borne(ag.get("jours_deplacements"), 1, 60, e["jours_deplacements"])) if ag.get("deplacements", True) else 0
     e["max_deplacements"] = int(_borne(ag.get("max_deplacements"), 1, 4, 2))
     e["agendas_exclus"] = [str(x) for x in ag.get("exclus") or []][:20]
-    e["locale_articles"] = int(_borne(ac.get("locale_articles"), 1, 8, 3))
     e["ville_habituelle"] = str(ac.get("ville") or e.get("ville_habituelle") or "").strip()
+    # Actualités globales et Actu locale se règlent pareil : thèmes, âge des nouvelles, sujets, articles lus.
     e["sujets_preferes"] = nettoyer_liste(ac.get("sujets_preferes"))
     e["sujets_a_eviter"] = nettoyer_liste(ac.get("sujets_a_eviter"))
     if isinstance(ac.get("flux"), list):
         e["flux"] = [x for x in ac["flux"] if isinstance(x, dict) and str(x.get("url", "")).startswith("http")]
     e["fraicheur_heures"] = _borne(ac.get("fraicheur_heures"), 6, 168, e["fraicheur_heures"])
-    e["citer_sources"] = ac.get("citer_sources") if ac.get("citer_sources") in CITER_SOURCES else "ecrit"
+    e["articles_actus"] = int(_borne(ac.get("articles"), 5, 60, 30))
+    # Les articles lus se répartissent entre les médias.
+    e["articles_par_flux"] = max(2, -(-e["articles_actus"] // max(1, len(e.get("flux") or []))))
+    e["locale_sujets"] = int(_borne(ac.get("locale_sujets"), 1, 5, 2))
+    e["locale_articles"] = int(_borne(ac.get("locale_articles"), 1, 10, 3))
+    e["locale_fraicheur_heures"] = _borne(ac.get("locale_fraicheur_heures"), 6, 336, 168)
+    e["locale_preferes"] = nettoyer_liste(ac.get("locale_preferes"))
+    e["locale_a_eviter"] = nettoyer_liste(ac.get("locale_a_eviter"))
     e["consignes"] = nettoyer_liste(config.get("consignes"), 20, LONGUEUR_CONSIGNE)
+    rubriques = config.get("consignes_rubriques") if isinstance(config.get("consignes_rubriques"), dict) else {}
+    e["consignes_rubriques"] = {cle: liste for cle in moteur.RUBRIQUES
+                                if (liste := nettoyer_liste(rubriques.get(cle), 20, LONGUEUR_CONSIGNE))}
     envoye = str((memoire.get("dernier_episode") or {}).get("envoye_le", ""))
     e["a_approfondir"] = [a for a in config.get("a_approfondir") or []
                           if isinstance(a, dict) and a.get("sujet") and str(a.get("demande_le", "")) > envoye][:5]
@@ -876,16 +890,23 @@ def lire_flux_specialise(flux: dict, maintenant: dt.datetime, vus: set[str] | No
     return gardes
 
 
+def periode_recherche(heures: float) -> str:
+    """Âge maximum d'une recherche Google Actualités (« when: ») : en jours s'il tombe juste, sinon en heures."""
+    return f"{round(heures / 24)}d" if heures >= 48 and round(heures) % 24 == 0 else f"{max(1, round(heures))}h"
+
+
 def chercher_actus(requete: str, reglages: dict, maintenant: dt.datetime,
-                   maximum: int, jours: int) -> list[Article]:
-    """Recherche Google Actualités (flux RSS public) sur un sujet ou un lieu."""
+                   maximum: int, jours: float = 7, heures: float | None = None) -> list[Article]:
+    """Recherche Google Actualités (flux RSS public) sur un sujet ou un lieu, parmi les
+    nouvelles de moins de « jours » jours (ou de moins de « heures » heures)."""
     if not reglages.get("recherches_actus") or not requete.strip():
         return []
+    heures = float(heures) if heures else float(jours) * 24
     langue = str(reglages["langue_actus"])
     pays = str(reglages["pays_actus"])
-    url = URL_RECHERCHE.format(requete=quote_plus(f"{requete} when:{jours}d"),
+    url = URL_RECHERCHE.format(requete=quote_plus(f"{requete} when:{periode_recherche(heures)}"),
                                langue=langue, pays=pays)
-    seuil = maintenant.astimezone(dt.timezone.utc) - dt.timedelta(days=jours)
+    seuil = maintenant.astimezone(dt.timezone.utc) - dt.timedelta(hours=heures)
     try:
         articles = lire_flux(telecharger(url, 20, essais=2), "Google Actualités", maximum, seuil)
     except Exception as erreur:
@@ -1244,6 +1265,33 @@ def minutes_visees(effectifs: dict, collectes: dict | None = None) -> float:
     return effectifs["duree_minutes"] + (1 if effectifs.get("a_approfondir") else 0) + min(2.0, 0.5 * developpees)
 
 
+def precisions_rubrique(cle_rubrique: str, effectifs: dict) -> str:
+    """Ce que l'auditeur a réglé pour une rubrique fournie : ses thèmes (actualités globales et
+    actu locale) et ses consignes, ajoutés à sa ligne du déroulé."""
+    if cle_rubrique == "actualites":
+        interets = [s for s in [str(effectifs.get("centres_interet") or "").strip()] if s]
+        interets += effectifs.get("sujets_preferes") or []
+        eviter = effectifs.get("sujets_a_eviter") or []
+    elif cle_rubrique == "actu_locale":
+        interets, eviter = effectifs.get("locale_preferes") or [], effectifs.get("locale_a_eviter") or []
+    else:
+        interets, eviter = [], []
+    morceaux = []
+    if interets:
+        morceaux.append(f"Thèmes préférés de l'auditeur : {', '.join(interets)} ; donne-leur la priorité.")
+    if eviter:
+        morceaux.append(f"Thèmes qui ne l'intéressent pas : {', '.join(eviter)} ; ne les traite pas, même s'ils figurent dans les articles.")
+    consignes = (effectifs.get("consignes_rubriques") or {}).get(cle_rubrique) or []
+    if consignes:
+        morceaux.append("Consignes de l'auditeur pour cette rubrique, à respecter : "
+                        + " ; ".join(str(c).rstrip(" .") for c in consignes) + ".")
+    return "".join(f" {m}" for m in morceaux)
+
+
+def infos_locales(n: int) -> str:
+    return "une seule information" if n <= 1 else f"{n} informations au plus"
+
+
 def consigne_systeme(effectifs: dict, rubriques: list[tuple[str, str]] | None = None,
                      collectes: dict | None = None) -> str:
     noms_animateurs = [x["nom"] for x in effectifs["animateurs"]]
@@ -1257,22 +1305,13 @@ def consigne_systeme(effectifs: dict, rubriques: list[tuple[str, str]] | None = 
     adresse = "Tutoie" if effectifs["tutoiement"] else "Vouvoie"
     prenom = effectifs.get("prenom_auditeur", "").strip()
     qui = f"{adresse} l'auditeur, qui s'appelle {prenom}." if prenom else f"{adresse} l'auditeur."
-    interets = [s for s in [effectifs.get("centres_interet", "").strip()] if s]
-    interets += effectifs.get("sujets_preferes") or []
+    # Thèmes et consignes propres à une rubrique : dans sa ligne du déroulé (precisions_rubrique).
     preferences = ""
-    if interets:
-        preferences += (f"\n- Thèmes préférés de l'auditeur : {', '.join(interets)}. "
-                        "Donne-leur la priorité dans le choix des actualités.")
-    if effectifs.get("sujets_a_eviter"):
-        preferences += (f"\n- Thèmes qui ne l'intéressent pas : {', '.join(effectifs['sujets_a_eviter'])}. "
-                        "Ne les traite pas, même s'ils figurent dans les actualités.")
     for consigne in effectifs.get("consignes") or []:
-        preferences += f"\n- Consigne de l'auditeur, à respecter : {consigne}."
+        preferences += f"\n- Consigne de style de l'auditeur, pour tout l'épisode, à respecter : {consigne}."
     ton = TONS.get(effectifs.get("ton", "naturel"), "")
     if ton:
         preferences += f"\n- {ton}"
-    if effectifs.get("citer_sources") in ("oral", "les_deux"):
-        preferences += "\n- Cite brièvement la source de chaque actualité à l'oral (« selon la RTS… », « d'après 24 heures… »)."
 
     if rubriques is None:
         rubriques = list(moteur.RUBRIQUES.items())
@@ -1281,7 +1320,8 @@ def consigne_systeme(effectifs: dict, rubriques: list[tuple[str, str]] | None = 
         if cle_rubrique in INSTRUCTIONS_RUBRIQUES:
             texte = INSTRUCTIONS_RUBRIQUES[cle_rubrique].format(
                 n=effectifs["nombre_sujets"], ville=effectifs.get("ville_habituelle") or "la ville de l'auditeur",
-                d_abord=pays_auditeur.profil()["d_abord"])
+                d_abord=pays_auditeur.profil()["d_abord"],
+                infos_locales=infos_locales(int(effectifs.get("locale_sujets", 2)))) + precisions_rubrique(cle_rubrique, effectifs)
         else:
             regle = collectes[cle_rubrique].regle
             longueur = moteur.LONGUEURS.get((regle.get("rubrique") or {}).get("longueur"), "courte (2 à 4 répliques)")
@@ -1676,7 +1716,7 @@ def rubriques_pour_bot(script: dict, rubriques: list[tuple[str, str]] | None,
 def sources_episode(script: dict, articles: list[Article], collectes: dict | None) -> list[tuple[str, str, str]]:
     """Articles cités et liens des recherches, sans doublon : (section, titre, adresse)."""
     numeros = set(script["sources"])
-    liens = [(a.section or "Actualités", a.titre, a.lien) for a in articles if a.numero in numeros and a.lien]
+    liens = [(a.section or moteur.RUBRIQUES["actualites"], a.titre, a.lien) for a in articles if a.numero in numeros and a.lien]
     for collecte in (collectes or {}).values():
         regle = collecte.regle or {}
         section = ((regle.get("rubrique") or {}).get("titre") or regle.get("titre") or "Rubrique")
@@ -1911,24 +1951,31 @@ def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: l
     locales: list[Article] = []
     locales_deja_dites = False
     if effectifs["ville_habituelle"] and rubrique_active(effectifs, "actu_locale"):
+        ville = effectifs["ville_habituelle"]
         voulues = int(effectifs.get("locale_articles", 3))
-        lues = chercher_actus(effectifs["ville_habituelle"], effectifs, maintenant, lus_pour(voulues), 7)
+        heures_locales = float(effectifs.get("locale_fraicheur_heures", 168))
+        lues: list[Article] = []
+        for theme in (effectifs.get("locale_preferes") or [])[:3]:      # les thèmes préférés d'abord
+            for article in chercher_actus(f"{ville} {theme}", effectifs, maintenant, 3, heures=heures_locales):
+                article.etiquette = f"actu locale : {ville} · {theme}"
+                lues.append(article)
+        for article in chercher_actus(ville, effectifs, maintenant, lus_pour(voulues), heures=heures_locales):
+            article.etiquette = f"actu locale : {ville}"
+            lues.append(article)
         locales = garder_nouveaux(lues, vus, voulues)
         locales_deja_dites = bool(lues) and not locales
-        for article in locales:
-            article.etiquette = f"actu locale : {effectifs['ville_habituelle']}"
     avec_actus = rubrique_active(effectifs, "actualites")
     ciblees = []
     recherches = [(sujet, f"centre d'intérêt : {sujet}") for sujet in effectifs["sujets_preferes"][:3]]
     generales, flux_en_panne = [], []
     if avec_actus:
         for requete, etiquette in recherches:
-            for article in chercher_actus(requete, effectifs, maintenant, 3, 2):
+            for article in chercher_actus(requete, effectifs, maintenant, 3, heures=effectifs["fraicheur_heures"]):
                 article.etiquette = etiquette
                 ciblees.append(article)
         generales, flux_en_panne = lire_actualites(effectifs, maintenant)
     actualites = garder_nouveaux(ciblees, vus) + garder_nouveaux(generales, vus)
-    actualites = actualites[:40]
+    actualites = actualites[:int(effectifs.get("articles_actus") or 40)]
     if avec_actus and flux_en_panne and not generales:
         remarques.append("actualités inaccessibles ce matin")
 
@@ -1936,7 +1983,7 @@ def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: l
     tous_articles: list[Article] = []
     groupes = ([("À creuser", a) for _, a in approfondissements]
                + [(f"Déplacements · {d['lieu']}", d["articles"]) for d in deplacements]
-               + [("Actu locale", locales), ("Actualités", actualites)])
+               + [("Actu locale", locales), (moteur.RUBRIQUES["actualites"], actualites)])
     for section, groupe in groupes:
         for article in groupe:
             article.section = section

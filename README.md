@@ -18,8 +18,8 @@ Sur ton téléphone, ouvre l'adresse de ton bot (`https://podcast.TON-SOUS-DOMAI
 
 | Onglet | Ce qu'on y trouve |
 |---|---|
-| **Accueil** | Le prochain épisode (le toucher montre son programme ; *Générer maintenant*, *Sauter*), le lecteur avec ses chapitres, 👍 👎, les idées trouvées, et **« Demande-moi quelque chose »** pour tout régler en une phrase, écrite ou dite. |
-| **Épisode** | **Ton épisode, dans l'ordre** : chaque passage (agenda, actualités, actu locale, déplacements, à creuser, et tes rubriques) avec sa fiche. Glisser pour réordonner, pause, et le bouton **+** pour ajouter une rubrique. |
+| **Accueil** | Le prochain épisode (le toucher montre son programme ; *Générer maintenant*, *Sauter*), le lecteur avec ses chapitres, les idées trouvées, et **« Demande-moi quelque chose »** pour tout régler en une phrase, écrite ou dite. |
+| **Épisode** | **Ton épisode, dans l'ordre** : chaque passage (agenda, actualités globales, actu locale, déplacements, à creuser, et tes rubriques) avec sa fiche. Glisser pour réordonner, pause, et le bouton **+** pour ajouter une rubrique. |
 | **Recherches** | Les recherches ponctuelles : « une sortie avec les enfants samedi, en train, moins de 20 € » ; les résultats arrivent par écrit (prix, accès, liens) ou en mini-podcast. |
 | **Planning** | Heure et activation de chaque jour, jours fériés, rattrapage, exceptions, pauses, calendrier. |
 | **Réglages** | **Moi** (prénom, ville, pays) · **Voix** · **Durée et style** (ton, consignes) · **Connexions** (clés et agendas) · **Application** (appareils et notifications, flux privé, version). |
@@ -28,7 +28,7 @@ Le dernier changement s'annule depuis Réglages (*Annuler*). « Demande-moi quel
 
 ### Les rubriques
 
-Une rubrique est un passage de ton épisode. **Toutes se règlent de la même façon**, par leur fiche, qu'elles soient fournies (Agenda, Actualités, Actu locale, Mes déplacements, À creuser) ou ajoutées par toi. Le catalogue du bouton **+** propose :
+Une rubrique est un passage de ton épisode. **Toutes se règlent de la même façon**, par leur fiche, qu'elles soient fournies (Agenda, Actualités globales, Actu locale, Mes déplacements, À creuser) ou ajoutées par toi. Le catalogue du bouton **+** propose :
 
 - **Fête du prénom**, **Journée mondiale**, **Météo** ;
 - **Rappel selon l'agenda** : « la veille d'un match, rappelle-moi de préparer mon sac » ;
@@ -37,7 +37,9 @@ Une rubrique est un passage de ton épisode. **Toutes se règlent de la même fa
 - **Idée de sortie** : quoi, avec qui, où, quand, transport, budget ; présentée dans tes épisodes ;
 - ou **une rubrique libre**, décrite en une phrase.
 
-L'application choisit les sources utiles à chaque rubrique (tu peux les changer dans la fiche), et règle sa place et sa longueur. Les **consignes de style** (Réglages › Durée et style) servent au ton général : « plus d'humour le vendredi ». Une consigne qui parle d'un rendez-vous est repérée, et l'application propose d'en faire un rappel selon l'agenda, plus fiable.
+L'application choisit les sources utiles à chaque rubrique (tu peux les changer dans la fiche), et règle sa place et sa longueur.
+
+Chaque rubrique fournie a ses **consignes**, dans sa fiche : « ne parle de la piscine que la veille » pour l'Agenda, « commence par l'économie » pour les Actualités globales. **Actualités globales** et **Actu locale** se règlent de la même façon : thèmes préférés et à éviter, âge maximum des nouvelles, nombre de sujets racontés et d'articles lus. Les **consignes de style** (Réglages › Durée et style) valent pour tout l'épisode : « plus d'humour le vendredi » ; une consigne de style qui parle de ton agenda se range dans l'Agenda d'un geste.
 
 ### Les connexions
 
