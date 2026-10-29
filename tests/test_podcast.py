@@ -1152,7 +1152,7 @@ verifier(_code_e == 0 and _ev_e.get("format") == "ecrit" and _ev_e.get("idees") 
 verifier(_res_e.get("intro", "").startswith("Deux sujets dominent la journée.") and "\n" not in _res_e.get("intro", ""), "point écrit : texte sur une ligne")
 verifier(_res_e.get("sources") == [{"titre": "Les CFF en retard", "lien": "https://exemple.ch/cff"}], "point écrit : sources de tes médias (https seulement)")
 verifier("Articles récents de ses médias" in _entree_e and "Les CFF en retard" in _entree_e, "actualités : les médias de l'auditeur sont lus")
-verifier("agenda" in _essai_agenda.lower() and "Réglages › Connexions" in _essai_agenda, "agenda sans agenda branché : message clair")
+verifier("agenda" in _essai_agenda.lower() and "Réglages › Sources › Agendas" in _essai_agenda, "agenda sans agenda branché : message clair")
 
 print("\nRÉSULTAT :", "tout est vert ✅" if not echecs else f"{len(echecs)} échec(s) ❌")
 for e in echecs:

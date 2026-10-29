@@ -9,18 +9,18 @@ import {
   ajouterJours, dateCourte, heureParlee, nettoyerListe, VOIX_CONSEILLEES,
   NOMS_JOURS, heureValide,
   VOIX, animateursDuJour, renommerVoix, activerVoix, choisirVoixJour, LONGUEUR_CONSIGNE, PAYS, profilPays, fluxActus, FERIES_CALCULES,
-  SOURCES, MAX_FLUX_SPECIALISES, RUBRIQUES_A_CHERCHER, nomRubrique,
+  SOURCES, MAX_FLUX, MAX_SITES, RANGEMENT_SOURCES, RUBRIQUES_A_CHERCHER, nomRubrique, idCourt, normaliserTexte,
 } from "./config.js";
 import { consigneComprehension, contexteComprehension, schemaOperations, appliquerOperations, messageCompris,
   rubriquesARediger, CONSIGNE_REDACTION, schemaRedaction, contenuRedaction, appliquerRedaction } from "./comprendre.js";
 import { GitHub, demanderGemini, maintenantLocal, instantLocal, secretPartage, definirFuseau, empreinte } from "./services.js";
-import { CLES, testerCle, lireAgenda, identifiantAgenda, resumeConnexions } from "./connexions.js";
+import { CLES, testerCle, lireAgenda, identifiantAgenda, resumeConnexions, testerFlux, testerSite, testerService, domaineDe } from "./connexions.js";
 import { fluxRss, chapitresJson, episodeDeCle, jetonValide, nouveauJeton } from "./flux.js";
 import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-29.1";
+export const VERSION = "2026-10-29.2";
 const MAX_REFAITS = 6;
 const MAX_RECHERCHES = 15;
 const MAX_EPISODES = 60;      // épisodes récents, dans l'état ; les plus anciens vont dans l'archive de leur mois
@@ -29,11 +29,12 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
-  "Chaque rubrique fournie (Agenda, Actualités globales, Actu locale…) a ses propres consignes ; tes consignes qui parlaient de l'agenda sont rangées dans l'Agenda.",
-  "Actualités globales et Actu locale se règlent pareil : thèmes préférés et à éviter, âge des nouvelles, nombre de sujets et d'articles lus.",
-  "La rubrique Actualités s'appelle désormais « Actualités globales ».",
-  "« Citer les sources » disparaît : les sources restent dans la fiche de chaque épisode et dans le résumé de chaque rubrique.",
-  "Consignes de style : une consigne qui parle de ton agenda se range dans l'Agenda d'un geste ; des consignes toutes prêtes dans chaque rubrique.",
+  "Réglages › Sources range tous tes outils en cinq onglets (services, flux, sites, agendas, données) : chacun se teste et dit quelles rubriques s'en servent.",
+  "Tes médias et tes flux spécialisés ne font plus qu'une liste ; les Actualités globales cochent leurs flux dans leur fiche.",
+  "Sites de référence : une rubrique peut limiter sa recherche web à un site précis.",
+  "Une rubrique peut ne lire qu'un seul de tes agendas.",
+  "Les clés Tavily et SNCF sont rangées avec leur service ; Gemini a son propre écran (Réglages › Gemini).",
+  "Données intégrées : prénoms, journées et fériés montrent ce qu'ils donnent aujourd'hui.",
 ];
 
 // « 2026-10 » décalé de n mois.
@@ -344,7 +345,7 @@ export class Etat extends DurableObject {
     if (contenus.length === 1) return { vide: true };
     let reponse;
     try {
-      reponse = await this.gemini(consigneComprehension(config, ctx), contenus, schemaOperations());
+      reponse = await this.gemini(consigneComprehension(config, { ...ctx, agendas: etat.agendas || [] }), contenus, schemaOperations());
     } catch (erreur) {
       console.log("Gemini :", erreur.message);
       return null;
@@ -387,7 +388,7 @@ export class Etat extends DurableObject {
     }
     delete etat.a_confirmer;
     for (const action of resultat.actions.filter((a) => a.type === "ajouter_source")) {
-      try { resultat.changements.push(await this.ajouterSource(config, action.valeur)); } catch (erreur) { resultat.erreurs.push(`Source : ${erreur.message}`); }
+      try { resultat.changements.push(await this.ajouterFlux(config, action.valeur, true)); } catch (erreur) { resultat.erreurs.push(`Source : ${erreur.message}`); }
     }
     for (const { table, id } of resultat.suppressions) this.remapperEtat(etat, table, id);
     // Une demande confirmée complète sa ligne « en attente » de l'historique.
@@ -476,23 +477,41 @@ export class Etat extends DurableObject {
 
   // ───────────────────────────────── sources ─────────────────────────────────
 
-  async ajouterSource(config, valeur) {
+  // Un flux de plus (Réglages › Sources › Flux) : un média ou un site, d'après son nom ou son
+  // adresse. « actualites » : lu aussi par les Actualités globales.
+  async ajouterFlux(config, valeur, actualites = false, { nom = "", propose = false } = {}) {
+    const liste = config.sources.flux;
     const trouve = await this.trouverMedia(config, valeur);
-    const liste = [...(fluxActus(config))];
-    if (!liste.some((f) => f.url === trouve.url)) liste.push(trouve);
-    config.actus.flux = liste;
-    return `Source ajoutée : ${trouve.nom}`;
+    if (nom) trouve.nom = nom;
+    let flux = liste.find((f) => f.url === trouve.url);
+    if (flux && (!actualites || config.actus.flux_lus.includes(flux.id))) throw new Error(`« ${flux.nom} » est déjà dans tes flux.`);
+    if (!flux) {
+      if (liste.length >= MAX_FLUX) throw new Error(`${MAX_FLUX} flux au plus : retires-en un d'abord.`);
+      // Un média proposé pour le pays garde sa marque : il suivra un changement de pays.
+      flux = { id: idCourt(`flux:${trouve.url}`), nom: trouve.nom.slice(0, 60), url: trouve.url, ...(propose ? { pays: config.pays } : {}) };
+      liste.push(flux);
+    }
+    if (actualites) config.actus.flux_lus = [...new Set([...config.actus.flux_lus, flux.id])];
+    return `Flux ajouté : ${flux.nom}${actualites ? " (lu par les Actualités globales)" : ""}`;
   }
 
-  // Flux spécialisé (Réglages › Sources) : une rubrique peut le choisir dans « Où elle cherche ».
-  async ajouterFluxSpecialise(config, valeur) {
-    const liste = config.sources.flux;
-    if (liste.length >= MAX_FLUX_SPECIALISES) throw new Error(`${MAX_FLUX_SPECIALISES} flux spécialisés au plus : retires-en un d'abord.`);
-    const trouve = await this.trouverMedia(config, valeur);
-    if (liste.some((f) => f.url === trouve.url)) throw new Error(`« ${trouve.nom} » est déjà dans tes flux spécialisés.`);
-    const id = await empreinte(`flux:${trouve.url}`, 8);
-    liste.push({ id, nom: trouve.nom.slice(0, 60), url: trouve.url });
-    return `Flux spécialisé ajouté : ${trouve.nom}`;
+  // Un flux retiré de la liste : les Actualités globales et les rubriques qui le lisaient ne le gardent pas.
+  retirerFlux(config, id) {
+    const flux = config.sources.flux.find((f) => f.id === id);
+    if (!flux) throw new Error("Ce flux n'est plus dans la liste.");
+    if (config.actus.flux_lus.length === 1 && config.actus.flux_lus[0] === id) {
+      throw new Error("C'est le dernier flux de tes Actualités globales : coche d'abord un autre flux dans leur fiche.");
+    }
+    config.sources.flux = config.sources.flux.filter((f) => f.id !== id);
+    config.actus.flux_lus = config.actus.flux_lus.filter((x) => x !== id);
+    for (const r of config.regles) if (r.recherche) r.recherche.sources = r.recherche.sources.filter((x) => x !== `flux:${id}`);
+    return `Flux retiré : ${flux.nom}`;
+  }
+
+  // Résultat du test d'un outil (service, flux, site, agenda), gardé pour l'application.
+  noterTest(etat, cle, test, ctx) {
+    const tests = { ...(etat.tests_outils || {}), [cle]: { ok: Boolean(test.ok), message: String(test.message || "").slice(0, 300), quand: ctx.maintenantIso } };
+    etat.tests_outils = Object.fromEntries(Object.entries(tests).slice(-80));
   }
 
   // Le flux RSS d'un média ou d'un site, d'après son nom (Gemini propose des adresses) ou son adresse.
@@ -1000,29 +1019,10 @@ export class Etat extends DurableObject {
           libelle = `Retiré : ${retire.sujet}`;
           break;
         }
-        case "source": {
-          const valeur = String(demande.valeur || "").trim().slice(0, 300);
-          if (!valeur) return refus("Donne le nom du média ou l'adresse de son flux.");
-          try { libelle = await this.ajouterSource(config, valeur); } catch (erreur) { return refus(`Désolé, ${erreur.message}`); }
-          break;
-        }
-        case "retirer_source": {
-          const flux = [...(fluxActus(config))];
-          const [retire] = flux.splice(Number(demande.index), 1);
-          if (!retire) return refus("Cette source n'est plus dans la liste.");
-          if (!flux.length) return refus("Garde au moins une source.");
-          config.actus.flux = flux;
-          libelle = `Source retirée : ${retire.nom}`;
-          break;
-        }
-        case "sources_defaut":
-          config.actus.flux = null;
-          libelle = "Sources par défaut";
-          break;
-        // ── Réglages › Sources : catégories et flux spécialisés ──
+        // ── Réglages › Sources : services, flux, sites, agendas, données ──
         case "source_coupee": {
           const cle = String(demande.cle || "");
-          if (!SOURCES[cle]) return refus("Source inconnue.");
+          if (!SOURCES[cle] || RANGEMENT_SOURCES[cle] === "agendas") return refus("Source inconnue.");
           const coupees = new Set(config.sources.coupees);
           if (demande.coupee) coupees.add(cle); else coupees.delete(cle);
           config.sources.coupees = [...coupees];
@@ -1030,19 +1030,81 @@ export class Etat extends DurableObject {
           break;
         }
         case "flux_ajouter": {
-          const valeur = String(demande.valeur || "").trim().slice(0, 300);
-          if (!valeur) return refus("Donne le nom du site ou l'adresse de son flux RSS.");
-          try { libelle = await this.ajouterFluxSpecialise(config, valeur); } catch (erreur) { return refus(`Désolé, ${erreur.message}`); }
+          const valeur = String(demande.valeur || demande.url || "").trim().slice(0, 300);
+          if (!valeur) return refus("Donne le nom du média ou du site, ou l'adresse de son flux RSS.");
+          try {
+            libelle = await this.ajouterFlux(config, valeur, Boolean(demande.actualites), { nom: String(demande.nom || "").trim().slice(0, 60), propose: Boolean(demande.propose) });
+          } catch (erreur) { return refus(`Désolé, ${erreur.message}`); }
           break;
         }
-        case "flux_retirer": {
+        case "flux_retirer":
+          try { libelle = this.retirerFlux(config, String(demande.id || "")); } catch (erreur) { return refus(erreur.message); }
+          break;
+        // Les flux que lisent les Actualités globales (cochés dans leur fiche).
+        case "actus_flux": {
           const flux = config.sources.flux.find((f) => f.id === demande.id);
           if (!flux) return refus("Ce flux n'est plus dans la liste.");
-          config.sources.flux = config.sources.flux.filter((f) => f.id !== flux.id);
-          // Les rubriques qui le lisaient ne le gardent pas.
-          for (const r of config.regles) if (r.recherche) r.recherche.sources = r.recherche.sources.filter((x) => x !== `flux:${flux.id}`);
-          libelle = `Flux spécialisé retiré : ${flux.nom}`;
+          const lus = new Set(config.actus.flux_lus);
+          if (demande.lu) lus.add(flux.id); else lus.delete(flux.id);
+          if (!lus.size) return refus("Garde au moins un flux pour tes Actualités globales.");
+          config.actus.flux_lus = config.sources.flux.map((f) => f.id).filter((x) => lus.has(x));
+          libelle = `Actualités globales : ${flux.nom} ${demande.lu ? "lu" : "plus lu"}`;
           break;
+        }
+        case "site_ajouter": {
+          const domaine = domaineDe(demande.valeur);
+          if (!domaine || !/\./.test(domaine)) return refus("Colle l'adresse du site (par exemple labo.ch ou https://www.labo.ch).");
+          if (config.sources.sites.some((x) => x.domaine === domaine)) return refus(`${domaine} est déjà dans tes sites.`);
+          if (config.sources.sites.length >= MAX_SITES) return refus(`${MAX_SITES} sites au plus : retires-en un d'abord.`);
+          const test = await testerSite(domaine, this.env.SITES_API);
+          if (!test.ok) return refus(test.message);
+          const id = idCourt(`site:${domaine}`);
+          const nom = String(demande.nom || "").trim() || (test.titre || domaine).split(/\s[|–—-]\s/)[0].trim() || domaine;
+          config.sources.sites.push({ id, nom: nom.slice(0, 60), domaine });
+          this.noterTest(etat, `site:${id}`, test, ctx);
+          await this.ecrireEtat(etat);
+          libelle = `Site ajouté : ${nom.slice(0, 60)}`;
+          break;
+        }
+        case "site_retirer": {
+          const site = config.sources.sites.find((x) => x.id === demande.id);
+          if (!site) return refus("Ce site n'est plus dans la liste.");
+          config.sources.sites = config.sources.sites.filter((x) => x.id !== site.id);
+          for (const r of config.regles) if (r.recherche) r.recherche.sources = r.recherche.sources.filter((x) => x !== `site:${site.id}`);
+          libelle = `Site retiré : ${site.nom}`;
+          break;
+        }
+        // Tester un outil : le résultat reste affiché sous l'outil (etat.tests_outils).
+        case "outil_tester": {
+          const cle = String(demande.cle || "");
+          const [type, id] = cle.split(":");
+          let test;
+          if (type === "service" && RANGEMENT_SOURCES[id] === "services") {
+            test = await testerService(this.env, id, { ville: config.actus.ville, profil: profilPays(config), pays: config.pays });
+          } else if (type === "flux") {
+            const flux = config.sources.flux.find((f) => f.id === id);
+            if (!flux) return refus("Ce flux n'est plus dans la liste.");
+            test = await testerFlux(flux.url, this.maintenant());
+          } else if (type === "site") {
+            const site = config.sources.sites.find((x) => x.id === id);
+            if (!site) return refus("Ce site n'est plus dans la liste.");
+            test = await testerSite(site.domaine, this.env.SITES_API);
+          } else if (type === "agenda") {
+            const lien = (this.cles.agendas || []).find((a) => a.id === id);
+            if (!lien) {
+              if (!(etat.agendas || []).some((a) => a.id === id)) return refus("Agenda inconnu : relis la liste.");
+              // Agenda du secret GitHub : le bot n'a pas son adresse, GitHub le relit.
+              await this.gh.lancer("agendas.yml", {}).catch(() => {});
+              return reponse({ message: "Cet agenda vient du secret GitHub : je le fais relire, la liste se met à jour d'ici une minute." });
+            }
+            test = await lireAgenda(lien.url);
+            const prochain = (etat.agenda_apercu || []).find((ev) => ev.agenda === id && ev.debut >= ctx.maintenantIso.slice(0, 16));
+            if (test.ok && prochain) test.message += ` Prochain : ${prochain.titre} (${dateCourte(prochain.debut.slice(0, 10))}${prochain.journee ? "" : ` à ${prochain.debut.slice(11, 16).replace(":", "h")}`}).`;
+            if (test.ok) etat.agendas = (etat.agendas || []).map((a) => a.id === id ? { ...a, nom: test.nom || a.nom, nb: test.nb } : a);
+          } else return refus("Outil inconnu.");
+          this.noterTest(etat, cle, test, ctx);
+          await this.ecrireEtat(etat);
+          return test.ok ? reponse({ message: test.message }) : refus(test.message);
         }
         case "agenda": {
           const connus = new Set((etat.agendas || []).map((x) => x.id));
@@ -1221,6 +1283,9 @@ export class Etat extends DurableObject {
             break;
           }
           await this.ecrireCles({ ...this.cles, agendas });
+          // Les rubriques qui ne lisaient que lui ne le gardent pas.
+          for (const r of config.regles) if (r.recherche) r.recherche.sources = r.recherche.sources.filter((x) => x !== `agenda:${demande.id}`);
+          if (JSON.stringify(config) !== JSON.stringify(ancienne)) await this.enregistrer(config, etat, ancienne, "Agenda retiré");
           etat.agendas = (etat.agendas || []).filter((a) => a.id !== demande.id);
           etat.agenda_apercu = (etat.agenda_apercu || []).filter((x) => x.agenda !== demande.id);
           await this.ecrireEtat(etat);

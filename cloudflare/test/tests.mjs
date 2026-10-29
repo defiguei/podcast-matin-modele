@@ -352,18 +352,28 @@ await scenario("Sauvegarde quotidienne", async () => {
   await horloge("2026-10-13T10:00");
 });
 
-await scenario("Sources : ajout par adresse, retrait", async () => {
-  let r = await app("source", { valeur: `${FAUX}/site/page.html` });
+await scenario("Sources : un média de plus pour les Actualités globales, retrait", async () => {
+  const lus = (config) => config.sources.flux.filter((f) => config.actus.flux_lus.includes(f.id));
+  let r = await app("flux_ajouter", { valeur: `${FAUX}/site/page.html`, actualites: true });
   let { config } = await etat();
-  verifier(r.ok && config.actus.flux?.length === 4 && config.actus.flux.at(-1).url.endsWith("/rss/flux.xml"), "flux trouvé depuis la page", config.actus.flux);
-  verifier(config.actus.flux.at(-1).nom === "La Région", "nom du flux", config.actus.flux.at(-1));
-  r = await app("retirer_source", { index: 2 });
+  verifier(r.ok && lus(config).length === 4 && lus(config).at(-1).url.endsWith("/rss/flux.xml") && !("flux" in config.actus), "flux trouvé depuis la page, lu par les Actualités globales", config.sources);
+  verifier(lus(config).at(-1).nom === "La Région", "nom du flux", lus(config).at(-1));
+  const monde = config.sources.flux.find((f) => f.nom === "Le Monde");
+  r = await app("actus_flux", { id: monde.id, lu: false });
   ({ config } = await etat());
-  verifier(r.ok && config.actus.flux.length === 3 && !config.actus.flux.some((f) => f.nom === "Le Monde"), "Le Monde retiré", config.actus.flux.map((f) => f.nom));
+  verifier(r.ok && lus(config).length === 3 && !lus(config).some((f) => f.nom === "Le Monde") && config.sources.flux.some((f) => f.nom === "Le Monde"),
+    "Le Monde décoché des Actualités globales (il reste dans les flux)", lus(config).map((f) => f.nom));
   await gemini({ operations: [{ action: "retirer_source", valeur: "RTS" }], reponse: "RTS retirée." });
   await app("parler", { texte: "enlève la RTS" });
   ({ config } = await etat());
-  verifier(!config.actus.flux.some((f) => f.nom.includes("RTS")), "retrait par la parole", config.actus.flux.map((f) => f.nom));
+  verifier(!lus(config).some((f) => f.nom.includes("RTS")) && !config.sources.flux.some((f) => f.nom.includes("RTS")), "retrait par la parole (plus lu par personne : quitte la liste)", config.sources.flux.map((f) => f.nom));
+  for (const f of config.sources.flux.filter((x) => !config.actus.flux_lus.includes(x.id))) await app("actus_flux", { id: f.id, lu: true });
+  ({ config } = await etat());
+  const seul = config.actus.flux_lus.slice(0, -1);
+  for (const id of seul) await app("actus_flux", { id, lu: false });
+  r = await app("actus_flux", { id: (await etat()).config.actus.flux_lus[0], lu: false });
+  verifier(r.ok === false && r.erreur.includes("au moins un flux"), "les Actualités globales gardent au moins un flux", r.erreur);
+  for (const id of seul) await app("actus_flux", { id, lu: true });
 });
 
 await scenario("Modèles légers mis à jour par GitHub", async () => {
@@ -495,6 +505,78 @@ await scenario("Consignes par rubrique, Actualités globales et Actu locale rég
   verifier(JSON.stringify(appelGemini).includes("consignes_rubriques.agenda"), "Gemini connaît les consignes par rubrique");
   await app("liste", { chemin: "consignes", valeurs: [] });
   for (const cle of Object.keys(RUBRIQUES)) await app("liste", { chemin: `consignes_rubriques.${cle}`, valeurs: [] });
+});
+
+await scenario("Réglages › Sources : services, flux, sites, agendas, données testés", async () => {
+  let r = await app("etat");
+  let s = r.donnees.reglages.sources;
+  verifier(s.categories.filter((c) => c.type === "services").map((c) => c.cle).join() === "actus,web,meteo,transports,lieux,wikivoyage"
+           && s.categories.filter((c) => c.type === "donnees").map((c) => c.cle).join() === "saints,fetes,feries",
+    "services et données rangés à part", s.categories.map((c) => [c.cle, c.type]));
+  verifier(/fête/.test(s.categories.find((c) => c.cle === "saints").aujourdhui) && s.categories.find((c) => c.cle === "feries").aujourdhui,
+    "données : ce qu'elles donnent aujourd'hui", s.categories.filter((c) => c.type === "donnees").map((c) => c.aujourdhui));
+  await app("regler", { chemin: "actus.ville", valeur: "Yverdon" });
+  for (const cle of ["actus", "meteo", "transports", "lieux", "wikivoyage"]) {
+    r = await app("outil_tester", { cle: `service:${cle}` });
+    verifier(r.ok && r.donnees.reglages.sources.categories.find((c) => c.cle === cle).test?.ok, `service testé : ${cle}`, r.erreur || r.message);
+  }
+  r = await app("outil_tester", { cle: "service:meteo" });
+  verifier(r.message.includes("°C") && r.message.includes("Yverdon"), "météo : la température chez toi", r.message);
+  verifier((await app("outil_tester", { cle: "service:saints" })).ok === false, "une donnée intégrée ne se teste pas comme un service");
+  // Flux : test (nombre d'articles, le plus récent), média proposé pour le pays.
+  r = await app("rubrique", { formulaire: { titre: "Région", consigne: "Les nouvelles de la région", periode: { type: "toujours" }, sources: ["actus"] } });
+  const region = r.id;
+  r = await app("flux_ajouter", { valeur: `${FAUX}/rss/flux.xml` });
+  const leFlux = r.donnees.reglages.sources.flux.find((f) => f.url.endsWith("/rss/flux.xml"));
+  r = await app("outil_tester", { cle: `flux:${leFlux.id}` });
+  verifier(r.ok && r.message.startsWith("1 article") && r.donnees.reglages.sources.flux.find((f) => f.id === leFlux.id).test?.ok, "flux testé", r.message || r.erreur);
+  verifier(Array.isArray(s.proposes), "médias proposés pour le pays", s.proposes);
+  // Sites de référence : ajout (vérifié), test, choisi par une rubrique, retrait.
+  verifier((await app("site_ajouter", { valeur: "pas une adresse" })).ok === false, "site : il faut une adresse");
+  r = await app("site_ajouter", { valeur: "mort.ch" });
+  verifier(r.ok === false && r.erreur.includes("404"), "site qui ne répond pas : refusé", r.erreur);
+  r = await app("site_ajouter", { valeur: "https://www.labo.ch/actualites" });
+  const site = (await etat()).config.sources.sites[0];
+  verifier(r.ok && site?.domaine === "labo.ch" && site.nom === "Le Labo" && r.donnees.reglages.sources.sites[0].test?.ok, "site ajouté : domaine, nom de la page, testé", site || r.erreur);
+  verifier((await app("site_ajouter", { valeur: "labo.ch" })).ok === false, "même site pas deux fois");
+  r = await app("outil_tester", { cle: `site:${site.id}` });
+  verifier(r.ok && r.message.includes("Le Labo"), "site testé", r.message);
+  r = await app("rubrique", { formulaire: { titre: "Labo", consigne: "Les nouvelles du labo", periode: { type: "toujours" }, sources: [`site:${site.id}`, "agenda:abcdef0123"] } });
+  const labo = r.id;
+  verifier(r.ok && (await etat()).config.regles.find((x) => x.id === labo).recherche.sources.join() === `site:${site.id},agenda:abcdef0123`
+           && r.donnees.reglages.sources.sites[0].rubriques.some((x) => x.id === labo), "une rubrique coche un site et un seul agenda", r.erreur || r.donnees.reglages.sources.sites);
+  r = await app("site_retirer", { id: site.id });
+  verifier(r.ok && !(await etat()).config.sources.sites.length && (await etat()).config.regles.find((x) => x.id === labo).recherche.sources.join() === "agenda:abcdef0123",
+    "site retiré : les rubriques ne le gardent pas");
+  // Agendas : test d'un agenda ajouté dans l'application (nombre d'événements).
+  r = await app("agenda_ajouter", { url: `${FAUX}/ics/perso.ics` });
+  const ag = r.donnees.reglages.agendas.at(-1);
+  r = await app("outil_tester", { cle: `agenda:${ag.id}` });
+  verifier(r.ok && r.message.includes("2 événements") && r.donnees.reglages.sources.agendas[ag.id]?.test?.ok, "agenda testé", r.message || r.erreur);
+  verifier((await app("outil_tester", { cle: "agenda:0000000000" })).ok === false, "agenda inconnu refusé");
+  r = await app("agenda_retirer", { id: ag.id });
+  verifier(r.ok, "agenda retiré");
+  for (const id of [region, labo]) await app("supprimer", { id });
+  await app("flux_retirer", { id: leFlux.id });
+  verifier(s.flux.some((f) => f.nom === "Google Actualités – Suisse" && f.pays === "CH"), "flux du pays présents, marqués de leur pays", s.flux);
+});
+
+await scenario("Données intégrées : mêmes résultats que fetes.py", async () => {
+  const dates = ["2026-10-29", "2026-05-31", "2026-11-27", "2027-03-08", "2026-12-25", "2026-02-10"];
+  const script = `import json, datetime as dt, fetes
+r = {}
+for d in ${JSON.stringify(dates)}:
+    j = dt.date.fromisoformat(d)
+    f = fetes.journees_du_jour(j, "CH")
+    r[d] = {"prenoms": fetes.prenoms_du_jour(j)["principal"], **{k: sorted(e["nom"] for e in v) for k, v in f.items()}}
+print(json.dumps(r, ensure_ascii=False))`;
+  const python = JSON.parse(execFileSync("python3", ["-c", script], { cwd: new URL("../..", import.meta.url).pathname }).toString());
+  const { journeesDuJour, prenomsDuJour } = await import("../src/donnees.js");
+  for (const d of dates) {
+    const f = journeesDuJour(d, "CH");
+    const js = { prenoms: prenomsDuJour(d).principal, ...Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.map((e) => e.nom).sort()])) };
+    verifier(JSON.stringify(js) === JSON.stringify(python[d]), `données du ${d} identiques`, { js, python: python[d] });
+  }
 });
 
 await scenario("Rubriques intégrées : actu locale, déplacements, à creuser", async () => {
@@ -1111,8 +1193,9 @@ await scenario("Réglages › Sources : catégories, flux spécialisés, choix e
   let r = await app("etat");
   const s = r.donnees.reglages.sources;
   const meteo = s.categories.find((c) => c.cle === "meteo");
-  verifier(meteo?.ou.includes("Open-Meteo") && meteo.apporte && s.categories.find((c) => c.cle === "web")?.cle_api === "tavily" && s.medias.length > 0,
-    "chaque catégorie dit où elle cherche ; médias listés", s.categories.map((c) => [c.cle, c.ou]));
+  verifier(meteo?.ou.includes("Open-Meteo") && meteo.apporte && meteo.type === "services" && s.categories.find((c) => c.cle === "web")?.cle_api === "tavily"
+           && s.categories.find((c) => c.cle === "saints")?.type === "donnees" && s.flux.some((f) => f.actualites),
+    "chaque catégorie dit où elle cherche et son onglet ; flux listés", s.categories.map((c) => [c.cle, c.ou, c.type]));
   verifier(r.donnees.modeles.find((m) => m.id === "meteo")?.sources.join() === "meteo" && r.donnees.modeles.find((m) => m.id === "libre")?.sources.length === 0
     && r.donnees.modeles.find((m) => m.id === "rappel")?.sources.join() === "agenda", "modèles : sources par défaut ; rubrique libre : à choisir", r.donnees.modeles.map((m) => [m.id, m.sources]));
   r = await app("rubrique", { formulaire: { titre: "Temps du jour", consigne: "La météo", longueur: "phrase", periode: { type: "toujours" }, sources: ["meteo"] } });
@@ -1128,17 +1211,18 @@ await scenario("Réglages › Sources : catégories, flux spécialisés, choix e
   r = await app("source_coupee", { cle: "meteo", coupee: false });
   verifier(r.ok && !(await etat()).config.sources.coupees.length, "météo de nouveau utilisable");
   verifier((await app("source_coupee", { cle: "inconnue", coupee: true })).ok === false, "catégorie inconnue refusée");
-  // Flux spécialisé : trouvé d'après la page du site, choisi par une rubrique, retiré.
+  // Un flux de plus (pas pour les Actualités globales) : trouvé d'après la page du site, choisi par une rubrique, retiré.
+  const avant = (await etat()).config.sources.flux.length;
   r = await app("flux_ajouter", { valeur: `${FAUX}/site/page.html` });
-  let flux = (await etat()).config.sources.flux;
-  verifier(r.ok && flux.length === 1 && flux[0].url.endsWith("/rss/flux.xml") && /^[0-9a-f]{8}$/.test(flux[0].id), "flux spécialisé ajouté", flux);
+  let flux = (await etat()).config.sources.flux.filter((f) => f.url.endsWith("/rss/flux.xml"));
+  verifier(r.ok && flux.length === 1 && /^[0-9a-z]{8}$/.test(flux[0].id) && !(await etat()).config.actus.flux_lus.includes(flux[0].id), "flux ajouté (pas lu par les Actualités globales)", flux);
   verifier((await app("flux_ajouter", { valeur: `${FAUX}/rss/flux.xml` })).ok === false, "même flux pas deux fois");
   r = await app("rubrique", { formulaire: { titre: "Tech optique", consigne: "Les nouveautés de l'optique", periode: { type: "toujours" }, sources: [`flux:${flux[0].id}`] } });
   const optique = r.id;
-  verifier(r.ok && r.donnees.reglages.sources.flux[0].rubriques.some((x) => x.id === optique), "rubrique qui lit le flux spécialisé", r.erreur || r.donnees.reglages.sources.flux);
+  verifier(r.ok && r.donnees.reglages.sources.flux.find((f) => f.id === flux[0].id).rubriques.some((x) => x.id === optique), "rubrique qui lit le flux", r.erreur || r.donnees.reglages.sources.flux);
   r = await app("flux_retirer", { id: flux[0].id });
   const regle = (await etat()).config.regles.find((x) => x.id === optique);
-  verifier(r.ok && !(await etat()).config.sources.flux.length && !regle.recherche.sources.length, "flux retiré : les rubriques ne le gardent pas", regle.recherche);
+  verifier(r.ok && (await etat()).config.sources.flux.length === avant && !regle.recherche.sources.length, "flux retiré : les rubriques ne le gardent pas", regle.recherche);
   await app("supprimer", { id: optique });
   await app("supprimer", { id });
   // À la voix : une rubrique libre reçoit des sources, et la réponse les dit.
@@ -1458,12 +1542,22 @@ await scenario("Mises à jour depuis le modèle", async () => {
 await scenario("Pays : réglage et reprise des anciennes installations", async () => {
   // Choisir la France : fuseau, devise, médias par défaut et jours fériés suivent.
   const avant = (await etat()).config;
-  await envoyerJson(`${BOT}/test/etat`, { config: { ...avant, actus: { ...avant.actus, flux: null } } });
+  // Une configuration d'avant la réunion des flux : médias du pays (liste non touchée), un flux spécialisé.
+  const vieille = { ...avant, actus: { ...avant.actus, flux: null, flux_lus: undefined }, sources: { coupees: ["agenda"], flux: [{ id: "labo1234", nom: "Labo", url: "https://labo.ch/rss" }] } };
+  const migree = completerConfig(vieille);
+  verifier(migree.sources.flux.length === 4 && migree.actus.flux_lus.length === 3 && !migree.actus.flux_lus.includes("labo1234") && !migree.sources.coupees.length
+           && migree.sources.flux.filter((f) => f.pays === "CH").length === 3, "médias et flux spécialisés réunis ; les médias restent lus par les Actualités globales", migree.sources);
+  const choisie = completerConfig({ ...vieille, actus: { ...vieille.actus, flux: [{ nom: "24 heures", url: "https://www.24heures.ch/rss" }] } });
+  verifier(choisie.sources.flux.map((f) => f.nom).join() === "Labo,24 heures" && choisie.actus.flux_lus.length === 1 && !choisie.sources.flux.some((f) => f.pays),
+    "médias choisis à la main : repris tels quels", choisie.sources.flux);
+  await envoyerJson(`${BOT}/test/etat`, { config: { ...avant, actus: { ...avant.actus, flux: null, flux_lus: undefined } } });
   let r = await app("regler", { chemin: "pays", valeur: "FR" });
   let { config } = await etat();
   verifier(r.ok && config.pays === "FR" && config.planning.feries_region === "FR", "pays France : les fériés suivent", config.planning);
   verifier(r.donnees.devise === "EUR" && r.donnees.reglages.actus.flux.some((f) => f.nom === "franceinfo") && r.donnees.listes.pays.some(([c]) => c === "BE"),
     "devise, médias par défaut et liste des pays", { devise: r.donnees.devise, flux: r.donnees.reglages.actus.flux });
+  verifier(!r.donnees.reglages.sources.flux.some((f) => f.pays === "CH") && r.donnees.reglages.actus.flux.every((f) => f.pays === "FR"),
+    "les médias proposés pour la Suisse laissent la place à ceux de la France", r.donnees.reglages.sources.flux);
   const exp = await (await fetch(`${BOT}/api/config`, { headers: { "X-Podcast-Secret": SECRET } })).json();
   verifier(exp.config.pays === "FR" && exp.flux_defaut.some((f) => f.nom === "franceinfo"), "GitHub reçoit le pays", exp.flux_defaut);
   verifier((await app("regler", { chemin: "pays", valeur: "XX" })).ok === false, "pays inconnu refusé");

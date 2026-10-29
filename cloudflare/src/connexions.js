@@ -123,3 +123,105 @@ export function resumeConnexions(cles = {}, etat = {}, maintenant = Date.now()) 
     secrets_vus: etat.secrets_vus || null,
   };
 }
+
+// ─────────────────────────── tests des outils ───────────────────────────────
+// Réglages › Sources : chaque outil se teste (un service, un flux, un site). Le bot interroge
+// lui-même le service, sans clé ni crédit ; les adresses se remplacent par l'environnement
+// (faux services des tests).
+
+const AGENT = { "User-Agent": "Mozilla/5.0 (podcast-matin)" };
+const ilYa = (date, maintenant) => {
+  const h = Math.max(0, Math.round((maintenant - date) / 3600000));
+  return h < 1 ? "il y a moins d'une heure" : h < 48 ? `il y a ${h} h` : `il y a ${Math.round(h / 24)} jours`;
+};
+
+// Un flux RSS ou Atom : combien d'articles, et de quand date le plus récent.
+export async function testerFlux(url, maintenant = Date.now()) {
+  try {
+    const r = await fetch(url, { headers: { ...AGENT, Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml" }, redirect: "follow", signal: delai(15000) });
+    if (!r.ok) return { ok: false, message: `Le flux ne s'ouvre pas (erreur ${r.status}).` };
+    const texte = (await r.text()).slice(0, 600000);
+    if (!/<rss[\s>]|<feed[\s>]|<rdf:RDF/i.test(texte)) return { ok: false, message: "Cette adresse ne donne plus un flux RSS : le site a peut-être changé son adresse." };
+    const nb = (texte.match(/<item[\s>]|<entry[\s>]/gi) || []).length;
+    const dates = [...texte.matchAll(/<(?:pubDate|updated|published|dc:date)>([^<]+)</gi)].map((m) => Date.parse(m[1].trim())).filter(Number.isFinite);
+    const recent = dates.length ? Math.max(...dates) : null;
+    if (!nb) return { ok: false, message: "Le flux répond, mais il est vide." };
+    const vieux = recent && maintenant - recent > 14 * 24 * 3600000;
+    return { ok: !vieux, message: `${nb} article${nb > 1 ? "s" : ""}${recent ? `, le plus récent ${ilYa(recent, maintenant)}` : ""}.${vieux ? " Plus rien de neuf depuis deux semaines : le flux est peut-être abandonné." : ""}` };
+  } catch (erreur) {
+    return { ok: false, message: `Le flux ne répond pas (${erreur.message}).` };
+  }
+}
+
+// Un site de référence : répond-il, et sous quel titre ?
+export async function testerSite(domaine, base = "") {
+  try {
+    const r = await fetch(base ? `${base}/${domaine}/` : `https://${domaine}/`, { headers: { ...AGENT, Accept: "text/html" }, redirect: "follow", signal: delai(15000) });
+    if (!r.ok) return { ok: false, message: `Le site ne s'ouvre pas (erreur ${r.status}).` };
+    const titre = (/<title[^>]*>([^<]{1,120})</i.exec((await r.text()).slice(0, 200000))?.[1] || "").replace(/\s+/g, " ").trim();
+    return { ok: true, message: `Le site répond${titre ? ` : « ${titre} »` : ""}.`, titre };
+  } catch (erreur) {
+    return { ok: false, message: `Le site ne répond pas (${erreur.message}).` };
+  }
+}
+
+// Adresse d'un site (« labo.ch », « https://www.labo.ch/actus ») ramenée à son domaine.
+export function domaineDe(valeur) {
+  const t = String(valeur || "").trim().toLowerCase();
+  try {
+    return new URL(/^https?:\/\//.test(t) ? t : `https://${t}`).hostname.replace(/^www\./, "");
+  } catch { return ""; }
+}
+
+async function json(url, entetes = {}) {
+  const r = await fetch(url, { headers: { ...AGENT, Accept: "application/json", ...entetes }, signal: delai(15000) });
+  if (!r.ok) throw new Error(`erreur ${r.status}`);
+  return r.json();
+}
+
+// Un service sans clé (Google Actualités, météo, trains, lieux, guides) : une petite question,
+// la réponse dit s'il marche, pour ta ville quand elle est connue.
+export async function testerService(env, cle, { ville = "", profil = {}, pays = "CH" } = {}) {
+  const lieu = ville || profil.exemple_ville || "Lausanne";
+  try {
+    if (cle === "actus") {
+      const url = `${env.ACTUS_API || "https://news.google.com"}/rss/search?q=${encodeURIComponent(`${lieu} when:1d`)}&hl=${profil.actus_langue || "fr"}&gl=${profil.actus_pays || "CH"}&ceid=${profil.actus_pays || "CH"}:${profil.actus_langue || "fr"}`;
+      const r = await fetch(url, { headers: AGENT, signal: delai(15000) });
+      if (!r.ok) return { ok: false, message: `Google Actualités ne répond pas (erreur ${r.status}).` };
+      const nb = ((await r.text()).match(/<item[\s>]/gi) || []).length;
+      return { ok: true, message: `Google Actualités répond : ${nb} article${nb > 1 ? "s" : ""} de moins d'un jour sur « ${lieu} ».` };
+    }
+    if (cle === "meteo") {
+      const g = await json(`${env.GEOCODAGE_API || "https://geocoding-api.open-meteo.com"}/v1/search?name=${encodeURIComponent(lieu)}&count=1&language=fr`);
+      const endroit = (g.results || [])[0];
+      if (!endroit) return { ok: false, message: `Open-Meteo répond, mais ne trouve pas « ${lieu} » : vérifie ta ville dans Réglages › Moi.` };
+      const m = await json(`${env.METEO_API || "https://api.open-meteo.com"}/v1/forecast?latitude=${endroit.latitude}&longitude=${endroit.longitude}&current=temperature_2m`);
+      const t = m.current?.temperature_2m;
+      return { ok: true, message: `Open-Meteo répond${Number.isFinite(t) ? ` : ${String(Math.round(t * 10) / 10).replace(".", ",")} °C en ce moment` : ""} à ${endroit.name}.` };
+    }
+    if (cle === "transports") {
+      if (pays === "BE") {
+        const b = await json(`${env.IRAIL_API || "https://api.irail.be"}/stations/?format=json&lang=fr`);
+        const nb = (b.station || []).length;
+        return { ok: nb > 0, message: nb ? `iRail répond : ${nb} gares belges.` : "iRail répond, mais sans gares." };
+      }
+      if (pays === "FR") return { ok: true, message: "En France, les trains passent par l'API SNCF : teste sa clé ci-dessus." };
+      const c = await json(`${env.TRANSPORT_API || "https://transport.opendata.ch"}/v1/locations?query=${encodeURIComponent(lieu)}&type=station`);
+      const gare = (c.stations || []).find((s) => s.name)?.name;
+      return { ok: Boolean(gare), message: gare ? `CFF (transport.opendata.ch) répond : gare « ${gare} » trouvée.` : `Le service répond, mais ne trouve pas de gare pour « ${lieu} ».` };
+    }
+    if (cle === "lieux") {
+      const w = await json(`${env.WIKI_API || "https://fr.wikipedia.org"}/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(lieu)}&srlimit=1&format=json`);
+      const titre = w.query?.search?.[0]?.title;
+      return { ok: true, message: titre ? `Wikipédia répond : « ${titre} ». OpenStreetMap n'est interrogé qu'au moment d'une recherche.` : "Wikipédia répond." };
+    }
+    if (cle === "wikivoyage") {
+      const w = await json(`${env.WIKIVOYAGE_API || "https://fr.wikivoyage.org"}/w/api.php?action=query&titles=${encodeURIComponent(lieu)}&redirects=1&format=json`);
+      const page = Object.values(w.query?.pages || {})[0];
+      return { ok: true, message: page && !("missing" in page) ? `Wikivoyage répond : il a une page sur ${page.title}.` : `Wikivoyage répond, mais n'a pas de page sur ${lieu}.` };
+    }
+  } catch (erreur) {
+    return { ok: false, message: `Le service ne répond pas (${erreur.message}). Réessaie dans un moment.` };
+  }
+  return { ok: false, message: "Ce service ne se teste pas ici." };
+}

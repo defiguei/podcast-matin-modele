@@ -340,19 +340,21 @@ def lancer(identifiants: list[str], format_: str, effectifs: dict, cle_gemini: s
         regles = [r for r in config.get("regles") or [] if r.get("id") in identifiants]
     if not regles:
         raise p.ErreurPodcast(f"rubrique introuvable ({', '.join(identifiants) or 'aucune'}).")
-    agenda: list[str] = []
-    if any(r.get("condition") or "agenda" in ((r.get("recherche") or {}).get("sources") or []) for r in regles):
+    evenements: list = []
+    lit_agenda = lambda r: r.get("condition") or any(s == "agenda" or str(s).startswith("agenda:")
+                                                     for s in ((r.get("recherche") or {}).get("sources") or []))
+    if any(lit_agenda(r) for r in regles):
         urls = p.separer_urls(os.environ.get("CALENDAR_ICS_URL", ""))
         if essentielles and not urls:
-            raise p.ErreurPodcast("Aucun agenda n'est branché : ajoute-en un dans Réglages › Connexions.")
+            raise p.ErreurPodcast("Aucun agenda n'est branché : ajoute-en un dans Réglages › Sources › Agendas.")
         if urls:
             evenements, _ = p.lire_agendas(urls, effectifs, maintenant, 31)
-            agenda = moteur.agenda_pour_plan(evenements, p.quand_court)
 
     def demander(systeme: str, entree: str, schema: dict) -> dict:
         return p.demander_json(systeme, entree, schema, effectifs["modeles_rapides"], cle_gemini, delai=90, tours=1)[0]
 
-    plans = moteur.planifier(regles, agenda, jour, ville, demander)
+    # Chaque rubrique ne voit que ses agendas (tous, ou ceux cochés dans sa fiche).
+    plans, agendas = moteur.planifier_par_agendas(regles, evenements, p.quand_court, jour, ville, demander)
     sources = Sources(os.environ.get("TAVILY_API_KEY", ""))
 
     def actus(requete: str) -> list[str]:
@@ -374,7 +376,7 @@ def lancer(identifiants: list[str], format_: str, effectifs: dict, cle_gemini: s
             return [a.titre + (f" : {a.resume}" if a.resume else "") for a in p.lire_flux_specialise(flux, maintenant, jours=14)]
 
         collecte = moteur.collecter(regle_large, plan, sources, jour, ville, actus, profondeur=2,
-                                    config=config, lire_flux=flux_specialise, agenda=agenda)
+                                    config=config, lire_flux=flux_specialise, agenda=agendas.get(regle["id"], []))
         if essentielles and regle["id"] == "actualites":
             ajouter_medias(collecte, effectifs, maintenant)
         if point or ecrit_essentielle:      # un état des lieux : pas d'idées à trouver

@@ -16,7 +16,7 @@ import {
   nettoyerListe, LONGUEUR_CONSIGNE, normaliserTexte, etatRegle, decrirePeriode, nomRubrique, jourDeSemaine,
   heureParlee, dateCourte, nettoyerPlanning, fluxActus, profilPays, MODELES_RUBRIQUES,
   nomVoix, voixActive, trouverVoix, renommerVoix, activerVoix, choisirVoixJour,
-  INFOS_SOURCES, sourcesAuto, sourcesUtilisables, nomSource, RENDUS, minutesPoint, formatRecherche,
+  INFOS_SOURCES, sourcesAuto, sourcesUtilisables, nomSource, RENDUS, minutesPoint, formatRecherche, sourceConnue,
 } from "./config.js";
 import { formulaireNeuf, formulaireDepuisRegle, enregistrerRubrique, PERIODES } from "./miniapp.js";
 
@@ -87,7 +87,7 @@ export function schemaOperations() {
                 condition_n: { type: "number" },
                 place: decrit(texte, "Clé de la rubrique (ou id R…) après laquelle elle passe."),
                 longueur: { type: "string", enum: LONGUEURS_FORMULAIRE },
-                sources: { type: "array", items: { type: "string", enum: Object.keys(SOURCES) } },
+                sources: decrit({ type: "array", items: { type: "string" } }, "Catégories (actus, web…) ou outils de l'auditeur (flux:…, site:…, agenda:…), parmi ceux listés."),
                 requetes: listeTextes,
                 quoi: texte, avec_qui: texte, ages: texte, ou: texte, quand: texte,
                 transport: { type: "string", enum: Object.keys(TRANSPORTS) },
@@ -135,7 +135,7 @@ OPÉRATIONS (champ « action ») :
 - nommer_voix : donne un prénom à une voix (chaque voix est un animateur possible, appelé par ce prénom). id = la voix ou son prénom actuel ; valeur = le nouveau prénom (vide : elle reprend son nom de voix).
 - activer_voix / desactiver_voix : id = la voix ou son prénom. Une voix désactivée n'anime plus aucun épisode.
 - voix_jour : qui présente certains jours de la semaine (mode « selon le jour », chemin voix.mode = jours). jours = codes ; ids = une ou deux voix ou prénoms (vide : les animateurs habituels).
-- ajouter_source : valeur = nom du média ou adresse de son flux RSS. retirer_source : valeur = nom de la source (sources par défaut : ${fluxActus({ ...config, actus: {} }).map((f) => f.nom).join(", ")}).
+- ajouter_source : un média de plus pour les Actualités globales ; valeur = nom du média ou adresse de son flux RSS. retirer_source : les Actualités globales ne le lisent plus ; valeur = nom du flux (ils lisent : ${fluxActus(config).map((f) => f.nom).join(", ") || "rien"}).
 - nouvel_episode : REFAIT l'épisode du jour en entier. Seulement si l'auditeur demande explicitement un nouvel épisode ou de refaire son podcast du jour. ids = rubriques à traiter spécialement (facultatif).
 - resultats : relancer tout de suite la recherche d'une ou plusieurs rubriques existantes. ids, format = "ecrit" ou "audio".
 - assistant : l'auditeur veut organiser une activité ou une sortie mais il manque des informations (qui, où, quand, transport, budget…). valeur = son message résumé. N'utilise PAS nouvelle_regle dans ce cas.
@@ -156,6 +156,11 @@ Le modèle règle déjà la place, la longueur et les sources : ne remplis que c
 - condition_texte : si la rubrique dépend de l'agenda (« un match de foot ») ; condition_moment : jour_meme | veille | jours_avant (+ condition_n)
 - place : clé ou id après lequel elle passe (seulement si l'auditeur le dit) ; longueur : ${LONGUEURS_FORMULAIRE.join(" | ")} (aucune = glissée dans l'épisode, sans passage à elle)
 - sources : où la rubrique cherche son contenu, au moins une, d'après le sujet (le modèle en a déjà par défaut : n'en donne que si l'auditeur en cite ou si le sujet en demande d'autres). Choix : ${Object.keys(SOURCES).filter((s) => !(config.sources?.coupees || []).includes(s)).map((s) => `${s} (${SOURCES[s]} : ${INFOS_SOURCES[s].apporte.replace(/\.$/, "")})`).join(" ; ")}
+  Ses outils, quand il les nomme (« avec le flux du labo », « seulement mon agenda Sport ») : ${[
+    ...(config.sources?.flux || []).map((f) => `flux:${f.id} (flux « ${f.nom} »)`),
+    ...(config.sources?.sites || []).map((x) => `site:${x.id} (site ${x.nom}, ${x.domaine} : la recherche web s'y limite)`),
+    ...(ctx.agendas || []).map((a) => `agenda:${a.id} (seulement l'agenda « ${a.nom} » ; « agenda » = tous)`),
+  ].join(" ; ") || "aucun"}
 - requetes : recherches web utiles (courtes)
 - pour une activité ou une sortie : quoi, avec_qui, ages, ou, quand, transport, budget_max, budget_unite (personne | total), budget_transport_inclus, inclure, exclure, attendu, jours_avant (combien de jours avant en parler)
 - importance : normale | prioritaire
@@ -175,7 +180,7 @@ export function contexteComprehension(config, ctx) {
   const planning = JOURS.map((j) => `${j} ${config.planning.jours[j] || "aucun"}`).join(", ");
   const sujets = ctx.dernierEpisode?.sujets?.map((s, i) => `${i + 1}. ${s}`).join("; ") || "(pas encore d'épisode)";
   return `RÉGLAGES ACTUELS (JSON) :
-${JSON.stringify({ format: config.format, voix: config.voix, agenda: config.agenda, actus: { ...config.actus, flux: (config.actus.flux || []).map((f) => f.nom) }, consignes: config.consignes, consignes_rubriques: config.consignes_rubriques })}
+${JSON.stringify({ format: config.format, voix: config.voix, agenda: config.agenda, actus: { ...config.actus, flux_lus: fluxActus(config).map((f) => f.nom) }, consignes: config.consignes, consignes_rubriques: config.consignes_rubriques })}
 Planning : ${planning}. Rattrapage : ${config.planning.rattrapage ? `${config.planning.delai_rattrapage} min après l'heure prévue` : "désactivé"}. Exceptions : ${JSON.stringify(config.planning.exceptions)}. Pauses : ${JSON.stringify(config.planning.pauses)}.
 Déroulé : ${config.deroule.map((r) => `${r.cle}${r.actif ? "" : " (désactivé)"}`).join(" → ")}
 Rubriques :
@@ -221,7 +226,7 @@ export function completerFormulaire(f, r = {}, texte = "") {
   else if ((rempli(place) || rempli(r.rubrique_titre)) && f.longueur === "aucune") f.longueur = "courte";   // une place dite = un passage
   // Sources : celles que Gemini donne remplacent (modification) ; une nouvelle rubrique les
   // ajoute à celles de son modèle (nouvelleRubrique).
-  const sources = (Array.isArray(r.sources) ? r.sources : []).filter((s) => SOURCES[s]);
+  const sources = (Array.isArray(r.sources) ? r.sources : []).filter(sourceConnue);
   if (sources.length) f.sources = sources;
   // Détails d'une sortie ou d'une recherche.
   for (const cle of ["quoi", "avec_qui", "ages", "ou", "quand", "attendu"]) if (rempli(r[cle])) f.fiche[cle] = String(r[cle]).trim();
@@ -596,14 +601,18 @@ function appliquerUne(config, op, ctx) {
       return { action: { type: "ajouter_source", valeur } };
     }
     case "retirer_source": {
+      // Les Actualités globales ne le lisent plus ; s'il ne sert à aucune rubrique, il quitte la liste.
       const nom = normaliserTexte(op.valeur);
       if (!nom) throw new Error("quelle source ?");
       const flux = fluxActus(config);
-      const restants = flux.filter((f) => !normaliserTexte(f.nom).includes(nom));
-      if (restants.length === flux.length) throw new Error("source introuvable");
-      if (!restants.length) throw new Error("garde au moins une source");
-      config.actus.flux = restants;
-      return { changement: `Source retirée : ${op.valeur}` };
+      const retires = flux.filter((f) => normaliserTexte(f.nom).includes(nom));
+      if (!retires.length) throw new Error("source introuvable");
+      if (retires.length === flux.length) throw new Error("garde au moins une source");
+      const ids = new Set(retires.map((f) => f.id));
+      const servis = new Set(config.regles.flatMap((r) => r.recherche?.sources || []));
+      config.actus.flux_lus = config.actus.flux_lus.filter((id) => !ids.has(id));
+      config.sources.flux = config.sources.flux.filter((f) => !ids.has(f.id) || servis.has(`flux:${f.id}`));
+      return { changement: `Source retirée : ${retires.map((f) => f.nom).join(", ")}` };
     }
     case "nouvel_episode":
       return { action: { type: "nouvel_episode", ids: (op.ids || []).map(identifiantRegle) } };

@@ -8,8 +8,9 @@ import {
   VOIX, VOIX_CONSEILLEES, VITESSES, TONS, DESCRIPTIONS_TONS, CONSIGNES_PRETES, CONSIGNES_PRETES_RUBRIQUES, CHEMINS_CONSIGNES, TRANSPORTS, fluxActus, profilPays, PAYS, DELAIS_RATTRAPAGE,
   DEVISES, CANTONS, MODES_VOIX, sourcesAuto, estFerie, nomFerie, animateursDuJour, placesDuJour, normaliserTexte,
   jourDeSemaine, MODELES_RUBRIQUES, CATEGORIES_RUBRIQUES, catalogueRubriques, nouvelleRegle, modifierRegle,
-  INFOS_SOURCES, sourceConnue, sourcesUtilisables, RENDUS, minutesPoint,
+  INFOS_SOURCES, sourceConnue, sourcesUtilisables, RENDUS, minutesPoint, RANGEMENT_SOURCES, fluxProposes, MAX_SOURCES_RUBRIQUE,
 } from "./config.js";
+import { apercuDonnees } from "./donnees.js";
 
 const DUREE_VALIDITE = 24 * 3600;      // un lien audio reste valable 24 h
 const MOIS_CALENDRIER = 12;            // le planning se feuillette jusqu'à un an à l'avance
@@ -119,15 +120,25 @@ function regleVisible(r, aujourdHui) {
   };
 }
 
-// Réglages › Sources : chaque catégorie, où elle cherche et qui l'utilise ; les médias et
-// les flux spécialisés.
-function sourcesVisibles(config) {
+// Réglages › Sources, rangé par type d'outil : services (avec leur clé), flux, sites, agendas,
+// données intégrées. Pour chacun : ce qu'il apporte, qui l'utilise et son dernier test.
+function sourcesVisibles(config, etat, aujourdHui) {
   const coupees = config.sources?.coupees || [];
+  const tests = etat.tests_outils || {};
   const qui = (s) => config.regles.filter((r) => (r.recherche?.sources || []).includes(s)).map((r) => ({ id: r.id, titre: r.titre }));
+  const lus = new Set(config.actus.flux_lus || []);
+  const apercu = apercuDonnees(config, aujourdHui);
+  const categories = Object.entries(SOURCES).map(([cle, nom]) => ({ cle, nom, ...INFOS_SOURCES[cle], type: RANGEMENT_SOURCES[cle],
+    coupee: coupees.includes(cle), rubriques: qui(cle), test: tests[`service:${cle}`] || null, aujourdhui: apercu[cle] || null }));
+  const urls = new Set((config.sources?.flux || []).map((f) => f.url));
   return {
-    categories: Object.entries(SOURCES).map(([cle, nom]) => ({ cle, nom, ...INFOS_SOURCES[cle], coupee: coupees.includes(cle), rubriques: qui(cle) })),
-    flux: (config.sources?.flux || []).map((f) => ({ ...f, cle: `flux:${f.id}`, rubriques: qui(`flux:${f.id}`) })),
-    medias: fluxActus(config), medias_defaut: !config.actus.flux,
+    categories,
+    flux: (config.sources?.flux || []).map((f) => ({ ...f, cle: `flux:${f.id}`, actualites: lus.has(f.id), rubriques: qui(`flux:${f.id}`), test: tests[`flux:${f.id}`] || null })),
+    proposes: fluxProposes(config).filter((f) => !urls.has(f.url)),
+    sites: (config.sources?.sites || []).map((x) => ({ ...x, cle: `site:${x.id}`, rubriques: qui(`site:${x.id}`), test: tests[`site:${x.id}`] || null })),
+    // Agendas : les rubriques qui n'en lisent qu'un, et le dernier test de chacun.
+    agendas: Object.fromEntries((etat.agendas || []).map((a) => [a.id, { rubriques: qui(`agenda:${a.id}`), test: tests[`agenda:${a.id}`] || null }])),
+    agenda_tous: qui("agenda"),
   };
 }
 
@@ -207,11 +218,11 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
               // Mode « selon le jour » : les deux voix de chaque jour (habituels aux places vides).
               jours: Object.fromEntries(JOURS.map((j) => [j, placesDuJour(config.voix, j)])),
               du_prochain: animateursDuJour(config, prochain?.date || aujourdHui) },
-      actus: { ...config.actus, flux: fluxActus(config), flux_defaut: !config.actus.flux },
+      actus: { ...config.actus, flux: fluxActus(config) },
       agenda: config.agenda, agendas: (etat.agendas || []).filter((x) => !(config.agenda.retires || []).includes(x.id)),
       agendas_retires: (etat.agendas || []).filter((x) => (config.agenda.retires || []).includes(x.id)), agendas_vus: etat.agendas_vus || null,
       consignes: config.consignes, consignes_rubriques: config.consignes_rubriques, a_approfondir: config.a_approfondir.map((a) => a.sujet),
-      sources: sourcesVisibles(config),
+      sources: sourcesVisibles(config, etat, aujourdHui),
       echantillons: liens.voix, temps_echantillons: etat.temps_echantillons || {},
     },
     regles: config.regles.map((r) => regleVisible(r, aujourdHui)),
@@ -275,7 +286,7 @@ export function champsDepuisFormulaire(f, ancienne, aujourdHui, devise = "CHF", 
   // (sources_auto) reçoivent les sources proposées d'après le sujet.
   const sources = f.sources_auto && !(f.sources || []).length
     ? sourcesAuto({ titre, consigne, fiche: f.fiche || {}, condition: f.condition && f.condition.texte ? f.condition : null }, config)
-    : nettoyerListe(f.sources, 15).filter(sourceConnue);
+    : nettoyerListe(f.sources, MAX_SOURCES_RUBRIQUE).filter(sourceConnue);
   if (!sourcesUtilisables(sources, config).length) {
     throw new Error("Choisis au moins une source dans « Où elle cherche » : c'est là que la rubrique trouve son contenu.");
   }

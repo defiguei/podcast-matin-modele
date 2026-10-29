@@ -12,7 +12,10 @@ import { fileURLToPath } from "node:url";
 const racine = fileURLToPath(new URL("..", import.meta.url));
 const variables = {
   GEMINI_API: "http://127.0.0.1:8790/gemini", GITHUB_API: "http://127.0.0.1:8790/gh", FERIES_API: "http://127.0.0.1:8790/nager",
-  TAVILY_API: "http://127.0.0.1:8790/tavily", SNCF_API: "http://127.0.0.1:8790/sncf", MODELE: "auteur/modele", MODELE_BRUT: "http://127.0.0.1:8790/brut",
+  TAVILY_API: "http://127.0.0.1:8790/tavily", SNCF_API: "http://127.0.0.1:8790/sncf",
+  ACTUS_API: "http://127.0.0.1:8790/actus", GEOCODAGE_API: "http://127.0.0.1:8790/geo", METEO_API: "http://127.0.0.1:8790/meteo",
+  TRANSPORT_API: "http://127.0.0.1:8790/cff", IRAIL_API: "http://127.0.0.1:8790/irail", WIKI_API: "http://127.0.0.1:8790/wiki",
+  WIKIVOYAGE_API: "http://127.0.0.1:8790/wikivoyage", SITES_API: "http://127.0.0.1:8790/sites", MODELE: "auteur/modele", MODELE_BRUT: "http://127.0.0.1:8790/brut",
   MODE_TEST: "1", GITHUB_TOKEN: "gh-test", GEMINI_API_KEY: "gem-test", ADRESSE: "http://127.0.0.1:8799",
 };
 const fichierVars = join(racine, ".dev.vars");

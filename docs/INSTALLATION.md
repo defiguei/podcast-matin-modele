@@ -68,7 +68,7 @@ Code expiré ? Onglet **Actions** → *Code de connexion* → *Run workflow* : u
 
 Le premier lancement te guide en cinq étapes : ton prénom, ta ville et ton pays, l'heure de l'épisode, ton agenda (adresse secrète iCal de Google Agenda ou d'Outlook), et ta **clé Gemini** ([aistudio.google.com/apikey](https://aistudio.google.com/apikey) → *Create API key*). Touche enfin **Générer mon premier épisode**.
 
-Ensuite, tout se règle dans l'application : rubriques (onglet Épisode), horaires (Planning), voix, style, clés (Réglages › Connexions). Dans **Réglages › Application**, mets l'interrupteur de **notifications** de ton téléphone pour être prévenu chaque matin, et, si tu veux, le **flux privé** pour ton appli de podcasts. La clé **Tavily** (facultative, gratuite sur app.tavily.com) améliore les idées de sortie.
+Ensuite, tout se règle dans l'application : rubriques (onglet Épisode), horaires (Planning), voix, style, sources et clés (Réglages › Sources), clé Gemini (Réglages › Gemini). Dans **Réglages › Application**, mets l'interrupteur de **notifications** de ton téléphone pour être prévenu chaque matin, et, si tu veux, le **flux privé** pour ton appli de podcasts. La clé **Tavily** (facultative, gratuite sur app.tavily.com) améliore les idées de sortie.
 
 > Facultatif : range aussi ta clé Gemini en secret GitHub `GEMINI_API_KEY`. Si le bot était un jour injoignable, le filet de sécurité de GitHub pourrait quand même fabriquer l'épisode.
 
@@ -83,7 +83,7 @@ Ensuite, tout se règle dans l'application : rubriques (onglet Épisode), horair
 | Le bot ne semble pas activé après le déploiement | Ouvre `https://podcast.xxx.workers.dev/installer` dans ton navigateur. |
 | *Déployer le bot* signale un secret manquant | Ajoute le secret nommé (étape 3), puis relance *Déployer le bot*. |
 | Pas d'épisode | Onglet *Actions* → l'exécution en rouge → lis le message en haut. |
-| « La clé Gemini manque » ou « est refusée » | Réglages › Connexions : colle la clé, touche *Tester*. |
+| « La clé Gemini manque » ou « est refusée » | Réglages › Gemini : colle la clé, touche *Tester*. |
 | « agenda inaccessible » | L'adresse iCal a changé : retire l'agenda et ajoute la nouvelle. |
 | Tu as changé le jeton `BOT_GITHUB_TOKEN` | Relance *Déployer le bot* pour que le bot reçoive le nouveau. |
 | Une mise à jour ne touche pas aux fichiers d'automatisation | Le jeton GitHub du bot n'a pas la permission *Workflows* : voir [MISE-A-JOUR.md](MISE-A-JOUR.md). |

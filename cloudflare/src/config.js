@@ -13,9 +13,23 @@ export function profilPays(config) {
   // Sans pays, l'heure reste celle du pays choisi avant (config.fuseau), sinon celle de la Suisse.
   return config?.pays === SANS_PAYS ? { ...profil, fuseau: config.fuseau || PAYS[PAYS_DEFAUT].fuseau } : profil;
 }
-// Médias par défaut : ceux du pays choisi (tant que la liste n'a pas été modifiée).
+// Les flux lus par les Actualités globales (cochés dans leur fiche, parmi tous tes flux).
 export function fluxActus(config) {
-  return config?.actus?.flux || profilPays(config).flux;
+  const lus = new Set(config?.actus?.flux_lus || []);
+  return (config?.sources?.flux || []).filter((f) => lus.has(f.id));
+}
+// Les médias proposés pour le pays choisi (Réglages › Sources › Flux, « Proposés pour ton pays »).
+export function fluxProposes(config) {
+  return profilPays(config).flux || [];
+}
+// Identifiant court et stable d'un flux, d'un site… (8 caractères, calculé sans attendre).
+export function idCourt(texte) {
+  let a = 0x811c9dc5, b = 0x01000193;
+  for (const c of String(texte)) {
+    a = Math.imul(a ^ c.codePointAt(0), 0x01000193) >>> 0;
+    b = Math.imul(b ^ c.codePointAt(0), 0x811c9dc5) >>> 0;
+  }
+  return (a.toString(36) + b.toString(36)).replace(/[^0-9a-z]/g, "").padEnd(8, "0").slice(0, 8);
 }
 
 export const JOURS = ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"];
@@ -74,8 +88,10 @@ export const CONSIGNES_PRETES_RUBRIQUES = {
 };
 export const LONGUEURS = { phrase: "une phrase", courte: "courte", developpee: "développée" };
 // Où une rubrique va chercher son contenu. Chaque catégorie dit ce qu'elle apporte et où
-// elle cherche (Réglages › Sources) ; une rubrique en coche au moins une. Les flux
-// spécialisés de l'auditeur s'y ajoutent sous la forme « flux:<id> ».
+// elle cherche (Réglages › Sources) ; une rubrique en coche au moins une. Les outils de
+// l'auditeur s'y ajoutent un par un : « flux:<id> » (flux RSS), « site:<id> » (site de
+// référence, où la recherche web se limite) et « agenda:<id> » (un seul de ses agendas ;
+// « agenda » seul = tous).
 export const SOURCES = {
   actus: "Google Actualités", web: "Recherche web", meteo: "Météo", transports: "Trains",
   lieux: "Lieux", wikivoyage: "Guides de voyage", saints: "Prénoms du jour", fetes: "Journées et fêtes",
@@ -91,29 +107,41 @@ export const INFOS_SOURCES = {
   wikivoyage: { apporte: "Ce qu'il faut savoir d'une ville ou d'une région à visiter.", ou: "Wikivoyage (fr.wikivoyage.org)" },
   saints: { apporte: "Le prénom fêté aujourd'hui, et les autres prénoms du jour.", ou: "Calendrier des prénoms intégré au podcast (sans connexion)" },
   fetes: { apporte: "Les journées mondiales, fêtes nationales et usages du jour (Suisse, France, Belgique).", ou: "Données intégrées au podcast : ONU, fêtes nationales, usages (sans connexion)" },
-  feries: { apporte: "Les jours fériés des deux semaines à venir.", ou: "Calendrier de ta région (Planning › Jours fériés)", aussi: "Planning (horaire des jours fériés)" },
-  agenda: { apporte: "Les événements de tes agendas : un rappel selon l'agenda s'en sert.", ou: "Tes liens iCal (fiche Agenda)", aussi: "Agenda, Mes déplacements" },
+  feries: { apporte: "Les jours fériés des deux semaines à venir.", ou: "Calendrier de ton pays (et de ton canton en Suisse), réglé dans Réglages › Moi", aussi: "Planning (horaire des jours fériés)" },
+  agenda: { apporte: "Les événements de tous tes agendas : un rappel selon l'agenda s'en sert.", ou: "Tes liens iCal (Réglages › Sources › Agendas)", aussi: "Agenda, Mes déplacements" },
 };
-export const MAX_FLUX_SPECIALISES = 15;
-const FLUX_ID = /^flux:[0-9a-z]{4,16}$/;
+// Rangement de Réglages › Sources : les services qu'on interroge, les données intégrées au
+// podcast (sans réseau) et les agendas (gérés un par un dans leur onglet).
+export const RANGEMENT_SOURCES = {
+  actus: "services", web: "services", transports: "services", meteo: "services", lieux: "services", wikivoyage: "services",
+  saints: "donnees", fetes: "donnees", feries: "donnees", agenda: "agendas",
+};
+export const MAX_FLUX = 30;
+export const MAX_SITES = 15;
+export const MAX_SOURCES_RUBRIQUE = 25;
+const OUTIL_ID = /^(flux|site):[0-9a-z]{4,16}$/;
+const AGENDA_ID = /^agenda:[0-9a-f]{10}$/;
 
-// Une source qu'une rubrique peut cocher : une catégorie, ou un flux spécialisé.
+// Une source qu'une rubrique peut cocher : une catégorie, un de ses flux, sites ou agendas.
 export function sourceConnue(s) {
-  return Boolean(SOURCES[s]) || FLUX_ID.test(String(s));
+  return Boolean(SOURCES[s]) || OUTIL_ID.test(String(s)) || AGENDA_ID.test(String(s));
 }
 
-// Les sources d'une rubrique réellement lues : sans les catégories coupées ni les flux retirés.
+// Les sources d'une rubrique réellement lues : sans les catégories coupées ni les flux ou sites
+// retirés (un agenda retiré est enlevé des rubriques au moment où on le retire).
 export function sourcesUtilisables(sources, config) {
   const coupees = new Set(config?.sources?.coupees || []);
-  const flux = new Set((config?.sources?.flux || []).map((f) => `flux:${f.id}`));
-  return (sources || []).filter((s) => SOURCES[s] ? !coupees.has(s) : flux.has(s));
+  const outils = new Set([...(config?.sources?.flux || []).map((f) => `flux:${f.id}`), ...(config?.sources?.sites || []).map((x) => `site:${x.id}`)]);
+  return (sources || []).filter((s) => SOURCES[s] ? !coupees.has(s) : AGENDA_ID.test(s) || outils.has(s));
 }
 
-// Nom lisible d'une source (catégorie ou flux spécialisé).
-export function nomSource(s, config) {
+// Nom lisible d'une source (catégorie, flux, site ou agenda ; « agendas » : ceux que le bot connaît).
+export function nomSource(s, config, agendas = []) {
   if (SOURCES[s]) return SOURCES[s];
-  const flux = (config?.sources?.flux || []).find((f) => `flux:${f.id}` === s);
-  return flux ? flux.nom : "flux retiré";
+  const [type, id] = String(s).split(":");
+  if (type === "agenda") { const a = agendas.find((x) => x.id === id); return a ? `Agenda « ${a.nom} »` : "un de tes agendas"; }
+  const outil = (config?.sources?.[type === "site" ? "sites" : "flux"] || []).find((x) => x.id === id);
+  return outil ? outil.nom : type === "site" ? "site retiré" : "flux retiré";
 }
 export const TRANSPORTS = { voiture: "🚗 Voiture", train: "🚆 Train", velo: "🚲 Vélo", pied: "🚶 À pied", peu_importe: "Peu importe", aucun: "Pas de transport" };
 export const DEVISES = [...new Set(["CHF", "EUR", "USD", "GBP", ...Object.values(PROFILS_PAYS).map((p) => p.devise)])];
@@ -204,6 +232,31 @@ export const VOIX_CONSEILLEES = ["Aoede", "Kore", "Leda", "Sulafat", "Puck", "Ch
 export const MAX_PRENOM = 20;   // prénom donné à une voix
 
 
+// Les médias proposés pour un pays, en flux de la liste (marqués de leur pays).
+function fluxDuPays(code) {
+  return (PAYS[code]?.flux || []).map((f) => ({ id: idCourt(`flux:${f.url}`), nom: String(f.nom).slice(0, 60), url: f.url, pays: code }));
+}
+
+// Changer de pays : les médias proposés pour l'ancien pays, gardés tels quels, laissent la place
+// à ceux du nouveau (et restent si une rubrique les a choisis).
+function suivrePays(config, ancien, nouveau) {
+  const choisis = new Set(config.regles.flatMap((r) => r.recherche?.sources || []));
+  const lus = new Set(config.actus.flux_lus || []);
+  const garde = [];
+  for (const f of config.sources.flux) {
+    if (f.pays !== ancien) garde.push(f);
+    else if (choisis.has(`flux:${f.id}`)) { garde.push({ id: f.id, nom: f.nom, url: f.url }); lus.delete(f.id); }
+    else lus.delete(f.id);
+  }
+  for (const f of fluxDuPays(nouveau)) {
+    const deja = garde.find((x) => x.url === f.url);
+    if (deja) lus.add(deja.id);
+    else if (garde.length < MAX_FLUX) { garde.push(f); lus.add(f.id); }
+  }
+  config.sources.flux = garde;
+  config.actus.flux_lus = [...lus];
+}
+
 // Une liste de consignes par rubrique fournie (Agenda, Actualités globales…).
 export function consignesRubriquesVides() {
   return Object.fromEntries(Object.keys(RUBRIQUES).map((cle) => [cle, []]));
@@ -244,11 +297,12 @@ export function configParDefaut() {
               max_deplacements: 2, exclus: [], retires: [] },
     // Actualités globales et Actu locale se règlent de la même façon : thèmes préférés et à
     // éviter, âge maximum des nouvelles, nombre de sujets racontés et d'articles lus.
-    actus: { ville: "", sujets_preferes: [], sujets_a_eviter: [], flux: null, fraicheur_heures: 36, articles: 30,
+    actus: { ville: "", sujets_preferes: [], sujets_a_eviter: [], flux_lus: fluxDuPays(PAYS_DEFAUT).map((f) => f.id), fraicheur_heures: 36, articles: 30,
              locale_sujets: 2, locale_articles: 3, locale_fraicheur_heures: 168, locale_preferes: [], locale_a_eviter: [] },
-    // Réglages › Sources : catégories coupées (aucune rubrique ne les lit) et flux RSS
-    // spécialisés qu'une rubrique peut choisir ([{ id, nom, url }]).
-    sources: { coupees: [], flux: [] },
+    // Réglages › Sources : catégories coupées (aucune rubrique ne les lit), tous les flux RSS
+    // ([{ id, nom, url, pays? }] ; « pays » : proposé pour ce pays, il suit un changement de pays)
+    // et les sites de référence ([{ id, nom, domaine }]).
+    sources: { coupees: [], flux: fluxDuPays(PAYS_DEFAUT), sites: [] },
     consignes: [],                                // consignes de style, pour tout l'épisode
     consignes_rubriques: consignesRubriquesVides(), // consignes propres à chaque rubrique fournie
     a_approfondir: [],
@@ -360,6 +414,7 @@ export function regler(config, chemin, valeurBrute) {
     const canton = String(config.planning.feries_region || "");
     config.planning.feries_region = valeur === "CH" ? (canton.startsWith("CH-") ? canton : "CH-VD") : profilPays(config).feries;
     config.planning.feries_cache = {};
+    suivrePays(config, ancienPays, valeur);
   }
   // Un thème à éviter n'est plus un thème préféré (de la même rubrique).
   const preferes = { "actus.sujets_a_eviter": "sujets_preferes", "actus.locale_a_eviter": "locale_preferes" }[chemin];
@@ -427,7 +482,7 @@ export function normaliserRegle(r) {
       inclure: nettoyerListe(fiche.inclure, 8), exclure: nettoyerListe(fiche.exclure, 8),
       attendu: texteCourt(120)(fiche.attendu),
     },
-    sources: nettoyerListe(r.recherche.sources, 15).filter(sourceConnue),
+    sources: nettoyerListe(r.recherche.sources, MAX_SOURCES_RUBRIQUE).filter(sourceConnue),
     requetes: nettoyerListe(r.recherche.requetes, 6),
     // Ce qu'une recherche ponctuelle rend : « point » = un podcast qui fait l'état des lieux
     // d'un sujet (durée en minutes) ; « idees » = des idées concrètes (sorties, activités…).
@@ -656,7 +711,11 @@ export const FERIES_CALCULES = ["CH-VD", "FR", "--"];
 
 export function nomFerie(planning, dateIso) {
   const region = planning?.feries_region || "CH-VD";
-  if (region === "CH-VD") return estFerieVaud(dateIso) ? "férié" : null;
+  if (region === "CH-VD") {
+    const annee = Number(dateIso.slice(0, 4)), paques = datePaques(annee);
+    const premier = new Date(Date.UTC(annee, 8, 1)), premierDimanche = 1 + ((7 - premier.getUTCDay()) % 7);
+    return nomsFeriesVaud(annee, (n) => ajouterJours(paques, n), `${annee}-09-${String(premierDimanche + 15).padStart(2, "0")}`).get(dateIso) || null;
+  }
   if (region === SANS_PAYS) return null;
   if (region === "FR") return feriesFrance(Number(dateIso.slice(0, 4))).get(dateIso) || null;
   const liste = planning.feries_cache?.[dateIso.slice(0, 4)] || [];
@@ -864,8 +923,13 @@ export function feriesVaud(annee) {
   const premier = new Date(Date.UTC(annee, 8, 1));
   const premierDimanche = 1 + ((7 - premier.getUTCDay()) % 7);
   const jeune = `${annee}-09-${String(premierDimanche + 14 + 1).padStart(2, "0")}`;
-  return new Set([`${annee}-01-01`, `${annee}-01-02`, decale(-2), decale(1), decale(39), decale(50),
-                  `${annee}-08-01`, jeune, `${annee}-12-25`]);
+  return new Set(nomsFeriesVaud(annee, decale, jeune).keys());
+}
+
+function nomsFeriesVaud(annee, decale, jeune) {
+  return new Map([[`${annee}-01-01`, "Nouvel an"], [`${annee}-01-02`, "Saint-Berchtold"], [decale(-2), "Vendredi saint"],
+    [decale(1), "Lundi de Pâques"], [decale(39), "Ascension"], [decale(50), "Lundi de Pentecôte"], [`${annee}-08-01`, "Fête nationale"],
+    [jeune, "Lundi du Jeûne fédéral"], [`${annee}-12-25`, "Noël"]]);
 }
 
 // Jours fériés de France (métropole).
@@ -877,7 +941,7 @@ export function feriesFrance(annee) {
     [`${annee}-08-15`, "Assomption"], [`${annee}-11-01`, "Toussaint"], [`${annee}-11-11`, "Armistice 1918"], [`${annee}-12-25`, "Noël"]]);
 }
 
-function datePaques(annee) {
+export function datePaques(annee) {
   const a = annee % 19, b = Math.floor(annee / 100), c = annee % 100, d = Math.floor(b / 4), e = b % 4;
   const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
   const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
@@ -930,16 +994,46 @@ export function cloner(objet) {
   return JSON.parse(JSON.stringify(objet));
 }
 
-function completerSources(sources) {
-  const vus = new Set();
-  return {
-    coupees: nettoyerListe(sources?.coupees, 20).filter((s) => SOURCES[s]),
-    flux: (Array.isArray(sources?.flux) ? sources.flux : [])
-      .filter((f) => f && /^[0-9a-z]{4,16}$/.test(f.id) && /^https?:\/\//i.test(f.url || "") && !vus.has(f.id) && vus.add(f.id))
-      .slice(0, MAX_FLUX_SPECIALISES)
-      .map((f) => ({ id: f.id, nom: String(f.nom || f.url).replace(/\s+/g, " ").trim().slice(0, 60), url: String(f.url).slice(0, 300) })),
+// Réglages › Sources. Avant 2026-10-29.2, les médias des Actualités (actus.flux, ou ceux du pays
+// quand la liste n'avait pas été touchée) et les flux spécialisés étaient deux listes : ils n'en
+// font plus qu'une, et les Actualités globales cochent les leurs (actus.flux_lus).
+function completerSources(resultat, config) {
+  const sources = config?.sources;
+  const vusId = new Set(), vusUrl = new Set();
+  const flux = (Array.isArray(sources?.flux) ? sources.flux : [])
+    .filter((f) => f && /^[0-9a-z]{4,16}$/.test(f.id) && /^https?:\/\//i.test(f.url || "") && !vusId.has(f.id) && vusId.add(f.id) && !vusUrl.has(f.url) && vusUrl.add(f.url))
+    .slice(0, MAX_FLUX)
+    .map((f) => ({ id: f.id, nom: String(f.nom || f.url).replace(/\s+/g, " ").trim().slice(0, 60), url: String(f.url).slice(0, 300),
+                   ...(PAYS[f.pays] ? { pays: f.pays } : {}) }));
+  let lus = Array.isArray(config?.actus?.flux_lus) ? config.actus.flux_lus : null;
+  if (!lus) {
+    const medias = Array.isArray(config?.actus?.flux) ? config.actus.flux.filter((f) => /^https?:\/\//i.test(f?.url || "")).map((f) => ({ nom: f.nom, url: f.url }))
+      : fluxDuPays(resultat.pays);
+    lus = [];
+    for (const m of medias) {
+      let f = flux.find((x) => x.url === m.url);
+      if (!f && flux.length < MAX_FLUX) {
+        f = { id: idCourt(`flux:${m.url}`), nom: String(m.nom || m.url).replace(/\s+/g, " ").trim().slice(0, 60), url: String(m.url).slice(0, 300), ...(m.pays ? { pays: m.pays } : {}) };
+        flux.push(f);
+      }
+      if (f) lus.push(f.id);
+    }
+  }
+  const ids = new Set(flux.map((f) => f.id));
+  resultat.actus.flux_lus = [...new Set(lus)].filter((id) => ids.has(id));
+  delete resultat.actus.flux;
+  const vusSites = new Set();
+  resultat.sources = {
+    // Les agendas se gèrent un par un (onglet Agendas) : la catégorie ne se coupe plus.
+    coupees: nettoyerListe(sources?.coupees, 20).filter((s) => SOURCES[s] && s !== "agenda"),
+    flux,
+    sites: (Array.isArray(sources?.sites) ? sources.sites : [])
+      .filter((x) => x && /^[0-9a-z]{4,16}$/.test(x.id) && DOMAINE.test(x.domaine || "") && !vusSites.has(x.id) && vusSites.add(x.id))
+      .slice(0, MAX_SITES)
+      .map((x) => ({ id: x.id, nom: String(x.nom || x.domaine).replace(/\s+/g, " ").trim().slice(0, 60), domaine: String(x.domaine).toLowerCase() })),
   };
 }
+export const DOMAINE = /^(?=.{4,120}$)([a-z0-9-]+\.)+[a-z]{2,}$/i;
 
 // Avant Réglages › Sources (2026-10-22) : des sources « choisies par l'application » et,
 // à la fabrication, saints et fêtes ajoutés d'après le titre. On les rend explicites une
@@ -993,7 +1087,7 @@ export function completerConfig(config) {
   for (const cle of Object.keys(RUBRIQUES)) {
     if (!resultat.deroule.some((r) => r.cle === cle)) placerRubrique(resultat, cle, cle === "actu_locale" ? "deplacements" : "agenda");
   }
-  resultat.sources = completerSources(config?.sources);
+  completerSources(resultat, config);
   resultat.regles = (resultat.regles || []).map(normaliserRegle);
   if (!config?.sources) migrerSources(resultat.regles, config?.regles || []);
   renumeroter(resultat);

@@ -1,13 +1,14 @@
 {
-  "version": "2026-10-29.1",
+  "version": "2026-10-29.2",
   "date": "2026-10-29",
-  "titre": "Des consignes pour chaque rubrique",
+  "titre": "Toutes tes sources au même endroit",
   "nouveautes": [
-    "Chaque rubrique fournie (Agenda, Actualités globales, Actu locale…) a ses propres consignes ; tes consignes qui parlaient de l'agenda sont rangées dans l'Agenda.",
-    "Actualités globales et Actu locale se règlent pareil : thèmes préférés et à éviter, âge des nouvelles, nombre de sujets et d'articles lus.",
-    "La rubrique Actualités s'appelle désormais « Actualités globales ».",
-    "« Citer les sources » disparaît : les sources restent dans la fiche de chaque épisode et dans le résumé de chaque rubrique.",
-    "Consignes de style : une consigne qui parle de ton agenda se range dans l'Agenda d'un geste ; des consignes toutes prêtes dans chaque rubrique."
+    "Réglages › Sources range tous tes outils en cinq onglets (services, flux, sites, agendas, données) : chacun se teste et dit quelles rubriques s'en servent.",
+    "Tes médias et tes flux spécialisés ne font plus qu'une liste ; les Actualités globales cochent leurs flux dans leur fiche.",
+    "Sites de référence : une rubrique peut limiter sa recherche web à un site précis.",
+    "Une rubrique peut ne lire qu'un seul de tes agendas.",
+    "Les clés Tavily et SNCF sont rangées avec leur service ; Gemini a son propre écran (Réglages › Gemini).",
+    "Données intégrées : prénoms, journées et fériés montrent ce qu'ils donnent aujourd'hui."
   ],
   "supprimes": [
     ".github/workflows/retours.yml",

@@ -169,6 +169,11 @@ verifier(e["tutoiement"] is False and e["prenom_auditeur"] == "Daniel" and e["an
 verifier(e["jours_agenda"] == 5 and e["jours_deplacements"] == 0 and e["inclure_notes_agenda"] is False, "agenda")
 verifier(e["ville_habituelle"] == "Yverdon-les-Bains" and e["flux"][0]["nom"] == "RTS Info" and "citer_sources" not in e, "actus")
 verifier(e["articles_actus"] == 20 and e["articles_par_flux"] == 20 and e["fraicheur_heures"] == 48, "actualités globales : articles lus, répartis entre les médias")
+c_flux = config_bot()
+c_flux["actus"] = {**c_flux["actus"], "flux_lus": ["rts00001", "inconnu1"]}
+c_flux["sources"] = {"flux": [{"id": "labo0001", "nom": "Labo", "url": "https://labo.ch/rss"}, {"id": "rts00001", "nom": "RTS", "url": "https://www.rts.ch/rss"}]}
+e_flux = podcast.effectifs_depuis_bot(reglages, memoire, c_flux)
+verifier([f["nom"] for f in e_flux["flux"]] == ["RTS"] and e_flux["articles_par_flux"] == 20, "actualités globales : les flux cochés, parmi tous les flux")
 verifier(e["locale_sujets"] == 3 and e["locale_articles"] == 6 and e["locale_fraicheur_heures"] == 72
          and e["locale_preferes"] == ["travaux"] and e["locale_a_eviter"] == ["faits divers"], "actu locale : réglée comme les actualités globales")
 verifier(e["consignes_rubriques"] == {"agenda": ["Ne parle de la piscine que la veille"], "actualites": ["Commence par l'économie"]},
@@ -296,8 +301,8 @@ class FaussesSources(sources.Sources):
         return {"titre": "Grottes de Vallorbe", "extrait": "", "image": "https://upload.wikimedia.org/grottes.jpg", "lat": 46.703, "lon": 6.367,
                 "url": "https://fr.wikipedia.org/wiki/Grottes_de_Vallorbe"}
 
-    def web(self, requete, maximum=5, images=False, jours=None):
-        self.appels.append(("web", requete))
+    def web(self, requete, maximum=5, images=False, jours=None, domaines=None):
+        self.appels.append(("web", requete) if not domaines else ("web", requete, tuple(domaines)))
         self.credits_tavily += 1
         return {"resultats": [{"titre": "Grottes de Vallorbe – tarifs", "url": "https://www.grottesdevallorbe.ch/tarifs",
                                "contenu": "Adultes 22 CHF, enfants 6-16 ans 12 CHF.", "score": 0.9},
@@ -644,6 +649,30 @@ cf = moteur.collecter(r_flux, moteur.plan_par_defaut(r_flux, "Yverdon-les-Bains"
                       lire_flux=lambda f: lus_flux.append(f["nom"]) or ["Un laser record (https://x/1)"], agenda=["jeu. 22 : réunion"])
 verifier(lus_flux == ["Optique.ch"] and "Flux « Optique.ch »" in cf.texte and "Un laser record" in cf.texte and "réunion" in cf.texte
          and "[W1]" not in cf.texte, "flux spécialisé et agenda cochés : lus, rien d'autre")
+# Site de référence coché : la recherche web se limite à lui (sans recherche web générale).
+config_sites = {"sources": {"coupees": [], "flux": [], "sites": [{"id": "labo1234", "nom": "Le labo", "domaine": "labo.ch"}]}}
+r_site = rubrique("Labo", "Les nouvelles du labo", ["site:labo1234", "site:retire99"])
+fs = FaussesSources()
+cs = moteur.collecter(r_site, moteur.plan_par_defaut(r_site, ""), fs, jeudi, "", config=config_sites)
+verifier(fs.appels == [("web", "Les nouvelles du labo", ("labo.ch",))] and "Sur ses sites de référence (Le labo)" in cs.texte and "[S1]" in cs.texte
+         and "[W1]" not in cs.texte and any("grottesdevallorbe" in u for _, u in cs.liens), f"site de référence : recherche limitée à son domaine ({fs.appels})")
+verifier(moteur.sources_lues(r_site, config_sites) == {"site:labo1234"}, "site retiré : pas lu")
+cs2 = moteur.collecter(r_site, moteur.plan_par_defaut(r_site, ""), sources.Sources(""), jeudi, "", config=config_sites)
+verifier("sans clé Tavily (Réglages › Sources › Services)" in cs2.texte, "site sans clé Tavily : dit pourquoi")
+# Un seul agenda coché : la rubrique ne voit que ses événements.
+Ev = podcast.Evenement
+evs = [Ev("Match de foot", dt.datetime(2026, 10, 23, 18, 0, tzinfo=dt.timezone.utc), None, False, agenda="sport00001"),
+       Ev("Dentiste", dt.datetime(2026, 10, 23, 9, 0, tzinfo=dt.timezone.utc), None, False, agenda="perso00001")]
+r_tous = rubrique("Rappel", "Rappelle-moi", ["agenda"])
+r_sport = rubrique("Sac de foot", "Rappelle-moi le sac", ["agenda:sport00001"])
+r_sport["id"] = "R8"
+plans_ag, textes_ag = moteur.planifier_par_agendas([r_tous, r_sport], evs, lambda e: e.debut.strftime("%a %H:%M"), jeudi, "", None)
+verifier(len(textes_ag[r_tous["id"]]) == 2 and len(textes_ag["R8"]) == 1 and "Match" in textes_ag["R8"][0] and set(plans_ag) == {r_tous["id"], "R8"},
+         f"agendas choisis par rubrique : {textes_ag}")
+verifier(moteur.agendas_choisis(r_sport) == frozenset({"sport00001"}) and moteur.agendas_choisis(r_tous) is None
+         and moteur.sources_lues(r_sport, {}) == {"agenda:sport00001"}, "un agenda précis est une source lue")
+ca = moteur.collecter(r_sport, moteur.plan_par_defaut(r_sport, ""), FaussesSources(), jeudi, "", agenda=textes_ag["R8"])
+verifier("seulement les agendas choisis" in ca.texte and "Match de foot" in ca.texte and "Dentiste" not in ca.texte, "collecte : seulement son agenda")
 verifier(not ci.itineraire and not ci.lieux and not ci.point, "pas d'itinéraire ni de lieux pour une rubrique sans lieu")
 r_pt = rubrique("Actualité Portugal", "Cherche l'actualité à propos du Portugal", ["actus"])
 sujets_actus = []

@@ -1,5 +1,5 @@
 // Teste les clés rangées dans les secrets GitHub (le bot ne les voit pas) et renvoie le
-// résultat au bot, qui l'affiche dans Réglages › Connexions. Lancé par le bouton
+// résultat au bot, qui l'affiche avec la clé (Réglages › Gemini, ou Réglages › Sources › Services). Lancé par le bouton
 // « Tester » de l'application (workflow « Tester mes clés »), ou à la main.
 // Même test que dans le bot (src/connexions.js) ; aucune clé n'est affichée ni envoyée.
 //   node tester-cles.mjs   (variables : CLES = « tavily,sncf » (vide : toutes), BOT_URL,

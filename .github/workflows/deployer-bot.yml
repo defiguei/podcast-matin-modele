@@ -12,7 +12,7 @@ name: Déployer le bot
 on:
   push:
     branches: [main]
-    paths: ["cloudflare/**", ".github/workflows/deployer-bot.yml"]
+    paths: ["cloudflare/**", "donnees/**", ".github/workflows/deployer-bot.yml"]
   workflow_dispatch:
 
 permissions:

@@ -52,7 +52,7 @@ Le code du modèle est recopié dans ton dépôt, puis *Déployer le bot* démar
 - **Réglages › Moi** : le pays a été déduit de ton installation (France si ton fuseau était Paris). Corrige-le au besoin : heure, jours fériés, devise et médias suivent.
 - **Épisode** : tes rubriques et les rubriques fournies sont réunies, dans l'ordre de l'épisode.
 - **Réglages › Durée et style** : une consigne qui parle d'un rendez-vous est signalée ; *En faire un rappel* la transforme en rubrique, plus fiable.
-- **Réglages › Connexions** : tes secrets GitHub (`GEMINI_API_KEY`, `CALENDAR_ICS_URL`, `TAVILY_API_KEY`) continuent de marcher. Tu peux y coller tes clés et tes agendas pour les régler depuis l'application ; elles passent alors avant les secrets.
+- **Réglages › Gemini** et **Réglages › Sources** : tes secrets GitHub (`GEMINI_API_KEY`, `CALENDAR_ICS_URL`, `TAVILY_API_KEY`) continuent de marcher. Tu peux y coller tes clés (Gemini à part, Tavily et SNCF avec leur service) et tes agendas (onglet Agendas) pour les régler depuis l'application ; elles passent alors avant les secrets.
 
 ### Si quelque chose coince
 

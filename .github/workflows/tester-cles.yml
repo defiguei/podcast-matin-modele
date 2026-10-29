@@ -1,7 +1,7 @@
 name: Tester mes clés
 run-name: Tester mes clés ${{ inputs.cles }}
 
-# Lancé par le bouton « Tester » de l'application (Réglages › Connexions) pour une clé
+# Lancé par le bouton « Tester » de l'application (Réglages › Gemini, ou Réglages › Sources › Services) pour une clé
 # rangée dans les secrets GitHub, que le bot ne voit pas. Teste la clé (sans la montrer)
 # et renvoie au bot ce qu'il faut en savoir : modèles disponibles, recherches restantes…
 # À la main : Run workflow (vide = toutes les clés). Le résultat est aussi dans le résumé.

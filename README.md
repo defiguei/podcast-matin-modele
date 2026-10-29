@@ -22,7 +22,7 @@ Sur ton téléphone, ouvre l'adresse de ton bot (`https://podcast.TON-SOUS-DOMAI
 | **Épisode** | **Ton épisode, dans l'ordre** : chaque passage (agenda, actualités globales, actu locale, déplacements, à creuser, et tes rubriques) avec sa fiche. Glisser pour réordonner, pause, et le bouton **+** pour ajouter une rubrique. |
 | **Recherches** | Les recherches ponctuelles : « une sortie avec les enfants samedi, en train, moins de 20 € » ; les résultats arrivent par écrit (prix, accès, liens) ou en mini-podcast. |
 | **Planning** | Heure et activation de chaque jour, jours fériés, rattrapage, exceptions, pauses, calendrier. |
-| **Réglages** | **Moi** (prénom, ville, pays) · **Voix** · **Durée et style** (ton, consignes) · **Connexions** (clés et agendas) · **Application** (appareils et notifications, flux privé, version). |
+| **Réglages** | **Moi** (prénom, ville, pays) · **Voix** · **Durée et style** (ton, consignes) · **Sources** (services, flux, sites, agendas, données) · **Gemini** (la clé du moteur) · **Application** (appareils et notifications, flux privé, version). |
 
 Le dernier changement s'annule depuis Réglages (*Annuler*). « Demande-moi quelque chose » comprend aussi « 6 h 45 en semaine, rien le dimanche », « plus d'humour », « refais le podcast »…
 
@@ -41,17 +41,27 @@ L'application choisit les sources utiles à chaque rubrique (tu peux les changer
 
 Chaque rubrique fournie a ses **consignes**, dans sa fiche : « ne parle de la piscine que la veille » pour l'Agenda, « commence par l'économie » pour les Actualités globales. **Actualités globales** et **Actu locale** se règlent de la même façon : thèmes préférés et à éviter, âge maximum des nouvelles, nombre de sujets racontés et d'articles lus. Les **consignes de style** (Réglages › Durée et style) valent pour tout l'épisode : « plus d'humour le vendredi » ; une consigne de style qui parle de ton agenda se range dans l'Agenda d'un geste.
 
-### Les connexions
+### Les sources et les clés
 
-**Réglages › Connexions** reçoit tes clés : chacune est testée avant d'être enregistrée, gardée par ton bot et jamais réaffichée en entier.
+**Réglages › Sources** range tous tes outils en cinq onglets. Chacun se règle, se teste (sans dépenser de crédit) et dit quelles rubriques s'en servent :
+
+| Onglet | Ce qu'on y trouve |
+|---|---|
+| **Services** | Google Actualités, recherche web, météo, trains, lieux, guides de voyage. Une clé se range avec son service : Tavily sous la recherche web, SNCF sous les trains. |
+| **Flux** | Tous tes flux RSS, médias et sites spécialisés, avec les médias proposés pour ton pays. Les Actualités globales cochent les leurs dans leur fiche ; une autre rubrique, dans « Où elle cherche ». |
+| **Sites** | Tes sites de référence sans flux (un labo, un magazine) : une rubrique qui en coche un y limite sa recherche web. |
+| **Agendas** | Tes liens iCal (Google, Outlook…). On en coupe un pour tout le podcast, ou une rubrique n'en lit qu'un. |
+| **Données** | Ce qui est intégré au podcast, sans connexion (prénoms, journées et fêtes, jours fériés), avec ce que ça donne aujourd'hui. |
+
+**Réglages › Gemini** garde la clé du moteur, à part : sans elle, rien ne part.
 
 | Clé | À quoi elle sert | Coût |
 |---|---|---|
 | **Gemini** (obligatoire) | Écrit et dit l'épisode | Gratuit ([aistudio.google.com/apikey](https://aistudio.google.com/apikey)) |
-| **Tavily** | Cherche sur internet pour les idées de sortie | Gratuit, 1 000 recherches par mois ([app.tavily.com](https://app.tavily.com)) |
+| **Tavily** | Recherche web : idées de sortie, sites de référence | Gratuit, 1 000 recherches par mois ([app.tavily.com](https://app.tavily.com)) |
 | **SNCF** | Seulement pour suivre un train en France | Gratuit ([numerique.sncf.com/startup/api](https://numerique.sncf.com/startup/api/)) |
 
-Tes **agendas** (Google, Outlook…) s'ajoutent au même endroit, ou depuis la fiche Agenda, avec leur adresse secrète iCal. Une clé déjà rangée en secret GitHub continue de marcher : celle de l'application passe avant.
+Chaque clé est testée avant d'être enregistrée, gardée par ton bot et jamais réaffichée en entier. Une clé déjà rangée en secret GitHub continue de marcher : celle de l'application passe avant.
 
 ### Sur ton téléphone
 
@@ -74,7 +84,8 @@ Tes épisodes (audio, pochette, texte) et les mini-podcasts d'idées sont gardé
 | Wikivoyage, Wikipédia | Présentation d'un lieu, photos | Aucune |
 | Calendrier des prénoms, journées et fêtes (intégrés au podcast) | Prénom fêté, journées internationales, fêtes nationales, usages | Aucune, aucun appel réseau |
 | Jours fériés | Calculés (Vaud, France) ou téléchargés (autres cantons, Belgique) | Aucune |
-| Actualités | Google Actualités et les médias de ton pays, plus tes flux RSS | Aucune |
+| Actualités | Google Actualités et tes flux RSS (ceux de ton pays proposés d'office) | Aucune |
+| Sites de référence | La recherche web limitée à tes sites | Tavily |
 
 Les faits précis (prix, horaires, dates) viennent des sources. Quand une information manque, les animateurs le disent plutôt que de l'inventer.
 
@@ -100,9 +111,9 @@ Les faits précis (prix, horaires, dates) viennent des sources. Quand une inform
 | Message ou souci | Que faire |
 |---|---|
 | ⏳ « raté pour l'instant, nouvel essai à … » | Rien : un rattrapage est prévu (souvent une surcharge passagère de Gemini). |
-| « La clé Gemini manque » ou « est refusée » | Réglages › Connexions : colle la clé et touche *Tester*. |
+| « La clé Gemini manque » ou « est refusée » | Réglages › Gemini : colle la clé et touche *Tester*. |
 | « agenda inaccessible » | L'adresse iCal a changé : retire l'agenda et ajoute la nouvelle adresse. |
-| « Recherche web : non configurée » | Ajoute la clé Tavily dans Réglages › Connexions. |
+| « Recherche web : non configurée » | Ajoute la clé Tavily dans Réglages › Sources › Services (Recherche web). |
 | Le bot ne répond plus | Ouvre `https://podcast.TON-SOUS-DOMAINE.workers.dev/installer` dans ton navigateur. |
 | Nouvel appareil, sans application ouverte ailleurs | Onglet *Actions* › *Code de connexion* › *Run workflow* : le code est dans le résumé de l'exécution. |
 | *Déployer le bot* en orange | Il manque `CLOUDFLARE_API_TOKEN` ou `CLOUDFLARE_ACCOUNT_ID` (secrets GitHub). |

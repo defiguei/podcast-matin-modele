@@ -590,7 +590,13 @@ def effectifs_depuis_bot(reglages: dict, memoire: dict, config: dict) -> dict[st
     # Actualités globales et Actu locale se règlent pareil : thèmes, âge des nouvelles, sujets, articles lus.
     e["sujets_preferes"] = nettoyer_liste(ac.get("sujets_preferes"))
     e["sujets_a_eviter"] = nettoyer_liste(ac.get("sujets_a_eviter"))
-    if isinstance(ac.get("flux"), list):
+    # Les flux des Actualités globales : ceux cochés dans leur fiche, parmi tous les flux
+    # (avant 2026-10-29.2 : la liste « actus.flux » des médias).
+    tous_flux = (config.get("sources") or {}).get("flux") or []
+    if isinstance(ac.get("flux_lus"), list):
+        lus = set(ac["flux_lus"])
+        e["flux"] = [x for x in tous_flux if isinstance(x, dict) and x.get("id") in lus and str(x.get("url", "")).startswith("http")]
+    elif isinstance(ac.get("flux"), list):
         e["flux"] = [x for x in ac["flux"] if isinstance(x, dict) and str(x.get("url", "")).startswith("http")]
     e["fraicheur_heures"] = _borne(ac.get("fraicheur_heures"), 6, 168, e["fraicheur_heures"])
     e["articles_actus"] = int(_borne(ac.get("articles"), 5, 60, 30))
@@ -632,6 +638,7 @@ class Evenement:
     journee_entiere: bool
     lieu: str = ""
     note: str = ""
+    agenda: str = ""          # identifiant de l'agenda d'où il vient (identifiant_agenda)
 
 
 def vers_local(valeur: dt.date | dt.datetime, fuseau: ZoneInfo) -> dt.datetime:
@@ -712,6 +719,8 @@ def lire_agendas(urls: list[str], reglages: dict, maintenant: dt.datetime,
             trouves = lire_evenements(contenu, fuseau, debut, fin,
                                       reglages["inclure_notes_agenda"])
             identifiant_a = identifiant_agenda(url)
+            for ev in trouves:
+                ev.agenda = identifiant_a
             AGENDAS_VUS.append({"id": identifiant_a, "nom": nom_agenda(contenu, url, numero), "nb": len(trouves)})
             for ev in trouves:
                 if ev.debut < fin_apercu and len(AGENDA_APERCU) < 120:
@@ -1015,7 +1024,7 @@ def appeler_gemini(corps: dict, cle: str, delai: int) -> dict:
         message = message_erreur(reponse)
         brut = reponse.text
         if "API_KEY_INVALID" in brut or "API key not valid" in brut:
-            raise ErreurPodcast("La clé Gemini est refusée : vérifie-la dans l'application (Réglages › Connexions) ou dans le secret GEMINI_API_KEY.")
+            raise ErreurPodcast("La clé Gemini est refusée : vérifie-la dans l'application (Réglages › Gemini) ou dans le secret GEMINI_API_KEY.")
         if reponse.status_code == 429:
             if "PerDay" in brut or "per day" in brut.lower() or "limit: 0" in brut:
                 raise QuotaEpuise(f"quota gratuit du jour atteint ({message[:150]})")
@@ -1876,12 +1885,13 @@ def preparer_regles(effectifs: dict, cle: str, maintenant: dt.datetime, evenemen
     if not candidates:
         return {}
     limite = debut_du_jour(maintenant) + dt.timedelta(days=31)
-    agenda = moteur.agenda_pour_plan([e for e in evenements if e.debut < limite], quand_court)
 
     def demander(systeme: str, entree: str, schema: dict) -> dict:
         return demander_json(systeme, entree, schema, effectifs["modeles_rapides"], cle, delai=90, tours=1)[0]
 
-    plans = moteur.planifier(candidates, agenda, jour, effectifs["ville_habituelle"], demander)
+    # Une rubrique qui ne lit que certains agendas ne voit que leurs événements.
+    plans, agendas = moteur.planifier_par_agendas(candidates, evenements, quand_court, jour,
+                                                  effectifs["ville_habituelle"], demander, limite)
     sources = Sources(os.environ.get("TAVILY_API_KEY", ""))
 
     def actus(requete: str) -> list[str]:
@@ -1902,7 +1912,7 @@ def preparer_regles(effectifs: dict, cle: str, maintenant: dt.datetime, evenemen
             continue
         try:
             collectes[regle["id"]] = moteur.collecter(regle, plan, sources, jour, effectifs["ville_habituelle"], actus,
-                                                      config=config, lire_flux=flux_specialise, agenda=agenda)
+                                                      config=config, lire_flux=flux_specialise, agenda=agendas.get(regle["id"], []))
             journal(f"Rubrique {regle['id']} appliquée ({regle.get('titre', '')}).")
         except Exception as erreur:          # une règle en panne ne bloque pas l'épisode
             journal(f"Rubrique {regle['id']} : collecte impossible ({type(erreur).__name__} : {erreur}).")
@@ -1922,7 +1932,7 @@ def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: l
         tous, problemes = lire_agendas(urls, effectifs, maintenant, horizon)
         remarques += problemes
     else:
-        journal("Aucun agenda configuré (ajoute-en un dans l'application, fiche Agenda).")
+        journal("Aucun agenda configuré (ajoute-en un dans l'application, Réglages › Sources › Agendas).")
     fin_fenetre = debut_du_jour(maintenant) + dt.timedelta(days=effectifs["jours_agenda"])
     proches = [e for e in tous if e.debut < fin_fenetre]
     prochain = tous[0] if tous and not proches else None
@@ -2106,7 +2116,7 @@ def main(arguments: list[str] | None = None) -> int:
         aujourd_hui = maintenant.date().isoformat()
         cle = os.environ.get("GEMINI_API_KEY", "").strip()
         if not cle:
-            raise ErreurPodcast("La clé Gemini manque : ajoute-la dans l'application (Réglages › Connexions) "
+            raise ErreurPodcast("La clé Gemini manque : ajoute-la dans l'application (Réglages › Gemini) "
                                 "ou en secret GEMINI_API_KEY sur GitHub.")
         if not options.sans_envoi and not bot.secret:
             raise ErreurPodcast("Le jeton GitHub du bot manque (secret BOT_GITHUB_TOKEN) : "

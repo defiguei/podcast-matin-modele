@@ -136,6 +136,21 @@ const serveur = http.createServer(async (req, res) => {
     return res.end();
   }
 
+  // ── services testés depuis Réglages › Sources ──
+  if (p === "/actus/rss/search") {
+    appels.push({ service: "actus", q: url.searchParams.get("q") });
+    res.writeHead(200, { "Content-Type": "application/rss+xml" });
+    return res.end(`<rss><channel><item><title>A</title></item><item><title>B</title></item></channel></rss>`);
+  }
+  if (p === "/geo/v1/search") return json(res, 200, { results: [{ name: url.searchParams.get("name"), latitude: 46.78, longitude: 6.64 }] });
+  if (p === "/meteo/v1/forecast") return json(res, 200, { current: { temperature_2m: 9.4 } });
+  if (p === "/cff/v1/locations") return json(res, 200, { stations: [{ name: `${url.searchParams.get("query")}-les-Bains` }] });
+  if (p === "/irail/stations/") return json(res, 200, { station: [{ name: "Bruxelles-Central" }] });
+  if (p === "/wiki/w/api.php") return json(res, 200, { query: { search: [{ title: url.searchParams.get("srsearch") }] } });
+  if (p === "/wikivoyage/w/api.php") return json(res, 200, { query: { pages: { 1: { title: url.searchParams.get("titles") } } } });
+  if (p === "/sites/labo.ch/") { res.writeHead(200, { "Content-Type": "text/html" }); return res.end("<html><head><title>Le Labo – Accueil</title></head></html>"); }
+  if (p.startsWith("/sites/")) return json(res, 404, { erreur: "site mort" });
+
   // ── petit site avec flux RSS ──
   if (p === "/site/page.html") {
     res.writeHead(200, { "Content-Type": "text/html" });

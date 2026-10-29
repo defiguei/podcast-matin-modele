@@ -292,12 +292,43 @@ def fiche_en_mots(fiche: dict) -> str:
 
 def sources_lues(regle: dict, config: dict | None = None) -> set[str]:
     """Les sources cochées dans la fiche de la rubrique, sans celles retirées dans Réglages ›
-    Sources (catégories coupées, flux spécialisés supprimés). Rien d'autre n'est lu."""
+    Sources (catégories coupées, flux ou sites supprimés). Rien d'autre n'est lu.
+    « agenda:<id> » : un seul agenda (un agenda retiré est déjà enlevé des rubriques par le bot)."""
     reglages = (config or {}).get("sources") or {}
     coupees = set(reglages.get("coupees") or [])
-    flux = {f"flux:{f.get('id')}" for f in reglages.get("flux") or [] if isinstance(f, dict)}
+    outils = {f"flux:{f.get('id')}" for f in reglages.get("flux") or [] if isinstance(f, dict)}
+    outils |= {f"site:{x.get('id')}" for x in reglages.get("sites") or [] if isinstance(x, dict)}
     cochees = set(((regle.get("recherche") or {}).get("sources")) or [])
-    return {s for s in cochees if (s in flux if s.startswith("flux:") else s not in coupees)}
+    return {s for s in cochees
+            if (s in outils if s.startswith(("flux:", "site:")) else s.startswith("agenda:") or s not in coupees)}
+
+
+def agendas_choisis(regle: dict) -> frozenset[str] | None:
+    """Les agendas qu'une rubrique lit, quand elle n'en a coché que certains ; None : tous."""
+    ids = frozenset(s.split(":", 1)[1] for s in ((regle.get("recherche") or {}).get("sources") or [])
+                    if isinstance(s, str) and s.startswith("agenda:"))
+    return ids or None
+
+
+def planifier_par_agendas(regles: list[dict], evenements: list, quand_court: Callable[[Any], str], jour: dt.date,
+                          ville: str, demander: Callable[[str, str, dict], dict] | None,
+                          limite: Any = None) -> tuple[dict[str, dict], dict[str, list[str]]]:
+    """Comme planifier, mais chaque rubrique ne voit que ses agendas : celles qui lisent tous les
+    agendas ensemble (un appel), celles qui n'en lisent que certains à part. Renvoie les plans et,
+    pour chaque rubrique, l'agenda qu'elle reçoit."""
+    groupes: dict[frozenset[str] | None, list[dict]] = {}
+    for r in regles:
+        groupes.setdefault(agendas_choisis(r), []).append(r)
+    plans: dict[str, dict] = {}
+    agendas: dict[str, list[str]] = {}
+    for ids, groupe in groupes.items():
+        choisis = [e for e in evenements if (limite is None or e.debut < limite)
+                   and (ids is None or getattr(e, "agenda", "") in ids)]
+        texte = agenda_pour_plan(choisis, quand_court)
+        plans.update(planifier(groupe, texte, jour, ville, demander))
+        for r in groupe:
+            agendas[r["id"]] = texte
+    return plans, agendas
 
 
 def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: str,
@@ -441,7 +472,28 @@ def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: s
                 lignes.append(f"  [W{i}] {resultat['titre']} — {resultat['contenu'][:400]} ({resultat['url']})")
                 collecte.liens.append((resultat["titre"], resultat["url"]))
         elif not sources.tavily_cle:
-            lignes.append("Recherche web : non configurée (clé Tavily manquante, à ajouter dans Réglages › Connexions).")
+            lignes.append("Recherche web : non configurée (clé Tavily manquante, à ajouter dans Réglages › Sources › Services).")
+
+    # Sites de référence cochés : la recherche web se limite à eux.
+    sites = [x for x in ((config or {}).get("sources") or {}).get("sites") or []
+             if isinstance(x, dict) and f"site:{x.get('id')}" in noms_sources and x.get("domaine")]
+    if sites:
+        noms = ", ".join(x.get("nom") or x["domaine"] for x in sites)
+        requetes = plan.get("requetes") or [r.get("consigne") or r.get("titre", "")]
+        trouves: list[dict] = []
+        for requete in requetes[: 1 + (profondeur > 1)]:
+            for resultat in sources.web(requete, maximum=5, domaines=[x["domaine"] for x in sites])["resultats"]:
+                if not any(resultat["url"] == t["url"] for t in trouves):
+                    trouves.append(resultat)
+        if trouves:
+            lignes.append(f"Sur ses sites de référence ({noms}) :")
+            for i, resultat in enumerate(trouves[:6], 1):
+                lignes.append(f"  [S{i}] {resultat['titre']} — {resultat['contenu'][:400]} ({resultat['url']})")
+                collecte.liens.append((resultat["titre"], resultat["url"]))
+        elif not sources.tavily_cle:
+            lignes.append(f"Sites de référence ({noms}) : recherche impossible sans clé Tavily (Réglages › Sources › Services).")
+        else:
+            lignes.append(f"Sur ses sites de référence ({noms}) : rien de pertinent trouvé.")
 
     if "actus" in noms_sources and chercher_actus:
         requetes_plan = plan.get("requetes") or []
@@ -463,8 +515,10 @@ def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: s
             lignes.append(f"Flux « {flux.get('nom', '?')} » : " + ("" if articles else "rien de récent"))
             lignes += [f"  - {a}" for a in articles[:6]]
 
-    if "agenda" in noms_sources and agenda is not None:
-        lignes.append("Agenda des prochains jours : " + ("" if agenda else "rien de prévu"))
+    choisis = agendas_choisis(r)
+    if ("agenda" in noms_sources or choisis) and agenda is not None:
+        lignes.append(("Agenda des prochains jours" + (" (seulement les agendas choisis pour cette rubrique)" if choisis else "") + " : ")
+                      + ("" if agenda else "rien de prévu"))
         lignes += [f"  - {e}" for e in agenda[:15]]
 
     lignes.append("N'utilise que ces informations pour les faits (lieux, prix, horaires, dates) ; "
