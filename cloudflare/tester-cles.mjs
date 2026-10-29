@@ -7,7 +7,7 @@
 // Bibliothèque standard de Node seulement : rien à installer.
 import { createHash } from "node:crypto";
 import { appendFileSync } from "node:fs";
-import { CLES, testerCle } from "./src/connexions.js";
+import { CLES, testerCle, testerFlux, testerService, testerSite } from "./src/connexions.js";
 
 export async function testerToutes(env, demandees = []) {
   const resultats = {};
@@ -20,11 +20,30 @@ export async function testerToutes(env, demandees = []) {
   return resultats;
 }
 
+// Des outils que le service refuse au bot (Google Actualités, souvent) : testés d'ici, comme le
+// podcast les lit. OUTILS = [{ cle: "flux:…", url } | { cle: "service:actus", ville, pays, profil } | { cle: "site:…", domaine }].
+export async function testerOutils(liste = []) {
+  const resultats = {};
+  for (const o of liste.slice(0, 10)) {
+    const [type, id] = String(o?.cle || "").split(":");
+    if (type === "flux" && /^https?:\/\//.test(o.url || "")) resultats[o.cle] = await testerFlux(o.url);
+    else if (type === "service" && id) resultats[o.cle] = await testerService({}, id, { ville: o.ville || "", profil: o.profil || {}, pays: o.pays || "CH" });
+    else if (type === "site" && o.domaine) resultats[o.cle] = await testerSite(o.domaine);
+  }
+  for (const r of Object.values(resultats)) delete r.bloque;
+  return resultats;
+}
+
 async function principal() {
   const env = process.env;
   const demandees = String(env.CLES || "").split(/[,\s]+/).filter((n) => CLES[n]);
-  const resultats = await testerToutes(env, demandees);
-  const lignes = ["## 🔑 Test des clés", "", ...Object.entries(resultats).map(([nom, r]) => `- **${CLES[nom].nom}** ${r.ok ? "✅" : "❌"} ${r.message}`)];
+  let outils = [];
+  try { outils = JSON.parse(env.OUTILS || "[]"); } catch { outils = []; }
+  // Des outils seulement : pas de test des clés (CLES vide voudrait dire « toutes »).
+  const resultats = outils.length && !demandees.length ? {} : await testerToutes(env, demandees);
+  const resultatsOutils = Array.isArray(outils) && outils.length ? await testerOutils(outils) : {};
+  const lignes = ["## 🔑 Test des clés", "", ...Object.entries(resultats).map(([nom, r]) => `- **${CLES[nom].nom}** ${r.ok ? "✅" : "❌"} ${r.message}`),
+                  ...Object.entries(resultatsOutils).map(([cle, r]) => `- **${cle}** ${r.ok ? "✅" : "❌"} ${r.message}`)];
   console.log(lignes.join("\n"));
   if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, `${lignes.join("\n")}\n`);
 
@@ -36,10 +55,13 @@ async function principal() {
   }
   const secret = createHash("sha256").update(`podcast:${jeton}`).digest("hex").slice(0, 48);
   try {
-    const r = await fetch(`${adresse}/api/evenement`, {
-      method: "POST", headers: { "Content-Type": "application/json", "X-Podcast-Secret": secret, "User-Agent": "podcast-matin-github" },
-      body: JSON.stringify({ type: "cles", resultats }), signal: AbortSignal.timeout(20000) });
-    if (!r.ok) console.log(`::warning::Le bot refuse le résultat (erreur ${r.status}) : relance « Mettre à jour » puis « Déployer le bot ».`);
+    for (const [type, contenu] of [["cles", resultats], ["outils", resultatsOutils]]) {
+      if (!Object.keys(contenu).length) continue;
+      const r = await fetch(`${adresse}/api/evenement`, {
+        method: "POST", headers: { "Content-Type": "application/json", "X-Podcast-Secret": secret, "User-Agent": "podcast-matin-github" },
+        body: JSON.stringify({ type, resultats: contenu }), signal: AbortSignal.timeout(20000) });
+      if (!r.ok) console.log(`::warning::Le bot refuse le résultat (erreur ${r.status}) : relance « Mettre à jour » puis « Déployer le bot ».`);
+    }
   } catch (erreur) {
     console.log(`::warning::Bot injoignable à ${adresse} (${erreur.message}).`);
   }

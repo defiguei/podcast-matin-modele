@@ -139,6 +139,8 @@ const serveur = http.createServer(async (req, res) => {
   // ── services testés depuis Réglages › Sources ──
   if (p === "/actus/rss/search") {
     appels.push({ service: "actus", q: url.searchParams.get("q") });
+    // Google refuse parfois les questions venues de Cloudflare : on le simule pour « Bloqueville ».
+    if (/Bloqueville/.test(url.searchParams.get("q") || "")) { res.writeHead(503, { "Content-Type": "text/html" }); return res.end("<html>sorry</html>"); }
     res.writeHead(200, { "Content-Type": "application/rss+xml" });
     return res.end(`<rss><channel><item><title>A</title></item><item><title>B</title></item></channel></rss>`);
   }

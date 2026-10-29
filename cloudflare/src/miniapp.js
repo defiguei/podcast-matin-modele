@@ -9,6 +9,7 @@ import {
   DEVISES, CANTONS, MODES_VOIX, sourcesAuto, estFerie, nomFerie, animateursDuJour, placesDuJour, normaliserTexte,
   jourDeSemaine, MODELES_RUBRIQUES, CATEGORIES_RUBRIQUES, catalogueRubriques, nouvelleRegle, modifierRegle,
   INFOS_SOURCES, sourceConnue, sourcesUtilisables, RENDUS, minutesPoint, RANGEMENT_SOURCES, fluxProposes, MAX_SOURCES_RUBRIQUE,
+  SOURCES_PAR_MODELE, SOURCES_INTEGREES, nommerAgendas,
 } from "./config.js";
 import { apercuDonnees } from "./donnees.js";
 
@@ -104,7 +105,7 @@ export function genreRegle(r) {
 function regleVisible(r, aujourdHui) {
   const fiche = r.recherche?.fiche || {};
   return {
-    id: r.id, titre: r.titre, consigne: r.consigne, importance: r.importance, pause: r.etat === "pause",
+    id: r.id, titre: r.titre, consigne: r.consigne, importance: r.importance, pause: r.etat === "pause", modele: r.modele || "libre",
     etat: etatRegle(r, aujourdHui), famille: familleRegle(r), genre: genreRegle(r),
     periode: r.periode, periode_texte: decrirePeriode(r.periode),
     prochain: (() => { const d = prochainPassage(r, aujourdHui); return d ? dateCourte(d) : null; })(),
@@ -120,24 +121,39 @@ function regleVisible(r, aujourdHui) {
   };
 }
 
+// Un test d'outil tel que l'application le montre : un test parti sur GitHub (le service refuse
+// les questions du bot) attend son résultat 5 minutes, puis est donné pour perdu.
+function testVisible(maintenant, t) {
+  if (!t) return null;
+  if (!t.en_cours) return t;
+  const enCours = maintenant - (t.lance_ms || 0) < 5 * 60 * 1000;
+  return enCours ? { ...t, en_cours: true } : { ok: false, quand: t.quand || null, message: "GitHub n'a pas renvoyé de résultat : regarde l'exécution « Tester mes clés » dans l'onglet Actions." };
+}
+
 // Réglages › Sources, rangé par type d'outil : services (avec leur clé), flux, sites, agendas,
 // données intégrées. Pour chacun : ce qu'il apporte, qui l'utilise et son dernier test.
-function sourcesVisibles(config, etat, aujourdHui) {
+function sourcesVisibles(config, etat, aujourdHui, ms = Date.now()) {
   const coupees = config.sources?.coupees || [];
   const tests = etat.tests_outils || {};
   const qui = (s) => config.regles.filter((r) => (r.recherche?.sources || []).includes(s)).map((r) => ({ id: r.id, titre: r.titre }));
   const lus = new Set(config.actus.flux_lus || []);
   const apercu = apercuDonnees(config, aujourdHui);
+  // Les rubriques fournies qui lisent un outil (leurs flux, leurs agendas).
+  const integrees = config.sources_integrees || {};
+  const fourniesPour = (cle) => Object.keys(SOURCES_INTEGREES).filter((r) => r === "actualites" ? cle.startsWith("flux:") && lus.has(cle.slice(5))
+    : (integrees[r] || []).includes(cle) || (cle.startsWith("agenda:") && (integrees[r] || []).includes("agenda"))).map((r) => RUBRIQUES[r]);
   const categories = Object.entries(SOURCES).map(([cle, nom]) => ({ cle, nom, ...INFOS_SOURCES[cle], type: RANGEMENT_SOURCES[cle],
-    coupee: coupees.includes(cle), rubriques: qui(cle), test: tests[`service:${cle}`] || null, aujourdhui: apercu[cle] || null }));
+    coupee: coupees.includes(cle), rubriques: qui(cle), test: testVisible(ms, tests[`service:${cle}`]), aujourdhui: apercu[cle] || null }));
   const urls = new Set((config.sources?.flux || []).map((f) => f.url));
   return {
     categories,
-    flux: (config.sources?.flux || []).map((f) => ({ ...f, cle: `flux:${f.id}`, actualites: lus.has(f.id), rubriques: qui(`flux:${f.id}`), test: tests[`flux:${f.id}`] || null })),
+    flux: (config.sources?.flux || []).map((f) => ({ ...f, cle: `flux:${f.id}`, actualites: lus.has(f.id), fournies: fourniesPour(`flux:${f.id}`),
+      rubriques: qui(`flux:${f.id}`), test: testVisible(ms, tests[`flux:${f.id}`]) })),
     proposes: fluxProposes(config).filter((f) => !urls.has(f.url)),
-    sites: (config.sources?.sites || []).map((x) => ({ ...x, cle: `site:${x.id}`, rubriques: qui(`site:${x.id}`), test: tests[`site:${x.id}`] || null })),
+    sites: (config.sources?.sites || []).map((x) => ({ ...x, cle: `site:${x.id}`, rubriques: qui(`site:${x.id}`), test: testVisible(ms, tests[`site:${x.id}`]) })),
     // Agendas : les rubriques qui n'en lisent qu'un, et le dernier test de chacun.
-    agendas: Object.fromEntries((etat.agendas || []).map((a) => [a.id, { rubriques: qui(`agenda:${a.id}`), test: tests[`agenda:${a.id}`] || null }])),
+    agendas: Object.fromEntries((etat.agendas || []).map((a) => [a.id, { rubriques: qui(`agenda:${a.id}`), fournies: fourniesPour(`agenda:${a.id}`),
+      test: testVisible(ms, tests[`agenda:${a.id}`]) }])),
     agenda_tous: qui("agenda"),
   };
 }
@@ -219,10 +235,11 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
               jours: Object.fromEntries(JOURS.map((j) => [j, placesDuJour(config.voix, j)])),
               du_prochain: animateursDuJour(config, prochain?.date || aujourdHui) },
       actus: { ...config.actus, flux: fluxActus(config) },
-      agenda: config.agenda, agendas: (etat.agendas || []).filter((x) => !(config.agenda.retires || []).includes(x.id)),
-      agendas_retires: (etat.agendas || []).filter((x) => (config.agenda.retires || []).includes(x.id)), agendas_vus: etat.agendas_vus || null,
+      agenda: config.agenda, agendas: nommerAgendas(config, (etat.agendas || []).filter((x) => !(config.agenda.retires || []).includes(x.id))),
+      agendas_retires: nommerAgendas(config, (etat.agendas || []).filter((x) => (config.agenda.retires || []).includes(x.id))), agendas_vus: etat.agendas_vus || null,
+      sources_integrees: config.sources_integrees,
       consignes: config.consignes, consignes_rubriques: config.consignes_rubriques, a_approfondir: config.a_approfondir.map((a) => a.sujet),
-      sources: sourcesVisibles(config, etat, aujourdHui),
+      sources: sourcesVisibles(config, etat, aujourdHui, ctx.ms || Date.now()),
       echantillons: liens.voix, temps_echantillons: etat.temps_echantillons || {},
     },
     regles: config.regles.map((r) => regleVisible(r, aujourdHui)),
@@ -247,7 +264,7 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
     listes: { sources: SOURCES, longueurs: LONGUEURS, jours: JOURS.map((j) => [j, COURTS_JOURS[j], NOMS_JOURS[j]]),
               voix: VOIX.map(([nom, description, genre]) => ({ nom, description, genre, conseillee: VOIX_CONSEILLEES.includes(nom) })),
               vitesses: VITESSES, tons: TONS, descriptions_tons: DESCRIPTIONS_TONS, consignes_pretes: CONSIGNES_PRETES,
-              consignes_pretes_rubriques: CONSIGNES_PRETES_RUBRIQUES, transports: Object.fromEntries(Object.entries(TRANSPORTS).filter(([k]) => k !== "peu_importe")),
+              consignes_pretes_rubriques: CONSIGNES_PRETES_RUBRIQUES, sources_par_modele: SOURCES_PAR_MODELE, sources_integrees: SOURCES_INTEGREES, transports: Object.fromEntries(Object.entries(TRANSPORTS).filter(([k]) => k !== "peu_importe")),
               delais: DELAIS_RATTRAPAGE, devises: DEVISES, regions: CANTONS, modes_voix: MODES_VOIX,
               pays: Object.entries(PAYS).map(([code, p]) => [code, p.nom]) },
   };
@@ -316,6 +333,7 @@ export function champsDepuisFormulaire(f, ancienne, aujourdHui, devise = "CHF", 
 
   const champs = {
     titre, consigne, periode, rubrique, recherche, condition,
+    ...(f.modele ? { modele: String(f.modele) } : {}),
     importance: f.prioritaire ? "prioritaire" : "normale",
     etat: f.active === false ? "pause" : "active",
   };
@@ -338,6 +356,7 @@ export function formulaireNeuf(config, idModele = "libre", ponctuelle = false, r
     periode: ponctuelle ? { type: "ponctuelle", debut: "", fin: "", jours: [] }
       : { type: "toujours", debut: "", fin: "", jours: [], ...(base.periode || {}) },
     sources: sourcesUtilisables(ponctuelle ? (rendu === "point" ? ["web", "actus"] : ["web", "lieux"]) : modele.sources || [], config),
+    modele: ponctuelle ? "libre" : modele.id,
     rendu: ponctuelle ? rendu : "idees", audio: false, minutes: 3,
     fiche: Object.fromEntries(CHAMPS_FICHE.map((c) => [c, ""])),
     transport: "aucun", budget: { max: "", unite: "personne", devise: profilPays(config).devise, transport_inclus: false },
@@ -354,7 +373,7 @@ export function formulaireDepuisRegle(r, devise = "CHF") {
     titre: r.titre, consigne: r.consigne,
     longueur: r.rubrique?.longueur || "aucune",
     periode: { type: r.periode.type, debut: r.periode.debut || "", fin: r.periode.fin || "", jours: [...(r.periode.jours || [])] },
-    sources: [...(r.recherche?.sources || [])],
+    sources: [...(r.recherche?.sources || [])], modele: r.modele || "libre",
     rendu: r.recherche?.rendu || "idees", audio: Boolean(r.recherche?.audio), minutes: r.recherche?.minutes || 3,
     fiche: Object.fromEntries(CHAMPS_FICHE.map((c) => [c, fiche[c] || ""])),
     transport: fiche.transport || "",

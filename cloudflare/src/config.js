@@ -116,6 +116,52 @@ export const RANGEMENT_SOURCES = {
   actus: "services", web: "services", transports: "services", meteo: "services", lieux: "services", wikivoyage: "services",
   saints: "donnees", fetes: "donnees", feries: "donnees", agenda: "agendas",
 };
+// Les sources qu'on peut choisir selon le genre de rubrique : un suivi de train n'a que faire
+// d'un guide de voyage. « flux », « sites », « agendas » : chacun de ses outils de ce type.
+// Une rubrique sur mesure (« libre ») et une recherche ponctuelle choisissent parmi toutes.
+export const SOURCES_PAR_MODELE = {
+  prenom: ["saints", "web"],
+  journee: ["fetes", "feries", "actus", "web"],
+  meteo: ["meteo"],
+  rappel: ["agendas"],
+  train: ["transports", "agendas"],
+  actu_pays: ["actus", "web", "flux", "sites"],
+  actu_theme: ["actus", "web", "flux", "sites"],
+  sortie: ["web", "lieux", "meteo", "wikivoyage", "transports", "sites"],
+};
+// Les rubriques fournies qui choisissent leurs outils : leurs agendas (tous, ou certains) ou leurs flux.
+export const SOURCES_INTEGREES = { agenda: "agendas", deplacements: "agendas", actu_locale: "flux", approfondissements: "flux", actualites: "flux" };
+
+// Le type d'une source pour SOURCES_PAR_MODELE : sa catégorie, ou flux / sites / agendas.
+export function typeSource(s) {
+  const t = String(s);
+  return t === "agenda" || t.startsWith("agenda:") ? "agendas" : t.startsWith("flux:") ? "flux" : t.startsWith("site:") ? "sites" : t;
+}
+// Une source qu'un modèle de rubrique propose (toutes pour une rubrique sur mesure).
+export function sourcePermise(modele, s) {
+  const permises = SOURCES_PAR_MODELE[modele];
+  return !permises || permises.includes(typeSource(s));
+}
+
+// Le modèle d'une rubrique créée avant que la rubrique le garde (2026-10-29.3) : le genre le plus
+// probable dont les sources couvrent toutes celles qu'elle a déjà (sinon : sur mesure).
+function devinerModele(r) {
+  if (r.periode?.type === "ponctuelle") return "libre";
+  const sources = r.recherche?.sources || [];
+  const fiche = r.recherche?.fiche || {};
+  const t = normaliserTexte(`${r.titre || ""} ${r.consigne || ""}`);
+  const candidats = [];
+  if (r.condition) candidats.push("rappel");
+  if (/\btrains?\b|\bcff\b|sncf|sncb|\bgare\b/.test(t) || sources.includes("transports")) candidats.push("train");
+  if (fiche.quoi || fiche.ou || sources.some((x) => x === "lieux" || x === "wikivoyage")) candidats.push("sortie");
+  if (/prenom|\bsaints?\b/.test(t) || sources.includes("saints")) candidats.push("prenom");
+  if (/journee|fete (inter)?nationale|fete internationale/.test(t) || sources.includes("fetes")) candidats.push("journee");
+  if (/meteo/.test(t) || sources.includes("meteo")) candidats.push("meteo");
+  if (/\bactus?\b|actualite|nouvelles/.test(t) || sources.includes("actus")) candidats.push("actu_theme");
+  return candidats.find((m) => sources.length && sources.every((x) => sourcePermise(m, x))) || "libre";
+}
+const MODELES_CONNUS = new Set(["libre", ...Object.keys(SOURCES_PAR_MODELE)]);
+
 export const MAX_FLUX = 30;
 export const MAX_SITES = 15;
 export const MAX_SOURCES_RUBRIQUE = 25;
@@ -294,7 +340,11 @@ export function configParDefaut() {
     },
     deroule: Object.keys(RUBRIQUES).map((cle) => ({ cle, actif: true })),
     agenda: { jours: 7, horizon: 90, notes: true, deplacements: true, jours_deplacements: 14,
-              max_deplacements: 2, exclus: [], retires: [] },
+              max_deplacements: 2, exclus: [], retires: [], noms: {} },   // noms : ceux donnés aux agendas
+    // Ce que lisent les rubriques fournies (SOURCES_INTEGREES) : Agenda et Mes déplacements, leurs
+    // agendas (« agenda » = tous, ou « agenda:<id> ») ; Actu locale et À creuser, des flux en plus
+    // de leurs recherches. Les flux des Actualités globales sont dans actus.flux_lus.
+    sources_integrees: { agenda: ["agenda"], deplacements: ["agenda"], actu_locale: [], approfondissements: [] },
     // Actualités globales et Actu locale se règlent de la même façon : thèmes préférés et à
     // éviter, âge maximum des nouvelles, nombre de sujets racontés et d'articles lus.
     actus: { ville: "", sujets_preferes: [], sujets_a_eviter: [], flux_lus: fluxDuPays(PAYS_DEFAUT).map((f) => f.id), fraicheur_heures: 36, articles: 30,
@@ -498,6 +548,8 @@ export function normaliserRegle(r) {
   } : null;
   return {
     id: r.id, titre: texteCourt(50)(r.titre || r.consigne || "Rubrique"),
+    // Le modèle du catalogue d'où vient la rubrique : il dit quelles sources elle peut choisir.
+    modele: type === "ponctuelle" ? "libre" : MODELES_CONNUS.has(r.modele) ? r.modele : devinerModele({ ...r, periode: { type } }),
     consigne: String(r.consigne || r.titre || "").replace(/\s+/g, " ").trim().slice(0, 400),
     periode: {
       type, debut: dateOuNull(periode.debut), fin: dateOuNull(periode.fin),
@@ -1033,6 +1085,32 @@ function completerSources(resultat, config) {
       .map((x) => ({ id: x.id, nom: String(x.nom || x.domaine).replace(/\s+/g, " ").trim().slice(0, 60), domaine: String(x.domaine).toLowerCase() })),
   };
 }
+// Ce que lisent les rubriques fournies, sans les flux retirés (un agenda retiré est enlevé
+// quand on le retire) ; Agenda et Mes déplacements lisent au moins « tous mes agendas ».
+function completerSourcesIntegrees(resultat, config) {
+  const anciennes = config?.sources_integrees || {};
+  const flux = new Set(resultat.sources.flux.map((f) => `flux:${f.id}`));
+  const sortie = {};
+  for (const [cle, type] of Object.entries(SOURCES_INTEGREES)) {
+    if (cle === "actualites") continue;
+    const liste = (Array.isArray(anciennes[cle]) ? anciennes[cle] : []).map(String);
+    if (type === "agendas") {
+      const precis = [...new Set(liste.filter((x) => AGENDA_ID.test(x)))];
+      sortie[cle] = precis.length ? precis : ["agenda"];
+    } else sortie[cle] = [...new Set(liste.filter((x) => flux.has(x)))];
+  }
+  resultat.sources_integrees = sortie;
+  const noms = resultat.agenda.noms && typeof resultat.agenda.noms === "object" ? resultat.agenda.noms : {};
+  resultat.agenda.noms = Object.fromEntries(Object.entries(noms).filter(([id, nom]) => /^[0-9a-f]{10}$/.test(id) && typeof nom === "string" && nom.trim())
+    .slice(0, 12).map(([id, nom]) => [id, nom.replace(/\s+/g, " ").trim().slice(0, 40)]));
+}
+
+// Les agendas lus par GitHub (etat.agendas), sous le nom que l'auditeur leur a donné.
+export function nommerAgendas(config, agendas = []) {
+  const noms = config?.agenda?.noms || {};
+  return agendas.map((a) => (noms[a.id] ? { ...a, nom: noms[a.id], nom_fichier: a.nom } : a));
+}
+
 export const DOMAINE = /^(?=.{4,120}$)([a-z0-9-]+\.)+[a-z]{2,}$/i;
 
 // Avant Réglages › Sources (2026-10-22) : des sources « choisies par l'application » et,
@@ -1088,6 +1166,7 @@ export function completerConfig(config) {
     if (!resultat.deroule.some((r) => r.cle === cle)) placerRubrique(resultat, cle, cle === "actu_locale" ? "deplacements" : "agenda");
   }
   completerSources(resultat, config);
+  completerSourcesIntegrees(resultat, config);
   resultat.regles = (resultat.regles || []).map(normaliserRegle);
   if (!config?.sources) migrerSources(resultat.regles, config?.regles || []);
   renumeroter(resultat);

@@ -130,6 +130,18 @@ export function resumeConnexions(cles = {}, etat = {}, maintenant = Date.now()) 
 // (faux services des tests).
 
 const AGENT = { "User-Agent": "Mozilla/5.0 (podcast-matin)" };
+// Google (Actualités) renvoie souvent les questions venues de Cloudflare vers une page de
+// consentement ou de contrôle : on se présente comme un navigateur qui a déjà accepté, et
+// si Google refuse quand même, le test part sur GitHub (d'où le podcast lit vraiment).
+const estGoogle = (url) => /(^|\.)google\.[a-z.]+$/i.test((() => { try { return new URL(url).hostname; } catch { return ""; } })());
+function entetes(url, accept) {
+  if (!estGoogle(url)) return { ...AGENT, Accept: accept };
+  return { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
+           Accept: accept, "Accept-Language": "fr-CH,fr;q=0.9", Cookie: "CONSENT=YES+cb; SOCS=CAI" };
+}
+// Une réponse qui ressemble à un refus du service plutôt qu'à une panne de l'outil.
+const refusDuService = (r, url) => [403, 429, 451, 503].includes(r.status) || /consent\.google|google\.[a-z.]+\/sorry/i.test(r.url || "")
+  || (estGoogle(url) && !r.ok);
 const ilYa = (date, maintenant) => {
   const h = Math.max(0, Math.round((maintenant - date) / 3600000));
   return h < 1 ? "il y a moins d'une heure" : h < 48 ? `il y a ${h} h` : `il y a ${Math.round(h / 24)} jours`;
@@ -138,10 +150,14 @@ const ilYa = (date, maintenant) => {
 // Un flux RSS ou Atom : combien d'articles, et de quand date le plus récent.
 export async function testerFlux(url, maintenant = Date.now()) {
   try {
-    const r = await fetch(url, { headers: { ...AGENT, Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml" }, redirect: "follow", signal: delai(15000) });
+    const r = await fetch(url, { headers: entetes(url, "application/rss+xml, application/atom+xml, application/xml, text/xml"), redirect: "follow", signal: delai(15000) });
+    if (refusDuService(r, url)) return { ok: false, bloque: true, message: `Le site refuse les questions du bot (erreur ${r.status}).` };
     if (!r.ok) return { ok: false, message: `Le flux ne s'ouvre pas (erreur ${r.status}).` };
     const texte = (await r.text()).slice(0, 600000);
-    if (!/<rss[\s>]|<feed[\s>]|<rdf:RDF/i.test(texte)) return { ok: false, message: "Cette adresse ne donne plus un flux RSS : le site a peut-être changé son adresse." };
+    if (!/<rss[\s>]|<feed[\s>]|<rdf:RDF/i.test(texte)) {
+      return estGoogle(url) ? { ok: false, bloque: true, message: "Google répond au bot par une page au lieu du flux." }
+        : { ok: false, message: "Cette adresse ne donne plus un flux RSS : le site a peut-être changé son adresse." };
+    }
     const nb = (texte.match(/<item[\s>]|<entry[\s>]/gi) || []).length;
     const dates = [...texte.matchAll(/<(?:pubDate|updated|published|dc:date)>([^<]+)</gi)].map((m) => Date.parse(m[1].trim())).filter(Number.isFinite);
     const recent = dates.length ? Math.max(...dates) : null;
@@ -149,7 +165,7 @@ export async function testerFlux(url, maintenant = Date.now()) {
     const vieux = recent && maintenant - recent > 14 * 24 * 3600000;
     return { ok: !vieux, message: `${nb} article${nb > 1 ? "s" : ""}${recent ? `, le plus récent ${ilYa(recent, maintenant)}` : ""}.${vieux ? " Plus rien de neuf depuis deux semaines : le flux est peut-être abandonné." : ""}` };
   } catch (erreur) {
-    return { ok: false, message: `Le flux ne répond pas (${erreur.message}).` };
+    return { ok: false, bloque: estGoogle(url), message: `Le flux ne répond pas (${erreur.message}).` };
   }
 }
 
@@ -186,9 +202,11 @@ export async function testerService(env, cle, { ville = "", profil = {}, pays = 
   try {
     if (cle === "actus") {
       const url = `${env.ACTUS_API || "https://news.google.com"}/rss/search?q=${encodeURIComponent(`${lieu} when:1d`)}&hl=${profil.actus_langue || "fr"}&gl=${profil.actus_pays || "CH"}&ceid=${profil.actus_pays || "CH"}:${profil.actus_langue || "fr"}`;
-      const r = await fetch(url, { headers: AGENT, signal: delai(15000) });
-      if (!r.ok) return { ok: false, message: `Google Actualités ne répond pas (erreur ${r.status}).` };
-      const nb = ((await r.text()).match(/<item[\s>]/gi) || []).length;
+      const r = await fetch(url, { headers: entetes(url, "application/rss+xml, application/xml, text/xml"), redirect: "follow", signal: delai(15000) });
+      if (refusDuService(r, url)) return { ok: false, bloque: true, message: `Google Actualités refuse les questions du bot (erreur ${r.status}).` };
+      const texte = await r.text();
+      if (!/<rss[\s>]/i.test(texte)) return { ok: false, bloque: true, message: "Google Actualités répond au bot par une page au lieu des articles." };
+      const nb = (texte.match(/<item[\s>]/gi) || []).length;
       return { ok: true, message: `Google Actualités répond : ${nb} article${nb > 1 ? "s" : ""} de moins d'un jour sur « ${lieu} ».` };
     }
     if (cle === "meteo") {
@@ -221,7 +239,7 @@ export async function testerService(env, cle, { ville = "", profil = {}, pays = 
       return { ok: true, message: page && !("missing" in page) ? `Wikivoyage répond : il a une page sur ${page.title}.` : `Wikivoyage répond, mais n'a pas de page sur ${lieu}.` };
     }
   } catch (erreur) {
-    return { ok: false, message: `Le service ne répond pas (${erreur.message}). Réessaie dans un moment.` };
+    return { ok: false, bloque: cle === "actus", message: `Le service ne répond pas (${erreur.message}). Réessaie dans un moment.` };
   }
   return { ok: false, message: "Ce service ne se teste pas ici." };
 }

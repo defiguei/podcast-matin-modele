@@ -608,6 +608,10 @@ def effectifs_depuis_bot(reglages: dict, memoire: dict, config: dict) -> dict[st
     e["locale_preferes"] = nettoyer_liste(ac.get("locale_preferes"))
     e["locale_a_eviter"] = nettoyer_liste(ac.get("locale_a_eviter"))
     e["consignes"] = nettoyer_liste(config.get("consignes"), 20, LONGUEUR_CONSIGNE)
+    # Ce que lisent les rubriques fournies : leurs agendas (Agenda, Mes déplacements), leurs flux (Actu locale, À creuser).
+    integrees = config.get("sources_integrees") if isinstance(config.get("sources_integrees"), dict) else {}
+    e["sources_integrees"] = {cle: [str(x) for x in integrees.get(cle) or [] if isinstance(x, str)][:30]
+                              for cle in ("agenda", "deplacements", "actu_locale", "approfondissements")}
     rubriques = config.get("consignes_rubriques") if isinstance(config.get("consignes_rubriques"), dict) else {}
     e["consignes_rubriques"] = {cle: liste for cle in moteur.RUBRIQUES
                                 if (liste := nettoyer_liste(rubriques.get(cle), 20, LONGUEUR_CONSIGNE))}
@@ -622,6 +626,39 @@ def effectifs_depuis_bot(reglages: dict, memoire: dict, config: dict) -> dict[st
     e["deroule"] = deroule if isinstance(deroule, list) and deroule else [{"cle": c, "actif": True} for c in moteur.RUBRIQUES]
     e["config_bot"] = config
     return e
+
+
+def evenements_choisis(evenements: list, choix: list[str] | None) -> list:
+    """Les événements des agendas qu'une rubrique fournie lit (« agenda » ou rien : tous)."""
+    ids = {c.split(":", 1)[1] for c in choix or [] if str(c).startswith("agenda:")}
+    return [e for e in evenements if not ids or getattr(e, "agenda", "") in ids]
+
+
+def articles_de_flux(effectifs: dict, choix: list[str] | None, maintenant: dt.datetime, heures: float,
+                     maximum: int = 8) -> list:
+    """Les articles récents des flux qu'une rubrique fournie a cochés (Actu locale, À creuser)."""
+    ids = {c.split(":", 1)[1] for c in choix or [] if str(c).startswith("flux:")}
+    if not ids:
+        return []
+    seuil = maintenant.astimezone(dt.timezone.utc) - dt.timedelta(hours=heures)
+    articles = []
+    for flux in ((effectifs.get("config_bot") or {}).get("sources") or {}).get("flux") or []:
+        if not isinstance(flux, dict) or flux.get("id") not in ids or not str(flux.get("url", "")).startswith("http"):
+            continue
+        try:
+            trouves = lire_flux(telecharger(flux["url"], 20, essais=2), str(flux.get("nom") or ""), maximum, seuil)
+            journal(f"Flux « {flux.get('nom', '?')} » : {len(trouves)} article(s).")
+            articles += trouves
+        except Exception as erreur:
+            journal(f"Flux « {flux.get('nom', '?')} » ignoré : {erreur}")
+    return articles
+
+
+def parle_de(article, sujet: str) -> bool:
+    """Un article d'un flux qui parle d'un sujet à creuser : la moitié de ses mots (4 lettres et plus) s'y retrouvent."""
+    mots = [m for m in re.findall(r"\w+", sans_accents(sujet.lower())) if len(m) >= 4]
+    texte = sans_accents(f"{article.titre} {article.resume}".lower())
+    return bool(mots) and sum(m in texte for m in mots) >= max(1, (len(mots) + 1) // 2)
 
 
 def rubrique_active(effectifs: dict, cle_rubrique: str) -> bool:
@@ -1934,23 +1971,33 @@ def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: l
     else:
         journal("Aucun agenda configuré (ajoute-en un dans l'application, Réglages › Sources › Agendas).")
     fin_fenetre = debut_du_jour(maintenant) + dt.timedelta(days=effectifs["jours_agenda"])
-    proches = [e for e in tous if e.debut < fin_fenetre]
-    prochain = tous[0] if tous and not proches else None
+    integrees = effectifs.get("sources_integrees") or {}
+    # La rubrique Agenda (et la clôture) ne parle que des agendas qu'elle lit.
+    du_jour = evenements_choisis(tous, integrees.get("agenda"))
+    proches = [e for e in du_jour if e.debut < fin_fenetre]
+    prochain = du_jour[0] if du_jour and not proches else None
     agenda = (resumer_agenda(proches, maintenant, prochain,
                              effectifs["horizon_prochain_evenement_jours"])
               if urls else "Agenda non configuré.")
 
     vus: set[str] = set()
     approfondissements = []
-    if rubrique_active(effectifs, "approfondissements"):
+    if rubrique_active(effectifs, "approfondissements") and effectifs["a_approfondir"]:
+        # Les flux cochés dans sa fiche : leurs articles qui parlent du sujet, en plus de la recherche.
+        des_flux = articles_de_flux(effectifs, integrees.get("approfondissements"), maintenant, 14 * 24, 15)
         for demande in effectifs["a_approfondir"]:
-            trouves = garder_nouveaux(chercher_actus(demande["sujet"], effectifs, maintenant, lus_pour(4), 14), vus, 4)
+            choisis = [a for a in des_flux if parle_de(a, demande["sujet"])]
+            trouves = garder_nouveaux(choisis + chercher_actus(demande["sujet"], effectifs, maintenant, lus_pour(4), 14), vus, 4)
             approfondissements.append((demande, trouves))
     deja_racontes = articles_deja_traites(memoire, maintenant)
     journal(f"Mémoire : {len(deja_racontes)} actu(s) déjà racontée(s) ces {JOURS_MEMOIRE_ARTICLES} derniers jours, écartée(s).")
     vus |= deja_racontes                                  # pas deux fois la même actu sur plusieurs jours
-    deplacements = (reperer_deplacements(tous, effectifs, cle, maintenant, prochain)
-                    if tous and rubrique_active(effectifs, "deplacements") else [])
+    # Les déplacements se cherchent dans les agendas choisis dans leur fiche.
+    pour_deplacements = evenements_choisis(tous, integrees.get("deplacements"))
+    prochain_deplacement = pour_deplacements[0] if pour_deplacements and not [
+        e for e in pour_deplacements if e.debut < fin_fenetre] else None
+    deplacements = (reperer_deplacements(pour_deplacements, effectifs, cle, maintenant, prochain_deplacement)
+                    if pour_deplacements and rubrique_active(effectifs, "deplacements") else [])
     for deplacement in deplacements:
         deplacement["articles"] = garder_nouveaux(
             chercher_actus(deplacement["recherche"] or deplacement["lieu"], effectifs,
@@ -1969,6 +2016,9 @@ def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: l
             for article in chercher_actus(f"{ville} {theme}", effectifs, maintenant, 3, heures=heures_locales):
                 article.etiquette = f"actu locale : {ville} · {theme}"
                 lues.append(article)
+        for article in articles_de_flux(effectifs, integrees.get("actu_locale"), maintenant, heures_locales, max(4, voulues)):
+            article.etiquette = f"actu locale : {article.source}"          # un média local coché dans la fiche
+            lues.append(article)
         for article in chercher_actus(ville, effectifs, maintenant, lus_pour(voulues), heures=heures_locales):
             article.etiquette = f"actu locale : {ville}"
             lues.append(article)

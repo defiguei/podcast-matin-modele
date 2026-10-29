@@ -50,10 +50,12 @@ Chaque rubrique fournie a ses **consignes**, dans sa fiche : « ne parle de la p
 | **Services** | Google Actualités, recherche web, météo, trains, lieux, guides de voyage. Une clé se range avec son service : Tavily sous la recherche web, SNCF sous les trains. |
 | **Flux** | Tous tes flux RSS, médias et sites spécialisés, avec les médias proposés pour ton pays. Les Actualités globales cochent les leurs dans leur fiche ; une autre rubrique, dans « Où elle cherche ». |
 | **Sites** | Tes sites de référence sans flux (un labo, un magazine) : une rubrique qui en coche un y limite sa recherche web. |
-| **Agendas** | Tes liens iCal (Google, Outlook…). On en coupe un pour tout le podcast, ou une rubrique n'en lit qu'un. |
+| **Agendas** | Tes liens iCal (Google, Outlook…), que tu peux renommer. On en coupe un pour tout le podcast, ou une rubrique n'en lit qu'un. |
 | **Données** | Ce qui est intégré au podcast, sans connexion (prénoms, journées et fêtes, jours fériés), avec ce que ça donne aujourd'hui. |
 
 **Réglages › Gemini** garde la clé du moteur, à part : sans elle, rien ne part.
+
+Chaque rubrique choisit ses sources dans « Où elle cherche » : l'Agenda et Mes déplacements leurs agendas, l'Actu locale, À creuser et les Actualités globales leurs flux. Une rubrique du catalogue ne propose que les sources qui ont du sens pour elle (un suivi de train : les trains et tes agendas) ; une rubrique sur mesure les propose toutes.
 
 | Clé | À quoi elle sert | Coût |
 |---|---|---|

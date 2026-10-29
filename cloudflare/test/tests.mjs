@@ -561,6 +561,59 @@ await scenario("Réglages › Sources : services, flux, sites, agendas, données
   verifier(s.flux.some((f) => f.nom === "Google Actualités – Suisse" && f.pays === "CH"), "flux du pays présents, marqués de leur pays", s.flux);
 });
 
+await scenario("Sources des rubriques : fournies, filtrées par modèle, test de Google depuis GitHub, agendas renommés", async () => {
+  // Deux agendas lus par GitHub.
+  await evenement({ type: "agendas", liste: [{ id: "aaaa000001", nom: "Perso", nb: 3 }, { id: "bbbb000002", nom: "Sport", nb: 5 }], evenements: [] });
+  // Agenda et Mes déplacements : tous les agendas, ou certains seulement.
+  let r = await app("sources_integree", { cle: "agenda", sources: ["agenda:bbbb000002"] });
+  verifier(r.ok && r.donnees.reglages.sources_integrees.agenda.join() === "agenda:bbbb000002"
+           && r.donnees.reglages.sources.agendas.bbbb000002.fournies.join() === "Agenda,Mes déplacements"
+           && r.donnees.reglages.sources.agendas.aaaa000001.fournies.join() === "Mes déplacements", "Agenda : un seul agenda ; qui lit quoi", r.erreur || r.donnees.reglages.sources.agendas);
+  verifier((await app("sources_integree", { cle: "deplacements", sources: [] })).ok === false, "Mes déplacements : au moins un agenda");
+  r = await app("sources_integree", { cle: "deplacements", sources: ["agenda", "agenda:inconnu000"] });
+  verifier(r.ok && r.donnees.reglages.sources_integrees.deplacements.join() === "agenda", "agenda inconnu écarté : tous les agendas");
+  // Actu locale et À creuser : leurs flux.
+  const unFlux = r.donnees.reglages.sources.flux[0];
+  r = await app("sources_integree", { cle: "actu_locale", sources: [unFlux.cle, "flux:inconnu1"] });
+  verifier(r.ok && r.donnees.reglages.sources_integrees.actu_locale.join() === unFlux.cle && r.donnees.reglages.sources.flux[0].fournies.includes("Actu locale"),
+    "Actu locale : ses flux", r.donnees.reglages.sources_integrees);
+  r = await app("sources_integree", { cle: "approfondissements", sources: [unFlux.cle] });
+  verifier(r.ok && r.donnees.reglages.sources_integrees.approfondissements.length === 1, "À creuser : ses flux");
+  verifier((await app("sources_integree", { cle: "ouverture", sources: [] })).ok === false, "une rubrique sans sources à choisir : refusé");
+  const exp = await (await fetch(`${BOT}/api/config`, { headers: entetesApi })).json();
+  verifier(exp.config.sources_integrees.agenda.join() === "agenda:bbbb000002", "GitHub reçoit ce que lisent les rubriques fournies", exp.config.sources_integrees);
+  // Renommer un agenda (vide : le nom du fichier revient).
+  r = await app("agenda_renommer", { id: "bbbb000002", nom: "Club de foot" });
+  let ag = r.donnees.reglages.agendas.find((a) => a.id === "bbbb000002");
+  verifier(r.ok && ag.nom === "Club de foot" && ag.nom_fichier === "Sport", "agenda renommé", ag);
+  r = await app("agenda_renommer", { id: "bbbb000002", nom: "" });
+  ag = r.donnees.reglages.agendas.find((a) => a.id === "bbbb000002");
+  verifier(r.ok && ag.nom === "Sport" && !ag.nom_fichier && !Object.keys((await etat()).config.agenda.noms).length, "nom d'origine rendu");
+  await app("sources_integree", { cle: "agenda", sources: ["agenda"] });
+  await app("sources_integree", { cle: "actu_locale", sources: [] });
+  await app("sources_integree", { cle: "approfondissements", sources: [] });
+  // Le modèle d'une rubrique est gardé : il dit quelles sources elle peut choisir.
+  r = await app("rubrique", { formulaire: { titre: "Mon train", consigne: "Retard du 7h12", periode: { type: "toujours" }, sources: ["transports"], modele: "train" } });
+  const train = r.id;
+  verifier(r.ok && r.donnees.regles.find((x) => x.id === train).modele === "train" && r.donnees.listes.sources_par_modele.train.join() === "transports,agendas",
+    "rubrique d'un modèle : modèle gardé, sources proposées filtrées", r.erreur);
+  r = await app("rubrique", { formulaire: { titre: "Point CFF", consigne: "Les retards", periode: { type: "ponctuelle" }, sources: ["actus"], modele: "train" } });
+  verifier(r.ok && (await etat()).config.regles.find((x) => x.id === r.id).modele === "libre", "recherche ponctuelle : toutes les sources");
+  for (const id of [train, r.id]) await app("supprimer", { id });
+  // Google refuse le bot : le test part sur GitHub et son résultat revient.
+  await app("regler", { chemin: "actus.ville", valeur: "Bloqueville" });
+  await vider();
+  r = await app("outil_tester", { cle: "service:actus" });
+  const lance = lancements(await appels()).find((x) => x.workflow === "tester-cles.yml");
+  verifier(r.ok && r.attendre_test && lance && JSON.parse(lance.entrees.outils)[0].cle === "service:actus" && lance.entrees.cles === ""
+           && r.donnees.reglages.sources.categories.find((c) => c.cle === "actus").test?.en_cours, "Google refuse le bot : test parti sur GitHub", { r: r.message, lance });
+  await evenement({ type: "outils", resultats: { "service:actus": { ok: true, message: "Google Actualités répond : 12 articles." }, "pas:bon": { ok: true } } });
+  r = await app("etat");
+  const t = r.donnees.reglages.sources.categories.find((c) => c.cle === "actus").test;
+  verifier(t?.ok && t.message.includes("testé depuis GitHub") && !t.en_cours, "résultat de GitHub affiché", t);
+  await app("regler", { chemin: "actus.ville", valeur: "Yverdon" });
+});
+
 await scenario("Données intégrées : mêmes résultats que fetes.py", async () => {
   const dates = ["2026-10-29", "2026-05-31", "2026-11-27", "2027-03-08", "2026-12-25", "2026-02-10"];
   const script = `import json, datetime as dt, fetes

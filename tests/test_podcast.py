@@ -1110,6 +1110,27 @@ verifier("à respecter : Ne parle pas de la piscine." in _recherche.regle_essent
                  for x in ("Thèmes qui ne l'intéressent pas : sport", "Commence par l'économie.")),
          "chercher maintenant : consignes et thèmes de la rubrique")
 verifier(_recherche.ESSENTIELLES["actualites"][0] == "Actualités globales" == podcast.moteur.RUBRIQUES["actualites"], "Actualités globales")
+# Rubriques fournies : leurs agendas et leurs flux choisis dans leur fiche.
+_config_src = {"actus": {"ville": "Yverdon"}, "a_approfondir": [{"sujet": "tarifs CFF"}],
+               "sources_integrees": {"agenda": ["agenda:aaaa000001"], "deplacements": ["agenda"], "actu_locale": ["flux:local001"], "approfondissements": ["flux:local001"]}}
+verifier(_recherche.regle_essentielle("agenda", _config_src, "")["recherche"]["sources"] == ["agenda:aaaa000001"]
+         and _recherche.regle_essentielle("deplacements", _config_src, "")["recherche"]["sources"] == ["agenda", "web", "actus"]
+         and _recherche.regle_essentielle("actu_locale", _config_src, "")["recherche"]["sources"] == ["actus", "flux:local001"]
+         and _recherche.regle_essentielle("approfondissements", _config_src, "")["recherche"]["sources"] == ["web", "actus", "flux:local001"],
+         "chercher maintenant : les agendas et les flux choisis dans la fiche")
+_ev = lambda titre, agenda: podcast.Evenement(titre, dt.datetime(2026, 10, 30, 9, 0, tzinfo=dt.timezone.utc), None, False, agenda=agenda)
+_evs = [_ev("Dentiste", "aaaa000001"), _ev("Match", "bbbb000002")]
+verifier([e.titre for e in podcast.evenements_choisis(_evs, ["agenda:bbbb000002"])] == ["Match"] and len(podcast.evenements_choisis(_evs, ["agenda"])) == 2
+         and len(podcast.evenements_choisis(_evs, None)) == 2, "événements des agendas choisis")
+_art = podcast.Article(titre="Les CFF augmentent leurs tarifs en décembre", resume="", lien="", source="La Région", date=None)
+verifier(podcast.parle_de(_art, "tarifs CFF") and not podcast.parle_de(_art, "réforme des retraites"), "article d'un flux qui parle du sujet à creuser")
+_ancien_tel = podcast.telecharger
+podcast.telecharger = lambda url, *a, **k: b"""<rss><channel><item><title>Travaux rue du Lac</title><pubDate>Thu, 29 Oct 2026 06:00:00 +0000</pubDate></item></channel></rss>"""
+_arts = podcast.articles_de_flux({"config_bot": {"sources": {"flux": [{"id": "local001", "nom": "La Région", "url": "https://laregion.ch/rss"},
+                                                                       {"id": "autre002", "nom": "Autre", "url": "https://autre.ch/rss"}]}}},
+                                 ["flux:local001"], dt.datetime(2026, 10, 29, 8, 0, tzinfo=dt.timezone.utc), 48)
+podcast.telecharger = _ancien_tel
+verifier([a.titre for a in _arts] == ["Travaux rue du Lac"] and _arts[0].source == "La Région", f"flux cochés lus ({[a.titre for a in _arts]})")
 verifier([podcast.periode_recherche(h) for h in (12, 36, 48, 72, 168, 336)] == ["12h", "36h", "2d", "3d", "7d", "14d"],
          "âge des nouvelles en heures ou en jours pour Google Actualités")
 

@@ -10,6 +10,7 @@ import {
   NOMS_JOURS, heureValide,
   VOIX, animateursDuJour, renommerVoix, activerVoix, choisirVoixJour, LONGUEUR_CONSIGNE, PAYS, profilPays, fluxActus, FERIES_CALCULES,
   SOURCES, MAX_FLUX, MAX_SITES, RANGEMENT_SOURCES, RUBRIQUES_A_CHERCHER, nomRubrique, idCourt, normaliserTexte,
+  SOURCES_INTEGREES, nommerAgendas, RUBRIQUES,
 } from "./config.js";
 import { consigneComprehension, contexteComprehension, schemaOperations, appliquerOperations, messageCompris,
   rubriquesARediger, CONSIGNE_REDACTION, schemaRedaction, contenuRedaction, appliquerRedaction } from "./comprendre.js";
@@ -20,7 +21,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-29.2";
+export const VERSION = "2026-10-29.3";
 const MAX_REFAITS = 6;
 const MAX_RECHERCHES = 15;
 const MAX_EPISODES = 60;      // épisodes récents, dans l'état ; les plus anciens vont dans l'archive de leur mois
@@ -29,12 +30,10 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
-  "Réglages › Sources range tous tes outils en cinq onglets (services, flux, sites, agendas, données) : chacun se teste et dit quelles rubriques s'en servent.",
-  "Tes médias et tes flux spécialisés ne font plus qu'une liste ; les Actualités globales cochent leurs flux dans leur fiche.",
-  "Sites de référence : une rubrique peut limiter sa recherche web à un site précis.",
-  "Une rubrique peut ne lire qu'un seul de tes agendas.",
-  "Les clés Tavily et SNCF sont rangées avec leur service ; Gemini a son propre écran (Réglages › Gemini).",
-  "Données intégrées : prénoms, journées et fériés montrent ce qu'ils donnent aujourd'hui.",
+  "Chaque rubrique choisit ses sources : l'Agenda et Mes déplacements leurs agendas, l'Actu locale et À creuser leurs flux ; une rubrique du catalogue ne propose que les sources utiles.",
+  "Une rubrique sur mesure range toutes les sources en groupes qu'on ouvre un à un.",
+  "Tes agendas se renomment (Réglages › Sources › Agendas) ; la fiche Agenda ne montre plus la liste des rendez-vous.",
+  "Google Actualités refuse parfois les questions du bot : le test passe alors par GitHub, d'où le podcast le lit.",
 ];
 
 // « 2026-10 » décalé de n mois.
@@ -175,8 +174,9 @@ export class Etat extends DurableObject {
   }
 
   contexte() {
-    const m = maintenantLocal(new Date(this.maintenant()));
-    return { maintenant: m, aujourdHui: m.date, maintenantIso: m.iso };
+    const ms = this.maintenant();
+    const m = maintenantLocal(new Date(ms));
+    return { maintenant: m, aujourdHui: m.date, maintenantIso: m.iso, ms };
   }
 
   // Le réveil programmé du Durable Object : épisodes, rattrapage, sauvegarde.
@@ -345,7 +345,7 @@ export class Etat extends DurableObject {
     if (contenus.length === 1) return { vide: true };
     let reponse;
     try {
-      reponse = await this.gemini(consigneComprehension(config, { ...ctx, agendas: etat.agendas || [] }), contenus, schemaOperations());
+      reponse = await this.gemini(consigneComprehension(config, { ...ctx, agendas: nommerAgendas(config, etat.agendas || []) }), contenus, schemaOperations());
     } catch (erreur) {
       console.log("Gemini :", erreur.message);
       return null;
@@ -505,6 +505,7 @@ export class Etat extends DurableObject {
     config.sources.flux = config.sources.flux.filter((f) => f.id !== id);
     config.actus.flux_lus = config.actus.flux_lus.filter((x) => x !== id);
     for (const r of config.regles) if (r.recherche) r.recherche.sources = r.recherche.sources.filter((x) => x !== `flux:${id}`);
+    for (const cle of Object.keys(config.sources_integrees)) config.sources_integrees[cle] = config.sources_integrees[cle].filter((x) => x !== `flux:${id}`);
     return `Flux retiré : ${flux.nom}`;
   }
 
@@ -1040,6 +1041,36 @@ export class Etat extends DurableObject {
         case "flux_retirer":
           try { libelle = this.retirerFlux(config, String(demande.id || "")); } catch (erreur) { return refus(erreur.message); }
           break;
+        // Ce que lit une rubrique fournie : ses agendas (Agenda, Mes déplacements) ou ses flux (Actu locale, À creuser).
+        case "sources_integree": {
+          const cle = String(demande.cle || "");
+          const type = SOURCES_INTEGREES[cle];
+          if (!type || cle === "actualites") return refus("Rubrique inconnue.");
+          const voulues = [...new Set((Array.isArray(demande.sources) ? demande.sources : []).map(String))];
+          if (type === "agendas") {
+            const connus = new Set((etat.agendas || []).map((a) => `agenda:${a.id}`));
+            const precis = voulues.filter((x) => connus.has(x));
+            if (!precis.length && !voulues.includes("agenda")) return refus("Choisis au moins un agenda, ou « Tous mes agendas ».");
+            config.sources_integrees[cle] = precis.length ? precis : ["agenda"];
+          } else {
+            const flux = new Set(config.sources.flux.map((f) => `flux:${f.id}`));
+            config.sources_integrees[cle] = voulues.filter((x) => flux.has(x));
+          }
+          const n = config.sources_integrees[cle].length;
+          libelle = `${RUBRIQUES[cle]} : ${type === "agendas" ? (config.sources_integrees[cle][0] === "agenda" ? "tous tes agendas" : `${n} agenda${n > 1 ? "s" : ""}`) : `${n} flux`}`;
+          break;
+        }
+        // Un agenda renommé (vide : il reprend le nom de son fichier).
+        case "agenda_renommer": {
+          const connu = (etat.agendas || []).find((a) => a.id === demande.id);
+          if (!connu) return refus("Agenda inconnu : relis la liste.");
+          const nom = String(demande.nom || "").replace(/\s+/g, " ").trim().slice(0, 40);
+          const noms = { ...(config.agenda.noms || {}) };
+          if (nom && nom !== connu.nom) noms[connu.id] = nom; else delete noms[connu.id];
+          config.agenda.noms = noms;
+          libelle = nom && nom !== connu.nom ? `Agenda « ${connu.nom} » renommé « ${nom} »` : `Agenda « ${connu.nom} » : nom d'origine`;
+          break;
+        }
         // Les flux que lisent les Actualités globales (cochés dans leur fiche).
         case "actus_flux": {
           const flux = config.sources.flux.find((f) => f.id === demande.id);
@@ -1078,17 +1109,22 @@ export class Etat extends DurableObject {
         case "outil_tester": {
           const cle = String(demande.cle || "");
           const [type, id] = cle.split(":");
-          let test;
+          let test, demandeGitHub = null;
           if (type === "service" && RANGEMENT_SOURCES[id] === "services") {
-            test = await testerService(this.env, id, { ville: config.actus.ville, profil: profilPays(config), pays: config.pays });
+            const lieu = { ville: config.actus.ville, profil: profilPays(config), pays: config.pays };
+            test = await testerService(this.env, id, lieu);
+            demandeGitHub = { cle, ville: lieu.ville, pays: lieu.pays,
+                              profil: { actus_langue: lieu.profil.actus_langue, actus_pays: lieu.profil.actus_pays, exemple_ville: lieu.profil.exemple_ville } };
           } else if (type === "flux") {
             const flux = config.sources.flux.find((f) => f.id === id);
             if (!flux) return refus("Ce flux n'est plus dans la liste.");
             test = await testerFlux(flux.url, this.maintenant());
+            demandeGitHub = { cle, url: flux.url };
           } else if (type === "site") {
             const site = config.sources.sites.find((x) => x.id === id);
             if (!site) return refus("Ce site n'est plus dans la liste.");
             test = await testerSite(site.domaine, this.env.SITES_API);
+            demandeGitHub = { cle, domaine: site.domaine };
           } else if (type === "agenda") {
             const lien = (this.cles.agendas || []).find((a) => a.id === id);
             if (!lien) {
@@ -1102,6 +1138,16 @@ export class Etat extends DurableObject {
             if (test.ok && prochain) test.message += ` Prochain : ${prochain.titre} (${dateCourte(prochain.debut.slice(0, 10))}${prochain.journee ? "" : ` à ${prochain.debut.slice(11, 16).replace(":", "h")}`}).`;
             if (test.ok) etat.agendas = (etat.agendas || []).map((a) => a.id === id ? { ...a, nom: test.nom || a.nom, nb: test.nb } : a);
           } else return refus("Outil inconnu.");
+          // Le service refuse les questions du bot (Google, souvent) : le test part sur GitHub,
+          // d'où le podcast le lit vraiment, et le résultat revient par l'événement « outils ».
+          if (test.bloque && demandeGitHub) {
+            try {
+              await this.gh.lancer("tester-cles.yml", { cles: "", outils: JSON.stringify([demandeGitHub]) });
+              etat.tests_outils = { ...(etat.tests_outils || {}), [cle]: { en_cours: true, lance_ms: this.maintenant(), quand: ctx.maintenantIso } };
+              await this.ecrireEtat(etat);
+              return reponse({ message: `${test.message} Je le teste depuis GitHub, d'où le podcast le lit : résultat dans une minute environ.`, attendre_test: true });
+            } catch { /* GitHub ne lance pas le test (dépôt pas à jour) : on garde le résultat du bot */ }
+          }
           this.noterTest(etat, cle, test, ctx);
           await this.ecrireEtat(etat);
           return test.ok ? reponse({ message: test.message }) : refus(test.message);
@@ -1283,8 +1329,12 @@ export class Etat extends DurableObject {
             break;
           }
           await this.ecrireCles({ ...this.cles, agendas });
-          // Les rubriques qui ne lisaient que lui ne le gardent pas.
+          // Les rubriques qui ne lisaient que lui ne le gardent pas (Agenda et Mes déplacements reviennent à « tous »).
           for (const r of config.regles) if (r.recherche) r.recherche.sources = r.recherche.sources.filter((x) => x !== `agenda:${demande.id}`);
+          for (const cle of ["agenda", "deplacements"]) {
+            const reste = config.sources_integrees[cle].filter((x) => x !== `agenda:${demande.id}`);
+            config.sources_integrees[cle] = reste.length ? reste : ["agenda"];
+          }
           if (JSON.stringify(config) !== JSON.stringify(ancienne)) await this.enregistrer(config, etat, ancienne, "Agenda retiré");
           etat.agendas = (etat.agendas || []).filter((a) => a.id !== demande.id);
           etat.agenda_apercu = (etat.agenda_apercu || []).filter((x) => x.agenda !== demande.id);
@@ -1595,6 +1645,16 @@ export class Etat extends DurableObject {
       for (const [nom, r] of Object.entries(ev.resultats || {})) {
         if (!CLES[nom] || !r || typeof r !== "object") continue;
         etat.tests_cles[nom] = { ok: Boolean(r.ok), message: String(r.message || "").slice(0, 300), quand: ctx.maintenantIso, quand_ms: this.maintenant(), ou: "github" };
+      }
+      await this.ecrireEtat(etat);
+      return { ok: true };
+    }
+    if (ev.type === "outils") {
+      // Résultat de tester-cles.yml pour des outils que le service refuse au bot (Google Actualités).
+      etat.tests_outils = { ...(etat.tests_outils || {}) };
+      for (const [cle, r] of Object.entries(ev.resultats || {})) {
+        if (!/^(service|flux|site):[0-9a-z_]{2,16}$/.test(cle) || !r || typeof r !== "object") continue;
+        etat.tests_outils[cle] = { ok: Boolean(r.ok), message: `${String(r.message || "").slice(0, 280)} (testé depuis GitHub)`, quand: ctx.maintenantIso, ou: "github" };
       }
       await this.ecrireEtat(etat);
       return { ok: true };

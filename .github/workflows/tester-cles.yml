@@ -13,6 +13,10 @@ on:
         description: "Clés à tester : gemini, tavily, sncf (vide : toutes)"
         required: false
         default: ""
+      outils:
+        description: "Outils à tester d'ici (envoyé par le bot quand un service refuse ses questions)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -36,6 +40,7 @@ jobs:
       - name: Tester les clés
         env:
           CLES: ${{ inputs.cles }}
+          OUTILS: ${{ inputs.outils }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           SNCF_API_KEY: ${{ secrets.SNCF_API_KEY }}

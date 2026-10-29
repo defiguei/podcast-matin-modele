@@ -205,6 +205,12 @@ assert set(ESSENTIELLES) == set(p.RUBRIQUES_ESSENTIELLES)
 def regle_essentielle(rubrique: str, config: dict, ville: str) -> dict:
     titre, sources = ESSENTIELLES[rubrique]
     actus = config.get("actus") or {}
+    # Ce qu'elle lit dans l'épisode : ses agendas, ses flux (fiche de la rubrique).
+    choix = [str(x) for x in ((config.get("sources_integrees") or {}).get(rubrique) or [])]
+    if rubrique in ("agenda", "deplacements") and any(x.startswith("agenda:") for x in choix):
+        sources = [x for x in choix if x.startswith("agenda:")] + [x for x in sources if x != "agenda"]
+    if rubrique in ("actu_locale", "approfondissements"):
+        sources = sources + [x for x in choix if x.startswith("flux:")]
     requetes: list[str] = []
     if rubrique == "agenda":
         consigne = "Mes rendez-vous du jour (heure, lieu, ce qu'il faut préparer), puis un aperçu des jours suivants."

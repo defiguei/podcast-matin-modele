@@ -1,14 +1,12 @@
 {
-  "version": "2026-10-29.2",
+  "version": "2026-10-29.3",
   "date": "2026-10-29",
-  "titre": "Toutes tes sources au même endroit",
+  "titre": "Chaque rubrique choisit ses sources",
   "nouveautes": [
-    "Réglages › Sources range tous tes outils en cinq onglets (services, flux, sites, agendas, données) : chacun se teste et dit quelles rubriques s'en servent.",
-    "Tes médias et tes flux spécialisés ne font plus qu'une liste ; les Actualités globales cochent leurs flux dans leur fiche.",
-    "Sites de référence : une rubrique peut limiter sa recherche web à un site précis.",
-    "Une rubrique peut ne lire qu'un seul de tes agendas.",
-    "Les clés Tavily et SNCF sont rangées avec leur service ; Gemini a son propre écran (Réglages › Gemini).",
-    "Données intégrées : prénoms, journées et fériés montrent ce qu'ils donnent aujourd'hui."
+    "Chaque rubrique choisit ses sources : l'Agenda et Mes déplacements leurs agendas, l'Actu locale et À creuser leurs flux ; une rubrique du catalogue ne propose que les sources utiles.",
+    "Une rubrique sur mesure range toutes les sources en groupes qu'on ouvre un à un.",
+    "Tes agendas se renomment (Réglages › Sources › Agendas) ; la fiche Agenda ne montre plus la liste des rendez-vous.",
+    "Google Actualités refuse parfois les questions du bot : le test passe alors par GitHub, d'où le podcast le lit."
   ],
   "supprimes": [
     ".github/workflows/retours.yml",
