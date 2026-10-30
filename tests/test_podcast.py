@@ -1085,10 +1085,20 @@ try:
     def _demander(systeme, entree, schema, modeles, cle, **_):
         _vus["systeme"], _vus["entree"] = systeme, entree
         return {"titre": "Les retards CFF", "sujets": ["chantiers", "ponctualité"], "sources": [],
-                "repliques": [{"animateur": n, "texte": t} for n, t in (("Kore", "Bonjour."), ("Puck", "Le point."),
-                                                                         ("Kore", "Les chantiers."), ("Puck", "À demain."))]}, "m"
-    podcast.demander_json = _demander
-    podcast.synthetiser = lambda script, effectifs, cle, minutage=None: (b"\0\0" * 24000 * 3, 24000)
+                "repliques": [{"animateur": n, "texte": t, "rubrique": r} for n, t, r in (
+                    ("Kore", "Bonjour.", "1"), ("Puck", "Le point.", "1"), ("Kore", "Les chantiers.", "2"), ("Puck", "À demain.", "2"))]}, "m"
+    _vus["schema"] = None
+
+    def _demander_schema(systeme, entree, schema, modeles, cle, **options):
+        _vus["schema"] = schema
+        return _demander(systeme, entree, schema, modeles, cle, **options)
+    podcast.demander_json = _demander_schema
+
+    def _synthese(script, effectifs, cle, minutage=None):
+        if minutage is not None:
+            minutage.extend([0.3, 12.0, 41.6, 80.0])      # début de chaque réplique
+        return b"\0\0" * 24000 * 3, 24000
+    podcast.synthetiser = _synthese
     podcast.encoder_mp3 = lambda pcm, taux, debit: b"mp3"
     _regle = {"id": "R9", "titre": "Retards CFF", "consigne": "Fais le point sur les retards des CFF en ce moment",
               "periode": {"type": "ponctuelle"}, "recherche": {"rendu": "point", "minutes": 3, "sources": ["web", "actus"], "fiche": {}}}
@@ -1103,6 +1113,11 @@ finally:
 _ev = _bot.evenements[0] if _bot.evenements else {}
 verifier(_code == 0 and _ev.get("format") == "point" and _ev.get("audio") and _bot.deposes[0].startswith("2026-10/point-R9-"),
          "point : un podcast déposé chez le bot, annoncé comme « point »")
+verifier(_ev.get("chapitres") == [[0, "chantiers"], [42, "ponctualité"]],
+         f"point : un chapitre par sujet, au bon moment, comme l'épisode du matin ({_ev.get('chapitres')})")
+_replique_schema = (_vus.get("schema") or {}).get("properties", {}).get("repliques", {}).get("items", {})
+verifier("rubrique" in _replique_schema.get("required", []) and "chapitres" in _vus.get("systeme", ""),
+         "point : chaque réplique dit son sujet, la consigne demande des chapitres")
 verifier("3 minutes" in _vus.get("systeme", "") and "environ 450 mots" in _vus.get("systeme", "") and "état des lieux" in _vus.get("systeme", ""),
          "point : la durée demandée (3 min) règle la longueur du script, consigne d'état des lieux")
 verifier(_ev.get("resultats", [{}])[0].get("sources") == [{"titre": "CFF : ponctualité en baisse", "lien": "https://exemple.ch/cff"}]

@@ -19,9 +19,9 @@ import { CLES, testerCle, lireAgenda, identifiantAgenda, resumeConnexions, teste
 import { fluxRss, chapitresJson, episodeDeCle, jetonValide, nouveauJeton } from "./flux.js";
 import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
-import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, rangerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
+import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerChapitres, rangerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-30.3";
+export const VERSION = "2026-10-30.4";
 const MAX_REFAITS = 6;
 const MAX_RECHERCHES = 15;
 const MAX_EPISODES = 60;      // épisodes récents, dans l'état ; les plus anciens vont dans l'archive de leur mois
@@ -30,8 +30,10 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
-  "Correctif : un anniversaire annuel de Google Agenda (ex. le 4 février) n'est plus annoncé le même jour de chaque mois.",
-  "Épisode : les sujets à creuser passent à la ligne au lieu de dépasser de la carte.",
+  "Épisodes : la liste sous le calendrier met le dernier épisode en haut.",
+  "Épisode : Sources et Texte de l'épisode sont repliés à l'ouverture ; les sources se présentent comme celles des rubriques (nom en orange, adresse en gris).",
+  "Rubrique : « Ce qu'elle a raconté » devient un onglet ; « Faire un résumé » ouvre une recherche toute réglée (podcast ou écrit) sur l'historique de la rubrique, nouvelle source « Historique d'une rubrique ».",
+  "Recherches en podcast : chapitres par sujet, cliquables comme ceux de l'épisode du matin.",
 ];
 
 // « 2026-10 » décalé de n mois.
@@ -60,7 +62,7 @@ function limiterAppareils(liste) {
 
 // Ce que gardait l'ancienne conversation (messages, boutons, tableau épinglé…) : plus rien ne s'en sert.
 const ANCIENNES_CLES = ["attente", "assistant", "selection", "position", "tableau_id", "tableau_jour", "sondages",
-                        "dernier_update", "echantillons", "legendes_echantillons", "echantillons_demandes"];
+                        "dernier_update", "echantillons", "legendes_echantillons", "echantillons_demandes", "resumes"];
 
 // « 2026-10-21.1 » est plus récente que « 2026-10-20.2 ».
 export function plusRecente(a, b) {
@@ -733,7 +735,6 @@ export class Etat extends DurableObject {
   async fichierAudio(cle) {
     const etat = await this.lireEtat();
     if (cle === "idees:dernier") return { fichier: etat.derniers_resultats?.audio || null };
-    if (cle.startsWith("resume:")) return { fichier: etat.resumes?.[cle.slice(7)]?.audio || null };
     if (cle.startsWith("recherche:")) return { fichier: etat.resultats_recherches?.[cle.slice(10)]?.audio || null };
     if (cle.startsWith("voix:")) return { fichier: etat.echantillons_fichiers?.[cle.slice(5)] || null };
     const image = cle.startsWith("img:");
@@ -1414,25 +1415,10 @@ export class Etat extends DurableObject {
           return reponse({ mois_episodes: { mois, episodes: liste.slice().reverse().map((ep) => ({ ...episodeApp(ep, liens), archive: true })) } });
         }
         case "rubrique_resume": {
+          // Ce que la rubrique a raconté dans les derniers épisodes (du plus récent au plus ancien) : l'onglet « Ce qu'elle a raconté ».
           const id = String(demande.id || "");
           const entrees = await this.historiqueRubrique(id);
-          const secret = await secretPartage(this.env);
-          const resume = etat.resumes?.[id];
-          const lien = resume?.audio ? await lienAudio(secret, `resume:${id}`, Math.max(this.maintenant(), Date.now())) : null;
-          return reponse({ rubrique: {
-            id, entrees: entrees.slice().reverse().map((x) => ({ date: x.date, titre: x.titre, texte: x.texte, sources: x.sources || [] })),
-            resume: lien ? { cle: `resume:${id}`, titre: resume.titre || "Synthèse de la rubrique", audio: lien, duree: resume.duree,
-                             date: String(resume.quand || "").slice(0, 10), texte: "", chapitres: [], sujets: [], coches: [], sources: [], image: null } : null } });
-        }
-        case "resume_podcast": {
-          const id = String(demande.id || "");
-          if (!(await this.historiqueRubrique(id)).length) return refus("Cette rubrique n'a encore rien gardé : elle doit d'abord passer dans un épisode.");
-          const compte = etat.refaits?.date === ctx.aujourdHui ? etat.refaits.nombre : 0;
-          if (compte >= MAX_REFAITS) return refus("Plus de mini-podcast aujourd'hui (quota gratuit de la voix). Réessaie demain.");
-          try { await this.gh.lancer("recherche.yml", { regles: id, format: "resume" }); } catch (erreur) { return refus(erreur.message); }
-          etat.refaits = { date: ctx.aujourdHui, nombre: compte + 1 };
-          await this.ecrireEtat(etat);
-          return reponse({ message: "Je prépare la synthèse : elle arrive d'ici trois ou quatre minutes." });
+          return reponse({ rubrique: { id, entrees: entrees.slice().reverse().map((x) => ({ date: x.date, titre: x.titre, texte: x.texte, sources: x.sources || [] })) } });
         }
         case "texte": {
           const episode = await this.trouverEpisode(etat, String(demande.cle || ""));
@@ -1714,15 +1700,6 @@ export class Etat extends DurableObject {
       await this.ecrireEtat(etat);
       return { ok: true };
     }
-    if (ev.type === "resume") {
-      const id = String(ev.rubrique || "");
-      if (!/^[A-Za-z0-9_]{1,24}$/.test(id)) return { ok: false, erreur: "rubrique inconnue" };
-      etat.resumes = { ...(etat.resumes || {}), [id]: { audio: fichierRecu(ev.audio, ".mp3"), titre: String(ev.titre || "").slice(0, 120),
-                                                         duree: Number(ev.duree) || null, quand: ctx.maintenantIso } };
-      await this.ecrireEtat(etat);
-      await this.notifier(etat, { titre: "🎧 Ta synthèse est prête", corps: String(ev.titre || "").slice(0, 200), url: `/app?rubrique=${encodeURIComponent(id)}`, tag: `resume-${id}` });
-      return { ok: true };
-    }
     if (ev.type === "recherche") {
       const config = await this.lireConfig();
       for (const id of ev.regles || []) {
@@ -1735,7 +1712,8 @@ export class Etat extends DurableObject {
                                   format: format === "plus" ? "ecrit" : format,
                                   details: nettoyerResultats(ev.resultats),
                                   // Mini-podcast gardé par le bot (écoute dans l'application).
-                                  audio: fichierRecu(ev.audio, ".mp3"), titre_audio: String(ev.titre_audio || "").slice(0, 120), duree_audio: Number(ev.duree) || null };
+                                  audio: fichierRecu(ev.audio, ".mp3"), titre_audio: String(ev.titre_audio || "").slice(0, 120), duree_audio: Number(ev.duree) || null,
+                                  chapitres: nettoyerChapitres(ev.chapitres) };
       // Chaque recherche ponctuelle garde ses résultats, montrés dans sa page (« plus » les complète).
       const ponctuelles = (ev.regles || []).filter((id) => config.regles.some((r) => r.id === id && r.periode.type === "ponctuelle"));
       etat.resultats_recherches = Object.fromEntries(Object.entries(etat.resultats_recherches || {})

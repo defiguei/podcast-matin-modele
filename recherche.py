@@ -149,11 +149,23 @@ Si la demande porte sur un sujet, c'est un état des lieux, pas une revue de pre
 Si elle demande des idées (sorties, activités, lieux, cadeaux…), présente-en trois à cinq qui respectent la fiche (budget, âges, transport, envies) : pour chacune, ce que c'est, pourquoi elle lui convient, le prix et l'accès si on les connaît.
 Appuie-toi UNIQUEMENT sur la matière fournie (recherche web, actualités, lieux, horaires…). Date les faits (« depuis lundi », « en septembre ») ; si les sources se contredisent ou datent, dis-le ; si la matière est maigre, dis franchement ce qu'on ne sait pas plutôt que de remplir.
 Pas d'adresse web, pas de markdown, pas d'emoji ; chiffres, heures et sigles écrits comme on les dit.
-Longueur : environ {mots} mots. Remplis « titre » (court), « sujets » (les idées abordées, dans l'ordre) et « sources » (liste vide)."""
+Longueur : environ {mots} mots.
+Le podcast est découpé en chapitres, un par sujet : « sujets » liste ces chapitres dans l'ordre (de deux à six, trois à cinq mots chacun, ex. « Où en sont les retards »), et chaque réplique porte dans « rubrique » le numéro (1, 2, 3…) du sujet dont elle parle. Les sujets se suivent sans qu'on revienne en arrière ; l'ouverture appartient au sujet 1.
+Remplis aussi « titre » (court) et « sources » (liste vide)."""
+
+
+def schema_point(noms: list[str]) -> dict:
+    """Le schéma d'un script, où chaque réplique dit de quel sujet (chapitre) elle fait partie."""
+    schema = p.schema_script(noms)
+    replique = schema["properties"]["repliques"]["items"]
+    replique["properties"]["rubrique"] = {"type": "string", "description": "Numéro (1, 2, 3…) du sujet de la liste « sujets » dont parle la réplique."}
+    replique["required"] = [*replique["required"], "rubrique"]
+    schema["properties"]["sujets"]["description"] = "Les sujets (chapitres) du podcast, dans l'ordre : de deux à six, trois à cinq mots chacun."
+    return schema
 
 
 def point_podcast(regle: dict, collecte: moteur.Collecte, effectifs: dict, cle_gemini: str,
-                  maintenant: dt.datetime) -> tuple[dict, bytes, int]:
+                  maintenant: dt.datetime) -> tuple[dict, bytes, int, list[tuple[float, str]]]:
     a, b = (x["nom"] for x in effectifs["animateurs"])
     noms = [a, b]
     minutes = int((regle.get("recherche") or {}).get("minutes") or 3)
@@ -163,17 +175,28 @@ def point_podcast(regle: dict, collecte: moteur.Collecte, effectifs: dict, cle_g
     entree = (f"Nous sommes le {p.date_longue(maintenant.date())}, il est {maintenant:%H:%M}.\n"
               f"Demande de l'auditeur : {regle.get('consigne', '')}\n\n{collecte.texte}")
     modeles = list(dict.fromkeys(effectifs["modeles_texte"] + effectifs["modeles_rapides"]))
-    brut, _ = p.demander_json(systeme, entree, p.schema_script(noms), modeles, cle_gemini, delai=150, tours=2)
-    script = p.nettoyer_script(brut, noms)
-    pcm, taux = p.synthetiser(script, effectifs, cle_gemini, [])
-    return script, pcm, taux
+    brut, _ = p.demander_json(systeme, entree, schema_point(noms), modeles, cle_gemini, delai=150, tours=2)
+    # Un chapitre par sujet, comme dans l'épisode du matin : l'application les liste et mène au bon moment.
+    sujets = p.nettoyer_liste(brut.get("sujets"), 12)
+    cles = [str(i) for i in range(1, len(sujets) + 1)]
+    script = p.nettoyer_script(brut, noms, cles if len(cles) > 1 else None)
+    minutage: list[float] = []
+    pcm, taux = p.synthetiser(script, effectifs, cle_gemini, minutage)
+    chapitres: list[tuple[float, str]] = []
+    if len(cles) > 1:
+        vus: set[str] = set()
+        for instant, titre in p.calculer_chapitres(script, minutage, list(zip(cles, sujets))):
+            if titre not in vus:
+                vus.add(titre)
+                chapitres.append((instant, titre))
+    return script, pcm, taux, chapitres
 
 
 def lancer_point(regles: list[dict], collectes: list[moteur.Collecte], effectifs: dict, cle_gemini: str,
                  maintenant: dt.datetime, bot: Any) -> int:
     """Un podcast par recherche « point », déposé chez le bot (écoute dans l'application)."""
     for regle, collecte in zip(regles, collectes):
-        script, pcm, taux = point_podcast(regle, collecte, effectifs, cle_gemini, maintenant)
+        script, pcm, taux, chapitres = point_podcast(regle, collecte, effectifs, cle_gemini, maintenant)
         mp3 = p.encoder_mp3(pcm, taux, effectifs["debit_mp3_kbps"])
         duree = round(len(pcm) / (2 * taux))
         nom_bot = f"{maintenant:%Y-%m}/point-{regle['id']}-{maintenant:%Y-%m-%d-%H%M%S}.mp3"
@@ -183,6 +206,7 @@ def lancer_point(regles: list[dict], collectes: list[moteur.Collecte], effectifs
             raise p.ErreurPodcast("Le bot n'a pas pu garder le podcast : rien n'est parti (bot injoignable ?).")
         bot.evenement({"type": "recherche", "regles": [regle["id"]], "idees": [], "format": "point",
                        "audio": audio_bot, "titre_audio": script["titre"], "duree": duree,
+                       "chapitres": [[round(t), titre] for t, titre in chapitres],
                        "resultats": [{"regle": regle["id"], "titre": regle.get("titre", ""),
                                       "intro": " · ".join(script.get("sujets") or [])[:400], "conseil": "", "idees": [],
                                       "sources": sources}]})
@@ -203,6 +227,7 @@ ESSENTIELLES = {
     "actualites": ("Actualités globales", ["medias"]),   # tes médias, lus directement (voir ajouter_medias)
 }
 assert set(ESSENTIELLES) == set(p.RUBRIQUES_ESSENTIELLES)
+assert {cle: nom for cle, (nom, _) in ESSENTIELLES.items()} == p.NOMS_ESSENTIELLES
 
 
 def regle_essentielle(rubrique: str, config: dict, ville: str) -> dict:
@@ -297,44 +322,6 @@ def lancer_ecrit_essentielles(regles: list[dict], collectes: list[moteur.Collect
     return 0
 
 
-# ───────────────────────── synthèse d'une rubrique ──────────────────────────
-
-def resume_rubrique(identifiant: str, effectifs: dict, cle_gemini: str, maintenant: dt.datetime, bot: Any) -> int:
-    """Mini-podcast qui résume ce que la rubrique a raconté ces derniers jours (texte et sources gardés par le bot)."""
-    entrees = bot.rubrique(identifiant)
-    if not entrees:
-        raise p.ErreurPodcast("Le bot n'a encore rien gardé de cette rubrique : elle doit d'abord passer dans un épisode.")
-    config = effectifs.get("config_bot") or {}
-    regle = next((r for r in config.get("regles") or [] if r.get("id") == identifiant), {})
-    titre_rubrique = regle.get("titre") or (entrees[-1].get("titre") if entrees else "") or identifiant
-    a, b = (x["nom"] for x in effectifs["animateurs"])
-    noms = [a, b]
-    adresse = "Tutoie" if effectifs.get("tutoiement", True) else "Vouvoie"
-    mots = round(3 * effectifs.get("mots_par_minute", 180))
-    systeme = f"""Tu écris un mini-podcast audio de trois minutes, animé par {a} et {b}, qui fait le point sur la rubrique « {titre_rubrique} » à partir de ce qu'elle a déjà raconté ces derniers jours (fourni ci-dessous, du plus ancien au plus récent). {adresse} l'auditeur.
-Regroupe par thème plutôt que jour par jour, relève ce qui revient ou évolue, dis ce qui est encore d'actualité et ce qui est dépassé. N'invente rien qui ne soit pas dans la matière ; pas d'adresse web, pas de markdown, pas d'emoji.
-Longueur : environ {mots} mots. Remplis « titre » (court), « sujets » (les thèmes, dans l'ordre) et « sources » (liste vide)."""
-    matiere = []
-    for entree in entrees[-14:]:
-        liens = "; ".join(s.get("titre", "") for s in entree.get("sources") or [])
-        matiere.append(f"[{entree.get('date', '')}]\n{entree.get('texte', '')}" + (f"\nSources citées : {liens}" if liens else ""))
-    modeles = list(dict.fromkeys(effectifs["modeles_texte"] + effectifs["modeles_rapides"]))
-    brut, _ = p.demander_json(systeme, f"Nous sommes le {p.date_longue(maintenant.date())}.\n\n" + "\n\n".join(matiere),
-                              p.schema_script(noms), modeles, cle_gemini, delai=150, tours=2)
-    script = p.nettoyer_script(brut, noms)
-    minutage: list[float] = []
-    pcm, taux = p.synthetiser(script, effectifs, cle_gemini, minutage)
-    mp3 = p.encoder_mp3(pcm, taux, effectifs["debit_mp3_kbps"])
-    duree = round(len(pcm) / (2 * taux))
-    nom_bot = f"{maintenant:%Y-%m}/resume-{identifiant}-{maintenant:%Y-%m-%d-%H%M%S}.mp3"
-    audio_bot = nom_bot if bot.deposer(nom_bot, mp3, "audio/mpeg") else None
-    if not audio_bot:
-        raise p.ErreurPodcast("Le bot n'a pas pu garder la synthèse : rien n'est parti (bot injoignable ?).")
-    bot.evenement({"type": "resume", "rubrique": identifiant, "audio": audio_bot, "titre": script["titre"], "duree": duree})
-    p.journal(f"Synthèse de « {titre_rubrique} » envoyée ✅")
-    return 0
-
-
 # ──────────────────────────────── principal ─────────────────────────────────
 
 def recherches_web(regle: dict) -> int:
@@ -421,7 +408,8 @@ def lancer(identifiants: list[str], format_: str, effectifs: dict, cle_gemini: s
 
         collecte = moteur.collecter(regle_large, plan, sources, jour, ville, actus, profondeur=2,
                                     config=config, lire_flux=flux_specialise, agenda=agendas.get(regle["id"], []),
-                                    nombre_requetes=regle.get("_recherches"))
+                                    nombre_requetes=regle.get("_recherches"),
+                                    lire_rubrique=p.lecteur_historique(bot, config))
         if essentielles and regle["id"] == "actualites":
             ajouter_medias(collecte, effectifs, maintenant)
         if point or ecrit_essentielle:      # un état des lieux : pas d'idées à trouver

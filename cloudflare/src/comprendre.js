@@ -16,7 +16,7 @@ import {
   nettoyerListe, LONGUEUR_CONSIGNE, normaliserTexte, etatRegle, decrirePeriode, nomRubrique, jourDeSemaine,
   heureParlee, dateCourte, nettoyerPlanning, fluxActus, profilPays, MODELES_RUBRIQUES,
   nomVoix, voixActive, trouverVoix, renommerVoix, activerVoix, choisirVoixJour,
-  INFOS_SOURCES, sourcesAuto, sourcesUtilisables, nomSource, RENDUS, minutesPoint, formatRecherche, sourceConnue,
+  INFOS_SOURCES, sourcesAuto, sourcesUtilisables, nomSource, RENDUS, minutesPoint, formatRecherche, sourceConnue, RUBRIQUES_A_CHERCHER,
 } from "./config.js";
 import { formulaireNeuf, formulaireDepuisRegle, enregistrerRubrique, PERIODES } from "./miniapp.js";
 
@@ -160,13 +160,15 @@ Le modèle règle déjà la place, la longueur et les sources : ne remplis que c
     ...(config.sources?.flux || []).map((f) => `flux:${f.id} (flux « ${f.nom} »)`),
     ...(config.sources?.sites || []).map((x) => `site:${x.id} (site ${x.nom}, ${x.domaine} : la recherche web s'y limite)`),
     ...(ctx.agendas || []).map((a) => `agenda:${a.id} (seulement l'agenda « ${a.nom} » ; « agenda » = tous)`),
+    ...config.regles.filter((r) => r.periode?.type !== "ponctuelle").map((r) => `rubrique:${r.id} (l'historique de « ${r.titre} » : ce qu'elle a raconté dans les derniers épisodes)`),
+    ...RUBRIQUES_A_CHERCHER.map((c) => `rubrique:${c} (l'historique de « ${RUBRIQUES[c]} » : ce qu'elle a raconté dans les derniers épisodes)`),
   ].join(" ; ") || "aucun"}
 - requetes : recherches web utiles (courtes)
 - pour une activité ou une sortie : quoi, avec_qui, ages, ou, quand, transport, budget_max, budget_unite (personne | total), budget_transport_inclus, inclure, exclure, attendu, jours_avant (combien de jours avant en parler)
 - importance : normale | prioritaire
 Une information exacte (saint du jour, jour férié, météo, horaire de train) doit venir d'une source, pas de tes connaissances.
 
-PODCAST PONCTUEL SUR UN SUJET : « fais-moi un podcast de 3 minutes sur les retards CFF en ce moment », « fais le point sur… », « résume-moi où en est… » = UNE seule opération nouvelle_regle avec periode_type ponctuelle, rendu point, minutes = la durée demandée, consigne = le sujet et l'angle (état des lieux à l'heure actuelle), sources adaptées (actus, web, transports pour les trains…). Il est fabriqué et envoyé tout seul : n'ajoute JAMAIS nouvel_episode, resultats, ni regler format.duree_minutes (c'est la durée de l'épisode quotidien, à ne changer que si l'auditeur parle de son épisode habituel). rendu idees : quand l'auditeur veut des résultats à lire (une liste d'idées de sortie, d'activités, de cadeaux, d'articles) plutôt qu'un podcast à écouter.
+PODCAST PONCTUEL SUR UN SUJET : « fais-moi un podcast de 3 minutes sur les retards CFF en ce moment », « fais le point sur… », « résume-moi où en est… » = UNE seule opération nouvelle_regle avec periode_type ponctuelle, rendu point, minutes = la durée demandée, consigne = le sujet et l'angle (état des lieux à l'heure actuelle), sources adaptées (actus, web, transports pour les trains…) ; « résume-moi ce que la rubrique X a raconté » = pour seule source l'historique de cette rubrique (rubrique:…). Il est fabriqué et envoyé tout seul : n'ajoute JAMAIS nouvel_episode, resultats, ni regler format.duree_minutes (c'est la durée de l'épisode quotidien, à ne changer que si l'auditeur parle de son épisode habituel). rendu idees : quand l'auditeur veut des résultats à lire (une liste d'idées de sortie, d'activités, de cadeaux, d'articles) plutôt qu'un podcast à écouter.
 
 RUBRIQUES INTÉGRÉES DU DÉROULÉ (clés) : ${Object.entries(RUBRIQUES).map(([c, n]) => `${c} (${n})`).join(", ")}.
 
@@ -314,7 +316,8 @@ function nouvelleRubrique(config, r = {}, ctx) {
   if (!modele.pret) { f.titre = ""; f.consigne = ""; }     // titre et consigne du modèle à compléter : c'est à l'auditeur de les dire
   const parDefaut = [...f.sources];
   completerFormulaire(f, r, ctx.message);
-  f.sources = [...new Set([...parDefaut, ...f.sources])];
+  // Une recherche sur l'historique d'une rubrique ne lit que lui, sans les sources par défaut (web, actus).
+  if (!(ponctuelle && f.sources.some((x) => x.startsWith("rubrique:")))) f.sources = [...new Set([...parDefaut, ...f.sources])];
   // Sans consigne rédigée (Gemini ne l'a pas donnée, la rédaction a échoué) : le sujet de la demande,
   // sans ses formules, plutôt que de refuser la rubrique ; jamais la phrase telle quelle.
   if ((!rempli(f.consigne) || recopie(f.consigne, ctx.message)) && rempli(ctx.message) && ctx.message !== "(vocal)") {

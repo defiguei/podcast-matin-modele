@@ -1919,7 +1919,7 @@ def raison_lisible(message: str) -> str:
 
 def preparer_regles(effectifs: dict, cle: str, maintenant: dt.datetime, evenements: list[Evenement],
                     forcees: list[str] | None = None, vus: set[str] | None = None,
-                    titres_actus: list[str] | None = None) -> dict:
+                    titres_actus: list[str] | None = None, lire_rubrique: Any = None) -> dict:
     """Rubriques du jour : sélection, vérification des conditions d'agenda et
     préparation des recherches (un appel au modèle léger), puis collecte.
     Les actus des rubriques évitent celles déjà racontées (« vus ») ; leurs titres
@@ -1965,7 +1965,8 @@ def preparer_regles(effectifs: dict, cle: str, maintenant: dt.datetime, evenemen
             continue
         try:
             collectes[regle["id"]] = moteur.collecter(regle, plan, sources, jour, effectifs["ville_habituelle"], actus,
-                                                      config=config, lire_flux=flux_specialise, agenda=agendas.get(regle["id"], []))
+                                                      config=config, lire_flux=flux_specialise, agenda=agendas.get(regle["id"], []),
+                                                      lire_rubrique=lire_rubrique)
             journal(f"Rubrique {regle['id']} appliquée ({regle.get('titre', '')}).")
         except Exception as erreur:          # une règle en panne ne bloque pas l'épisode
             journal(f"Rubrique {regle['id']} : collecte impossible ({type(erreur).__name__} : {erreur}).")
@@ -1975,7 +1976,7 @@ def preparer_regles(effectifs: dict, cle: str, maintenant: dt.datetime, evenemen
 
 
 def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: list[str],
-                     memoire: dict, forcees: list[str] | None = None) -> Contenu:
+                     memoire: dict, forcees: list[str] | None = None, lire_rubrique: Any = None) -> Contenu:
     """Rassemble l'agenda, les actus, les déplacements, les sujets à creuser et les rubriques."""
     remarques: list[str] = []
     horizon = max(effectifs["jours_agenda"], effectifs["horizon_prochain_evenement_jours"],
@@ -2020,7 +2021,7 @@ def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: l
                            maintenant, lus_pour(4), 7), vus, 4)
         deplacement["deja"] = lieu_deja_presente(memoire, deplacement, maintenant)
     titres_regles: list[str] = []
-    collectes = preparer_regles(effectifs, cle, maintenant, tous, forcees, vus, titres_regles)
+    collectes = preparer_regles(effectifs, cle, maintenant, tous, forcees, vus, titres_regles, lire_rubrique)
     locales: list[Article] = []
     locales_deja_dites = False
     if effectifs["ville_habituelle"] and rubrique_active(effectifs, "actu_locale"):
@@ -2114,6 +2115,17 @@ def identifiants_regles(texte: str) -> list[str]:
 
 # Rubriques essentielles qu'on peut chercher à la demande (menu « ··· » de leur fiche).
 RUBRIQUES_ESSENTIELLES = ("agenda", "deplacements", "actu_locale", "approfondissements", "actualites")
+NOMS_ESSENTIELLES = {"agenda": "Agenda", "deplacements": "Mes déplacements", "actu_locale": "Actu locale",
+                     "approfondissements": "À creuser", "actualites": "Actualités globales"}   # mêmes clés (un test compare)
+
+
+def lecteur_historique(bot: Any, config: dict) -> Any:
+    """Pour la source « historique d'une rubrique » : (titre, 14 derniers passages) que le bot a gardés."""
+    def lire(identifiant: str) -> tuple[str, list[dict]]:
+        propre = next((r for r in config.get("regles") or [] if r.get("id") == identifiant), None)
+        titre = (propre or {}).get("titre") or NOMS_ESSENTIELLES.get(identifiant) or identifiant
+        return titre, bot.rubrique(identifiant)[-14:]
+    return lire
 
 
 def identifiants_recherche(texte: str) -> list[str]:
@@ -2146,8 +2158,8 @@ def main(arguments: list[str] | None = None) -> int:
                            help="règles à traiter aussi dans l'épisode, ex. R3,R5")
     analyseur.add_argument("--recherche", default=os.environ.get("RECHERCHE", ""),
                            help="résultats de recherche pour ces règles, ex. R5,R6")
-    analyseur.add_argument("--format", default=os.environ.get("FORMAT", "") or "ecrit", choices=("ecrit", "plus", "audio", "resume", "point"),
-                           help="résultats écrits (idées, lieux, liens), mini-podcast d'idées, synthèse d'une rubrique, "
+    analyseur.add_argument("--format", default=os.environ.get("FORMAT", "") or "ecrit", choices=("ecrit", "plus", "audio", "point"),
+                           help="résultats écrits (idées, lieux, liens), mini-podcast d'idées, "
                                 "ou point (podcast d'état des lieux d'un sujet)")
     analyseur.add_argument("--echantillons", default=os.environ.get("ECHANTILLONS", ""),
                            help="extraits audio de ces voix, ex. Aoede,Kore")
@@ -2226,8 +2238,6 @@ def main(arguments: list[str] | None = None) -> int:
                          else reglages_effectifs(reglages, memoire))
             if options.echantillons:
                 return recherche.echantillons(options.echantillons, effectifs, cle, bot, options.sans_envoi)
-            if options.format == "resume":
-                return recherche.resume_rubrique(options.recherche.strip(), effectifs, cle, maintenant, bot)
             return recherche.lancer(identifiants_recherche(options.recherche), options.format, effectifs, cle,
                                     maintenant, bot, export or {}, options.sans_envoi)
 
@@ -2247,7 +2257,8 @@ def main(arguments: list[str] | None = None) -> int:
         effectifs = (effectifs_depuis_bot(reglages, memoire, config_bot) if config_bot
                      else reglages_effectifs(reglages, memoire))
         urls = separer_urls(os.environ.get("CALENDAR_ICS_URL", ""))
-        contenu = preparer_contenu(effectifs, cle, maintenant, urls, memoire, forcees)
+        contenu = preparer_contenu(effectifs, cle, maintenant, urls, memoire, forcees,
+                                   lecteur_historique(bot, config_bot or {}))
         if AGENDAS_VUS and export and not export.get("secours") and not options.sans_envoi:
             bot.evenement({"type": "agendas", "liste": AGENDAS_VUS, "evenements": AGENDA_APERCU})  # liste à cocher, aperçu
         script = ecrire_script(effectifs, cle, maintenant, contenu.agenda, contenu.sections,

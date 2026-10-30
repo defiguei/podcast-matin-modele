@@ -298,14 +298,15 @@ def fiche_en_mots(fiche: dict) -> str:
 def sources_lues(regle: dict, config: dict | None = None) -> set[str]:
     """Les sources cochées dans la fiche de la rubrique, sans celles retirées dans Réglages ›
     Sources (catégories coupées, flux ou sites supprimés). Rien d'autre n'est lu.
-    « agenda:<id> » : un seul agenda (un agenda retiré est déjà enlevé des rubriques par le bot)."""
+    « agenda:<id> » : un seul agenda (un agenda retiré est déjà enlevé des rubriques par le bot) ;
+    « rubrique:<id> » : l'historique d'une rubrique (ce qu'elle a raconté dans les derniers épisodes)."""
     reglages = (config or {}).get("sources") or {}
     coupees = set(reglages.get("coupees") or [])
     outils = {f"flux:{f.get('id')}" for f in reglages.get("flux") or [] if isinstance(f, dict)}
     outils |= {f"site:{x.get('id')}" for x in reglages.get("sites") or [] if isinstance(x, dict)}
     cochees = set(((regle.get("recherche") or {}).get("sources")) or [])
     return {s for s in cochees
-            if (s in outils if s.startswith(("flux:", "site:")) else s.startswith("agenda:") or s not in coupees)}
+            if (s in outils if s.startswith(("flux:", "site:")) else s.startswith(("agenda:", "rubrique:")) or s not in coupees)}
 
 
 def agendas_choisis(regle: dict) -> frozenset[str] | None:
@@ -339,7 +340,8 @@ def planifier_par_agendas(regles: list[dict], evenements: list, quand_court: Cal
 def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: str,
               chercher_actus: Callable[[str], list[str]] | None = None, profondeur: int = 1,
               config: dict | None = None, lire_flux: Callable[[dict], list[str]] | None = None,
-              agenda: list[str] | None = None, nombre_requetes: int | None = None) -> Collecte:
+              agenda: list[str] | None = None, nombre_requetes: int | None = None,
+              lire_rubrique: Callable[[str], tuple[str, list[dict]]] | None = None) -> Collecte:
     """Va chercher les informations dont la règle a besoin et prépare sa section.
     Seules les sources cochées dans sa fiche sont lues (sources_lues). « nombre_requetes » : le
     nombre de recherches web voulu (recherche ponctuelle par écrit) ; sinon 1 + profondeur."""
@@ -525,6 +527,21 @@ def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: s
             articles = lire_flux(flux)
             lignes.append(f"Flux « {flux.get('nom', '?')} » : " + ("" if articles else "rien de récent"))
             lignes += [f"  - {a}" for a in articles[:6]]
+
+    # Historique d'une rubrique choisie dans la fiche : ce qu'elle a raconté, du plus ancien au plus récent.
+    for nom_source in sorted(x for x in noms_sources if x.startswith("rubrique:")):
+        if not lire_rubrique:
+            continue
+        titre_rubrique, entrees = lire_rubrique(nom_source.split(":", 1)[1])
+        if not entrees:
+            lignes.append(f"Historique de la rubrique « {titre_rubrique} » : rien de gardé pour l'instant (elle doit d'abord passer dans un épisode).")
+            continue
+        lignes.append(f"Historique de la rubrique « {titre_rubrique} » : ce qu'elle a raconté dans les derniers épisodes, du plus ancien au plus récent.")
+        for entree in entrees:
+            lignes.append(f"  [{entree.get('date', '')}] {entree.get('texte', '')}")
+            for source in entree.get("sources") or []:
+                if str(source.get("url", "")).startswith("https://"):
+                    collecte.liens.append((source.get("titre") or source["url"], source["url"]))
 
     choisis = agendas_choisis(r)
     if ("agenda" in noms_sources or choisis) and agenda is not None:

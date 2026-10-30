@@ -649,6 +649,20 @@ cf = moteur.collecter(r_flux, moteur.plan_par_defaut(r_flux, "Yverdon-les-Bains"
                       lire_flux=lambda f: lus_flux.append(f["nom"]) or ["Un laser record (https://x/1)"], agenda=["jeu. 22 : réunion"])
 verifier(lus_flux == ["Optique.ch"] and "Flux « Optique.ch »" in cf.texte and "Un laser record" in cf.texte and "réunion" in cf.texte
          and "[W1]" not in cf.texte, "flux spécialisé et agenda cochés : lus, rien d'autre")
+# Historique d'une rubrique coché : ce qu'elle a raconté (du plus ancien au plus récent), ses liens https en sources.
+lus_hist = []
+def _lire_hist(identifiant):
+    lus_hist.append(identifiant)
+    return "Veille IA", [{"date": "2026-10-14", "texte": "Léa : Les modèles progressent.", "sources": [{"titre": "Un article", "url": "https://exemple.ch/a"}]},
+                         {"date": "2026-10-15", "texte": "Hugo : Un modèle ouvert sort.", "sources": [{"titre": "Sans https", "url": "http://x.ch"}]}]
+r_hist = rubrique("Résumé de la veille", "Fais le point sur la veille IA", ["rubrique:R1"])
+ch = moteur.collecter(r_hist, moteur.plan_par_defaut(r_hist, ""), FaussesSources(), jeudi, "", lire_rubrique=_lire_hist)
+verifier(lus_hist == ["R1"] and "Historique de la rubrique « Veille IA »" in ch.texte and "du plus ancien au plus récent" in ch.texte
+         and ch.texte.index("Les modèles progressent") < ch.texte.index("Un modèle ouvert") and "[W1]" not in ch.texte
+         and ch.liens == [("Un article", "https://exemple.ch/a")], f"historique d'une rubrique : lu seul, liens https gardés ({ch.liens})")
+verifier(moteur.sources_lues(r_hist, {"sources": {"coupees": ["web"]}}) == {"rubrique:R1"}, "historique d'une rubrique : source lue")
+ch0 = moteur.collecter(r_hist, moteur.plan_par_defaut(r_hist, ""), FaussesSources(), jeudi, "", lire_rubrique=lambda i: ("Veille IA", []))
+verifier("rien de gardé pour l'instant" in ch0.texte, "historique vide : dit qu'il n'y a rien")
 # Site de référence coché : la recherche web se limite à lui (sans recherche web générale).
 config_sites = {"sources": {"coupees": [], "flux": [], "sites": [{"id": "labo1234", "nom": "Le labo", "domaine": "labo.ch"}]}}
 r_site = rubrique("Labo", "Les nouvelles du labo", ["site:labo1234", "site:retire99"])

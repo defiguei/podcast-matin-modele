@@ -289,8 +289,17 @@ input.avance { width: 100%; accent-color: var(--aube); margin: 0; height: 24px; 
 .transcription { white-space: pre-wrap; font-size: 15px; line-height: 1.55; color: var(--doux-2); }
 .episode-ligne { display: flex; align-items: center; gap: 12px; background: var(--carte); border-radius: 16px; padding: 12px 14px; border: 0; width: 100%; text-align: left; color: var(--texte); }
 .sources { display: flex; flex-direction: column; }
-.sources button { display: flex; gap: 12px; padding: 10px 0; border: 0; border-top: 1px solid var(--trait); background: none; color: var(--texte); text-align: left; font-size: 14px; line-height: 1.35; width: 100%; }
-.sources button > span:first-child { color: var(--aube); width: 22px; flex: none; font-variant-numeric: tabular-nums; }
+/* Une source : le nom du lien en orange, l'adresse du site en gris dessous ; toute la ligne ouvre le lien. */
+.sources button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 7px 0; border: 0; border-top: 1px solid var(--trait); background: none; text-align: left; width: 100%; min-width: 0; }
+.sources button .nom { color: var(--aube); font-size: 14px; font-weight: 600; line-height: 1.3; }
+.sources button .adresse { color: var(--doux); font-size: 12px; line-height: 1.3; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* « Ce qu'elle a raconté » : un passage par épisode, sa date en gris, son texte, ses sources. */
+.passage { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--trait); }
+.passage .date-passage { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--doux); }
+.passage .transcription { font-size: 14px; color: var(--doux); }
+.passage .sources button:first-child { border-top: 0; }
+.section-fiche .tete-repli h2 { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--bleu); margin: 0; display: flex; align-items: center; gap: 8px; }
+.section-fiche .tete-repli h2::before { content: ""; width: 4px; height: 14px; border-radius: 2px; background: var(--bleu); flex: none; }
 .tete-episode { display: flex; align-items: center; gap: 12px; background: none; border: 0; padding: 0; color: var(--texte); text-align: left; width: 100%; }
 .miniature { width: 76px; height: 76px; border-radius: 14px; object-fit: cover; flex: none; background: var(--carte-2); }
 .miniature.petite { width: 52px; height: 52px; border-radius: 12px; }
@@ -436,7 +445,7 @@ const idCourant = () => jetonAppareil.lire().slice(0, 8);
 const jetonAppareil = { lire() { try { return localStorage.getItem(APPAREIL) || ""; } catch (e) { return ""; } },
   ecrire(v) { try { if (v) localStorage.setItem(APPAREIL, v); else localStorage.removeItem(APPAREIL); } catch (e) { /* stockage refusé */ } } };
 const S = { d: null, ecran: "accueil", integree: null, fiche: null, mois: 0, occupe: false,
-            reglage: null, episode: null, texte: null, discussion: [], charge: 0, choisi: null, jourVue: { rubriques: "", deroule: "" }, replis: { sources: false, texte: false }, jourDernier: {}, moisEpisodes: null, archives: {}, aPreparer: [] };
+            reglage: null, episode: null, texte: null, discussion: [], charge: 0, choisi: null, jourVue: { rubriques: "", deroule: "" }, replis: { sources: true, texte: true }, replisEp: null, resumeOuvert: null, jourDernier: {}, moisEpisodes: null, archives: {}, aPreparer: [] };
 const ecranEl = document.getElementById("ecran");
 const navEl = document.getElementById("nav");
 const miniEl = document.getElementById("mini");
@@ -623,7 +632,7 @@ function episodeParCle(cle) {
     || Object.values(S.archives).flat().find((e) => e.cle === cle)
     || (S.d && S.d.resultats && S.d.resultats.episode && S.d.resultats.episode.cle === cle ? S.d.resultats.episode : null)
     || Object.values((S.d && S.d.recherches_resultats) || {}).map((x) => x.episode).find((e) => e && e.cle === cle)
-    || (S.rub && S.rub.resume && S.rub.resume.cle === cle ? S.rub.resume : null) || null;
+    || null;
 }
 
 // Un mois plus ancien que les épisodes récents : demandé au bot, gardé pour la session.
@@ -997,7 +1006,7 @@ function vueEpisodes() {
     </div>
   </section>
   ${enCours ? `<p class="aide">Chargement des épisodes de ce mois…</p>` : ""}
-  <div class="liste">${eps.filter((x) => x.date.slice(0, 7) === mois).reverse().map((ep) => `<button type="button" class="episode-ligne" data-episode="${h(ep.cle)}">
+  <div class="liste">${eps.filter((x) => x.date.slice(0, 7) === mois).map((ep) => `<button type="button" class="episode-ligne" data-episode="${h(ep.cle)}">
     ${ep.image ? `<img src="${h(ep.image)}" alt="" class="miniature petite">` : `<span class="miniature petite vide-img" aria-hidden="true">${icone("aube", 20, 1.4)}</span>`}
     <span style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600">${h(ep.titre)}</span>
     <span class="sous" style="font-size:13px">${h(majuscule(ep.texte))}${ep.duree ? ` · ${minSec(ep.duree)}` : ""}</span></span>
@@ -1016,7 +1025,8 @@ function vueEpisode() {
     if (!g) { g = { nom, liste: [] }; sections.push(g); }
     g.liste.push(x);
   }
-  let numero = 0;
+  // Sources et texte : repliés à l'ouverture d'un épisode (et chaque fois qu'on en change).
+  if (S.replisEp !== ep.cle) { S.replisEp = ep.cle; S.replis.sources = true; S.replis.texte = true; }
   // La grande image se glisse : épisode suivant ou précédent. « Tous » ouvre le calendrier des épisodes.
   return `${entete("", majuscule(ep.texte), `<button type="button" class="lien" style="padding:0 10px" data-aller="episodes">Tous</button>`)}
   <div class="zone-glisse grande" data-glisse-ep="episode" tabindex="0" role="group" aria-roledescription="carrousel" aria-describedby="aide-glisse-ep">
@@ -1035,16 +1045,31 @@ function vueEpisode() {
   </section>`}
   <section class="carte">${enteteRepli("Sources", "sources", !S.replis.sources)}
     ${S.replis.sources ? "" : sections.length ? sections.map((g) => `${sections.length > 1 || g.nom !== "Sources" ? `<span class="groupe" style="padding-top:4px">${h(g.nom)}</span>` : ""}
-      <div class="sources">${g.liste.map((x) => `<button type="button" data-lien="${h(x.url)}"><span>${++numero}</span><span>${h(x.titre || x.url)}<br><span class="aide">${h(x.url.replace(/^https:\/\/(www\.)?/, "").split("/")[0])}</span></span></button>`).join("")}</div>`).join("")
+      <div class="sources">${g.liste.map((x) => ligneSource(x.titre, x.url)).join("")}</div>`).join("")
       : `<p class="aide">Pas de source enregistrée pour cet épisode.</p>`}
   </section>
-  ${S.texte && S.texte.cle === ep.cle ? `<section class="carte">${enteteRepli("Texte de l'épisode", "texte", !S.replis.texte)}${S.replis.texte ? "" : `<div class="transcription">${h(S.texte.texte)}</div>`}</section>`
-    : ep.texte_dispo ? `<button type="button" class="bouton gris" data-texte="${h(ep.cle)}">Lire le texte de l'épisode</button>` : ""}`;
+  ${ep.texte_dispo || (S.texte && S.texte.cle === ep.cle) ? `<section class="carte">${enteteRepli("Texte de l'épisode", "texte", !S.replis.texte)}${S.replis.texte ? "" : S.texte && S.texte.cle === ep.cle ? `<div class="transcription">${h(S.texte.texte)}</div>` : `<p class="aide">Chargement du texte…</p>`}</section>` : ""}`;
 }
 
+// Une source : le nom du lien en orange, l'adresse du site en gris dessous (toute la ligne ouvre le lien).
+const adresseSource = (url) => String(url || "").replace(/^https?:\/\/(www\.)?/, "").split("/")[0];
+const ligneSource = (titre, url) => `<button type="button" data-lien="${h(url)}"><span class="nom">${h(titre || adresseSource(url) || url)}</span><span class="adresse">${h(adresseSource(url))}</span></button>`;
+
 // Titre d'une carte qu'on peut réduire (Sources, Texte de l'épisode) : le toucher l'ouvre ou la referme.
-function enteteRepli(titre, cle, ouvert) {
-  return `<button type="button" class="tete-repli" data-replier="${cle}" aria-expanded="${ouvert}"><h2>${h(titre)}</h2>${icone("suite", 18, 2)}</button>`;
+function enteteRepli(titre, cle, ouvert, attrs = "") {
+  return `<button type="button" class="tete-repli" ${attrs || `data-replier="${cle}"`} aria-expanded="${ouvert}"><h2>${h(titre)}</h2>${icone("suite", 18, 2)}</button>`;
+}
+
+// Ouvre ou referme une carte repliable ; le texte d'un épisode se charge à sa première ouverture.
+async function replier(cle) {
+  const episode = S.episode;
+  if (cle === "texte" && S.replis.texte && !(S.texte && S.texte.cle === episode)) {
+    const j = await demander("texte", { cle: episode });
+    if (!j.ok) return;
+    S.texte = { cle: episode, texte: j.texte };
+  }
+  S.replis[cle] = !S.replis[cle];
+  dessiner();
 }
 
 async function geste(cle, g) {
@@ -1491,7 +1516,7 @@ function vueIdees() {
 }
 
 // Les sources d'un résultat (podcast) : numérotées, avec le site.
-const listeSources = (sources) => `<div class="sources">${sources.map((x, i) => `<button type="button" data-lien="${h(x.lien)}"><span>${i + 1}</span><span>${h(x.titre)}<br><span class="aide">${h(x.lien.replace(/^https:\/\/(www\.)?/, "").split("/")[0])}</span></span></button>`).join("")}</div>`;
+const listeSources = (sources) => `<div class="sources">${sources.map((x) => ligneSource(x.titre, x.lien)).join("")}</div>`;
 
 // Un résultat écrit : une idée (lieu, prix, accès, carte) ou une information (résumé, source, lien).
 function carteResultat(i, nouveau) {
@@ -1573,6 +1598,7 @@ const PERIODES_RUBRIQUE = PERIODES.filter(([cle]) => cle !== "ponctuelle");
 const MINUTES_RECHERCHE = [2, 3, 5, 8, 10];
 
 function ouvrirFiche(id, modele = null, origine = null) {
+  S.resumeOuvert = null;
   const r = id ? S.d.regles.find((x) => x.id === id) : null;
   if (id && !r) return annoncer("Cette rubrique n'existe plus.", true);
   if (r && r.periode.type === "ponctuelle") S.recherche = r.id;
@@ -1595,9 +1621,9 @@ function ouvrirFiche(id, modele = null, origine = null) {
       longueur: r ? (r.longueur || "aucune") : ponctuelle ? "aucune" : base.longueur || "courte",
       periode: r ? { type: r.periode.type, debut: r.periode.debut || "", fin: r.periode.fin || "", jours: [...(r.periode.jours || [])] }
                  : { type: ponctuelle ? "ponctuelle" : "toujours", debut: "", fin: "", jours: [], ...(base.periode || {}) },
-      sources: r ? [...r.sources] : ponctuelle ? sourcesProposables(["web", "actus"]) : sourcesProposables([...(m.sources || [])]),
+      sources: r ? [...r.sources] : sourcesProposables(ponctuelle ? m.sources || ["web", "actus"] : [...(m.sources || [])]),
       modele: r ? r.modele || "libre" : ponctuelle ? "libre" : m.id || "libre",
-      rendu, audio: false, minutes: r ? r.minutes || 3 : 3, recherches: r ? r.recherches || 3 : 3,
+      rendu, audio: false, minutes: r ? r.minutes || 3 : m.minutes || 3, recherches: r ? r.recherches || 3 : 3,
       fiche: r ? { ...vide, ...r.fiche } : { ...vide },
       transport: r ? r.transport : "aucun",
       budget: r ? { max: r.budget.max ?? "", unite: r.budget.unite || "personne", devise: r.budget.devise || S.d.devise || "CHF", transport_inclus: Boolean(r.budget.transport_inclus) }
@@ -1738,29 +1764,31 @@ function vueFiche() {
 }
 
 // ───────────────────────── résumé d'une rubrique ─────────────────────────
-// Ce que la rubrique a raconté dans les derniers épisodes (gardé par le bot), un podcast qui le résume,
-// et les textes et sources de chaque passage.
+// Ce que la rubrique a raconté dans les derniers épisodes (gardé par le bot), dans un onglet qu'on
+// ouvre et ferme : « Faire un résumé » en haut, puis chaque passage (date et texte en gris, sources en orange).
 function blocResume(id) {
+  const ouvert = S.resumeOuvert === id;
   const R = S.rub && S.rub.id === id ? S.rub : null;
-  if (!R) return `<section class="section-fiche"><h2>Ce qu'elle a raconté</h2>
-    <button type="button" class="bouton gris" data-action="rub-ouvrir" data-id="${h(id)}">Voir le résumé de la rubrique</button></section>`;
-  if (!R.entrees.length) return `<section class="section-fiche"><h2>Ce qu'elle a raconté</h2>
-    <p class="aide">Rien de gardé pour l'instant : le résumé se remplit à partir du prochain épisode où elle passe.</p></section>`;
-  const sujets = R.entrees.map((x) => {
-    const titres = [...new Set(x.sources.map((s) => s.titre))].slice(0, 5);
-    const debut = x.texte.replace(/^[^:]{1,30} : /, "").split(/(?<=[.!?])\s/)[0].slice(0, 140);
-    return `<li><b>${h(dateCourteLocale(x.date))}</b> · ${titres.length ? titres.map(h).join(" ; ") : h(debut)}</li>`;
-  }).join("");
-  return `<section class="section-fiche"><h2>Ce qu'elle a raconté</h2>
-    <p class="aide">${R.entrees.length} passage${R.entrees.length > 1 ? "s" : ""} gardé${R.entrees.length > 1 ? "s" : ""} (les 30 derniers).</p>
-    <ul style="margin:0 0 10px;padding-left:18px;line-height:1.5">${sujets}</ul>
-    ${R.resume ? `<button type="button" class="bouton gris" data-lire="${h(R.resume.cle)}">▶ Écouter la dernière synthèse${R.resume.duree ? ` (${Math.max(1, Math.round(R.resume.duree / 60))} min)` : ""}</button>` : ""}
-    <button type="button" class="bouton gris" data-action="rub-podcast" data-id="${h(id)}">🎧 ${R.resume ? "Refaire" : "Faire"} un podcast qui résume</button>
-    <button type="button" class="bouton gris" data-action="rub-textes">${R.voir ? "Masquer" : "Afficher"} les textes et sources</button>
-    ${R.voir ? R.entrees.map((x) => `<div class="sous-bloc"><b>${h(dateLongue(x.date))}</b>
+  const corps = !ouvert ? "" : !R ? `<p class="aide">Chargement…</p>`
+    : !R.entrees.length ? `<p class="aide">Rien de gardé pour l'instant : l'onglet se remplit à partir du prochain épisode où elle passe.</p>`
+    : `<button type="button" class="bouton gris" data-action="rub-resumer" data-id="${h(id)}">Faire un résumé</button>
+    ${R.entrees.map((x) => `<div class="passage"><span class="date-passage">${h(dateLongue(x.date))}</span>
       <div class="transcription">${h(x.texte)}</div>
-      ${x.sources.length ? `<ul style="margin:6px 0 0;padding-left:18px">${x.sources.map((s) => `<li><button type="button" class="lien" style="min-height:32px;padding:0;text-align:left" data-lien="${h(s.url)}">${h(s.titre || s.url)}</button></li>`).join("")}</ul>` : ""}</div>`).join("") : ""}
-  </section>`;
+      ${x.sources.length ? `<div class="sources">${x.sources.map((src) => ligneSource(src.titre, src.url)).join("")}</div>` : ""}</div>`).join("")}`;
+  return `<section class="section-fiche">${enteteRepli("Ce qu'elle a raconté", "", ouvert, `data-action="rub-ouvrir" data-id="${h(id)}"`)}${corps}</section>`;
+}
+
+// « Faire un résumé » : une recherche toute réglée sur l'historique de la rubrique s'ouvre ; on choisit
+// en podcast (trois minutes, comme avant) ou par écrit, puis « Créer et lancer ».
+function resumerRubrique(id) {
+  const r = S.d.regles.find((x) => x.id === id);
+  const nom = r ? r.titre : (S.d.deroule.find((x) => x.cle === id) || {}).nom || "la rubrique";
+  ouvrirFiche(null, {
+    id: "point",
+    f: { titre: `Résumé de « ${nom.slice(0, 28)} »`,
+         consigne: `Fais le point sur ce que « ${nom} » a raconté ces derniers jours : regroupe par thème plutôt que jour par jour, relève ce qui revient ou évolue, dis ce qui est encore d'actualité et ce qui est dépassé.` },
+    sources: [`rubrique:${id}`], minutes: 3,
+  });
 }
 
 // ─────────────────────────────── sources ────────────────────────────────
@@ -1781,10 +1809,20 @@ function infoSource(cle) {
     const a = S.d.reglages.agendas.find((y) => y.id === id);
     return a ? { cle, nom: a.nom, ou: "seulement cet agenda" } : { cle, nom: "Agenda retiré", ou: "", retiree: true };
   }
+  if (type === "rubrique" && id) {
+    const nom = nomRubriqueSource(id);
+    return nom ? { cle, nom: `Historique : ${nom}`, ou: "ce qu'elle a raconté dans les derniers épisodes" } : { cle, nom: "Rubrique retirée", ou: "", retiree: true };
+  }
   const c = s.categories.find((x) => x.cle === cle);
   if (cle === "agenda") return { ...(c || {}), cle, nom: "Tous mes agendas", ou: "tous tes agendas lus" };
   return c ? { ...c, retiree: c.coupee } : { cle, nom: cle, ou: "", retiree: true };
 }
+// Les rubriques dont l'historique peut servir de source : les tiennes (sauf les recherches) et les essentielles qui parlent.
+const rubriquesAvecHistorique = () => [
+  ...S.d.regles.filter((r) => r.periode.type !== "ponctuelle").map((r) => [r.id, r.titre]),
+  ...Object.keys(INTEGREES).filter((cle) => !INTEGREES[cle].fixe).map((cle) => [cle, ((S.d.deroule || []).find((x) => x.cle === cle) || {}).nom || cle]),
+];
+const nomRubriqueSource = (id) => (rubriquesAvecHistorique().find(([cle]) => cle === id) || [])[1] || "";
 // Les sources qu'une rubrique lira vraiment (sans celles retirées dans Réglages › Sources).
 const sourcesActives = (liste) => liste.filter((cle) => !infoSource(cle).retiree);
 const sourcesProposables = (liste) => sourcesActives(liste);
@@ -1800,6 +1838,7 @@ function groupesSources(types = null) {
     ["flux", "Tes flux", garde("flux") ? s.flux.map((x) => x.cle) : []],
     ["sites", "Tes sites", garde("sites") ? s.sites.map((x) => x.cle) : []],
     ["agendas", "Tes agendas", garde("agendas") ? ["agenda", ...S.d.reglages.agendas.map((a) => `agenda:${a.id}`)] : []],
+    ["rubriques", "Historique d'une rubrique", garde("rubriques") ? rubriquesAvecHistorique().map(([id]) => `rubrique:${id}`) : []],
   ].filter(([, , cles]) => cles.length);
 }
 
@@ -2946,7 +2985,7 @@ document.addEventListener("click", (ev) => {
   if (ds.aller) return aller(ds.aller);
   if (ds.destination) {
     if (ds.destination.startsWith("r:")) { S.reglage = ds.destination.slice(2); return aller("reglage"); }
-    if (ds.destination.startsWith("i:")) { S.integree = ds.destination.slice(2); return aller("integree"); }
+    if (ds.destination.startsWith("i:")) { S.integree = ds.destination.slice(2); S.resumeOuvert = null; return aller("integree"); }
     return aller(ds.destination);
   }
   if (ds.reglage) { S.reglage = ds.reglage; if (ds.onglet) S.ongletSources = ds.onglet; return aller("reglage"); }
@@ -2968,7 +3007,7 @@ document.addEventListener("click", (ev) => {
     const x = S.d.reglages.sources.sites.find((y) => y.id === ds.siteRetirer);
     return confirmer(`Retirer le site « ${x ? x.nom : ""} » ?${x && x.rubriques.length ? ` ${x.rubriques.map((r) => `« ${r.titre} »`).join(", ")} n'y chercheront plus.` : ""}`, () => changer("site_retirer", { id: ds.siteRetirer }));
   }
-  if (ds.integree) { S.integree = ds.integree; return aller("integree"); }
+  if (ds.integree) { S.integree = ds.integree; S.resumeOuvert = null; return aller("integree"); }
   if (ds.modele) { const m = modeles().find((x) => x.id === ds.modele); return m && ouvrirFiche(null, m); }
   if (ds.consigneRubrique !== undefined) return rubriqueDepuisConsigne(Number(ds.consigneRubrique));
   if (ds.consigneAgenda !== undefined) return changer("consigne_ranger", { index: Number(ds.consigneAgenda), rubrique: "agenda" });
@@ -3041,8 +3080,7 @@ document.addEventListener("click", (ev) => {
   if (ds.lire) return basculer(episodeParCle(ds.lire));
   if (ds.chapitre) return jouer(episodeParCle(ds.chapitre), Number(ds.t));
   if (ds.geste) return geste(ds.cle, ds.geste);
-  if (ds.texte) return demander("texte", { cle: ds.texte }).then((j) => { if (j.ok) { S.texte = { cle: ds.texte, texte: j.texte }; S.replis.texte = false; dessiner(); } });
-  if (ds.replier) { S.replis[ds.replier] = !S.replis[ds.replier]; return dessiner(); }
+  if (ds.replier) return replier(ds.replier);
   if (ds.extrait) return basculerExtrait(ds.extrait);
   if (ds.aPreparer) { S.aPreparer = S.aPreparer.includes(ds.aPreparer) ? S.aPreparer.filter((x) => x !== ds.aPreparer) : [...S.aPreparer, ds.aPreparer]; vibrer("choix"); return dessiner(); }
   if (ds.voixActive) return changer("voix_active", { voix: ds.voixActive, active: el.getAttribute("aria-checked") !== "true" });
@@ -3118,9 +3156,17 @@ document.addEventListener("click", (ev) => {
     case "condition": S.fiche.f.condition = { texte: "", moment: "jour_meme", n: 1 }; S.fiche.modifie = true; return dessiner();
     case "sans-condition": S.fiche.f.condition = null; S.fiche.modifie = true; return dessiner();
     case "recherche": S.fiche.recherche = true; return dessiner();
-    case "rub-ouvrir": return demander("rubrique_resume", { id: ds.id }).then((j) => { if (j.ok) { S.rub = { ...j.rubrique, voir: false }; dessiner(); } });
-    case "rub-textes": if (S.rub) { S.rub.voir = !S.rub.voir; dessiner(); } return;
-    case "rub-podcast": return changer("resume_podcast", { id: ds.id }, () => {});
+    case "rub-ouvrir": {      // l'onglet « Ce qu'elle a raconté » : s'ouvre (et charge l'historique) ou se ferme
+      if (S.resumeOuvert === ds.id) { S.resumeOuvert = null; return dessiner(); }
+      S.resumeOuvert = ds.id;
+      if (!(S.rub && S.rub.id === ds.id)) S.rub = null;      // le déjà chargé reste affiché pendant qu'on relit
+      dessiner();
+      return demander("rubrique_resume", { id: ds.id }).then((j) => {
+        if (j.ok) S.rub = j.rubrique; else S.resumeOuvert = null;
+        dessiner();
+      });
+    }
+    case "rub-resumer": return resumerRubrique(ds.id);
     case "annuler": return changer("annuler");
     case "parler-confirmer": return repondreConfirmation(true);
     case "parler-abandonner": return repondreConfirmation(false);

@@ -874,11 +874,14 @@ await scenario("Recherches : deux types, une page de résultats par recherche, p
   // Le podcast d'une recherche, écouté dans sa page.
   await deposer("2026-10/point-x-2026-10-19-100000.mp3", new Uint8Array(1500).fill(4));
   await evenement({ type: "recherche", regles: [podcast], idees: [], format: "point", audio: "2026-10/point-x-2026-10-19-100000.mp3", titre_audio: "La grève, où en est-on ?", duree: 470,
+    chapitres: [[0, "Préavis"], [95.4, "Trains supprimés"], [200, ""], ["x", "Ignoré"]],
     resultats: [{ regle: podcast, titre: "Grève CFF", intro: "Préavis · Trains supprimés", idees: [], sources: [{ titre: "RTS", lien: "https://www.rts.ch/greve" }] }] });
   page = (await app("etat")).donnees.recherches_resultats[podcast];
   const lu = page?.episode?.audio ? await fetch(`${BOT}${page.episode.audio}`) : null;
   verifier(page?.episode?.titre === "La grève, où en est-on ?" && page.episode.cle === `recherche:${podcast}` && lu?.status === 200 && (await lu.arrayBuffer()).byteLength === 1500
     && page.details[0].sources.length === 1, "le podcast de la recherche s'écoute dans sa page", page);
+  verifier(JSON.stringify(page.episode.chapitres) === JSON.stringify([[0, "Préavis"], [95, "Trains supprimés"], [0, "Ignoré"]]),
+    "le podcast d'une recherche a ses chapitres (liste cliquable comme l'épisode du matin)", page.episode.chapitres);
   // Une recherche supprimée : les numéros suivants changent, leurs résultats suivent.
   const avant = (await etat()).config.regles.findIndex((x) => x.id === ecrit);
   await app("supprimer", { id: ecrit });
@@ -1733,17 +1736,38 @@ await scenario("Rubrique : ce qu'elle a raconté, synthèse, textes et sources",
   verifier((await (await fetch(`${BOT}/api/rubrique?id=%3Cx%3E`, { headers: entetes })).json()).entrees.length === 0, "identifiant invalide ignoré");
   await episode("2026-10-15", "R1", "Léa : Nouveau modèle ouvert (version corrigée).");
   let r = await app("rubrique_resume", { id: "R1" });
-  verifier(r.ok && r.rubrique.entrees.length === 2 && r.rubrique.entrees[0].date === "2026-10-15" && r.rubrique.entrees[0].texte.includes("corrigée") && r.rubrique.resume === null,
+  verifier(r.ok && r.rubrique.entrees.length === 2 && r.rubrique.entrees[0].date === "2026-10-15" && r.rubrique.entrees[0].texte.includes("corrigée"),
     "le même épisode ne compte qu'une fois, du plus récent au plus ancien", r.rubrique);
-  await vider();
-  r = await app("resume_podcast", { id: "R1" });
-  const lance = lancements(await appels()).find((a) => a.workflow === "recherche.yml");
-  verifier(r.ok && lance && lance.entrees.regles === "R1" && lance.entrees.format === "resume", "synthèse lancée sur GitHub", lance);
-  verifier((await app("resume_podcast", { id: "R9" })).ok === false, "rubrique sans historique : refus");
-  // La synthèse arrive : le lecteur de l'application peut la lire.
-  await envoyerJson(`${BOT}/api/evenement`, { type: "resume", rubrique: "R1", audio: "2026-10/resume-R1-2026-10-15-070000.mp3", titre: "Où en est la veille IA", duree: 180 }, entetes);
-  r = await app("rubrique_resume", { id: "R1" });
-  verifier(r.rubrique.resume?.audio?.startsWith("/app/audio?c=resume%3AR1") && r.rubrique.resume.duree === 180, "synthèse disponible avec un lien audio signé", r.rubrique.resume);
+});
+
+await scenario("Source « historique d'une rubrique » : recherche de résumé, suppression et numéros", async () => {
+  const avant = (await etat()).config.regles.length;
+  let r = await app("rubrique", { formulaire: { titre: "Veille IA", consigne: "La veille IA", periode: { type: "toujours" }, sources: ["actus"] } });
+  const veille = r.id;
+  r = await app("rubrique", { formulaire: { titre: "Veille laser", consigne: "La veille laser", periode: { type: "toujours" }, sources: ["actus"] } });
+  const laser = r.id;
+  // Une recherche « Faire un résumé » : seule source, l'historique d'une rubrique (ou d'une essentielle) ; l'inconnu est écarté.
+  r = await app("rubrique", { formulaire: { titre: "Résumé de la veille", consigne: "Fais le point sur ce que la veille a raconté", periode: { type: "ponctuelle" }, rendu: "point", minutes: 3,
+    sources: [`rubrique:${laser}`, "rubrique:actualites", "rubrique:R99", "rubrique:../x", "rubrique:ouverture"] } });
+  const resume = r.id;
+  let { config } = await etat();
+  const regle = config.regles.find((x) => x.id === resume);
+  verifier(JSON.stringify(regle.recherche.sources) === JSON.stringify([`rubrique:${laser}`, "rubrique:actualites"]),
+    "l'historique d'une rubrique se choisit comme source (inconnue ou fixe : écartée)", regle.recherche.sources);
+  verifier(r.donnees.regles.find((x) => x.id === resume).sources.includes(`rubrique:${laser}`), "l'application reçoit cette source");
+  // Une rubrique supprimée : son historique n'est plus une source ; les numéros suivants se corrigent dans les sources.
+  await app("supprimer", { id: veille });
+  config = (await etat()).config;
+  const nouveauLaser = config.regles.find((x) => x.titre === "Veille laser").id;
+  const regleApres = config.regles.find((x) => x.titre === "Résumé de la veille");
+  verifier(nouveauLaser !== laser && regleApres.recherche.sources.includes(`rubrique:${nouveauLaser}`) && !regleApres.recherche.sources.includes(`rubrique:${laser}`),
+    "après une suppression, la source suit la nouvelle numérotation", { laser, nouveauLaser, sources: regleApres.recherche.sources });
+  await app("supprimer", { id: nouveauLaser });
+  config = (await etat()).config;
+  const derniere = config.regles.find((x) => x.titre === "Résumé de la veille");
+  verifier(JSON.stringify(derniere.recherche.sources) === JSON.stringify(["rubrique:actualites"]), "rubrique supprimée : plus proposée comme source", derniere.recherche.sources);
+  await app("supprimer", { id: derniere.id });
+  verifier((await etat()).config.regles.length === avant, "nettoyage");
 });
 
 await scenario("Après le déploiement : nouveautés annoncées par notification", async () => {

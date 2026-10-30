@@ -135,7 +135,7 @@ export const SOURCES_INTEGREES = { agenda: "agendas", deplacements: "agendas", a
 // Le type d'une source pour SOURCES_PAR_MODELE : sa catégorie, ou flux / sites / agendas.
 export function typeSource(s) {
   const t = String(s);
-  return t === "agenda" || t.startsWith("agenda:") ? "agendas" : t.startsWith("flux:") ? "flux" : t.startsWith("site:") ? "sites" : t;
+  return t === "agenda" || t.startsWith("agenda:") ? "agendas" : t.startsWith("flux:") ? "flux" : t.startsWith("site:") ? "sites" : t.startsWith("rubrique:") ? "rubriques" : t;
 }
 // Une source qu'un modèle de rubrique propose (toutes pour une rubrique sur mesure).
 export function sourcePermise(modele, s) {
@@ -168,9 +168,20 @@ export const MAX_SOURCES_RUBRIQUE = 25;
 const OUTIL_ID = /^(flux|site):[0-9a-z]{4,16}$/;
 const AGENDA_ID = /^agenda:[0-9a-f]{10}$/;
 
-// Une source qu'une rubrique peut cocher : une catégorie, un de ses flux, sites ou agendas.
+// « rubrique:R3 » : l'historique d'une rubrique (ce qu'elle a raconté dans les derniers épisodes), lu comme
+// une source par une recherche. Renvoie « R3 » (ou la clé d'une rubrique essentielle), sinon null.
+export function idRubriqueSource(s) {
+  const m = /^rubrique:([A-Za-z_0-9]{1,24})$/.exec(String(s));
+  return m && (/^R\d+$/.test(m[1]) || RUBRIQUES_A_CHERCHER.includes(m[1])) ? m[1] : null;
+}
+// Une rubrique dont l'historique peut servir de source : une des siennes, ou une essentielle.
+export function rubriqueExistante(config, id) {
+  return RUBRIQUES_A_CHERCHER.includes(id) || (config?.regles || []).some((r) => r.id === id);
+}
+
+// Une source qu'une rubrique peut cocher : une catégorie, un de ses flux, sites ou agendas, ou l'historique d'une rubrique.
 export function sourceConnue(s) {
-  return Boolean(SOURCES[s]) || OUTIL_ID.test(String(s)) || AGENDA_ID.test(String(s));
+  return Boolean(SOURCES[s]) || OUTIL_ID.test(String(s)) || AGENDA_ID.test(String(s)) || idRubriqueSource(s) !== null;
 }
 
 // Les sources d'une rubrique réellement lues : sans les catégories coupées ni les flux ou sites
@@ -178,13 +189,15 @@ export function sourceConnue(s) {
 export function sourcesUtilisables(sources, config) {
   const coupees = new Set(config?.sources?.coupees || []);
   const outils = new Set([...(config?.sources?.flux || []).map((f) => `flux:${f.id}`), ...(config?.sources?.sites || []).map((x) => `site:${x.id}`)]);
-  return (sources || []).filter((s) => SOURCES[s] ? !coupees.has(s) : AGENDA_ID.test(s) || outils.has(s));
+  const rubriqueLue = (s) => { const id = idRubriqueSource(s); return id !== null && (!config || rubriqueExistante(config, id)); };
+  return (sources || []).filter((s) => SOURCES[s] ? !coupees.has(s) : AGENDA_ID.test(s) || outils.has(s) || rubriqueLue(s));
 }
 
 // Nom lisible d'une source (catégorie, flux, site ou agenda ; « agendas » : ceux que le bot connaît).
 export function nomSource(s, config, agendas = []) {
   if (SOURCES[s]) return SOURCES[s];
   const [type, id] = String(s).split(":");
+  if (type === "rubrique") return rubriqueExistante(config, id) ? `Historique : ${nomRubrique(config, id)}` : "rubrique retirée";
   if (type === "agenda") { const a = agendas.find((x) => x.id === id); return a ? `Agenda « ${a.nom} »` : "un de tes agendas"; }
   const outil = (config?.sources?.[type === "site" ? "sites" : "flux"] || []).find((x) => x.id === id);
   return outil ? outil.nom : type === "site" ? "site retiré" : "flux retiré";
@@ -629,6 +642,8 @@ export function supprimerRegle(config, id) {
   config.regles = config.regles.filter((r) => r.id !== id);
   retirerRubrique(config, id);
   if (config.regles.length === avant) throw new Error(`rubrique ${id} introuvable`);
+  // Son historique n'est plus une source possible pour les autres rubriques ni pour les recherches.
+  for (const r of config.regles) if (r.recherche) r.recherche.sources = r.recherche.sources.filter((x) => x !== `rubrique:${id}`);
   return renumeroter(config);
 }
 
@@ -645,6 +660,8 @@ export function renumeroter(config) {
     for (const r of config.regles) {
       r.id = renommer(r.id);
       if (r.rubrique && table[r.rubrique.apres]) r.rubrique.apres = table[r.rubrique.apres];
+      // L'historique d'une rubrique, source d'une autre, la suit dans sa nouvelle numérotation.
+      if (r.recherche) r.recherche.sources = r.recherche.sources.map((x) => (x.startsWith("rubrique:") ? `rubrique:${renommer(x.slice(9))}` : x));
     }
     for (const element of config.deroule || []) element.cle = renommer(element.cle);
   }

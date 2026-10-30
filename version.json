@@ -1,10 +1,12 @@
 {
-  "version": "2026-10-30.3",
+  "version": "2026-10-30.4",
   "date": "2026-10-30",
-  "titre": "Anniversaires de l'agenda et sujets à creuser",
+  "titre": "Épisodes, sources et résumés de rubriques",
   "nouveautes": [
-    "Correctif : un anniversaire annuel de Google Agenda (ex. le 4 février) n'est plus annoncé le même jour de chaque mois.",
-    "Épisode : les sujets à creuser passent à la ligne au lieu de dépasser de la carte."
+    "Épisodes : la liste sous le calendrier met le dernier épisode en haut.",
+    "Épisode : Sources et Texte de l'épisode sont repliés à l'ouverture ; les sources se présentent comme celles des rubriques (nom en orange, adresse en gris).",
+    "Rubrique : « Ce qu'elle a raconté » devient un onglet ; « Faire un résumé » ouvre une recherche toute réglée (podcast ou écrit) sur l'historique de la rubrique, nouvelle source « Historique d'une rubrique ».",
+    "Recherches en podcast : chapitres par sujet, cliquables comme ceux de l'épisode du matin."
   ],
   "supprimes": [
     ".github/workflows/retours.yml",

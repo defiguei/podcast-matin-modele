@@ -8,7 +8,7 @@ import {
   VOIX, VOIX_CONSEILLEES, VITESSES, TONS, DESCRIPTIONS_TONS, CONSIGNES_PRETES, CONSIGNES_PRETES_RUBRIQUES, CHEMINS_CONSIGNES, TRANSPORTS, fluxActus, profilPays, PAYS, DELAIS_RATTRAPAGE,
   DEVISES, CANTONS, MODES_VOIX, sourcesAuto, estFerie, nomFerie, animateursDuJour, placesDuJour, normaliserTexte,
   jourDeSemaine, MODELES_RUBRIQUES, CATEGORIES_RUBRIQUES, catalogueRubriques, nouvelleRegle, modifierRegle,
-  INFOS_SOURCES, sourceConnue, sourcesUtilisables, RENDUS, minutesPoint, recherchesWeb, RANGEMENT_SOURCES, fluxProposes, MAX_SOURCES_RUBRIQUE,
+  INFOS_SOURCES, sourceConnue, rubriqueExistante, idRubriqueSource, sourcesUtilisables, RENDUS, minutesPoint, recherchesWeb, RANGEMENT_SOURCES, fluxProposes, MAX_SOURCES_RUBRIQUE,
   SOURCES_PAR_MODELE, SOURCES_INTEGREES, nommerAgendas,
 } from "./config.js";
 import { apercuDonnees } from "./donnees.js";
@@ -228,7 +228,7 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
       // Le mini-podcast, comme un épisode pour le lecteur de l'application.
       episode: liens.idees ? { cle: "idees:dernier", titre: etat.derniers_resultats.titre_audio || (etat.derniers_resultats.format === "point" ? "Ton podcast" : "Mini-podcast d'idées"), audio: liens.idees,
         date: String(etat.derniers_resultats.quand || "").slice(0, 10), texte: "", duree: etat.derniers_resultats.duree_audio || null,
-        chapitres: [], sujets: [], coches: [], sources: [], image: null } : null,
+        chapitres: etat.derniers_resultats.chapitres || [], sujets: [], coches: [], sources: [], image: null } : null,
     } : null,
     // Chaque recherche ponctuelle a sa page de résultats : le dernier podcast, ou les résultats écrits.
     recherches_resultats: resultatsParRecherche(config, etat, liens, ctx.ms || Date.now()),
@@ -310,7 +310,7 @@ export function champsDepuisFormulaire(f, ancienne, aujourdHui, devise = "CHF", 
   // (sources_auto) reçoivent les sources proposées d'après le sujet.
   const sources = f.sources_auto && !(f.sources || []).length
     ? sourcesAuto({ titre, consigne, fiche: f.fiche || {}, condition: f.condition && f.condition.texte ? f.condition : null }, config)
-    : nettoyerListe(f.sources, MAX_SOURCES_RUBRIQUE).filter(sourceConnue);
+    : nettoyerListe(f.sources, MAX_SOURCES_RUBRIQUE).filter((x) => sourceConnue(x) && (idRubriqueSource(x) === null || rubriqueExistante(config, idRubriqueSource(x))));
   if (!sourcesUtilisables(sources, config).length) {
     throw new Error("Choisis au moins une source dans « Où elle cherche » : c'est là que la rubrique trouve son contenu.");
   }
@@ -444,6 +444,13 @@ export function nettoyerResultats(resultats) {
   })).filter((r) => r.idees.length || r.sources.length || r.intro);
 }
 
+// Les chapitres d'un podcast de recherche : [[secondes, titre]], dans l'ordre, au plus 12.
+export function nettoyerChapitres(chapitres) {
+  return (Array.isArray(chapitres) ? chapitres : []).slice(0, 12)
+    .map((c) => [Math.max(0, Math.round(Number(c?.[0]) || 0)), String(c?.[1] ?? "").replace(/\s+/g, " ").trim().slice(0, 60)])
+    .filter(([, titre]) => titre);
+}
+
 // Les résultats de chaque recherche ponctuelle (gardés par le bot, un lot par recherche) : le podcast
 // comme un épisode pour le lecteur, ou les résultats écrits. « en_cours » : lancée il y a moins de
 // 12 minutes et pas encore revenue.
@@ -460,7 +467,7 @@ export function resultatsParRecherche(config, etat, liens = {}, ms = Date.now())
       en_cours: enCours,
       quand: res?.quand || null, format: res?.format || null, details: res?.details || [], nouveaux: res?.nouveaux || 0,
       episode: res && lien ? { cle: `recherche:${r.id}`, titre: res.titre_audio || r.titre, audio: lien, date: String(res.quand || "").slice(0, 10),
-        texte: "", duree: res.duree_audio || null, chapitres: [], sujets: [], coches: [], sources: [], image: null } : null,
+        texte: "", duree: res.duree_audio || null, chapitres: res.chapitres || [], sujets: [], coches: [], sources: [], image: null } : null,
     };
   }
   return sortie;
@@ -483,7 +490,7 @@ export function rangerResultats(precedent, lot) {
                          conseil: base.conseil || nouveau.conseil }] };
   }
   return { format: lot.format === "plus" ? "ecrit" : lot.format, quand: lot.quand, nouveaux: 0, details: nouveau ? [nouveau] : [],
-           audio: lot.audio || null, titre_audio: lot.titre_audio || "", duree_audio: lot.duree_audio || null };
+           audio: lot.audio || null, titre_audio: lot.titre_audio || "", duree_audio: lot.duree_audio || null, chapitres: lot.chapitres || [] };
 }
 
 // Sources d'un épisode : titres et adresses https seulement.
