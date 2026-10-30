@@ -823,8 +823,8 @@ def faux_post(url, json=None, data=None, files=None, timeout=None, headers=None)
             return texte_gemini({"regles": [{"id": "R3", "applique": True, "evenement": "Match vendredi 16"},
                                             {"id": "R2", "applique": True, "date_cible": "2026-10-17", "requetes": ["sortie enfants Vallorbe"],
                                              "lieux": ["Vallorbe"], "categories": ["grotte"]}]})
-        if "Tu organises des sorties" in systeme:
-            assert "Ne repropose pas : Juraparc" in systeme
+        if "Tu réponds par écrit" in systeme:
+            assert "Ne redonne pas ce qui a déjà été trouvé : Juraparc" in systeme
             return texte_gemini({"intro": "Samedi s'annonce pluvieux : plutôt sous terre !", "conseil": "Prévoir une petite laine.",
                                  "resume_partage": "Samedi : grottes de Vallorbe avec les enfants ? 12 CHF par enfant, train à 9 h 04.",
                                  "idees": [{"titre": "Grottes de Vallorbe", "resume": "Rivière souterraine. Visite d'une heure.", "pourquoi": "Idéal par temps de pluie.",

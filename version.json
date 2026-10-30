@@ -1,10 +1,13 @@
 {
-  "version": "2026-10-29.4",
-  "date": "2026-10-29",
-  "titre": "Un nom par type de rubrique",
+  "version": "2026-10-30.1",
+  "date": "2026-10-30",
+  "titre": "Recherches en podcast ou par écrit, et une application plus fluide",
   "nouveautes": [
-    "En haut de chaque rubrique, son type, le même nom que dans « Ajouter une rubrique » ; les numéros R1, R2… ne s'affichent plus.",
-    "« Mon train » devient « Mes transports en commun », et « Rubrique libre » devient « Rubrique sur mesure »."
+    "Recherches : deux types, en podcast ou par écrit, et chacune a sa page de résultats (Modifier, en haut à droite, pour la régler) ; par écrit, « Plus de résultats » ajoute de nouveaux résultats à la liste.",
+    "Accueil : la date dans le bandeau orange, « Voir le contenu » à la place de « Sauter », et l'on glisse le logo et le titre pour passer d'un épisode à l'autre.",
+    "Épisode : glisser la grande image change d'épisode, « Tous » ouvre le calendrier, boutons plus compacts, et un sujet à creuser se décoche d'un second appui.",
+    "Planning : l'heure d'un jour s'applique dès qu'on la change (« Revenir à l'horaire habituel » pour l'annuler), et un curseur choisit de 1 à 30 jours sans épisode.",
+    "Réglages : les champs de « Moi » alignés à la même largeur ; les animateurs habituels n'apparaissent qu'en mode « Toujours les mêmes »."
   ],
   "supprimes": [
     ".github/workflows/retours.yml",

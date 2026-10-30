@@ -80,7 +80,7 @@ export function schemaOperations() {
                 modele: decrit({ type: "string", enum: MODELES_RUBRIQUES.map((m) => m.id) }, "Pour nouvelle_regle : le modèle du catalogue le plus proche."),
                 titre: texte, consigne: texte,
                 periode_type: { type: "string", enum: PERIODES },
-                rendu: decrit({ type: "string", enum: RENDUS }, "Pour une recherche ponctuelle : point (podcast qui fait l'état des lieux d'un sujet) ou idees (sorties, activités, lieux, cadeaux)."),
+                rendu: decrit({ type: "string", enum: RENDUS }, "Pour une recherche ponctuelle : point = recherche en podcast (un podcast qui répond à la demande : état des lieux d'un sujet, idées de sortie…) ; idees = recherche par écrit (des résultats à lire, avec leurs liens)."),
                 minutes: decrit({ type: "number" }, "Pour un point : durée du podcast demandée, en minutes (3 si rien n'est dit)."),
                 debut: texte, fin: texte, jours: listeTextes,
                 condition_texte: texte, condition_moment: { type: "string", enum: ["jour_meme", "veille", "jours_avant"] },
@@ -166,7 +166,7 @@ Le modèle règle déjà la place, la longueur et les sources : ne remplis que c
 - importance : normale | prioritaire
 Une information exacte (saint du jour, jour férié, météo, horaire de train) doit venir d'une source, pas de tes connaissances.
 
-PODCAST PONCTUEL SUR UN SUJET : « fais-moi un podcast de 3 minutes sur les retards CFF en ce moment », « fais le point sur… », « résume-moi où en est… » = UNE seule opération nouvelle_regle avec periode_type ponctuelle, rendu point, minutes = la durée demandée, consigne = le sujet et l'angle (état des lieux à l'heure actuelle), sources adaptées (actus, web, transports pour les trains…). Il est fabriqué et envoyé tout seul : n'ajoute JAMAIS nouvel_episode, resultats, ni regler format.duree_minutes (c'est la durée de l'épisode quotidien, à ne changer que si l'auditeur parle de son épisode habituel). rendu idees : seulement pour trouver des sorties, activités, lieux ou cadeaux.
+PODCAST PONCTUEL SUR UN SUJET : « fais-moi un podcast de 3 minutes sur les retards CFF en ce moment », « fais le point sur… », « résume-moi où en est… » = UNE seule opération nouvelle_regle avec periode_type ponctuelle, rendu point, minutes = la durée demandée, consigne = le sujet et l'angle (état des lieux à l'heure actuelle), sources adaptées (actus, web, transports pour les trains…). Il est fabriqué et envoyé tout seul : n'ajoute JAMAIS nouvel_episode, resultats, ni regler format.duree_minutes (c'est la durée de l'épisode quotidien, à ne changer que si l'auditeur parle de son épisode habituel). rendu idees : quand l'auditeur veut des résultats à lire (une liste d'idées de sortie, d'activités, de cadeaux, d'articles) plutôt qu'un podcast à écouter.
 
 RUBRIQUES INTÉGRÉES DU DÉROULÉ (clés) : ${Object.entries(RUBRIQUES).map(([c, n]) => `${c} (${n})`).join(", ")}.
 
@@ -349,7 +349,7 @@ export function sourcesEnMots(config, regle) {
 // Où passe une rubrique, en mots.
 export function decrirePlace(config, regle) {
   if (regle.periode.type === "ponctuelle") return regle.recherche?.rendu === "point"
-    ? `podcast de ${regle.recherche.minutes || 3} min à part, hors épisode` : "recherche, hors podcast";
+    ? `recherche en podcast de ${regle.recherche.minutes || 3} min, hors épisode` : "recherche par écrit, hors podcast";
   if (!regle.rubrique) return "glissée dans l'épisode";
   return `après ${nomRubrique(config, regle.rubrique.apres)}`;
 }

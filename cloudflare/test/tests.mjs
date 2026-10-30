@@ -823,10 +823,78 @@ await scenario("Application : épisodes, lecteur, gestes, texte", async () => {
   verifier(r.ok && (await etat()).config.format.duree_minutes === avant - 1 && r.donnees.episodes[0].coches.includes("court"), "plus court", r.erreur);
   r = await app("geste", { cle: ep.cle, geste: "cr2" });
   verifier(r.ok && r.donnees.reglages.a_approfondir.includes("Sujet B"), "sujet à creuser depuis l'épisode");
+  r = await app("geste", { cle: ep.cle, geste: "cr2" });
+  verifier(r.ok && !r.donnees.reglages.a_approfondir.includes("Sujet B") && !r.donnees.episodes[0].coches.includes("cr2") && r.message === "Plus à creuser : Sujet B",
+    "re-toucher le sujet le décoche", r.message);
   r = await app("texte", { cle: ep.cle });
   verifier(r.ok && r.texte === "Léa : Bonjour !", "texte de l'épisode");
   verifier((await app("geste", { cle: "ep:2020-01-01", geste: "court" })).ok === false, "épisode inconnu refusé");
   await app("regler", { chemin: "format.duree_minutes", valeur: avant });
+});
+
+await scenario("Recherches : deux types, une page de résultats par recherche, plus de résultats", async () => {
+  await horloge("2026-10-19T10:00");
+  const quotaAvant = (await etat()).etat;
+  const formulaire = (titre, rendu, extra = {}) => ({ titre, consigne: `Demande : ${titre}`, periode: { type: "ponctuelle" }, sources: ["web", "actus"], rendu, ...extra });
+  let r = await app("rubrique", { formulaire: formulaire("Vélo en hiver", "idees", { recherches: 4 }) });
+  const ecrit = r.id;
+  r = await app("rubrique", { formulaire: formulaire("Grève CFF", "point", { minutes: 8 }) });
+  const podcast = r.id;
+  let { config } = await etat();
+  const regleEcrit = config.regles.find((x) => x.id === ecrit);
+  verifier(regleEcrit.recherche.rendu === "idees" && regleEcrit.recherche.recherches === 4 && r.donnees.regles.find((x) => x.id === ecrit).recherches === 4
+    && config.regles.find((x) => x.id === podcast).recherche.minutes === 8, "par écrit : 4 recherches web ; en podcast : 8 minutes");
+  // Relancer par écrit, même en demandant un mini-podcast : jamais de mini-podcast pour une recherche par écrit.
+  await vider();
+  r = await app("recherche", { id: ecrit, format: "audio" });
+  verifier(r.ok && lancements(await appels())[0]?.entrees.format === "ecrit", "une recherche par écrit se relance par écrit", lancements(await appels()));
+  verifier(r.donnees.recherches_resultats[ecrit]?.en_cours?.format === "ecrit", "la page de la recherche la montre en cours", r.donnees.recherches_resultats);
+  await evenement({ type: "recherche", regles: [ecrit], idees: ["Pneus à clous", "Éclairage"], format: "ecrit", resultats: [{ regle: ecrit, titre: "Vélo en hiver", intro: "L'hiver arrive.",
+    idees: [{ titre: "Pneus à clous", resume: "Pour la neige.", lien: "https://velo.ch/pneus", source: "velo.ch" }, { titre: "Éclairage", resume: "Être vu." }] }] });
+  r = await app("etat");
+  let page = r.donnees.recherches_resultats[ecrit];
+  verifier(!page.en_cours && page.format === "ecrit" && page.details[0].idees.length === 2 && page.details[0].idees[0].source === "velo.ch",
+    "résultats gardés dans la page de la recherche", page);
+  // Plus de résultats : ajoutés à la suite, sans doublon.
+  await vider();
+  r = await app("recherche", { id: ecrit, format: "plus" });
+  verifier(r.ok && lancements(await appels())[0]?.entrees.format === "plus" && r.message.includes("d'autres résultats"), "« plus de résultats » lancé", r.message);
+  const exp = await (await fetch(`${BOT}/api/config`, { headers: entetesApi })).json();
+  verifier(JSON.stringify(exp.resultats_recherches?.[ecrit]?.idees.map((i) => i.titre)) === JSON.stringify(["Pneus à clous", "Éclairage"]),
+    "GitHub reçoit les résultats déjà trouvés (pour en chercher d'autres)", exp.resultats_recherches);
+  await evenement({ type: "recherche", regles: [ecrit], idees: ["Gants"], format: "plus", resultats: [{ regle: ecrit, titre: "Vélo en hiver", intro: "",
+    idees: [{ titre: "Gants chauds", resume: "Doigts au chaud." }, { titre: "éclairage", resume: "Doublon." }] }] });
+  page = (await app("etat")).donnees.recherches_resultats[ecrit];
+  verifier(JSON.stringify(page.details[0].idees.map((i) => i.titre)) === JSON.stringify(["Pneus à clous", "Éclairage", "Gants chauds"]) && page.nouveaux === 1
+    && page.details[0].intro === "L'hiver arrive.", "les nouveaux résultats s'ajoutent (doublon écarté, 1 nouveau)", page);
+  // Nouveaux résultats : ils remplacent les précédents.
+  await evenement({ type: "recherche", regles: [ecrit], idees: ["Casque"], format: "ecrit", resultats: [{ regle: ecrit, titre: "Vélo en hiver", intro: "", idees: [{ titre: "Casque" }] }] });
+  page = (await app("etat")).donnees.recherches_resultats[ecrit];
+  verifier(page.details[0].idees.length === 1 && page.nouveaux === 0, "une nouvelle recherche remplace les résultats", page);
+  // Le podcast d'une recherche, écouté dans sa page.
+  await deposer("2026-10/point-x-2026-10-19-100000.mp3", new Uint8Array(1500).fill(4));
+  await evenement({ type: "recherche", regles: [podcast], idees: [], format: "point", audio: "2026-10/point-x-2026-10-19-100000.mp3", titre_audio: "La grève, où en est-on ?", duree: 470,
+    resultats: [{ regle: podcast, titre: "Grève CFF", intro: "Préavis · Trains supprimés", idees: [], sources: [{ titre: "RTS", lien: "https://www.rts.ch/greve" }] }] });
+  page = (await app("etat")).donnees.recherches_resultats[podcast];
+  const lu = page?.episode?.audio ? await fetch(`${BOT}${page.episode.audio}`) : null;
+  verifier(page?.episode?.titre === "La grève, où en est-on ?" && page.episode.cle === `recherche:${podcast}` && lu?.status === 200 && (await lu.arrayBuffer()).byteLength === 1500
+    && page.details[0].sources.length === 1, "le podcast de la recherche s'écoute dans sa page", page);
+  // Une recherche supprimée : les numéros suivants changent, leurs résultats suivent.
+  const avant = (await etat()).config.regles.findIndex((x) => x.id === ecrit);
+  await app("supprimer", { id: ecrit });
+  const nouveauId = (await etat()).config.regles.find((x) => x.titre === "Grève CFF").id;
+  page = (await app("etat")).donnees.recherches_resultats;
+  verifier(avant >= 0 && !Object.values(page).some((x) => (x.details[0]?.idees || []).some((i) => i.titre === "Casque")) && page[nouveauId]?.episode?.titre === "La grève, où en est-on ?",
+    "résultats renumérotés après une suppression", { nouveauId, cles: Object.keys(page) });
+  await app("supprimer", { id: nouveauId });
+  // Les anciennes « idées en podcast » deviennent des recherches en podcast.
+  config = (await etat()).config;
+  await envoyerJson(`${BOT}/test/etat`, { config: { ...config, regles: [...config.regles, { id: `R${config.regles.length + 1}`, titre: "Idées", consigne: "Une sortie",
+    periode: { type: "ponctuelle" }, recherche: { rendu: "idees", audio: true, sources: ["web"], fiche: {} } }] } });
+  const ancienne = (await app("etat")).donnees.regles.find((x) => x.titre === "Idées");
+  verifier(ancienne?.rendu === "point" && ancienne.audio === false && ancienne.recherches === 3, "ancienne « idées en podcast » : recherche en podcast", ancienne);
+  await app("supprimer", { id: ancienne.id });
+  await envoyerJson(`${BOT}/test/etat`, { etat: { ...(await etat()).etat, refaits: quotaAvant.refaits, recherches: quotaAvant.recherches } });
 });
 
 await scenario("Application : demande libre, recherche, résultats", async () => {

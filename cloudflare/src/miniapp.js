@@ -8,7 +8,7 @@ import {
   VOIX, VOIX_CONSEILLEES, VITESSES, TONS, DESCRIPTIONS_TONS, CONSIGNES_PRETES, CONSIGNES_PRETES_RUBRIQUES, CHEMINS_CONSIGNES, TRANSPORTS, fluxActus, profilPays, PAYS, DELAIS_RATTRAPAGE,
   DEVISES, CANTONS, MODES_VOIX, sourcesAuto, estFerie, nomFerie, animateursDuJour, placesDuJour, normaliserTexte,
   jourDeSemaine, MODELES_RUBRIQUES, CATEGORIES_RUBRIQUES, catalogueRubriques, nouvelleRegle, modifierRegle,
-  INFOS_SOURCES, sourceConnue, sourcesUtilisables, RENDUS, minutesPoint, RANGEMENT_SOURCES, fluxProposes, MAX_SOURCES_RUBRIQUE,
+  INFOS_SOURCES, sourceConnue, sourcesUtilisables, RENDUS, minutesPoint, recherchesWeb, RANGEMENT_SOURCES, fluxProposes, MAX_SOURCES_RUBRIQUE,
   SOURCES_PAR_MODELE, SOURCES_INTEGREES, nommerAgendas,
 } from "./config.js";
 import { apercuDonnees } from "./donnees.js";
@@ -47,7 +47,7 @@ export async function lienAudio(secret, cle, maintenant = Date.now()) {
 
 export async function verifierAudio(secret, params, maintenant = Date.now()) {
   const cle = params.get("c") || "", expiration = Number(params.get("e")), signature = params.get("s") || "";
-  if (!/^((img:)?ep:\d{4}-\d{2}-\d{2}(:\d+)?|voix:[A-Za-z]+|idees:dernier|resume:[A-Za-z0-9_]{1,24})$/.test(cle) || !expiration || expiration < maintenant / 1000) return null;
+  if (!/^((img:)?ep:\d{4}-\d{2}-\d{2}(:\d+)?|voix:[A-Za-z]+|idees:dernier|(resume|recherche):[A-Za-z0-9_]{1,24})$/.test(cle) || !expiration || expiration < maintenant / 1000) return null;
   return egal(await signerAudio(secret, cle, expiration), signature) ? cle : null;
 }
 
@@ -120,6 +120,7 @@ function regleVisible(r, aujourdHui) {
     transport: fiche.transport || "", budget: fiche.budget || { max: null, unite: "personne", transport_inclus: false },
     inclure: fiche.inclure || [], exclure: fiche.exclure || [], recherche: Boolean(r.recherche),
     rendu: r.recherche?.rendu || "idees", audio: Boolean(r.recherche?.audio), minutes: r.recherche?.minutes || 3,
+    recherches: r.recherche?.recherches || 3,
     place: r.rubrique?.apres || null,
     derniere_application: r.derniere_application, servie: Boolean(r.servie), id_condition: Boolean(r.condition),
   };
@@ -229,6 +230,8 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
         date: String(etat.derniers_resultats.quand || "").slice(0, 10), texte: "", duree: etat.derniers_resultats.duree_audio || null,
         chapitres: [], sujets: [], coches: [], sources: [], image: null } : null,
     } : null,
+    // Chaque recherche ponctuelle a sa page de résultats : le dernier podcast, ou les résultats écrits.
+    recherches_resultats: resultatsParRecherche(config, etat, liens, ctx.ms || Date.now()),
     reglages: {
       format: config.format,
       voix: { vitesse: config.voix.vitesse, tutoiement: config.voix.tutoiement, prenom: config.voix.prenom, animateurs: config.voix.animateurs,
@@ -324,6 +327,7 @@ export function champsDepuisFormulaire(f, ancienne, aujourdHui, devise = "CHF", 
   if (RENDUS.includes(f.rendu)) recherche.rendu = f.rendu;
   if (f.audio !== undefined) recherche.audio = Boolean(f.audio) && f.rendu !== "point";
   if (f.minutes !== undefined && f.minutes !== null && f.minutes !== "") recherche.minutes = minutesPoint(f.minutes);
+  if (f.recherches !== undefined && f.recherches !== null && f.recherches !== "") recherche.recherches = recherchesWeb(f.recherches);
 
   const c = f.condition;
   const condition = c && texte(c.texte, 120) ? {
@@ -361,7 +365,7 @@ export function formulaireNeuf(config, idModele = "libre", ponctuelle = false, r
       : { type: "toujours", debut: "", fin: "", jours: [], ...(base.periode || {}) },
     sources: sourcesUtilisables(ponctuelle ? (rendu === "point" ? ["web", "actus"] : ["web", "lieux"]) : modele.sources || [], config),
     modele: ponctuelle ? "libre" : modele.id,
-    rendu: ponctuelle ? rendu : "idees", audio: false, minutes: 3,
+    rendu: ponctuelle ? rendu : "idees", audio: false, minutes: 3, recherches: 3,
     fiche: Object.fromEntries(CHAMPS_FICHE.map((c) => [c, ""])),
     transport: "aucun", budget: { max: "", unite: "personne", devise: profilPays(config).devise, transport_inclus: false },
     inclure: [], exclure: [], condition: base.condition ? { ...base.condition } : null,
@@ -379,6 +383,7 @@ export function formulaireDepuisRegle(r, devise = "CHF") {
     periode: { type: r.periode.type, debut: r.periode.debut || "", fin: r.periode.fin || "", jours: [...(r.periode.jours || [])] },
     sources: [...(r.recherche?.sources || [])], modele: r.modele || "libre",
     rendu: r.recherche?.rendu || "idees", audio: Boolean(r.recherche?.audio), minutes: r.recherche?.minutes || 3,
+    recherches: r.recherche?.recherches || 3,
     fiche: Object.fromEntries(CHAMPS_FICHE.map((c) => [c, fiche[c] || ""])),
     transport: fiche.transport || "",
     budget: { max: budget.max ?? "", unite: budget.unite || "personne", devise: budget.devise || devise, transport_inclus: Boolean(budget.transport_inclus) },
@@ -426,17 +431,59 @@ export function nettoyerResultats(resultats) {
   const court = (v, max) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
   return (Array.isArray(resultats) ? resultats : []).slice(0, 4).map((r) => ({
     regle: court(r?.regle, 20), titre: court(r?.titre, 60), intro: court(r?.intro, 1200), conseil: court(r?.conseil, 300),
-    idees: (Array.isArray(r?.idees) ? r.idees : []).slice(0, 5).map((i) => ({
+    idees: (Array.isArray(r?.idees) ? r.idees : []).slice(0, 10).map((i) => ({
       titre: court(i?.titre, 90), resume: court(i?.resume, 400), pourquoi: court(i?.pourquoi, 300), prix: court(i?.prix, 120),
       duree: court(i?.duree, 80), horaires: court(i?.horaires, 160), lieu: court(i?.lieu, 120), adresse: court(i?.adresse, 160),
       acces: court(i?.acces, 200), lien: /^https:\/\//.test(String(i?.lien || "")) ? String(i.lien).slice(0, 400) : "",
-      dans_le_budget: Boolean(i?.dans_le_budget),
+      source: court(i?.source, 60), dans_le_budget: Boolean(i?.dans_le_budget),
     })).filter((i) => i.titre),
     // Un point (état des lieux) : ses sources, sans idées.
     sources: (Array.isArray(r?.sources) ? r.sources : []).slice(0, 8).map((x) => ({
       titre: court(x?.titre, 120), lien: /^https:\/\//.test(String(x?.lien || "")) ? String(x.lien).slice(0, 400) : "",
     })).filter((x) => x.titre && x.lien),
   })).filter((r) => r.idees.length || r.sources.length || r.intro);
+}
+
+// Les résultats de chaque recherche ponctuelle (gardés par le bot, un lot par recherche) : le podcast
+// comme un épisode pour le lecteur, ou les résultats écrits. « en_cours » : lancée il y a moins de
+// 12 minutes et pas encore revenue.
+export const ATTENTE_RECHERCHE_MS = 12 * 60 * 1000;
+export function resultatsParRecherche(config, etat, liens = {}, ms = Date.now()) {
+  const sortie = {};
+  for (const r of config.regles.filter((x) => x.periode?.type === "ponctuelle")) {
+    const res = etat.resultats_recherches?.[r.id] || null;
+    const lance = etat.recherches_lancees?.[r.id] || null;
+    const enCours = lance && ms - (lance.depuis_ms || 0) < ATTENTE_RECHERCHE_MS ? { format: lance.format, depuis: lance.depuis } : null;
+    if (!res && !enCours) continue;
+    const lien = liens.recherches?.[r.id] || null;
+    sortie[r.id] = {
+      en_cours: enCours,
+      quand: res?.quand || null, format: res?.format || null, details: res?.details || [], nouveaux: res?.nouveaux || 0,
+      episode: res && lien ? { cle: `recherche:${r.id}`, titre: res.titre_audio || r.titre, audio: lien, date: String(res.quand || "").slice(0, 10),
+        texte: "", duree: res.duree_audio || null, chapitres: [], sujets: [], coches: [], sources: [], image: null } : null,
+    };
+  }
+  return sortie;
+}
+
+// Range un lot de résultats (événement « recherche ») dans la page de sa recherche. « plus » ajoute
+// les nouveaux résultats écrits à la suite de ceux déjà trouvés (sans doublon) ; sinon, le lot remplace
+// le précédent. Au plus 30 résultats par recherche.
+export function rangerResultats(precedent, lot) {
+  const nouveau = lot.details[0] || null;
+  if (lot.format === "plus" && precedent?.details?.[0] && nouveau) {
+    const base = precedent.details[0];
+    const cle = (i) => `${String(i.titre).toLowerCase()}|${i.lien}`;
+    const vus = new Set(base.idees.flatMap((i) => [String(i.titre).toLowerCase(), i.lien].filter(Boolean)));
+    const ajouts = nouveau.idees.filter((i) => !vus.has(String(i.titre).toLowerCase()) && !(i.lien && vus.has(i.lien)));
+    const idees = [...base.idees, ...ajouts].filter((i, k, t) => t.findIndex((x) => cle(x) === cle(i)) === k).slice(0, 30);
+    const liens = new Set(base.sources.map((x) => x.lien));
+    return { ...precedent, format: "ecrit", quand: lot.quand, nouveaux: Math.max(0, idees.length - base.idees.length),
+             details: [{ ...base, idees, sources: [...base.sources, ...nouveau.sources.filter((x) => !liens.has(x.lien))].slice(0, 12),
+                         conseil: base.conseil || nouveau.conseil }] };
+  }
+  return { format: lot.format === "plus" ? "ecrit" : lot.format, quand: lot.quand, nouveaux: 0, details: nouveau ? [nouveau] : [],
+           audio: lot.audio || null, titre_audio: lot.titre_audio || "", duree_audio: lot.duree_audio || null };
 }
 
 // Sources d'un épisode : titres et adresses https seulement.

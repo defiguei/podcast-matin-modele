@@ -33,7 +33,7 @@ a { color: var(--aube); }
 .cache { display: none !important; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-main { padding: 20px 18px calc(170px + var(--bas)); display: flex; flex-direction: column; gap: 16px; max-width: 560px; margin: 0 auto; }
+main { padding: calc(20px + env(safe-area-inset-top, 0px)) 18px calc(170px + var(--bas)); display: flex; flex-direction: column; gap: 16px; max-width: 560px; margin: 0 auto; }
 main.avec-barre { padding-bottom: calc(96px + var(--bas)); }
 h1 { margin: 0; font-family: var(--titre); font-weight: 700; font-size: 30px; line-height: 1.05; letter-spacing: -0.02em; }
 h2 { margin: 0; font-family: var(--titre); font-weight: 700; font-size: 18px; }
@@ -78,7 +78,19 @@ h2 { margin: 0; font-family: var(--titre); font-weight: 700; font-size: 18px; }
 .soleil .puces span { background: rgba(26, 18, 6, 0.12); border-radius: 999px; padding: 6px 10px; }
 .soleil .actions { display: flex; gap: 8px; }
 .soleil .prochain { background: none; border: 0; padding: 0; margin: 0; color: inherit; font: inherit; width: 100%; cursor: pointer; }
-.soleil .actions .bouton { flex: 1; }
+.soleil .date-jour { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .7; margin-bottom: 2px; }
+.soleil .actions .bouton { flex: 1; padding: 0 10px; font-size: 14px; white-space: nowrap; }
+/* glisser à gauche ou à droite : épisode suivant ou précédent */
+.zone-glisse { touch-action: pan-y; user-select: none; -webkit-user-select: none; transition: transform .18s ease-out, opacity .18s; }
+.zone-glisse img { -webkit-user-drag: none; pointer-events: none; }
+.zone-glisse.entree-d { animation: entreeD .22s ease-out; }
+.zone-glisse.entree-g { animation: entreeG .22s ease-out; }
+@keyframes entreeD { from { transform: translateX(36px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes entreeG { from { transform: translateX(-36px); opacity: 0; } to { transform: none; opacity: 1; } }
+.points-ep { display: flex; justify-content: center; align-items: center; gap: 6px; margin: -4px 0 -2px; }
+.points-ep i { width: 6px; height: 6px; border-radius: 50%; background: var(--trait-2); }
+.points-ep i.bord { width: 4px; height: 4px; }
+.points-ep i.actif { background: var(--aube); width: 16px; border-radius: 3px; }
 .soleil .saute { font-size: 13px; font-weight: 500; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid rgba(26, 18, 6, 0.2); padding-top: 10px; }
 .soleil .saute button { background: none; border: 0; color: var(--sur-aube); font-weight: 700; text-decoration: underline; min-height: 36px; }
 .chapitres { display: flex; flex-direction: column; }
@@ -117,6 +129,8 @@ h2 { margin: 0; font-family: var(--titre); font-weight: 700; font-size: 18px; }
 .section-fiche > h2::before { content: ""; width: 4px; height: 14px; border-radius: 2px; background: var(--bleu); flex: none; }
 .section-fiche .bloc, .section-fiche .sous-bloc, .section-fiche .segments { background: var(--carte-2); }
 .section-fiche .saisie { background: var(--carte-2); }
+/* dans un cadre (détails d'une recherche), les champs se détachent du fond */
+.section-fiche .sous-bloc .saisie, .section-fiche .sous-bloc .bulles { background: var(--carte); }
 .pastille-ag { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; flex: none; vertical-align: baseline; }
 .suggestion { display: flex; flex-direction: column; gap: 2px; background: var(--aube-fond); border-radius: 12px; padding: 10px 12px; font-size: 13px; color: var(--aube-clair); }
 .suggestion .lien { align-self: flex-start; min-height: 36px; padding: 0; }
@@ -240,7 +254,7 @@ nav.onglets-bas button[aria-current="page"] { color: var(--aube); font-weight: 6
 .chargement { padding: 80px 24px; text-align: center; color: var(--doux); }
 .attente { display: inline-block; width: 22px; height: 22px; border: 2.5px solid var(--trait-2); border-top-color: var(--aube); border-radius: 50%; animation: tourne .8s linear infinite; margin-bottom: 12px; }
 @keyframes tourne { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation-duration: 2s !important; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation-duration: 2s !important; } .zone-glisse { animation: none !important; } }
 
 /* lecteur */
 .lecteur { display: flex; flex-direction: column; gap: 10px; }
@@ -262,11 +276,16 @@ input.avance { width: 100%; accent-color: var(--aube); margin: 0; height: 24px; 
 .gestes { display: flex; flex-wrap: wrap; gap: 6px; }
 .gestes button { min-height: 40px; border: 1.5px solid var(--trait-2); border-radius: 999px; background: transparent; color: var(--texte); padding: 0 14px; font-size: 14px; }
 .gestes button[aria-pressed="true"] { background: var(--aube-fond); border-color: var(--aube); color: var(--aube); font-weight: 600; }
+/* « Pour les prochains épisodes » : des puces serrées, à la suite les unes des autres */
+.gestes.compacts { gap: 6px 5px; }
+.gestes.compacts button { min-height: 34px; padding: 0 10px; font-size: 13px; white-space: nowrap; }
+.gestes.compacts button[aria-pressed="true"] { font-weight: 600; }
+.zone-glisse.grande { align-self: center; width: 100%; max-width: 320px; border-radius: 22px; }
+.zone-glisse.grande .grande-miniature { width: 100%; max-width: none; }
+.zone-glisse.grande img.grande-miniature { display: block; }
+.zone-glisse.grande:focus-visible { outline-offset: 4px; }
 .transcription { white-space: pre-wrap; font-size: 15px; line-height: 1.55; color: var(--doux-2); }
 .episode-ligne { display: flex; align-items: center; gap: 12px; background: var(--carte); border-radius: 16px; padding: 12px 14px; border: 0; width: 100%; text-align: left; color: var(--texte); }
-.dates { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; margin: 0 -4px; padding-left: 4px; scrollbar-width: none; }
-.dates button { flex: none; min-height: 36px; border: 1.5px solid var(--trait-2); border-radius: 999px; background: transparent; color: var(--doux-2); padding: 0 12px; font-size: 13px; }
-.dates button[aria-pressed="true"] { background: var(--texte); border-color: var(--texte); color: var(--fond); font-weight: 600; }
 .sources { display: flex; flex-direction: column; }
 .sources button { display: flex; gap: 12px; padding: 10px 0; border: 0; border-top: 1px solid var(--trait); background: none; color: var(--texte); text-align: left; font-size: 14px; line-height: 1.35; width: 100%; }
 .sources button > span:first-child { color: var(--aube); width: 22px; flex: none; font-variant-numeric: tabular-nums; }
@@ -340,6 +359,7 @@ input.avance { width: 100%; accent-color: var(--aube); margin: 0; height: 24px; 
 .voix-ligne .rond[aria-checked="true"] { background: var(--aube-fond); border-color: var(--aube); color: var(--aube); }
 .choix-voix { min-width: 0; max-width: 100%; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
 .reglage .choix-voix { width: 168px; flex: none; }
+.compacte.champ-moi { width: 190px; max-width: 58%; flex: none; text-overflow: ellipsis; }
 .jour-voix { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center; gap: 8px; padding: 6px 10px 6px 14px; min-height: 52px; }
 .jour-voix > span { font-size: 15px; font-weight: 500; }
 .jour-voix > div { display: grid; grid-template-columns: repeat(var(--places, 2), minmax(0, 1fr)); gap: 6px; }
@@ -349,6 +369,21 @@ input.avance { width: 100%; accent-color: var(--aube); margin: 0; height: 24px; 
 .idee .infos { display: flex; flex-wrap: wrap; gap: 6px; }
 .idee .infos span { font-size: 12px; background: var(--carte-2); border-radius: 999px; padding: 4px 10px; color: var(--doux-2); }
 .idee .infos span.ok { background: var(--vert-fond); color: var(--vert); }
+.idee h3 { flex: 1; min-width: 0; }
+/* recherches : la demande en tête de sa page, l'attente d'un résultat, les détails repliables */
+.demande { margin: -6px 0 0; font-size: 15px; line-height: 1.45; color: var(--doux-2); }
+.demande::before { content: "« "; } .demande::after { content: " »"; }
+.encours { display: flex; align-items: center; gap: 12px; background: var(--aube-fond); color: var(--aube-clair); border-radius: 14px; padding: 12px 14px; font-size: 14px; line-height: 1.4; }
+.encours .attente { flex: none; width: 18px; height: 18px; margin: 0; border-width: 2px; }
+.attente.petite { flex: none; width: 18px; height: 18px; margin: 0 4px; border-width: 2px; }
+.segments.avec-icones button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; }
+.details-recherche { gap: 0; padding: 12px 14px; }
+.details-recherche > .tete-repli { align-items: flex-start; min-height: 0; }
+.details-recherche > .tete-repli svg { margin-top: 1px; flex: none; }
+.details-recherche .textes { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.details-recherche .titre-details { font-size: 14px; font-weight: 600; }
+.details-recherche .resume-details { font-size: 13px; line-height: 1.4; color: var(--doux); }
+.details-recherche #details-champs { margin-top: 12px; }
 /* feuille de choix (plusieurs actions, avec « Annuler ») */
 #feuille { position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-end; justify-content: center; background: rgba(5,7,10,.55); }
 #feuille .panneau { width: 100%; max-width: 560px; background: var(--fond-nav); border-radius: 22px 22px 0 0; padding: 18px 16px calc(16px + var(--bas)); display: flex; flex-direction: column; gap: 10px; }
@@ -367,6 +402,7 @@ input.avance { width: 100%; accent-color: var(--aube); margin: 0; height: 24px; 
 body.feuille-ouverte { overflow: hidden; }
 #feuille .bloc-jour { background: var(--carte); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
 #feuille .bloc-jour .compacte { background: var(--carte-2); }
+#feuille .curseur-jours { touch-action: none; height: 32px; }
 /* listes déroulantes : choix dans une feuille de l'application, pas dans le sélecteur du téléphone */
 select { pointer-events: none; cursor: pointer; }
 select.compacte { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239AA3B2' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 32px; }
@@ -445,6 +481,7 @@ const ICONES = {
   consignes: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
   creuser: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4M11 8v6M8 11h6"/>',
   telecharger: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  casque: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="5" height="7" rx="2"/><rect x="16" y="14" width="5" height="7" rx="2"/>',
   telephone: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
   stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
   idees: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
@@ -727,8 +764,8 @@ function dessiner() {
   const onglet = parent(S.ecran) || S.ecran;
   navEl.innerHTML = ONGLETS.map(([cle, nom]) => `<button type="button" data-aller="${cle}" ${onglet === cle ? 'aria-current="page"' : ""}>${icone(cle)}${nom}</button>`).join("");
   if (S.ecran === "programme") brancherGlisser();
-  const choisi = document.querySelector('#dates [aria-pressed="true"]');
-  if (choisi) choisi.scrollIntoView({ block: "nearest", inline: "center" });
+  brancherGlisseEpisodes();
+  if (["idees", "resultats"].includes(S.ecran)) suivreRecherches();
   if (S.ecran === "parler") { const fil = document.getElementById("fil"); if (fil) window.scrollTo(0, document.body.scrollHeight); }
   majLecteur();
   if (surEcranApplication()) suivreAppareils();
@@ -765,6 +802,7 @@ function aller(ecran) {
   if (S.ecran === "fiche" && ecran !== "fiche") S.fiche = null;
   // Revenir à l'accueil remet « Tous les jours » : l'épisode s'ouvre ensuite sur l'ensemble.
   if (ecran === "accueil") S.jourVue = { rubriques: "", deroule: "" };
+  if (ecran === "idees") S.recherche = null;
   S.ecran = ecran;
   dessiner();
   window.scrollTo(0, 0);
@@ -789,16 +827,12 @@ function vueAccueil() {
   if (p) quand = p.date === d.aujourdhui ? "Aujourd'hui" : p.date === plusJours(d.aujourdhui, 1) ? `Demain, ${dateLongue(p.date)}` : majuscule(dateLongue(p.date));
   const sautes = d.sautes.map((s) => `<div class="saute"><span>Pas d'épisode le ${h(s.texte)}</span><button type="button" data-retablir="${s.date}">Rétablir</button></div>`).join("");
   const ep = episodeParCle(S.choisi) || d.episodes[0];
+  // Le jour est en haut du bandeau ; plus de titre « Podcast Matin » au-dessus.
   return `
-  <div class="entre" style="align-items:flex-end">
-    <div style="display:flex;flex-direction:column;gap:2px">
-      <span class="surtitre">${h(majuscule(dateLongue(d.aujourdhui)))}</span>
-      <h1 style="font-size:32px">Podcast Matin</h1>
-    </div>
-  </div>
   <section class="soleil" aria-labelledby="t-prochain">
     <button type="button" class="entre prochain" style="align-items:flex-start" ${p ? `data-prochain="${p.date}" aria-label="Voir le programme du prochain épisode"` : 'data-aller="programme"'}>
       <span style="display:flex;flex-direction:column;gap:4px;text-align:left">
+        <span class="date-jour">${h(majuscule(dateLongue(d.aujourdhui)))}</span>
         <span id="t-prochain" style="font-size:13px;font-weight:600;opacity:.85">Prochain épisode</span>
         ${p ? `<span class="heure">${heure(p.heure)}</span><span style="font-size:14px;font-weight:500">${h(quand)}</span>` : `<span class="heure" style="font-size:28px">Aucun prévu</span>`}
       </span>
@@ -807,17 +841,20 @@ function vueAccueil() {
     <div class="puces"><span>${actifs} passages</span><span>≈ ${h(nombre(d.format.duree_minutes))} min</span><span>${h(d.animateurs.join(" & "))}</span></div>
     <div class="actions">
       <button type="button" class="bouton sombre" data-action="generer">Générer maintenant</button>
-      ${p ? `<button type="button" class="bouton contour" data-sauter="${p.date}">Sauter</button>` : ""}
+      <button type="button" class="bouton contour" ${p ? `data-prochain="${p.date}"` : 'data-aller="programme"'}>Voir le contenu</button>
     </div>
     ${sautes}
   </section>
   ${ep ? `<section class="carte" aria-labelledby="t-dernier">
     <div class="entre"><h2 id="t-dernier">Épisodes</h2><button type="button" class="lien" style="min-height:32px;padding:0" data-aller="episodes">Tous</button></div>
-    ${d.episodes.length > 1 ? `<div class="dates" id="dates" role="group" aria-label="Choisir l'épisode">${d.episodes.slice(0, 14).reverse().map((x) => `<button type="button" data-choisir="${h(x.cle)}" aria-pressed="${x.cle === ep.cle}">${h(x.date === d.aujourdhui ? "Ce matin" : x.texte.replace(/\.$/, ""))}</button>`).join("")}</div>` : ""}
-    <button type="button" class="tete-episode" data-episode="${h(ep.cle)}">
-      ${ep.image ? `<img src="${h(ep.image)}" alt="" class="miniature">` : `<span class="miniature vide-img" aria-hidden="true">${icone("aube", 28, 1.4)}</span>`}
-      <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px"><span class="sous" style="font-size:13px">${h(majuscule(dateLongue(ep.date)))}</span>
-      <span style="font-weight:600;font-size:16px;line-height:1.3">${h(ep.titre)}</span></span></button>
+    <div class="zone-glisse" data-glisse-ep="accueil">
+      <button type="button" class="tete-episode" data-episode="${h(ep.cle)}" aria-describedby="aide-glisse">
+        ${ep.image ? `<img src="${h(ep.image)}" alt="" class="miniature" draggable="false">` : `<span class="miniature vide-img" aria-hidden="true">${icone("aube", 28, 1.4)}</span>`}
+        <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px"><span class="sous" style="font-size:13px">${h(ep.date === d.aujourdhui ? "Ce matin" : majuscule(dateLongue(ep.date)))}</span>
+        <span style="font-weight:600;font-size:16px;line-height:1.3">${h(ep.titre)}</span></span></button>
+    </div>
+    ${pointsEpisodes(d.episodes, ep.cle)}
+    <span class="sr" id="aide-glisse">Glisse vers la gauche ou la droite, ou utilise les flèches, pour l'épisode suivant ou précédent.</span>
     ${vueLecteur(ep)}
     <button type="button" class="lien" style="align-self:flex-end" data-episode="${h(ep.cle)}">Sources, ajuster, texte</button>
   </section>` : `<section class="carte"><h2>Épisodes</h2><p class="sous" style="margin:0">Aucun épisode reçu pour l'instant.</p></section>`}
@@ -827,6 +864,94 @@ function vueAccueil() {
       <span class="sous" style="font-size:13px">${h(d.maj.titre || `Version ${d.maj.version}`)}</span></span>${icone("suite", 18, 2)}</button>` : ""}
   <button type="button" class="demander" data-aller="parler">${icone("bulle", 20)}<span>Demande-moi quelque chose…</span></button>
 `;
+}
+
+// Où l'on est parmi les épisodes (du plus ancien, à gauche, au plus récent) : sept points au plus,
+// ceux du bord plus petits quand la liste continue.
+function pointsEpisodes(liste, cle) {
+  const n = liste.length, i = n - 1 - liste.findIndex((x) => x.cle === cle);
+  if (n < 2 || i > n - 1) return "";
+  const debut = Math.max(0, Math.min(i - 3, n - 7)), fin = Math.min(n, debut + 7);
+  const points = [];
+  for (let k = debut; k < fin; k++) {
+    const bord = (k === debut && debut > 0) || (k === fin - 1 && fin < n);
+    points.push(`<i class="${k === i ? "actif" : ""}${bord ? " bord" : ""}"></i>`);
+  }
+  return `<div class="points-ep" aria-hidden="true">${points.join("")}</div>`;
+}
+
+// Tous les épisodes connus de l'application (récents et mois déjà chargés), du plus récent au plus ancien.
+function episodesConnus() {
+  const vus = new Set(), liste = [];
+  for (const ep of [...(S.d.episodes || []), ...Object.values(S.archives).flat()]) {
+    if (!vus.has(ep.cle)) { vus.add(ep.cle); liste.push(ep); }
+  }
+  return liste.sort((a, b) => b.date.localeCompare(a.date) || b.cle.localeCompare(a.cle));
+}
+
+// Passer à l'épisode suivant (sens 1, plus récent) ou précédent (sens -1, plus ancien).
+// Accueil : parmi les récents. Fiche d'un épisode : aussi dans les mois archivés, chargés au besoin.
+async function episodeVoisin(ou, sens) {
+  const liste = ou === "accueil" ? S.d.episodes : episodesConnus();
+  const actuel = ou === "accueil" ? (episodeParCle(S.choisi) || S.d.episodes[0]) : episodeParCle(S.episode);
+  if (!actuel) return false;
+  const i = liste.findIndex((x) => x.cle === actuel.cle);
+  let voisin = liste[i - sens];
+  if (!voisin && ou === "episode" && sens < 0) {
+    // Plus ancien que tout ce qui est chargé : le mois d'avant, s'il est gardé.
+    const mois = (S.d.mois_archives || []).filter((m) => m <= actuel.date.slice(0, 7) && !S.archives[m]).sort().at(-1);
+    if (mois) { annoncer("Chargement des épisodes plus anciens…"); await chargerMois(mois); voisin = episodesConnus()[episodesConnus().findIndex((x) => x.cle === actuel.cle) + 1]; }
+  }
+  if (!voisin) { vibrer("error"); return false; }
+  if (ou === "accueil") S.choisi = voisin.cle; else S.episode = voisin.cle;
+  vibrer("choix");
+  dessiner();
+  const zone = document.querySelector(`[data-glisse-ep="${ou}"]`);
+  if (zone) { zone.classList.remove("entree-g", "entree-d"); void zone.offsetWidth; zone.classList.add(sens > 0 ? "entree-d" : "entree-g"); }
+  return true;
+}
+
+// Glisser une zone (logo et titre à l'accueil, grande image d'un épisode) : elle suit le doigt,
+// puis passe à l'épisode voisin au-delà de 50 px. Le défilement vertical reste au téléphone (touch-action).
+function brancherGlisseEpisodes() {
+  document.querySelectorAll("[data-glisse-ep]").forEach((zone) => {
+    const ou = zone.dataset.glisseEp;
+    let depart = null, glisse = false, avale = false;
+    zone.addEventListener("pointerdown", (ev) => {
+      if (ev.pointerType === "mouse" && ev.button !== 0) return;
+      depart = { x: ev.clientX, y: ev.clientY, id: ev.pointerId }; glisse = false;
+    });
+    zone.addEventListener("pointermove", (ev) => {
+      if (!depart || ev.pointerId !== depart.id) return;
+      const dx = ev.clientX - depart.x, dy = ev.clientY - depart.y;
+      if (!glisse && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        glisse = true;
+        try { zone.setPointerCapture(ev.pointerId); } catch (e) { /* pointeur déjà relâché */ }
+      }
+      if (glisse) { zone.style.transition = "none"; zone.style.transform = `translateX(${dx * 0.7}px)`; zone.style.opacity = String(Math.max(0.35, 1 - Math.abs(dx) / 400)); }
+    });
+    const finir = (ev) => {
+      if (!depart || ev.pointerId !== depart.id) return;
+      const dx = ev.clientX - depart.x;
+      depart = null;
+      zone.style.transition = ""; zone.style.transform = ""; zone.style.opacity = "";
+      if (!glisse) return;
+      avale = true;                       // le « clic » qui suit un glisser n'ouvre pas l'épisode
+      setTimeout(() => { avale = false; }, 350);
+      if (ev.type === "pointerup" && Math.abs(dx) > 50) episodeVoisin(ou, dx < 0 ? 1 : -1);
+    };
+    zone.addEventListener("pointerup", finir);
+    zone.addEventListener("pointercancel", finir);
+    zone.addEventListener("click", (ev) => { if (avale) { ev.stopPropagation(); ev.preventDefault(); } }, true);
+    zone.addEventListener("keydown", (ev) => {
+      if (ev.key !== "ArrowLeft" && ev.key !== "ArrowRight") return;
+      ev.preventDefault();
+      episodeVoisin(ou, ev.key === "ArrowRight" ? 1 : -1).then((ok) => {
+        const z = ok && document.querySelector(`[data-glisse-ep="${ou}"]`);
+        if (z) (z.querySelector("button") || z).focus({ preventScroll: true });
+      });
+    });
+  });
 }
 
 // ─────────────────────────────── épisodes ───────────────────────────────
@@ -888,17 +1013,21 @@ function vueEpisode() {
     g.liste.push(x);
   }
   let numero = 0;
-  return `${entete("", majuscule(ep.texte))}
-  ${ep.image ? `<img src="${h(ep.image)}" alt="Miniature de l'épisode" class="grande-miniature">` : ""}
+  // La grande image se glisse : épisode suivant ou précédent. « Tous » ouvre le calendrier des épisodes.
+  return `${entete("", majuscule(ep.texte), `<button type="button" class="lien" style="padding:0 10px" data-aller="episodes">Tous</button>`)}
+  <div class="zone-glisse grande" data-glisse-ep="episode" tabindex="0" role="group" aria-roledescription="carrousel" aria-describedby="aide-glisse-ep">
+    ${ep.image ? `<img src="${h(ep.image)}" alt="Miniature de l'épisode" class="grande-miniature" draggable="false">`
+      : `<span class="grande-miniature vide-img" aria-hidden="true">${icone("aube", 72, 1)}</span>`}
+  </div>
+  ${pointsEpisodes(episodesConnus(), ep.cle)}
+  <span class="sr" id="aide-glisse-ep">Glisse l'image, ou utilise les flèches, pour l'épisode suivant ou précédent.</span>
   <h1 style="font-size:24px">${h(ep.titre)}</h1>
   <section class="carte">${vueLecteur(ep)}</section>
   ${ep.archive ? "" : `<section class="carte">
     <h2>Pour les prochains épisodes</h2>
-    <div class="gestes">${geste("court", "Plus court")}${geste("long", "Plus long")}${geste("lent", "Moins vite")}${geste("vite", "Plus vite")}</div>
-    <div class="gestes"><button type="button" data-action="parler-sujets" data-cle="${h(ep.cle)}">Sujets sans intérêt</button>
-      <button type="button" data-reglage="style">Ton à revoir</button><button type="button" data-aller="parler">Autre chose…</button></div>
-    ${ep.sujets.length ? `<span class="etiquette" style="font-size:13px;color:var(--doux)">Creuser un sujet au prochain épisode</span>
-      <div class="gestes">${ep.sujets.map((s, i) => geste(`cr${i + 1}`, h(s))).join("")}</div>` : ""}
+    <div class="gestes compacts">${geste("court", "Plus court")}${geste("long", "Plus long")}${geste("lent", "Moins vite")}${geste("vite", "Plus vite")}<button type="button" data-action="parler-sujets" data-cle="${h(ep.cle)}">Sujets sans intérêt</button><button type="button" data-reglage="style">Ton à revoir</button><button type="button" data-aller="parler">Autre chose…</button></div>
+    ${ep.sujets.length ? `<span class="etiquette" style="font-size:13px;color:var(--doux)">Creuser un sujet au prochain épisode (touche encore pour annuler)</span>
+      <div class="gestes compacts">${ep.sujets.map((s, i) => geste(`cr${i + 1}`, h(s))).join("")}</div>` : ""}
   </section>`}
   <section class="carte">${enteteRepli("Sources", "sources", !S.replis.sources)}
     ${S.replis.sources ? "" : sections.length ? sections.map((g) => `${sections.length > 1 || g.nom !== "Sources" ? `<span class="groupe" style="padding-top:4px">${h(g.nom)}</span>` : ""}
@@ -927,6 +1056,7 @@ const fournieCle = (cle) => Boolean(INTEGREES[cle]);
 const blocSources = (r) => (r.sources || []).length ? `<span class="groupe">Sources</span><div class="gestes" style="flex-direction:column;align-items:stretch">${r.sources.map((x) => `<button type="button" data-lien="${h(x.lien)}" style="text-align:left">${h(x.titre)}</button>`).join("")}</div>` : "";
 
 function vueResultats() {
+  if (S.recherche) return vueResultatsRecherche(S.recherche);
   const res = S.d.resultats;
   if (!res || !res.details.length) return `${entete("Idées trouvées")}<div class="vide">Aucun résultat récent. Lance une recherche depuis une rubrique.</div>`;
   if (res.format === "point") return `${entete("Ton podcast", res.quand ? `Le ${dateLongue(res.quand.slice(0, 10))}` : "")}
@@ -1258,10 +1388,8 @@ function vueProgramme() {
   const sansPassage = d.regles.filter((r) => !r.longueur && r.periode.type !== "ponctuelle");
   const glissees = sansPassage.filter((r) => !r.pause && r.etat !== "terminee");
   const arretees = sansPassage.filter((r) => r.pause || r.etat === "terminee");
-  const actifs = liste.filter((x) => x.actif && !(d.regles.find((r) => r.id === x.cle) || {}).pause).length;
   return `
-  <div style="display:flex;flex-direction:column;gap:4px"><h1>Ton épisode</h1>
-    <span class="sous">${actifs} passages · ≈ ${h(nombre(d.format.duree_minutes))} min</span></div>
+  <h1>Ton épisode</h1>
   ${choixJour("deroule")}
   <ol class="deroule" id="deroule">${liste.map((x, i) => ligneProgramme(x, i, fixe(i))).join("")}</ol>
   <p class="aide">Touche une rubrique pour la régler. Fais-la glisser par sa poignée pour changer l'ordre ; l'interrupteur la met en pause.</p>
@@ -1322,29 +1450,128 @@ function vueCatalogue() {
   <p class="aide">Pour une recherche ponctuelle (une sortie ce samedi, une idée de cadeau…), passe par l'onglet Recherches : elle ne s'ajoute pas à tes épisodes.</p>`;
 }
 
-// ───────────────────────────────── idées ────────────────────────────────
-// Les recherches ponctuelles : hors podcast, résultats écrits ou mini-podcast.
+// ───────────────────────────────── recherches ──────────────────────────────
+// Deux types : en podcast ou par écrit. Ta demande et les sources cochées font le reste. Chaque
+// recherche s'ouvre sur sa page de résultats ; sa configuration se change depuis cette page.
+const resultatsDe = (id) => ((S.d && S.d.recherches_resultats) || {})[id] || null;
+const quandCourt = (iso) => iso ? `${dateCourteLocale(iso.slice(0, 10))} à ${iso.slice(11, 16).replace(":", "h")}` : "";
+const texteRecherches = (n) => `${n} recherche${n > 1 ? "s" : ""} web`;
+
+// Une ligne de résumé : type, réglage, et où en sont les résultats.
+function resumeRecherche(r) {
+  const res = resultatsDe(r.id), podcast = r.rendu === "point";
+  const type = podcast ? `Podcast · ${r.minutes || 3} min` : "Par écrit";
+  if (res && res.en_cours) return `${type} · en cours…`;
+  if (!res || !res.quand) return `${type} · pas encore lancée`;
+  const n = podcast ? "" : ` · ${pluriel(((res.details[0] || {}).idees || []).length, "résultat")}`;
+  return `${type}${n} · ${dateCourteLocale(res.quand.slice(0, 10))}`;
+}
+
+function carteRecherche(r) {
+  const podcast = r.rendu === "point", res = resultatsDe(r.id);
+  return `<button type="button" class="rubrique" data-resultats="${h(r.id)}">
+    <span class="pastille genre" style="--g:${podcast ? "#F2A65A" : "#85B6F4"}">${icone(podcast ? "casque" : "actus", 20)}</span>
+    <span class="textes"><span class="nom">${h(r.titre)}</span><span class="detail">${h(resumeRecherche(r))}</span></span>
+    ${res && res.en_cours ? `<span class="attente petite" role="img" aria-label="En cours"></span>` : `<span style="color:var(--eteint)">${icone("suite", 18, 2)}</span>`}
+  </button>`;
+}
+
 function vueIdees() {
-  const d = S.d;
-  const recherches = d.regles.filter((r) => r.periode.type === "ponctuelle");
-  const res = d.resultats && d.resultats.details && d.resultats.details.length ? d.resultats : null;
+  const ordre = (r) => { const res = resultatsDe(r.id); return res && res.en_cours ? "~" : (res && res.quand) || r.derniere_application || ""; };
+  const recherches = S.d.regles.filter((r) => r.periode.type === "ponctuelle").sort((a, b) => ordre(b).localeCompare(ordre(a)));
   return `<h1>Recherches</h1>
-  <p class="aide" style="font-size:14px;color:var(--doux-2)">Une recherche ponctuelle : un podcast qui fait le point sur un sujet, ou des idées de sortie, d'activité… Les résultats arrivent ici, sans s'ajouter à tes épisodes.</p>
+  <p class="aide" style="font-size:14px;color:var(--doux-2)">Décris ce que tu veux et choisis où chercher : la réponse arrive en podcast ou par écrit, ici, sans toucher à tes épisodes.</p>
   <button type="button" class="bouton plein" data-action="nouveau-point">${icone("plus", 20, 2.2)}Nouvelle recherche</button>
-  ${res ? `<button type="button" class="episode-ligne" data-aller="resultats">
-      <span class="pastille f-sortie" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center">${icone("idees", 20)}</span>
-      <span style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600">${res.format === "point" ? "Dernier podcast" : "Derniers résultats"}</span>
-      <span class="sous" style="font-size:13px">${h(res.details.map((r) => r.titre || r.regle).join(" · "))}</span></span>${icone("suite", 18, 2)}</button>` : ""}
-  ${recherches.length ? `<span class="groupe">Tes recherches</span><div class="liste">${recherches.map(carteRubrique).join("")}</div>`
+  ${recherches.length ? `<span class="groupe">Tes recherches</span><div class="liste">${recherches.map(carteRecherche).join("")}</div>`
     : `<div class="vide">Aucune recherche pour l'instant.</div>`}`;
+}
+
+// Les sources d'un résultat (podcast) : numérotées, avec le site.
+const listeSources = (sources) => `<div class="sources">${sources.map((x, i) => `<button type="button" data-lien="${h(x.lien)}"><span>${i + 1}</span><span>${h(x.titre)}<br><span class="aide">${h(x.lien.replace(/^https:\/\/(www\.)?/, "").split("/")[0])}</span></span></button>`).join("")}</div>`;
+
+// Un résultat écrit : une idée (lieu, prix, accès, carte) ou une information (résumé, source, lien).
+function carteResultat(i, nouveau) {
+  const site = i.lien ? i.lien.replace(/^https:\/\/(www\.)?/, "").split("/")[0] : "";
+  const infos = [i.lieu ? `<span>${h(i.lieu)}</span>` : "", i.prix ? `<span class="${i.dans_le_budget ? "ok" : ""}">${h(i.prix)}</span>` : "",
+    i.duree ? `<span>${h(i.duree)}</span>` : "", i.horaires ? `<span>${h(i.horaires)}</span>` : "",
+    !i.lieu && (i.source || site) ? `<span>${h(i.source || site)}</span>` : ""].join("");
+  return `<article class="idee">
+    <div class="entre" style="align-items:flex-start"><h3>${h(i.titre)}</h3>${nouveau ? `<span class="puce prio">Nouveau</span>` : ""}</div>
+    ${infos ? `<div class="infos">${infos}</div>` : ""}
+    ${i.resume ? `<p style="margin:0;line-height:1.45">${h(i.resume)}</p>` : ""}
+    ${i.pourquoi ? `<p class="aide">${h(i.pourquoi)}</p>` : ""}
+    ${i.acces ? `<p class="aide">Accès : ${h(i.acces)}</p>` : ""}
+    <div class="gestes compacts">${i.lien ? `<button type="button" data-lien="${h(i.lien)}">Voir ${i.lieu ? "le site" : "l'article"}</button>` : ""}
+      ${i.adresse || i.lieu ? `<button type="button" data-lien="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(i.adresse || i.lieu)}">Carte</button>` : ""}
+      <button type="button" data-creuser="${h(i.titre)}">En parler demain</button></div>
+  </article>`;
+}
+
+// La page d'une recherche : son dernier podcast ou ses résultats écrits, et de quoi les relancer.
+// « Modifier », en haut à droite : sa configuration.
+function vueResultatsRecherche(id) {
+  const r = S.d.regles.find((x) => x.id === id && x.periode.type === "ponctuelle");
+  if (!r) return `${entete("Recherche", "Recherches")}<div class="vide">Cette recherche n'existe plus.</div>`;
+  const res = resultatsDe(id), podcast = r.rendu === "point";
+  const enCours = res && res.en_cours, det = res && res.details[0];
+  const lieux = sourcesActives(r.sources).map((cle) => infoSource(cle).nom).join(", ");
+  const reglage = podcast ? `${r.minutes || 3} min` : texteRecherches(r.recherches || 3);
+  const attente = enCours ? `<div class="encours" role="status"><span class="attente" aria-hidden="true"></span><span>${enCours.format === "plus" ? "Je cherche d'autres résultats" : podcast ? "Le podcast se prépare" : "Je cherche"} depuis ${h(enCours.depuis ? enCours.depuis.slice(11, 16).replace(":", "h") : "un instant")} : ${podcast ? "il arrive ici d'ici trois ou quatre minutes" : "les résultats arrivent ici d'ici une à deux minutes"}.</span></div>` : "";
+  const entree = `${entete(r.titre, podcast ? "Recherche en podcast" : "Recherche par écrit", `<button type="button" class="lien" style="padding:0 10px" data-action="modifier-recherche">Modifier</button>`)}
+    <p class="demande">${h(r.consigne)}</p>
+    <p class="aide" style="margin-top:-8px">${h(reglage)}${lieux ? ` · ${h(lieux)}` : ""}</p>
+    ${attente}`;
+  const sources = (liste) => liste && liste.length ? `<section class="carte">${enteteRepli("Sources", "sources_recherche", !S.replis.sources_recherche)}${S.replis.sources_recherche ? "" : listeSources(liste)}</section>` : "";
+  if (podcast) {
+    return `${entree}
+    ${res && res.episode ? `<section class="carte">
+        <div style="display:flex;flex-direction:column;gap:2px"><h2>${h(res.episode.titre)}</h2><span class="aide">Le ${h(quandCourt(res.quand))}</span></div>
+        ${vueLecteur(res.episode)}
+        ${det && det.intro ? `<p class="aide" style="font-size:14px;color:var(--doux-2)">Abordé : ${h(det.intro)}</p>` : ""}
+      </section>${sources(det && det.sources)}`
+      : enCours ? "" : `<div class="vide">Pas encore de podcast pour cette recherche.</div>`}
+    <button type="button" class="bouton plein" data-relancer="point" ${enCours ? "disabled" : ""}>${icone("casque", 20)}${res && res.episode ? "Nouveau podcast" : "Lancer le podcast"}</button>`;
+  }
+  const idees = det ? det.idees : [];
+  return `${entree}
+    ${det ? `<p class="aide">Le ${h(quandCourt(res.quand))} · ${pluriel(idees.length, "résultat")}</p>
+      ${det.intro ? `<p style="margin:0;line-height:1.5">${h(det.intro)}</p>` : ""}
+      ${idees.map((i, k) => carteResultat(i, res.nouveaux > 0 && k >= idees.length - res.nouveaux)).join("")}
+      ${det.conseil ? `<p class="aide">${h(det.conseil)}</p>` : ""}
+      ${sources(det.sources)}`
+      : enCours ? "" : `<div class="vide">Pas encore de résultats pour cette recherche.</div>`}
+    ${det ? `<div class="deux"><button type="button" class="bouton gris" data-relancer="plus" ${enCours ? "disabled" : ""}>Plus de résultats</button>
+        <button type="button" class="bouton plein" data-relancer="ecrit" ${enCours ? "disabled" : ""}>Nouveaux résultats</button></div>`
+      : `<button type="button" class="bouton plein" data-relancer="ecrit" ${enCours ? "disabled" : ""}>Lancer la recherche</button>`}`;
+}
+
+// Tant qu'une recherche est en cours, la page (liste ou résultats) se remet à jour toute seule.
+let suiviRecherches = null;
+function suivreRecherches() {
+  if (suiviRecherches || !S.d) return;
+  const enCours = () => Object.entries(S.d.recherches_resultats || {}).filter(([, x]) => x.en_cours).map(([id]) => id);
+  if (!enCours().length) return;
+  suiviRecherches = setTimeout(async () => {
+    suiviRecherches = null;
+    if (!["idees", "resultats"].includes(S.ecran) || document.visibilityState !== "visible") return;
+    const avant = enCours();
+    const j = await demander("etat", {}, { discret: true });
+    if (j.occupe) return suivreRecherches();
+    if (!j.ok || !["idees", "resultats"].includes(S.ecran)) return;
+    const arrivees = avant.filter((id) => !enCours().includes(id) && (resultatsDe(id) || {}).quand);
+    if (arrivees.length) { vibrer("success"); annoncer(arrivees.includes(S.recherche) ? "C'est arrivé." : "Une recherche est arrivée."); }
+    dessiner();
+  }, 15000);
 }
 
 // ───────────────────────────────── fiche ────────────────────────────────
 const PERIODES_RUBRIQUE = PERIODES.filter(([cle]) => cle !== "ponctuelle");
+const MINUTES_RECHERCHE = [2, 3, 5, 8, 10];
 
 function ouvrirFiche(id, modele = null, origine = null) {
   const r = id ? S.d.regles.find((x) => x.id === id) : null;
   if (id && !r) return annoncer("Cette rubrique n'existe plus.", true);
+  if (r && r.periode.type === "ponctuelle") S.recherche = r.id;
   const vide = { quoi: "", avec_qui: "", ages: "", ou: "", quand: "", attendu: "" };
   const m = modele || {};
   const base = typeof m.f === "function" ? m.f(S.d.reglages.actus.ville) : (m.f || {});
@@ -1352,20 +1579,21 @@ function ouvrirFiche(id, modele = null, origine = null) {
   const rendu = r ? r.rendu || "idees" : m.id === "point" ? "point" : "idees";
   S.fiche = {
     id: r ? r.id : null, modifie: Boolean(!r && m.depuisConsigne !== undefined),
-    origine: origine || (ponctuelle ? "idees" : r ? "programme" : "catalogue"),
+    origine: origine || (ponctuelle ? (r ? "resultats" : "idees") : r ? "programme" : "catalogue"),
+    details: false,
     depuisConsigne: m.depuisConsigne,
     modeleNom: m.titre || "",
     // Détails de recherche montrés seulement s'ils servent (un suivi de train n'en a pas besoin).
     recherche: Boolean(r && r.recherche && (Object.values(r.fiche).some(Boolean) || r.budget.max !== null || r.inclure.length || r.exclure.length))
-      || Boolean(m.recherche) || (ponctuelle && rendu === "idees"),
+      || Boolean(m.recherche) || ponctuelle,
     f: {
       titre: r ? r.titre : base.titre || "", consigne: r ? r.consigne : base.consigne || "",
       longueur: r ? (r.longueur || "aucune") : ponctuelle ? "aucune" : base.longueur || "courte",
       periode: r ? { type: r.periode.type, debut: r.periode.debut || "", fin: r.periode.fin || "", jours: [...(r.periode.jours || [])] }
                  : { type: ponctuelle ? "ponctuelle" : "toujours", debut: "", fin: "", jours: [], ...(base.periode || {}) },
-      sources: r ? [...r.sources] : ponctuelle ? (rendu === "point" ? ["web", "actus"] : ["web", "lieux"]) : sourcesProposables([...(m.sources || [])]),
+      sources: r ? [...r.sources] : ponctuelle ? sourcesProposables(["web", "actus"]) : sourcesProposables([...(m.sources || [])]),
       modele: r ? r.modele || "libre" : ponctuelle ? "libre" : m.id || "libre",
-      rendu, audio: r ? Boolean(r.audio) : false, minutes: r ? r.minutes || 3 : 3,
+      rendu, audio: false, minutes: r ? r.minutes || 3 : 3, recherches: r ? r.recherches || 3 : 3,
       fiche: r ? { ...vide, ...r.fiche } : { ...vide },
       transport: r ? r.transport : "aucun",
       budget: r ? { max: r.budget.max ?? "", unite: r.budget.unite || "personne", devise: r.budget.devise || S.d.devise || "CHF", transport_inclus: Boolean(r.budget.transport_inclus) }
@@ -1385,7 +1613,39 @@ function ouvrirFiche(id, modele = null, origine = null) {
 function blocRecherche(f) {
   return `<div class="sous-bloc">
       <span class="etiquette" style="font-size:13px;color:var(--doux)">Détails pour la recherche</span>
-      ${CHAMPS_FICHE.map(([cle, nom]) => `<input class="saisie" type="text" maxlength="120" data-champ="fiche.${cle}" value="${h(f.fiche[cle])}" aria-label="${nom}" placeholder="${nom}">`).join("")}
+      ${champsRecherche(f)}
+    </div>`;
+}
+
+// Recherche ponctuelle : « Détails de la recherche » s'ouvre et se ferme ; fermé, une phrase dit ce qui est réglé.
+function detailsRecherche(F, f) {
+  const ouvert = Boolean(F.details);
+  return `<div class="sous-bloc details-recherche">
+      <button type="button" class="tete-repli" data-action="details" aria-expanded="${ouvert}" aria-controls="details-champs">
+        <span class="textes"><span class="titre-details">Détails de la recherche</span>${ouvert ? "" : `<span class="resume-details">${h(resumeDetails(f))}</span>`}</span>${icone("suite", 18, 2)}</button>
+      ${ouvert ? `<div id="details-champs" style="display:flex;flex-direction:column;gap:10px">${champsRecherche(f)}</div>` : ""}
+    </div>`;
+}
+
+// Les détails réglés, en une phrase (« Activité en famille, avec 2 adultes et 2 enfants (6 et 9 ans), à Lausanne… »).
+function resumeDetails(f) {
+  const x = f.fiche, morceaux = [];
+  if (x.quoi) morceaux.push(x.quoi);
+  if (x.avec_qui) morceaux.push(`avec ${x.avec_qui}${x.ages ? ` (${x.ages})` : ""}`);
+  else if (x.ages) morceaux.push(x.ages);
+  if (x.ou) morceaux.push(/^(à|a|au|aux|en|dans|vers|près|pres|autour|entre|du côté|sur)\s/i.test(x.ou) ? x.ou : `à ${x.ou}`);
+  if (x.quand) morceaux.push(x.quand);
+  const transports = { train: "en train", voiture: "en voiture", velo: "à vélo", pied: "à pied" };
+  if (transports[f.transport]) morceaux.push(transports[f.transport]);
+  if (f.budget.max !== "" && f.budget.max !== null && f.budget.max !== undefined) morceaux.push(`budget ${nombre(f.budget.max)} ${f.budget.devise} ${f.budget.unite === "total" ? "pour le groupe" : "par personne"}${f.budget.transport_inclus ? ", transport compris" : ""}`);
+  if (f.inclure.length) morceaux.push(`avec ${f.inclure.join(", ")}`);
+  if (f.exclure.length) morceaux.push(`sans ${f.exclure.join(", ")}`);
+  if (x.attendu) morceaux.push(`résultat attendu : ${x.attendu}`);
+  return morceaux.length ? `${majuscule(morceaux.join(", "))}.` : "Aucun détail : ta demande suffit. Touche pour préciser le lieu, le budget, le transport…";
+}
+
+function champsRecherche(f) {
+  return `${CHAMPS_FICHE.map(([cle, nom]) => `<input class="saisie" type="text" maxlength="120" data-champ="fiche.${cle}" value="${h(f.fiche[cle])}" aria-label="${nom}" placeholder="${nom}">`).join("")}
       <select class="saisie ${f.transport === "aucun" ? "grise" : ""}" data-champ="transport" aria-label="Transport">
         <option value="" ${f.transport ? "" : "selected"}>Transport : peu importe</option>
         ${Object.entries(S.d.listes.transports).map(([cle, nom]) => `<option value="${cle}" ${f.transport === cle ? "selected" : ""}>${h(cle === "aucun" ? "Pas de transport (sur place)" : nom.replace(/^\S+\s/, ""))}</option>`).join("")}
@@ -1399,8 +1659,7 @@ function blocRecherche(f) {
       </div>
       ${interrupteur("Transport compris dans le budget", f.transport !== "aucun" && f.budget.transport_inclus, `data-bascule="budget.transport_inclus" ${f.transport === "aucun" ? "disabled" : ""}`).replace('class="interrupteur"', `class="interrupteur ${f.transport === "aucun" ? "grise" : ""}" style="padding:0"`)}
       ${bulles("inclure", f.inclure, "À inclure : piscine, musée…")}
-      ${bulles("exclure", f.exclure, "À exclure : randonnée longue…")}
-    </div>`;
+      ${bulles("exclure", f.exclure, "À exclure : randonnée longue…")}`;
 }
 
 // Le nom d'un type de rubrique (modèle du catalogue « + ») ; sur mesure par défaut.
@@ -1414,7 +1673,7 @@ function vueFiche() {
   const segments = [["aucune", "Glissée"], ["phrase", "Une phrase"], ["courte", "Courte"], ["developpee", "Développée"]];
   const avant = r && r.place ? (S.d.deroule.find((x) => x.cle === r.place) || {}).nom : null;
   const point = ponctuelle && f.rendu === "point";
-  const libelleBouton = F.id ? "Enregistrer" : point ? "Créer et écouter" : ponctuelle ? "Créer et chercher" : "Ajouter à mon épisode";
+  const libelleBouton = F.id ? "Enregistrer" : ponctuelle ? "Créer et lancer" : "Ajouter à mon épisode";
   return `
   <div class="entete-fiche">
     <button type="button" class="icone" data-action="retour" aria-label="Retour">${icone("retour", 22, 2)}</button>
@@ -1423,23 +1682,25 @@ function vueFiche() {
   </div>
   ${r && r.prochain && r.etat !== "active" && !ponctuelle ? `<p class="aide">Prochain passage : ${h(r.prochain)}</p>` : ""}
   ${ponctuelle ? `<section class="section-fiche" aria-labelledby="s-rendu"><h2 id="s-rendu">Ce que tu reçois</h2>
-    <div class="segments" role="group" aria-labelledby="s-rendu" style="grid-template-columns:repeat(3,minmax(0,1fr))">
-      <button type="button" style="font-size:13px" data-rendu="point" aria-pressed="${point}">Podcast sur un sujet</button>
-      <button type="button" style="font-size:13px" data-rendu="idees" aria-pressed="${!point && !f.audio}">Idées par écrit</button>
-      <button type="button" style="font-size:13px" data-rendu="idees-audio" aria-pressed="${!point && f.audio}">Idées en podcast</button>
+    <div class="segments avec-icones" role="group" aria-labelledby="s-rendu" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+      <button type="button" data-rendu="point" aria-pressed="${point}">${icone("casque", 18)}En podcast</button>
+      <button type="button" data-rendu="idees" aria-pressed="${!point}">${icone("actus", 18)}Par écrit</button>
     </div>
-    ${point ? `<div class="champ"><label for="c-minutes">Durée</label>
-      <select id="c-minutes" class="saisie" data-champ="minutes">${[2, 3, 5, 8, 10].map((n) => `<option value="${n}" ${Number(f.minutes) === n ? "selected" : ""}>${n} minutes</option>`).join("")}</select></div>
-    <p class="aide">Les animateurs font l'état des lieux à l'heure actuelle, à partir des sources cochées. Il arrive dans « Recherches » et ne change rien à ton épisode du matin.</p>`
-    : f.audio ? `<p class="aide">Des idées concrètes (sorties, activités, cadeaux…), racontées dans un mini-podcast, avec la liste écrite à côté.</p>`
-    : `<p class="aide">Des idées concrètes (sorties, activités, cadeaux…), avec lieux, prix et liens.</p>`}
+    ${point ? `<div class="champ"><span class="etiquette" id="e-minutes">Durée</span>
+      <div class="segments" role="group" aria-labelledby="e-minutes" style="grid-template-columns:repeat(5,minmax(0,1fr))">
+        ${MINUTES_RECHERCHE.map((n) => `<button type="button" data-minutes="${n}" aria-pressed="${Number(f.minutes) === n}" aria-label="${n} minutes">${n} min</button>`).join("")}</div></div>
+    <p class="aide">Les animateurs répondent à ta demande dans un podcast, à partir des sources cochées : l'état des lieux d'un sujet, des idées de sortie… Il arrive dans « Recherches », sans toucher à ton épisode du matin.</p>`
+    : `<div class="champ"><span class="etiquette" id="e-recherches">Nombre de recherches web</span>
+      <div class="segments" role="group" aria-labelledby="e-recherches" style="grid-template-columns:repeat(5,minmax(0,1fr))">
+        ${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-recherches="${n}" aria-pressed="${Number(f.recherches) === n}" aria-label="${texteRecherches(n)}">${n}</button>`).join("")}</div></div>
+    <p class="aide">Des résultats à lire, avec leurs liens (articles, lieux, idées…), à partir des sources cochées. Plus de recherches : plus de pistes et de résultats (chacune compte un crédit de recherche web).</p>`}
   </section>` : ""}
-  <section class="section-fiche" aria-labelledby="s-quoi"><h2 id="s-quoi">${ponctuelle ? "Ce que tu cherches" : "Ce qu'elle raconte"}</h2>
+  <section class="section-fiche" aria-labelledby="s-quoi"><h2 id="s-quoi">${ponctuelle ? "Ta demande" : "Ce qu'elle raconte"}</h2>
     <div class="champ"><label for="c-titre">Titre${ponctuelle ? "" : " (aussi titre du chapitre)"}</label>
-      <input id="c-titre" class="saisie titre" type="text" maxlength="50" data-champ="titre" value="${h(f.titre)}" placeholder="${point ? "Ex. Retards CFF" : ponctuelle ? "Ex. Sortie en famille samedi" : "Ex. Fête du prénom du jour"}"></div>
-    <div class="champ"><label for="c-consigne">${ponctuelle ? "Ta demande" : "Consigne aux animateurs"}</label>
-      <textarea id="c-consigne" class="saisie" maxlength="400" rows="3" data-champ="consigne" placeholder="${point ? "Ex. Où en sont les retards des CFF en ce moment, et pourquoi" : ponctuelle ? "Ex. Une activité au calme, plutôt en intérieur s'il pleut" : "Ce qu'ils doivent dire ou faire"}">${h(f.consigne)}</textarea></div>
-    ${point ? "" : F.recherche || ponctuelle ? blocRecherche(f) : `<button type="button" class="bouton pointille" data-action="recherche">+ Détails pour une recherche (lieu, budget, transport…)</button>`}
+      <input id="c-titre" class="saisie titre" type="text" maxlength="50" data-champ="titre" value="${h(f.titre)}" placeholder="${ponctuelle ? "Ex. Retards CFF" : "Ex. Fête du prénom du jour"}"></div>
+    <div class="champ"><label for="c-consigne">${ponctuelle ? "Ce que tu veux" : "Consigne aux animateurs"}</label>
+      <textarea id="c-consigne" class="saisie" maxlength="400" rows="3" data-champ="consigne" placeholder="${ponctuelle ? "Ex. Où en sont les retards des CFF et pourquoi ; une sortie au calme samedi, en intérieur s'il pleut" : "Ce qu'ils doivent dire ou faire"}">${h(f.consigne)}</textarea></div>
+    ${ponctuelle ? detailsRecherche(F, f) : F.recherche ? blocRecherche(f) : `<button type="button" class="bouton pointille" data-action="recherche">+ Détails pour une recherche (lieu, budget, transport…)</button>`}
   </section>
   ${ponctuelle ? "" : `<section class="section-fiche" aria-labelledby="s-quand"><h2 id="s-quand">Quand</h2>
     <select id="c-periode" class="saisie" data-champ="periode.type" aria-label="Quand elle passe">
@@ -1469,7 +1730,6 @@ function vueFiche() {
   </section>`}
   ${blocOuCherche(F, f, r)}
   ${r && !ponctuelle ? blocResume(r.id) : ""}
-  ${ponctuelle && F.id ? `<button type="button" class="bouton gris" data-action="garder">Mettre cette idée dans mes épisodes</button>` : ""}
   <div class="barre"><button type="button" class="bouton plein" data-action="enregistrer">${libelleBouton}</button></div>`;
 }
 
@@ -1784,12 +2044,13 @@ async function enregistrerFiche() {
   if (nouvelleRecherche) {
     const k = await demander("recherche", { id: j.id });
     annoncer(k.ok ? k.message : "Recherche créée");
-    S.ecran = "idees";
-    return dessiner();
+    S.recherche = j.id; S.ecran = "resultats";
+    dessiner();
+    return window.scrollTo(0, 0);
   }
   annoncer(j.message);
   const r = S.d.regles.find((x) => x.id === j.id);
-  S.ecran = r && r.periode.type === "ponctuelle" ? "idees" : "programme";
+  if (r && r.periode.type === "ponctuelle") { S.recherche = r.id; S.ecran = "resultats"; } else S.ecran = "programme";
   dessiner();
   window.scrollTo(0, 0);
 }
@@ -1797,22 +2058,22 @@ async function enregistrerFiche() {
 function menuFiche() {
   const F = S.fiche;
   const r = S.d.regles.find((x) => x.id === F.id);
-  // Une recherche ponctuelle a déjà choisi ce qu'elle rend (en haut de sa fiche) : un seul bouton pour la relancer.
-  const boutons = r && r.recherche && r.periode.type === "ponctuelle"
-    ? [{ id: "relancer", type: "default", text: r.rendu === "point" ? "Refaire le point" : "Relancer la recherche" }, { id: "supprimer", type: "destructive", text: "Supprimer" }]
+  // Une recherche ponctuelle se relance depuis sa page de résultats ; ici : l'ajouter aux épisodes, ou la supprimer.
+  const boutons = r && r.periode.type === "ponctuelle"
+    ? [{ id: "garder", type: "default", text: "Mettre dans mes épisodes" }, { id: "supprimer", type: "destructive", text: "Supprimer" }]
     : r && r.recherche
     ? [{ id: "chercher", type: "default", text: "Chercher maintenant" }, { id: "mini", type: "default", text: "Mini-podcast" }, { id: "supprimer", type: "destructive", text: "Supprimer" }]
     : [{ id: "tester", type: "default", text: "Épisode test avec elle" }, { id: "supprimer", type: "destructive", text: "Supprimer" }];
   choisir(F.f.titre || ("Rubrique " + F.id), "Que veux-tu faire ?", boutons, (choix) => {
-    if (choix === "relancer") return chercher(F.id);
+    if (choix === "garder") return garderDansEpisodes();
     if (choix === "chercher" || choix === "mini") return chercher(F.id, choix === "mini" ? "audio" : "ecrit");
     if (choix === "tester") return confirmer("Lancer maintenant un épisode qui inclut cette rubrique ?", () => changer("generer", { id: F.id }, () => {}));
     if (choix === "supprimer") return confirmer(`Supprimer « ${F.f.titre} » ?`, async () => {
       const j = await demander("supprimer", { id: F.id });
       if (!j.ok) return;
       vibrer("success"); annoncer("Rubrique supprimée");
-      const origine = F.origine === "idees" ? "idees" : "programme";
-      S.fiche = null; S.ecran = origine; dessiner();
+      const origine = ["idees", "resultats"].includes(F.origine) ? "idees" : "programme";
+      S.fiche = null; S.recherche = null; S.ecran = origine; dessiner();
     });
   });
 }
@@ -1835,6 +2096,18 @@ function menuIntegree() {
   });
 }
 
+// Une recherche devient une rubrique de l'épisode : on choisit quand elle passe, puis on enregistre.
+function garderDansEpisodes() {
+  const f = S.fiche.f;
+  f.periode = { type: "toujours", debut: "", fin: "", jours: [] };
+  f.longueur = "courte";
+  S.fiche.origine = "programme";
+  S.fiche.modifie = true;
+  annoncer("Choisis quand elle passe, puis enregistre.");
+  dessiner();
+  window.scrollTo(0, 0);
+}
+
 async function chercher(id, format) {
   const j = await demander("recherche", { id, format });
   if (j.ok) { vibrer("success"); annoncer(j.message); }
@@ -1842,7 +2115,7 @@ async function chercher(id, format) {
 
 // ─────────────────────────────── déroulé ────────────────────────────────
 // Choix d'affichage (Rubriques, Déroulé) : tous les jours, ou une date précise.
-// La date reste grisée tant que « Tous les jours » est choisi.
+// Le champ de la date n'apparaît qu'avec « Autre date ».
 function choixJour(vue) {
   const date = S.jourVue[vue];
   return `<div class="ligne">
@@ -1851,8 +2124,8 @@ function choixJour(vue) {
       <option value="" ${date ? "" : "selected"}>Tous les jours</option>
       <option value="date" ${date ? "selected" : ""}>Autre date</option>
     </select>
-    <input type="date" class="saisie ${date ? "" : "grise"}" style="min-height:44px;flex:1;min-width:0" min="${S.d.aujourdhui}"
-      value="${h(date || S.jourDernier[vue] || S.d.aujourdhui)}" data-jour-date="${vue}" ${date ? "" : "disabled"} aria-label="Date affichée">
+    ${date ? `<input type="date" class="saisie" style="min-height:44px;flex:1;min-width:0" min="${S.d.aujourdhui}"
+      value="${h(date)}" data-jour-date="${vue}" aria-label="Date affichée">` : ""}
   </div>`;
 }
 
@@ -2033,6 +2306,7 @@ new MutationObserver(() => document.body.classList.toggle("feuille-ouverte", !do
   .observe(document.getElementById("feuille"), { attributes: true, attributeFilter: ["class"] });
 // iPhone : seul un contenu qui défile vraiment reçoit le glissé ; le reste ne fait pas bouger la page.
 document.getElementById("feuille").addEventListener("touchmove", (ev) => {
+  if (ev.target.closest('input[type="range"]')) return;
   const zone = ev.target.closest(".defile, .panneau");
   if (!zone || zone.scrollHeight <= zone.clientHeight) ev.preventDefault();
 }, { passive: false });
@@ -2095,58 +2369,108 @@ document.addEventListener("keydown", (ev) => {
 });
 
 // Toucher un jour du calendrier : changer son heure, ou pas d'épisode pendant N jours.
-const J = { date: "", heure: "", nb: 1 };
+// L'heure s'applique dès qu'on la change (un jour qui a déjà un épisode) ; « Revenir à l'horaire
+// habituel » efface le changement. Le nombre de jours sans épisode se choisit au curseur.
+const J = { date: "", heure: "", nb: 1, envoi: null };
+const MAX_JOURS_SANS = 30;
 function toucherJour(date) {
-  const d = S.d, pl = d.planning, c = jourCalendrier(date);
+  const d = S.d, pl = d.planning;
   if (date < d.aujourdhui) return;
   const habituelle = pl.jours[CLES_JOURS[dateObj(date).getUTCDay()]] || "";
-  if (J.date !== date) Object.assign(J, { date, heure: c.heure || habituelle || "07:30", nb: 1 });
-  const pause = pl.pauses.find((x) => date >= x.du && date <= x.au);
-  const exception = pl.exceptions.find((x) => x.date === date);
-  const etat = pause ? `Pas d'épisode : pause du ${dateLongue(pause.du)} au ${dateLongue(pause.au)}.`
-    : c.heure ? `Épisode à ${heure(c.heure)}${exception ? " (heure changée pour ce jour)" : ""}.`
-    : exception ? "Pas d'épisode ce jour-là." : "Pas d'épisode prévu ce jour-là.";
-  const fin = plusJours(date, J.nb - 1);
+  const c0 = jourCalendrier(date);
+  if (J.date !== date) Object.assign(J, { date, heure: c0.heure || habituelle || "07:30", nb: 1 });
   const el = document.getElementById("feuille");
-  const fermer = () => { el.classList.add("cache"); el.innerHTML = ""; el.onclick = el.oninput = null; J.date = ""; };
+  // Ce qui dépend de l'état du jour (relu après chaque changement, sans toucher au champ de l'heure).
+  const lire = () => {
+    const c = jourCalendrier(date);
+    const pause = S.d.planning.pauses.find((x) => date >= x.du && date <= x.au);
+    const exception = S.d.planning.exceptions.find((x) => x.date === date);
+    const etat = pause ? `Pas d'épisode : pause du ${dateLongue(pause.du)} au ${dateLongue(pause.au)}.`
+      : c.heure ? `Épisode à ${heure(c.heure)}${exception ? " (heure changée pour ce jour)" : ""}.`
+      : exception ? "Pas d'épisode ce jour-là." : "Pas d'épisode prévu ce jour-là.";
+    return { c, pause, exception, etat: `${etat}${c.ferie ? ` Férié${c.ferie_nom ? ` : ${c.ferie_nom}` : ""}.` : ""}` };
+  };
+  const actionsHeure = ({ c, exception }) => {
+    const retablir = exception ? `<button type="button" class="bouton gris" data-jour-faire="retablir">Revenir à l'horaire habituel</button>` : "";
+    if (!c.heure) return `<button type="button" class="bouton gris" data-jour-faire="heure">Avoir un épisode ce jour-là</button>${retablir}`;
+    return retablir || `<span class="aide">Change l'heure : elle compte tout de suite, pour ce jour seulement.</span>`;
+  };
+  const periodeTexte = () => {
+    const fin = plusJours(date, J.nb - 1);
+    return J.nb > 1 ? `Du ${dateLongue(date)} au ${dateLongue(fin)}` : `Seulement le ${dateLongue(date)}`;
+  };
+  const fermer = () => { clearTimeout(J.envoi); el.classList.add("cache"); el.innerHTML = ""; el.onclick = el.oninput = el.onchange = null; J.date = ""; };
+  const majFeuille = () => {
+    if (J.date !== date || el.classList.contains("cache")) return;
+    const e = lire();
+    if (e.pause) return toucherJour(date);
+    const etatEl = el.querySelector("#j-etat"), actions = el.querySelector("#j-actions-heure");
+    if (etatEl) etatEl.textContent = e.etat;
+    if (actions) actions.innerHTML = actionsHeure(e);
+  };
+  const appliquer = (action, extra) => changer(action, extra, () => { dessiner(); majFeuille(); });
+  const e = lire();
   el.innerHTML = `<div class="panneau">
     <div class="entete"><strong id="feuille-titre">${h(majuscule(dateLongue(date)))}</strong>
-      <span>${h(etat)}${c.ferie ? ` Férié${c.ferie_nom ? ` : ${h(c.ferie_nom)}` : ""}.` : ""}</span></div>
-    ${pause ? `<button type="button" class="annuler" style="background:var(--carte)" data-jour-faire="retirer-pause">Retirer cette pause</button>` : `
+      <span id="j-etat">${h(e.etat)}</span></div>
+    ${e.pause ? `<button type="button" class="annuler" style="background:var(--carte)" data-jour-faire="retirer-pause">Retirer cette pause</button>` : `
     <div class="bloc-jour">
       <div class="entre"><label for="j-heure" style="font-weight:600">Heure de l'épisode</label>
         <input id="j-heure" type="time" class="compacte" value="${h(J.heure)}" data-jour-heure></div>
-      <button type="button" class="bouton gris" data-jour-faire="heure">${c.heure ? "Changer l'heure ce jour-là" : "Avoir un épisode ce jour-là"}</button>
+      <div id="j-actions-heure" style="display:flex;flex-direction:column;gap:8px">${actionsHeure(e)}</div>
     </div>
     <div class="bloc-jour">
-      <div class="entre"><span style="font-weight:600">Pas d'épisode pendant</span>
-        <div class="pas"><button type="button" data-jour-nb="-1" ${J.nb <= 1 ? "disabled" : ""} aria-label="Un jour de moins">−</button>
-          <output aria-live="polite">${J.nb} jour${J.nb > 1 ? "s" : ""}</output>
-          <button type="button" data-jour-nb="1" ${J.nb >= 60 ? "disabled" : ""} aria-label="Un jour de plus">+</button></div></div>
-      <span class="aide">${J.nb > 1 ? `Du ${h(dateLongue(date))} au ${h(dateLongue(fin))}` : `Seulement le ${h(dateLongue(date))}`}</span>
+      <div class="entre"><label for="j-nb" style="font-weight:600">Pas d'épisode pendant</label>
+        <output id="j-nb-texte" for="j-nb" style="font-weight:600;font-variant-numeric:tabular-nums">${J.nb} jour${J.nb > 1 ? "s" : ""}</output></div>
+      <input id="j-nb" type="range" class="avance curseur-jours" min="1" max="${MAX_JOURS_SANS}" step="1" value="${J.nb}" data-jour-nb
+        aria-valuetext="${J.nb} jour${J.nb > 1 ? "s" : ""}">
+      <span class="aide" id="j-periode">${h(periodeTexte())}</span>
       <button type="button" class="bouton gris" style="color:var(--rouge)" data-jour-faire="sans">Pas d'épisode</button>
-    </div>
-    ${exception ? `<button type="button" class="annuler" style="background:var(--carte)" data-jour-faire="retablir">Revenir à l'horaire habituel</button>` : ""}`}
+    </div>`}
     <button type="button" class="annuler" data-jour-faire="fermer">Fermer</button></div>`;
   el.classList.remove("cache");
-  el.oninput = (ev) => { if (ev.target.dataset.jourHeure !== undefined) J.heure = ev.target.value; };
+  el.oninput = (ev) => {
+    const t = ev.target;
+    if (t.dataset.jourHeure !== undefined) J.heure = t.value;
+    if (t.dataset.jourNb !== undefined) {
+      J.nb = Math.max(1, Math.min(MAX_JOURS_SANS, Number(t.value) || 1));
+      const texte = `${J.nb} jour${J.nb > 1 ? "s" : ""}`;
+      el.querySelector("#j-nb-texte").textContent = texte;
+      t.setAttribute("aria-valuetext", texte);
+      el.querySelector("#j-periode").textContent = periodeTexte();
+      vibrer("choix");
+    }
+  };
+  // Un jour qui a un épisode : la nouvelle heure s'applique d'elle-même (une seule fois, quand on a fini de la régler).
+  el.onchange = (ev) => {
+    if (ev.target.dataset.jourHeure === undefined) return;
+    J.heure = ev.target.value;
+    clearTimeout(J.envoi);
+    J.envoi = setTimeout(() => {
+      const { c, exception } = lire();
+      if (!J.heure || !c.heure || J.heure === c.heure) return;
+      if (J.heure === habituelle && exception) appliquer("retablir", { date });
+      else appliquer("exception", { date, heure: J.heure });
+    }, 700);
+  };
   el.onclick = (ev) => {
     ev.stopPropagation();
     const b = ev.target.closest("button");
     if (!b && ev.target === el) return fermer();
     if (!b || b.disabled) return;
-    if (b.dataset.jourNb) { J.nb = Math.max(1, Math.min(60, J.nb + Number(b.dataset.jourNb))); vibrer("choix"); return toucherJour(date); }
     const faire = b.dataset.jourFaire;
     if (!faire) return;
-    const nb = J.nb, h0 = J.heure;
-    fermer();
+    const nb = J.nb, h0 = J.heure, pause = lire().pause;
+    if (faire === "fermer") return fermer();
     if (faire === "heure") {
       if (!h0) return annoncer("Choisis une heure.", true);
-      return h0 === habituelle && exception ? changer("retablir", { date }) : changer("exception", { date, heure: h0 });
+      clearTimeout(J.envoi);
+      return appliquer("exception", { date, heure: h0 });
     }
+    if (faire === "retablir") { clearTimeout(J.envoi); J.heure = habituelle || J.heure; const champ = el.querySelector("#j-heure"); if (champ && habituelle) champ.value = habituelle; return appliquer("retablir", { date }); }
+    fermer();
     if (faire === "sans") return nb > 1 ? changer("pause", { du: date, au: plusJours(date, nb - 1) }) : changer("exception", { date, heure: null });
-    if (faire === "retablir") return changer("retablir", { date });
-    if (faire === "retirer-pause") return changer("retirer_pause", { du: pause.du });
+    if (faire === "retirer-pause" && pause) return changer("retirer_pause", { du: pause.du });
   };
   const premier = el.querySelector("[data-jour-heure], [data-jour-faire]");
   if (premier && !el.contains(document.activeElement)) premier.focus();
@@ -2224,19 +2548,27 @@ function rubriqueDepuisConsigne(i) {
     condition: { texte: nom, moment, n: 1 } } });
 }
 
+// Réglages › Moi (et premier lancement) : les quatre champs ont la même largeur, alignés à droite,
+// l'interrupteur du tutoiement en dessous.
+function blocMoi() {
+  const d = S.d, r = d.reglages;
+  return `<section class="bloc">
+    <div class="reglage"><span>Ton prénom</span><input class="compacte champ-moi" maxlength="40" value="${h(r.voix.prenom)}" data-regler-texte="voix.prenom" placeholder="Facultatif" aria-label="Ton prénom"></div>
+    <div class="reglage"><span>Pays</span><select class="compacte champ-moi" data-regler="pays" aria-label="Pays">
+      ${d.listes.pays.map(([v, n]) => `<option value="${h(v)}" ${String(d.pays) === String(v) ? "selected" : ""}>${h(n)}</option>`).join("")}</select></div>
+    ${d.pays === "CH" ? `<div class="reglage"><span>Canton<br><span class="aide">jours fériés</span></span>
+      <select class="compacte champ-moi" data-region aria-label="Canton des jours fériés">
+      ${d.listes.regions.map(([c, n]) => `<option value="${c}" ${d.planning.feries_region === c ? "selected" : ""}>${h(n.replace("Suisse · ", ""))}</option>`).join("")}</select></div>` : ""}
+    <div class="reglage"><span>Ta ville</span><input class="compacte champ-moi" maxlength="60" value="${h(r.actus.ville)}" data-regler-texte="actus.ville" placeholder="Facultatif" aria-label="Ta ville"></div>
+    ${interrupteur("Les animateurs te tutoient", r.voix.tutoiement, 'data-regler-bool="voix.tutoiement"')}
+  </section>`;
+}
+
 function vueReglage() {
   const d = S.d, r = d.reglages, cle = S.reglage;
   const titre = (SECTIONS.find((s) => s[0] === cle) || [])[1] || "Réglages";
   const corps = {
-    moi: () => `<section class="bloc">
-        <div class="reglage"><span>Ton prénom</span><input class="compacte" style="width:160px" maxlength="40" value="${h(r.voix.prenom)}" data-regler-texte="voix.prenom" placeholder="Facultatif" aria-label="Ton prénom"></div>
-        ${interrupteur("Les animateurs te tutoient", r.voix.tutoiement, 'data-regler-bool="voix.tutoiement"')}
-        <div class="reglage"><span>Pays</span>${choix("pays", d.pays, d.listes.pays)}</div>
-        ${d.pays === "CH" ? `<div class="reglage"><span>Canton<br><span class="aide">jours fériés</span></span>
-          <select class="compacte" style="max-width:190px" data-region aria-label="Canton des jours fériés">
-          ${d.listes.regions.map(([c, n]) => `<option value="${c}" ${d.planning.feries_region === c ? "selected" : ""}>${h(n.replace("Suisse · ", ""))}</option>`).join("")}</select></div>` : ""}
-        <div class="reglage"><span>Ta ville</span><input class="compacte" style="width:170px" maxlength="60" value="${h(r.actus.ville)}" data-regler-texte="actus.ville" placeholder="Facultatif" aria-label="Ta ville"></div>
-      </section>
+    moi: () => `${blocMoi()}
       <p class="aide">Le prénom et la ville sont facultatifs. Le pays règle l'heure, la devise, les jours fériés, les fêtes nationales mises en avant et les médias proposés par défaut ; « Pas renseigné » les laisse de côté. La ville sert à l'actu locale, à la météo, aux trains et à repérer tes déplacements.</p>`,
     voix: () => vueVoix(),
     sources: () => vueSources(),
@@ -2299,14 +2631,14 @@ function vueVoix() {
   }).join("");
   const aideMode = {
     fixe: `${v.solo ? "L'animateur habituel présente" : "Les animateurs habituels présentent"} chaque épisode.`,
-    jours: "Choisis qui présente chaque jour. Au départ, ce sont les animateurs habituels.",
+    jours: "Choisis qui présente chaque jour.",
     aleatoire: `Chaque épisode tire au sort ${v.solo ? "une voix" : "deux voix"} parmi les ${d.listes.voix.filter((x) => utilisee(x.nom)).length} voix utilisées (« Les voix », plus bas).`,
   }[v.mode] || "";
   const ligneVoix = (x) => {
     const nom = nomDe(x.nom), active = utilisee(x.nom), habituelle = habituelles.includes(x.nom);
     const pret = r.echantillons[x.nom] && r.temps_echantillons[x.nom];
     const enCours = X.voix === x.nom && !extrait.paused;
-    const timbre = `${nom !== x.nom ? `${x.nom} · ` : ""}${x.description}${habituelle ? " · habituel" : ""}`;
+    const timbre = `${nom !== x.nom ? `${x.nom} · ` : ""}${x.description}${habituelle && v.mode === "fixe" ? " · habituel" : ""}`;
     return `<div class="voix-ligne${active ? "" : " eteinte"}">
       <input class="nom-voix" maxlength="20" value="${h(nom === x.nom ? "" : nom)}" placeholder="${x.nom}" data-nom-voix="${x.nom}" autocomplete="off" spellcheck="false" enterkeyhint="done" aria-label="Prénom de la voix ${x.nom}">
       <span class="aide timbre" title="${h(timbre)}">${h(timbre)}</span>
@@ -2323,11 +2655,11 @@ function vueVoix() {
       <div class="segments" style="grid-template-columns:repeat(3,minmax(0,1fr));background:var(--carte-2)">
         ${Object.entries(d.listes.modes_voix).map(([m, n]) => `<button type="button" style="font-size:13px" data-valeur-segment="${m}" data-chemin="voix.mode" aria-pressed="${v.mode === m}">${n}</button>`).join("")}</div>
       <div class="bloc" style="background:var(--carte-2)">${interrupteur("Une seule voix (sans second animateur)", v.solo, 'data-regler-bool="voix.solo"')}</div>
-      <span class="groupe">Animateurs habituels</span>
+      ${v.mode === "fixe" ? `<span class="groupe">Animateurs habituels</span>
       <div class="bloc" style="background:var(--carte-2)">
-        ${v.animateurs.map((a, i) => `<div class="reglage${v.solo && i === 1 && v.mode === "fixe" ? " grise" : ""}"><span>Animateur ${i + 1}${v.solo && i === 1 && v.mode === "fixe" ? '<br><span class="aide">Pas utilisé avec une seule voix</span>' : ""}</span>
+        ${v.animateurs.map((a, i) => `<div class="reglage${v.solo && i === 1 ? " grise" : ""}"><span>Animateur ${i + 1}${v.solo && i === 1 ? '<br><span class="aide">Pas utilisé avec une seule voix</span>' : ""}</span>
           <select class="compacte choix-voix" data-regler="voix.animateurs.${i}.voix" aria-label="Animateur habituel ${i + 1}">${optionsVoix(a.voix)}</select></div>`).join("")}
-      </div>
+      </div>` : ""}
       <p class="aide">${aideMode}</p>
       ${v.mode === "jours" ? `<div class="bloc" style="background:var(--carte-2)">${d.listes.jours.map(([j, court, long]) => `<div class="jour-voix${d.planning.jours[j] ? "" : " grise"}">
           <span title="${majuscule(long)}${d.planning.jours[j] ? "" : " : pas d'épisode"}">${court}</span>
@@ -2452,15 +2784,7 @@ function vueBienvenue() {
       <p class="aide" style="font-size:14px">Cinq petites étapes pour le régler : qui tu es, l'heure, ton agenda, une clé. Tout se change ensuite dans l'application.</p>
       ${suite("C'est parti")}`,
     toi: () => `<span class="surtitre">1 · Toi</span><h1>Qui écoute ?</h1>
-      <section class="bloc">
-        <div class="reglage"><span>Ton prénom</span><input class="compacte" style="width:160px" maxlength="40" value="${h(r.voix.prenom)}" data-regler-texte="voix.prenom" placeholder="Facultatif" aria-label="Ton prénom"></div>
-        ${interrupteur("Les animateurs te tutoient", r.voix.tutoiement, 'data-regler-bool="voix.tutoiement"')}
-        <div class="reglage"><span>Pays</span>${choix("pays", d.pays, d.listes.pays)}</div>
-        ${d.pays === "CH" ? `<div class="reglage"><span>Canton<br><span class="aide">jours fériés</span></span>
-          <select class="compacte" style="max-width:190px" data-region aria-label="Canton des jours fériés">
-          ${d.listes.regions.map(([c, n]) => `<option value="${c}" ${d.planning.feries_region === c ? "selected" : ""}>${h(n.replace("Suisse · ", ""))}</option>`).join("")}</select></div>` : ""}
-        <div class="reglage"><span>Ta ville</span><input class="compacte" style="width:170px" maxlength="60" value="${h(r.actus.ville)}" data-regler-texte="actus.ville" placeholder="Facultatif" aria-label="Ta ville"></div>
-      </section>
+      ${blocMoi()}
       <p class="aide">La ville sert à l'actu locale, à la météo et aux trains ; le pays règle l'heure, les jours fériés et les médias.</p>${suite()}`,
     heure: () => `<span class="surtitre">2 · L'heure</span><h1>Quand arrive l'épisode ?</h1>
       <section class="bloc">
@@ -2650,7 +2974,20 @@ document.addEventListener("click", (ev) => {
   if (ds.actifIntegree) {
     return changer("deroule", { ordre: S.d.deroule.map((x) => x.cle), actifs: { [ds.actifIntegree]: el.getAttribute("aria-checked") !== "true" } });
   }
-  if (ds.ouvrir) return ouvrirFiche(ds.ouvrir);
+  if (ds.ouvrir) {
+    const r = S.d.regles.find((x) => x.id === ds.ouvrir);
+    if (r && r.periode.type === "ponctuelle") { S.recherche = r.id; return aller("resultats"); }
+    return ouvrirFiche(ds.ouvrir);
+  }
+  if (ds.resultats) { S.recherche = ds.resultats; return aller("resultats"); }
+  if (ds.relancer) {
+    const id = S.recherche, res = resultatsDe(id), format = ds.relancer;
+    const lancer = () => changer("recherche", { id, format }, (j) => { dessiner(); if (j.ok) window.scrollTo(0, 0); });
+    if (format !== "plus" && res && (res.episode || (res.details[0] || { idees: [] }).idees.length)) {
+      return confirmer(format === "point" ? "Préparer un nouveau podcast ? Il remplacera celui-ci." : "Refaire la recherche ? Les nouveaux résultats remplaceront ceux-ci.", lancer);
+    }
+    return lancer();
+  }
   if (ds.sourceUtilisable) {
     const c = S.d.reglages.sources.categories.find((x) => x.cle === ds.sourceUtilisable);
     if (!c) return;
@@ -2692,7 +3029,6 @@ document.addEventListener("click", (ev) => {
   if (ds.bienvenue) return bienvenueSuivante(Number(ds.bienvenue));
   if (ds.bienvenueWeekend !== undefined) { B.weekendActif = !B.weekendActif; vibrer("choix"); return dessiner(); }
   if (ds.episode) { S.episode = ds.episode; return aller("episode"); }
-  if (ds.choisir) { S.choisi = ds.choisir; vibrer("choix"); return dessiner(); }
   if (ds.moisEp !== undefined) { if (ds.moisEp) { S.moisEpisodes = ds.moisEp; dessiner(); } return; }
   if (ds.lire) return basculer(episodeParCle(ds.lire));
   if (ds.chapitre) return jouer(episodeParCle(ds.chapitre), Number(ds.t));
@@ -2707,7 +3043,6 @@ document.addEventListener("click", (ev) => {
   if (ds.chercher) return chercher(ds.chercher, "ecrit");
   // « Prochain épisode » (accueil) : l'onglet Épisode, réglé sur le jour de ce prochain épisode.
   if (ds.prochain) { S.jourVue.deroule = S.jourDernier.deroule = ds.prochain; return aller("programme"); }
-  if (ds.sauter) return confirmer(`Pas d'épisode le ${dateLongue(ds.sauter)} ?`, () => changer("sauter", { date: ds.sauter }));
   if (ds.retablir) return changer("retablir", { date: ds.retablir });
   if (ds.jourcal) return toucherJour(ds.jourcal);
   if (ds.mois) { S.mois = Number(ds.mois); return dessiner(); }
@@ -2738,14 +3073,10 @@ document.addEventListener("click", (ev) => {
     if (ds.retirerBulle) f[ds.retirerBulle].splice(Number(ds.i), 1);
     else if (ds.action === "passage") f.longueur = f.longueur === "aucune" ? "courte" : "aucune";
     else if (ds.longueur) f.longueur = ds.longueur;
-    else if (ds.rendu) {
-      f.audio = ds.rendu === "idees-audio";
-      f.rendu = ds.rendu === "point" ? "point" : "idees";
-      // Les sources par défaut suivent : actualités pour un point, lieux pour des idées (si on n'y a pas touché).
-      const defaut = { point: ["web", "actus"], idees: ["web", "lieux"] };
-      if (!S.fiche.id && JSON.stringify(f.sources) === JSON.stringify(defaut[f.rendu === "point" ? "idees" : "point"])) f.sources = [...defaut[f.rendu]];
-      S.fiche.recherche = f.rendu === "idees";
-    }
+    else if (ds.rendu) { f.rendu = ds.rendu === "point" ? "point" : "idees"; f.audio = false; }
+    else if (ds.minutes) f.minutes = Number(ds.minutes);
+    else if (ds.recherches) f.recherches = Number(ds.recherches);
+    else if (ds.action === "details") { S.fiche.details = !S.fiche.details; vibrer("choix"); return dessiner(); }
     else if (ds.jour) f.periode.jours = f.periode.jours.includes(ds.jour) ? f.periode.jours.filter((j) => j !== ds.jour) : [...f.periode.jours, ds.jour];
     else if (ds.source) {
       // « Tous mes agendas » et un agenda précis ne vont pas ensemble.
@@ -2771,18 +3102,9 @@ document.addEventListener("click", (ev) => {
       annoncer("Rubrique sur mesure : toutes les sources sont proposées.");
       return dessiner();
     }
-    case "garder": {
-      // Une recherche devient une rubrique de l'épisode : on choisit quand elle passe.
-      const f = S.fiche.f;
-      f.periode = { type: "toujours", debut: "", fin: "", jours: [] };
-      f.longueur = "courte";
-      S.fiche.origine = "programme";
-      S.fiche.modifie = true;
-      annoncer("Choisis quand elle passe, puis enregistre.");
-      dessiner();
-      return window.scrollTo(0, 0);
-    }
+    case "garder": return garderDansEpisodes();
     case "retour": return retour();
+    case "modifier-recherche": return ouvrirFiche(S.recherche, null, "resultats");
     case "plus": return S.ecran === "integree" ? menuIntegree() : menuFiche();
     case "enregistrer": return enregistrerFiche();
     case "condition": S.fiche.f.condition = { texte: "", moment: "jour_meme", n: 1 }; S.fiche.modifie = true; return dessiner();
@@ -3075,7 +3397,8 @@ async function demarrer() {
   const voulu = parametres.get("episode"), cleVoulue = parametres.get("ep");
   const ep = (cleVoulue && S.d.episodes.find((e) => e.cle === cleVoulue)) || (voulu && S.d.episodes.find((e) => e.date === voulu));
   if (ep) { S.episode = ep.cle; S.ecran = "episode"; }
-  else if (parametres.get("ecran") === "resultats" && S.d.resultats) S.ecran = "resultats";
+  else if (parametres.get("recherche") && S.d.regles.some((r) => r.id === parametres.get("recherche"))) { S.recherche = parametres.get("recherche"); S.ecran = "resultats"; }
+  else if (parametres.get("ecran") === "resultats" && S.d.resultats) { S.recherche = null; S.ecran = "resultats"; }
   if (parametres.toString() && history.replaceState) history.replaceState(null, "", "/app");
   dessiner();
   lireNotifs().then(() => { if (S.ecran === "reglage") dessiner(); });

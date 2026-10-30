@@ -497,16 +497,25 @@ export function nouvelleRegle(config, champs, aujourdHui, origine = "") {
   return regle;
 }
 
-// Recherches ponctuelles : ce qu'elles rendent, et la durée d'un « point ».
+// Recherches ponctuelles : deux types, la recherche en podcast (« point » : un podcast qui répond
+// à la demande, de quelques minutes) et la recherche par écrit (« idees » : des résultats avec leurs
+// liens, d'après un nombre de recherches web choisi).
 export const RENDUS = ["point", "idees"];
 export const MINUTES_POINT = [2, 3, 5, 8, 10];
 export function minutesPoint(valeur) {
   const n = Math.round(Number(valeur));
   return Number.isFinite(n) && n > 0 ? Math.max(1, Math.min(10, n)) : 3;
 }
-// Le format de lancement (workflow Recherche) d'une rubrique ponctuelle.
+export const NOMBRES_RECHERCHES = [1, 2, 3, 4, 5];
+export function recherchesWeb(valeur) {
+  const n = Math.round(Number(valeur));
+  return Number.isFinite(n) && n > 0 ? Math.max(1, Math.min(5, n)) : 3;
+}
+// Le format de lancement (workflow Recherche) d'une rubrique. Une recherche ponctuelle suit son
+// type : podcast (« point ») ou écrit ; « plus » ajoute des résultats écrits à ceux déjà trouvés.
 export function formatRecherche(regle, format = "ecrit") {
   if (regle?.recherche?.rendu === "point") return "point";
+  if (regle?.periode?.type === "ponctuelle") return format === "plus" ? "plus" : "ecrit";
   return format === "audio" || regle?.recherche?.audio ? "audio" : "ecrit";
 }
 
@@ -534,12 +543,15 @@ export function normaliserRegle(r) {
     },
     sources: nettoyerListe(r.recherche.sources, MAX_SOURCES_RUBRIQUE).filter(sourceConnue),
     requetes: nettoyerListe(r.recherche.requetes, 6),
-    // Ce qu'une recherche ponctuelle rend : « point » = un podcast qui fait l'état des lieux
-    // d'un sujet (durée en minutes) ; « idees » = des idées concrètes (sorties, activités…).
-    rendu: RENDUS.includes(r.recherche.rendu) ? r.recherche.rendu : "idees",
-    // Des idées reçues en mini-podcast plutôt que par écrit (choisi en haut de la fiche).
-    audio: Boolean(r.recherche.audio),
+    // Ce qu'une recherche ponctuelle rend : « point » = recherche en podcast (durée en minutes) ;
+    // « idees » = recherche par écrit (nombre de recherches web). Les anciennes « idées en
+    // podcast » (idees + audio) sont devenues des recherches en podcast.
+    rendu: type === "ponctuelle" && r.recherche.rendu !== "point" && r.recherche.audio ? "point"
+      : RENDUS.includes(r.recherche.rendu) ? r.recherche.rendu : "idees",
+    // Mini-podcast d'idées : seulement pour une rubrique de l'épisode (« Mini-podcast » de son menu).
+    audio: type === "ponctuelle" ? false : Boolean(r.recherche.audio),
     minutes: minutesPoint(r.recherche.minutes),
+    recherches: recherchesWeb(r.recherche.recherches),
   } : null;
   const condition = r.condition && r.condition.texte ? {
     texte: texteCourt(120)(r.condition.texte),

@@ -1,9 +1,9 @@
 name: Recherche
 run-name: ${{ format('Recherche {0} ({1})', inputs.regles, inputs.format || 'ecrit') }}
 
-# Lancée par le bot (« 📝 Résultats écrits » ou « 🎧 Mini-podcast » sur une
-# règle) : idées concrètes avec photos, lieux sur la carte, liens et sondage,
-# ou un mini-podcast qui les présente.
+# Lancée par le bot : recherche par écrit (résultats avec leurs liens ; « plus » en
+# ajoute d'autres), recherche en podcast (« point »), mini-podcast d'une rubrique
+# (« audio ») ou synthèse d'une rubrique (« resume »).
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ on:
         required: true
         type: string
       format:
-        description: "ecrit, audio ou resume (synthèse d une rubrique)"
+        description: "ecrit, plus, point, audio ou resume (synthèse d une rubrique)"
         required: false
         default: "ecrit"
         type: string

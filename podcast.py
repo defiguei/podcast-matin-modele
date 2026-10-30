@@ -13,7 +13,7 @@ Modes :
   python podcast.py                          → épisode du jour
   python podcast.py --mode rattrapage        → seulement si l'épisode du jour n'est pas parti
   python podcast.py --regles R3,R5           → épisode qui traite aussi ces règles
-  python podcast.py --recherche R5 --format ecrit|audio
+  python podcast.py --recherche R5 --format ecrit|plus|audio|point
                                              → résultats d'une recherche (idées, lieux, liens)
                                                ou mini-podcast sur ces règles
   python podcast.py --echantillons Aoede,Kore → extraits audio de voix
@@ -2130,7 +2130,7 @@ def main(arguments: list[str] | None = None) -> int:
                            help="règles à traiter aussi dans l'épisode, ex. R3,R5")
     analyseur.add_argument("--recherche", default=os.environ.get("RECHERCHE", ""),
                            help="résultats de recherche pour ces règles, ex. R5,R6")
-    analyseur.add_argument("--format", default=os.environ.get("FORMAT", "") or "ecrit", choices=("ecrit", "audio", "resume", "point"),
+    analyseur.add_argument("--format", default=os.environ.get("FORMAT", "") or "ecrit", choices=("ecrit", "plus", "audio", "resume", "point"),
                            help="résultats écrits (idées, lieux, liens), mini-podcast d'idées, synthèse d'une rubrique, "
                                 "ou point (podcast d'état des lieux d'un sujet)")
     analyseur.add_argument("--echantillons", default=os.environ.get("ECHANTILLONS", ""),

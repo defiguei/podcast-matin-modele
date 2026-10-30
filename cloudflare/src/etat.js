@@ -19,9 +19,9 @@ import { CLES, testerCle, lireAgenda, identifiantAgenda, resumeConnexions, teste
 import { fluxRss, chapitresJson, episodeDeCle, jetonValide, nouveauJeton } from "./flux.js";
 import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
-import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
+import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, rangerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-29.4";
+export const VERSION = "2026-10-30.1";
 const MAX_REFAITS = 6;
 const MAX_RECHERCHES = 15;
 const MAX_EPISODES = 60;      // épisodes récents, dans l'état ; les plus anciens vont dans l'archive de leur mois
@@ -30,8 +30,11 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
-  "En haut de chaque rubrique, son type, le même nom que dans « Ajouter une rubrique » ; les numéros R1, R2… ne s'affichent plus.",
-  "« Mon train » devient « Mes transports en commun », et « Rubrique libre » devient « Rubrique sur mesure ».",
+  "Recherches : deux types, en podcast ou par écrit, et chacune a sa page de résultats (Modifier, en haut à droite, pour la régler) ; par écrit, « Plus de résultats » ajoute de nouveaux résultats à la liste.",
+  "Accueil : la date dans le bandeau orange, « Voir le contenu » à la place de « Sauter », et l'on glisse le logo et le titre pour passer d'un épisode à l'autre.",
+  "Épisode : glisser la grande image change d'épisode, « Tous » ouvre le calendrier, boutons plus compacts, et un sujet à creuser se décoche d'un second appui.",
+  "Planning : l'heure d'un jour s'applique dès qu'on la change (« Revenir à l'horaire habituel » pour l'annuler), et un curseur choisit de 1 à 30 jours sans épisode.",
+  "Réglages : les champs de « Moi » alignés à la même largeur ; les animateurs habituels n'apparaissent qu'en mode « Toujours les mêmes ».",
 ];
 
 // « 2026-10 » décalé de n mois.
@@ -449,9 +452,13 @@ export class Etat extends DurableObject {
     const etat = await this.lireEtat();
     const valides = (ids || []).filter((id) => config.regles.some((r) => r.id === id) || RUBRIQUES_A_CHERCHER.includes(id));
     if (!valides.length) return { ok: false, erreur: "Aucune rubrique à traiter." };
-    // Une recherche « point » se rend toujours en podcast d'état des lieux, quel que soit le bouton.
+    // Une recherche en podcast (« point ») se rend toujours en podcast, quel que soit le bouton.
     const points = valides.filter((id) => config.regles.find((r) => r.id === id)?.recherche?.rendu === "point");
     if (points.length) { format = "point"; valides.splice(0, valides.length, ...points); }
+    // Une recherche par écrit : jamais en mini-podcast ; « plus » (des résultats en plus) pour une seule à la fois.
+    const ponctuelles = valides.filter((id) => config.regles.find((r) => r.id === id)?.periode?.type === "ponctuelle");
+    if (format !== "point" && ponctuelles.length && ponctuelles.length === valides.length) format = format === "plus" && valides.length === 1 ? "plus" : "ecrit";
+    else if (format === "plus") format = "ecrit";
     // Une rubrique essentielle (Agenda, Actualités…) : « Mini-podcast » = son point audio, sinon son point écrit.
     const essentielle = valides.find((id) => RUBRIQUES_A_CHERCHER.includes(id));
     if (essentielle) { format = format === "audio" || format === "point" ? "point" : "ecrit"; valides.splice(0, valides.length, essentielle); }
@@ -469,6 +476,9 @@ export class Etat extends DurableObject {
     } catch (erreur) {
       return { ok: false, erreur: erreur.message };
     }
+    // La page de chaque recherche ponctuelle montre qu'elle est en cours, jusqu'à son résultat.
+    etat.recherches_lancees = { ...(etat.recherches_lancees || {}) };
+    for (const id of ponctuelles.filter((x) => valides.includes(x))) etat.recherches_lancees[id] = { format, depuis: ctx.maintenantIso, depuis_ms: this.maintenant() };
     await this.ecrireEtat(etat);
     return { ok: true, format };
   }
@@ -712,6 +722,10 @@ export class Etat extends DurableObject {
       if (episode.pochette) liens.pochettes[cleEpisode(episode)] = await lienAudio(secret, `img:${cleEpisode(episode)}`, maintenant());
     }
     if (etat.derniers_resultats?.audio) liens.idees = await lienAudio(secret, "idees:dernier", maintenant());
+    liens.recherches = {};
+    for (const [id, res] of Object.entries(etat.resultats_recherches || {})) {
+      if (res?.audio && /^[A-Za-z0-9_]{1,24}$/.test(id)) liens.recherches[id] = await lienAudio(secret, `recherche:${id}`, maintenant());
+    }
     for (const voix of Object.keys(etat.echantillons_fichiers || {})) {
       if (/^[A-Za-z]+$/.test(voix) && etat.echantillons_fichiers?.[voix]) liens.voix[voix] = await lienAudio(secret, `voix:${voix}`, maintenant());
     }
@@ -723,6 +737,7 @@ export class Etat extends DurableObject {
     const etat = await this.lireEtat();
     if (cle === "idees:dernier") return { fichier: etat.derniers_resultats?.audio || null };
     if (cle.startsWith("resume:")) return { fichier: etat.resumes?.[cle.slice(7)]?.audio || null };
+    if (cle.startsWith("recherche:")) return { fichier: etat.resultats_recherches?.[cle.slice(10)]?.audio || null };
     if (cle.startsWith("voix:")) return { fichier: etat.echantillons_fichiers?.[cle.slice(5)] || null };
     const image = cle.startsWith("img:");
     const episode = await this.trouverEpisode(etat, image ? cle.slice(4) : cle);
@@ -1380,6 +1395,13 @@ export class Etat extends DurableObject {
           else if (/^cr[1-5]$/.test(geste)) {
             const sujet = episode.sujets?.[Number(geste.slice(2)) - 1];
             if (!sujet) return refus("Sujet inconnu.");
+            // Un sujet déjà coché se décoche : il ne sera plus creusé.
+            if ((episode.coches || []).includes(geste)) {
+              config.a_approfondir = config.a_approfondir.filter((a) => a.sujet !== sujet);
+              episode.coches = episode.coches.filter((g) => g !== geste);
+              libelle = `Plus à creuser : ${sujet}`;
+              break;
+            }
             config.a_approfondir = [...config.a_approfondir.filter((a) => a.sujet !== sujet), { sujet, demande_le: ctx.maintenantIso }].slice(-5);
             libelle = `À creuser au prochain épisode : ${sujet}`;
           } else return refus("Geste inconnu.");
@@ -1425,13 +1447,16 @@ export class Etat extends DurableObject {
         // ── recherche, demande libre, annulation ──
         case "recherche": {
           if (!config.regles.some((r) => r.id === demande.id) && !RUBRIQUES_A_CHERCHER.includes(demande.id)) return refus("Cette rubrique n'existe plus.");
-          // Sans format demandé, une recherche ponctuelle suit ce qu'elle a choisi (écrit ou mini-podcast).
+          // Sans format demandé, une rubrique suit ce qu'elle a choisi (écrit ou mini-podcast) ; une recherche
+          // ponctuelle suit son type, et « plus » ajoute des résultats écrits à ceux déjà trouvés.
           const enAudio = demande.format === "audio" || (!demande.format && Boolean(config.regles.find((r) => r.id === demande.id)?.recherche?.audio));
-          const lance = await this.lancerRecherche([demande.id], enAudio ? "audio" : "ecrit");
+          const lance = await this.lancerRecherche([demande.id], demande.format === "plus" ? "plus" : enAudio ? "audio" : "ecrit");
           if (!lance.ok) return refus(lance.erreur);
-          return reponse({ message: lance.format === "point" ? "Je fais le point : le podcast arrive ici d'ici trois ou quatre minutes."
-            : enAudio
+          await relire();   // l'état écrit par lancerRecherche (recherche en cours)
+          return reponse({ message: lance.format === "point" ? "Je prépare le podcast : il arrive ici d'ici trois ou quatre minutes."
+            : lance.format === "audio"
             ? "Je prépare le mini-podcast : il arrive d'ici trois ou quatre minutes."
+            : lance.format === "plus" ? "Je cherche d'autres résultats : ils s'ajoutent ici d'ici une à deux minutes."
             : "Je cherche : les résultats arrivent ici d'ici une à deux minutes." });
         }
         case "parler": {
@@ -1574,6 +1599,8 @@ export class Etat extends DurableObject {
       cles: Object.fromEntries(Object.keys(CLES).filter((nom) => this.cles?.[nom]).map((nom) => [nom, this.cles[nom]])),
       agendas_urls: (this.cles?.agendas || []).map((a) => a.url),
       derniers_resultats: etat.derniers_resultats || null,
+      resultats_recherches: Object.fromEntries(Object.entries(etat.resultats_recherches || {}).map(([id, r]) => [id, {
+        idees: (r.details?.[0]?.idees || []).map((i) => ({ titre: i.titre, lien: i.lien })) }])),
       app: this.adresseApp(etat),
     };
   }
@@ -1706,18 +1733,31 @@ export class Etat extends DurableObject {
         if (regle) regle.derniere_application = ctx.aujourdHui;
       }
       await this.ctx.storage.put("config", config);
+      const format = ev.format === "point" ? "point" : ev.format === "audio" ? "audio" : ev.format === "plus" ? "plus" : "ecrit";
       etat.derniers_resultats = { regles: ev.regles || [], idees: (ev.idees || []).slice(0, 10), quand: ctx.maintenantIso,
-                                  format: ev.format === "point" ? "point" : ev.format === "audio" ? "audio" : "ecrit",
+                                  format: format === "plus" ? "ecrit" : format,
                                   details: nettoyerResultats(ev.resultats),
                                   // Mini-podcast gardé par le bot (écoute dans l'application).
                                   audio: fichierRecu(ev.audio, ".mp3"), titre_audio: String(ev.titre_audio || "").slice(0, 120), duree_audio: Number(ev.duree) || null };
+      // Chaque recherche ponctuelle garde ses résultats, montrés dans sa page (« plus » les complète).
+      const ponctuelles = (ev.regles || []).filter((id) => config.regles.some((r) => r.id === id && r.periode.type === "ponctuelle"));
+      etat.resultats_recherches = Object.fromEntries(Object.entries(etat.resultats_recherches || {})
+        .filter(([id]) => config.regles.some((r) => r.id === id && r.periode.type === "ponctuelle")));
+      etat.recherches_lancees = { ...(etat.recherches_lancees || {}) };
+      for (const id of ponctuelles) {
+        const details = etat.derniers_resultats.details.filter((d) => d.regle === id);
+        etat.resultats_recherches[id] = rangerResultats(etat.resultats_recherches[id], { ...etat.derniers_resultats, format,
+          details: details.length ? details : ponctuelles.length === 1 ? etat.derniers_resultats.details.slice(0, 1) : [] });
+        delete etat.recherches_lancees[id];
+      }
       await this.ecrireEtat(etat);
       const nombre = etat.derniers_resultats.idees.length;
-      if (ev.format === "point") {
-        await this.notifier(etat, { titre: "🎧 Ton podcast est prêt", corps: String(ev.titre_audio || "").slice(0, 200), url: "/app?ecran=resultats", tag: "idees" });
+      const url = ponctuelles.length === 1 ? `/app?recherche=${encodeURIComponent(ponctuelles[0])}` : "/app?ecran=resultats";
+      if (format === "point") {
+        await this.notifier(etat, { titre: "🎧 Ton podcast est prêt", corps: String(ev.titre_audio || "").slice(0, 200), url, tag: "idees" });
       } else if (nombre) {
-        await this.notifier(etat, { titre: ev.format === "audio" ? "🎧 Ton mini-podcast d'idées est prêt" : "💡 Tes idées sont prêtes",
-          corps: etat.derniers_resultats.idees.slice(0, 3).join(" · ").slice(0, 200), url: "/app?ecran=resultats", tag: "idees" });
+        await this.notifier(etat, { titre: format === "audio" ? "🎧 Ton mini-podcast d'idées est prêt" : format === "plus" ? "💡 D'autres résultats sont prêts" : "💡 Tes idées sont prêtes",
+          corps: etat.derniers_resultats.idees.slice(0, 3).join(" · ").slice(0, 200), url, tag: "idees" });
       }
       return { ok: true };
     }
@@ -1732,6 +1772,10 @@ export class Etat extends DurableObject {
       episode.details = (episode.details || []).map(nouveau).filter(Boolean);
     }
     if (etat.derniers_resultats) etat.derniers_resultats.regles = (etat.derniers_resultats.regles || []).map(nouveau).filter(Boolean);
+    for (const cle of ["resultats_recherches", "recherches_lancees"]) {
+      if (!etat[cle]) continue;
+      etat[cle] = Object.fromEntries(Object.entries(etat[cle]).map(([id, v]) => [nouveau(id), v]).filter(([id]) => id));
+    }
   }
 
   async resumeEtat() {

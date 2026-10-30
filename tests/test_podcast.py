@@ -1175,6 +1175,78 @@ verifier(_res_e.get("sources") == [{"titre": "Les CFF en retard", "lien": "https
 verifier("Articles récents de ses médias" in _entree_e and "Les CFF en retard" in _entree_e, "actualités : les médias de l'auditeur sont lus")
 verifier("agenda" in _essai_agenda.lower() and "Réglages › Sources › Agendas" in _essai_agenda, "agenda sans agenda branché : message clair")
 
+# ── Recherche ponctuelle par écrit : nombre de recherches web, résultats en plus ──
+print("\n▶ Recherche par écrit : recherches web et résultats en plus")
+verifier([_recherche.recherches_web({"recherche": {"recherches": v}}) for v in (None, 1, 5, 9, "x")] == [3, 1, 5, 5, 3],
+         "nombre de recherches web : 1 à 5, 3 par défaut")
+_export_r = {"resultats_recherches": {"R4": {"idees": [{"titre": "Piscine", "lien": "https://a.ch"}, {"titre": ""}]}},
+             "derniers_resultats": {"regles": ["R4", "R5"], "idees": ["Juraparc"]}}
+_ponct = {"id": "R4", "periode": {"type": "ponctuelle"}}
+verifier(_recherche.deja_trouves(_ponct, _export_r, ["R4"], True) == ["Piscine"]
+         and _recherche.deja_trouves(_ponct, _export_r, ["R4"], False) == []
+         and _recherche.deja_trouves({"id": "R5", "periode": {"type": "toujours"}}, _export_r, ["R5"], False) == ["Juraparc"],
+         "déjà trouvés : « plus » écarte ceux de la recherche, relancée elle repart de zéro, une rubrique écarte ses derniers")
+_desc = _moteur.decrire_pour_plan({"id": "R4", "consigne": "vélo en hiver", "_recherches": 5, "_deja": ["Pneus à clous"]})
+verifier("recherches web voulues : 5" in _desc and "déjà trouvés (cherche d'autres pistes) : Pneus à clous" in _desc,
+         "planificateur : nombre de recherches voulu et pistes déjà trouvées")
+_r4 = {"id": "R4", "titre": "Vélo", "consigne": "vélo en hiver", "periode": {"type": "ponctuelle"},
+       "recherche": {"sources": ["web"], "fiche": {}}, "_recherches": 5}
+_plans5 = _moteur.planifier([_r4], [], dt.date(2026, 10, 30), "Yverdon",
+                            lambda systeme, entree, schema: {"regles": [{"id": "R4", "applique": True, "requetes": list("abcdef")}]})
+_plans3 = _moteur.planifier([{**_r4, "_recherches": None}], [], dt.date(2026, 10, 30), "Yverdon",
+                            lambda systeme, entree, schema: {"regles": [{"id": "R4", "applique": True, "requetes": list("abcdef")}]})
+verifier(_plans5["R4"]["requetes"] == list("abcde") and _plans3["R4"]["requetes"] == list("abc"),
+         "planificateur : 5 requêtes quand on en veut 5, 3 sinon")
+
+
+class _SourcesWeb:
+    tavily_cle = "x"
+
+    def __init__(self):
+        self.requetes = []
+
+    def web(self, requete, maximum=5, images=False, domaines=None):
+        self.requetes.append(requete)
+        n = len(self.requetes)
+        return {"images": [], "resultats": [{"titre": f"T{n}", "contenu": "c", "url": f"https://x.ch/{n}"}]}
+
+
+_src = _SourcesWeb()
+_moteur.collecter(_r4, {"requetes": ["a", "b"]}, _src, dt.date(2026, 10, 30), "Yverdon", profondeur=2, config={}, nombre_requetes=4)
+_src1 = _SourcesWeb()
+_moteur.collecter(_r4, {"requetes": ["a", "b", "c", "d"]}, _src1, dt.date(2026, 10, 30), "Yverdon", profondeur=1, config={})
+verifier(len(_src.requetes) == 4 and _src.requetes[:2] == ["a", "b"] and "vélo en hiver" in _src.requetes and len(_src1.requetes) == 2,
+         "collecte : autant de recherches web que voulu (complétées par le titre et la demande) ; l'épisode garde les siennes")
+
+_anciens = (podcast.demander_json, _moteur.collecter)
+_vus_p = []
+try:
+    def _demander_plus(systeme, entree, schema, modeles, cle, **_):
+        _vus_p.append(systeme)
+        if "Tu réponds par écrit" in systeme:
+            return {"intro": "", "idees": [{"titre": "Pneus à clous", "resume": "Pour la neige."}], "resume_partage": ""}, "m"
+        return {"regles": []}, "m"
+    podcast.demander_json = _demander_plus
+    _moteur.collecter = lambda regle, plan, sources, jour, ville, *a, **k: (
+        _vus_p.append(("collecte", k.get("nombre_requetes"), regle.get("_deja"))) or _moteur.Collecte(regle=regle, plan=plan, texte="matière"))
+    _config_plus = {"regles": [{"id": "R4", "titre": "Vélo en hiver", "consigne": "articles sur le vélo en hiver", "periode": {"type": "ponctuelle"},
+                                "recherche": {"rendu": "idees", "recherches": 2, "sources": ["web"], "fiche": {}}}]}
+    _bot_p = _BotPoint()
+    _code_p = _recherche.lancer(["R4"], "plus", {**_eff, "config_bot": _config_plus}, "cle", dt.datetime(2026, 10, 30, 9, 0, tzinfo=ZH), _bot_p,
+                                {"resultats_recherches": {"R4": {"idees": [{"titre": "Bonnet chaud", "lien": "https://y.ch"}]}}})
+finally:
+    podcast.demander_json, _moteur.collecter = _anciens
+_ev_p = _bot_p.evenements[0] if _bot_p.evenements else {}
+_sys_p = next((x for x in _vus_p if isinstance(x, str) and "Tu réponds par écrit" in x), "")
+verifier(_code_p == 0 and _ev_p.get("format") == "plus" and (_ev_p.get("resultats") or [{}])[0].get("idees", [{}])[0].get("titre") == "Pneus à clous",
+         "« plus » : le lot part comme « plus »")
+verifier("Ne redonne pas ce qui a déjà été trouvé : Bonnet chaud" in _sys_p and "jusqu'à 5 résultats" in _sys_p,
+         "« plus » : les résultats déjà trouvés sont écartés ; 2 recherches web → 5 résultats au plus")
+verifier(("collecte", 2, ["Bonnet chaud"]) in _vus_p, "« plus » : 2 recherches web, pistes déjà trouvées transmises au planificateur")
+_sys_point = _recherche.consigne_point("Sortie samedi", 3, "Léa", "Hugo", 450, True)
+verifier("répond à la demande" in _sys_point and "idées (sorties" in _sys_point and "état des lieux" in _sys_point,
+         "recherche en podcast : un état des lieux pour un sujet, des idées pour une sortie")
+
 print("\nRÉSULTAT :", "tout est vert ✅" if not echecs else f"{len(echecs)} échec(s) ❌")
 for e in echecs:
     print("  -", e)

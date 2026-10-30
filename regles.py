@@ -132,7 +132,7 @@ Pour chaque règle fournie, renvoie :
 - applique : pour une règle AVEC condition d'agenda, true seulement si un événement de l'agenda fourni remplit la condition au bon moment : « jour_meme » = l'événement a lieu aujourd'hui ; « veille » = il a lieu demain ; « jours_avant N » = il a lieu dans 1 à N jours. Pour une règle sans condition : true.
 - evenement : l'événement concerné (titre et date), s'il y en a un.
 - date_cible : la date visée (AAAA-MM-JJ) : date de la sortie ou de l'événement ; vide si aucune.
-- pour une règle de recherche (sortie, activité, idée) : requetes = 2 ou 3 recherches web courtes et efficaces en français, avec le lieu et la période (ex. « activités enfants {profil['exemple_ville']} vacances octobre 2026 », « {profil['exemple_rando']} ») ; lieux = villes ou lieux précis à situer sur une carte, le plus important d'abord (pour « entre X et Y », donne X et Y) ; categories = types de lieux utiles ; rayon_km = rayon de recherche autour du lieu (3 à 30).
+- pour une règle de recherche (sortie, activité, idée, sujet à éclaircir) : requetes = 2 ou 3 recherches web courtes et efficaces en français (exactement le nombre indiqué par « recherches web voulues » s'il est donné, chacune sous un angle différent ; si des résultats sont « déjà trouvés », cherche d'autres pistes), avec le lieu et la période (ex. « activités enfants {profil['exemple_ville']} vacances octobre 2026 », « {profil['exemple_rando']} ») ; lieux = villes ou lieux précis à situer sur une carte, le plus important d'abord (pour « entre X et Y », donne X et Y) ; categories = types de lieux utiles ; rayon_km = rayon de recherche autour du lieu (3 à 30).
 - pour une règle qui surveille un train précis (retard, ponctualité, suppression d'un train à une heure donnée) : train = gare de départ (de), gare d'arrivée (a), heure de départ prévue (heure, HH:MM) et pays du réseau (pays : CH, FR ou BE). Laisse train vide pour toute autre règle.
 N'invente aucun événement : appuie-toi seulement sur l'agenda fourni."""
 
@@ -149,6 +149,10 @@ def decrire_pour_plan(regle: dict) -> str:
         morceaux.append("recherche : " + ", ".join(details))
     if (regle.get("recherche") or {}).get("requetes"):
         morceaux.append("recherches proposées : " + " ; ".join(regle["recherche"]["requetes"]))
+    if regle.get("_recherches"):
+        morceaux.append(f"recherches web voulues : {regle['_recherches']}")
+    if regle.get("_deja"):
+        morceaux.append("déjà trouvés (cherche d'autres pistes) : " + " ; ".join(str(x) for x in regle["_deja"]))
     return " | ".join(morceaux)
 
 
@@ -202,6 +206,7 @@ def planifier(regles: list[dict], agenda: list[str], jour: dt.date, ville: str,
     except Exception as erreur:   # sans le planificateur : valeurs par défaut, conditions ignorées
         print(f"Planification des règles impossible : {erreur}", flush=True)
         return plans
+    voulues = {r["id"]: int(r.get("_recherches") or 0) for r in regles}
     for element in reponse.get("regles") or []:
         identifiant = {i.upper(): i for i in plans}.get(str(element.get("id", "")).upper(), "")
         if identifiant not in plans:
@@ -213,7 +218,7 @@ def planifier(regles: list[dict], agenda: list[str], jour: dt.date, ville: str,
             plan["date_cible"] = str(element["date_cible"])[:10]
         requetes = [str(q).strip()[:120] for q in element.get("requetes") or [] if str(q).strip()]
         if requetes:
-            plan["requetes"] = requetes[:3]
+            plan["requetes"] = requetes[:max(3, voulues.get(identifiant, 0))]
         lieux = [nettoyer_lieu(x)[:80] for x in element.get("lieux") or [] if str(x).strip()]
         if lieux:
             plan["lieux"] = lieux[:2]
@@ -334,9 +339,10 @@ def planifier_par_agendas(regles: list[dict], evenements: list, quand_court: Cal
 def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: str,
               chercher_actus: Callable[[str], list[str]] | None = None, profondeur: int = 1,
               config: dict | None = None, lire_flux: Callable[[dict], list[str]] | None = None,
-              agenda: list[str] | None = None) -> Collecte:
+              agenda: list[str] | None = None, nombre_requetes: int | None = None) -> Collecte:
     """Va chercher les informations dont la règle a besoin et prépare sa section.
-    Seules les sources cochées dans sa fiche sont lues (sources_lues)."""
+    Seules les sources cochées dans sa fiche sont lues (sources_lues). « nombre_requetes » : le
+    nombre de recherches web voulu (recherche ponctuelle par écrit) ; sinon 1 + profondeur."""
     r = regle
     recherche = r.get("recherche") or {}
     fiche = recherche.get("fiche") or {}
@@ -457,9 +463,14 @@ def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: s
                 collecte.images.append(guide["image"])
 
     if "web" in noms_sources:
-        requetes = plan.get("requetes") or [
-            " ".join(x for x in (r.get("consigne") or r.get("titre", ""), date_longue(jour)) if x)]
-        for numero, requete in enumerate(requetes[: 1 + profondeur]):
+        requetes = list(plan.get("requetes") or [
+            " ".join(x for x in (r.get("consigne") or r.get("titre", ""), date_longue(jour)) if x)])
+        if nombre_requetes:
+            # Pas assez de requêtes proposées : le titre et la demande complètent.
+            for extra in (" ".join(x for x in (r.get("titre", ""), date_longue(jour)) if x), r.get("consigne") or ""):
+                if len(requetes) < nombre_requetes and extra.strip() and extra not in requetes:
+                    requetes.append(extra.strip()[:120])
+        for numero, requete in enumerate(requetes[: nombre_requetes or 1 + profondeur]):
             trouve = sources.web(requete, maximum=5 if profondeur == 1 else 7, images=profondeur > 1)
             collecte.images += trouve["images"][:4]
             for resultat in trouve["resultats"]:
@@ -468,7 +479,7 @@ def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: s
                 collecte.web.append(resultat)
         if collecte.web:
             lignes.append("Recherche web :")
-            for i, resultat in enumerate(collecte.web[: 6 * profondeur], 1):
+            for i, resultat in enumerate(collecte.web[: max(6 * profondeur, 5 * (nombre_requetes or 0))], 1):
                 lignes.append(f"  [W{i}] {resultat['titre']} — {resultat['contenu'][:400]} ({resultat['url']})")
                 collecte.liens.append((resultat["titre"], resultat["url"]))
         elif not sources.tavily_cle:
