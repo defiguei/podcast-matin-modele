@@ -1,10 +1,10 @@
 {
-  "version": "2026-10-30.2",
+  "version": "2026-10-30.3",
   "date": "2026-10-30",
-  "titre": "Le podcast d'une recherche se lit de nouveau",
+  "titre": "Anniversaires de l'agenda et sujets à creuser",
   "nouveautes": [
-    "Correctif : le podcast d'une recherche se lit de nouveau depuis sa page (le bouton lecture ne répondait pas).",
-    "Planning : la légende garde « Autre heure », « Férié » et « Sauté »."
+    "Correctif : un anniversaire annuel de Google Agenda (ex. le 4 février) n'est plus annoncé le même jour de chaque mois.",
+    "Épisode : les sujets à creuser passent à la ligne au lieu de dépasser de la carte."
   ],
   "supprimes": [
     ".github/workflows/retours.yml",

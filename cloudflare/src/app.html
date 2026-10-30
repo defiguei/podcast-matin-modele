@@ -280,6 +280,8 @@ input.avance { width: 100%; accent-color: var(--aube); margin: 0; height: 24px; 
 .gestes.compacts { gap: 6px 5px; }
 .gestes.compacts button { min-height: 34px; padding: 0 10px; font-size: 13px; white-space: nowrap; }
 .gestes.compacts button[aria-pressed="true"] { font-weight: 600; }
+/* Sujets à creuser : une phrase entière, qui passe à la ligne au lieu de dépasser de la carte */
+.gestes.sujets button { white-space: normal; overflow-wrap: anywhere; text-align: left; max-width: 100%; min-width: 0; padding: 7px 12px; line-height: 1.3; border-radius: 17px; }
 .zone-glisse.grande { align-self: center; width: 100%; max-width: 320px; border-radius: 22px; }
 .zone-glisse.grande .grande-miniature { width: 100%; max-width: none; }
 .zone-glisse.grande img.grande-miniature { display: block; }
@@ -1029,7 +1031,7 @@ function vueEpisode() {
     <h2>Pour les prochains épisodes</h2>
     <div class="gestes compacts">${geste("court", "Plus court")}${geste("long", "Plus long")}${geste("lent", "Moins vite")}${geste("vite", "Plus vite")}<button type="button" data-action="parler-sujets" data-cle="${h(ep.cle)}">Sujets sans intérêt</button><button type="button" data-reglage="style">Ton à revoir</button><button type="button" data-aller="parler">Autre chose…</button></div>
     ${ep.sujets.length ? `<span class="etiquette" style="font-size:13px;color:var(--doux)">Creuser un sujet au prochain épisode (touche encore pour annuler)</span>
-      <div class="gestes compacts">${ep.sujets.map((s, i) => geste(`cr${i + 1}`, h(s))).join("")}</div>` : ""}
+      <div class="gestes compacts sujets">${ep.sujets.map((s, i) => geste(`cr${i + 1}`, h(s))).join("")}</div>` : ""}
   </section>`}
   <section class="carte">${enteteRepli("Sources", "sources", !S.replis.sources)}
     ${S.replis.sources ? "" : sections.length ? sections.map((g) => `${sections.length > 1 || g.nom !== "Sources" ? `<span class="groupe" style="padding-top:4px">${h(g.nom)}</span>` : ""}

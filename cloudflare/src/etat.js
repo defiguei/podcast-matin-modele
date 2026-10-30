@@ -21,7 +21,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, rangerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-30.2";
+export const VERSION = "2026-10-30.3";
 const MAX_REFAITS = 6;
 const MAX_RECHERCHES = 15;
 const MAX_EPISODES = 60;      // épisodes récents, dans l'état ; les plus anciens vont dans l'archive de leur mois
@@ -30,8 +30,8 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
-  "Correctif : le podcast d'une recherche se lit de nouveau depuis sa page (le bouton lecture ne répondait pas).",
-  "Planning : la légende garde « Autre heure », « Férié » et « Sauté ».",
+  "Correctif : un anniversaire annuel de Google Agenda (ex. le 4 février) n'est plus annoncé le même jour de chaque mois.",
+  "Épisode : les sujets à creuser passent à la ligne au lieu de dépasser de la carte.",
 ];
 
 // « 2026-10 » décalé de n mois.

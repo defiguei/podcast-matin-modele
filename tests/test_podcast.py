@@ -207,6 +207,40 @@ verifier(podcast.evoque_un_lieu(vides[0]) and podcast.evoque_un_lieu(vides[1])
          and not podcast.evoque_un_lieu(podcast.Evenement("Appel avec Sophie", maintenant, None, False)),
          "repérage des événements qui évoquent un lieu ou une sortie")
 
+# « Chaque année le 4 février » écrit par Google Agenda sans le mois : pas le 4 de chaque mois.
+ANNUELS = b"""BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Google Inc//Google Calendar 70.9054//EN
+BEGIN:VEVENT
+UID:annuel-sans-mois
+DTSTART;VALUE=DATE:20240204
+DTEND;VALUE=DATE:20240205
+RRULE:FREQ=YEARLY;BYMONTHDAY=4
+SUMMARY:Anniversaire de Fuzi
+END:VEVENT
+BEGIN:VEVENT
+UID:mensuel
+DTSTART;VALUE=DATE:20240204
+DTEND;VALUE=DATE:20240205
+RRULE:FREQ=MONTHLY;BYMONTHDAY=4
+SUMMARY:Loyer
+END:VEVENT
+BEGIN:VEVENT
+UID:annuel-premier-mercredi
+DTSTART;VALUE=DATE:20260107
+DTEND;VALUE=DATE:20260108
+RRULE:FREQ=YEARLY;BYDAY=1WE
+SUMMARY:Premier mercredi de l'annee
+END:VEVENT
+END:VCALENDAR
+"""
+annuels = podcast.lire_evenements(ANNUELS, ZH, dt.datetime(2026, 10, 30, tzinfo=ZH), dt.datetime(2027, 10, 30, tzinfo=ZH))
+dates = lambda titre: [e.debut.date().isoformat() for e in annuels if e.titre == titre]
+verifier(dates("Anniversaire de Fuzi") == ["2027-02-04"],
+         f"annuel sans mois (Google) : une fois par an, dans le mois de début ({dates('Anniversaire de Fuzi')})")
+verifier(len(dates("Loyer")) == 12 and dates("Premier mercredi de l'annee") == ["2027-01-06"],
+         "les autres récurrences ne changent pas (mensuel, 1er mercredi de l'année)")
+
 # ───────────────────────── 3. flux RSS ────────────────────────────────
 print("\n3. Lecture des flux")
 GOOGLE = """<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>À la une - Google Actualités</title>

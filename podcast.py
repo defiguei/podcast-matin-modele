@@ -686,10 +686,26 @@ def vers_local(valeur: dt.date | dt.datetime, fuseau: ZoneInfo) -> dt.datetime:
     return dt.datetime.combine(valeur, dt.time.min, tzinfo=fuseau)
 
 
+def annuel_dans_son_mois(calendrier) -> None:
+    """« Chaque année le 4 » sans mois (FREQ=YEARLY;BYMONTHDAY=4, écrit ainsi par Google Agenda) :
+    les agendas le comprennent comme le mois de début, la lecture stricte de la norme comme
+    le 4 de chaque mois. On ajoute le mois de début (BYMONTH) pour garder une fois par an."""
+    for evenement in calendrier.walk("VEVENT"):
+        debut = evenement.get("DTSTART")
+        regles = evenement.get("RRULE")
+        if debut is None or regles is None:
+            continue
+        for regle in regles if isinstance(regles, list) else [regles]:
+            if ([str(f).upper() for f in regle.get("FREQ") or []] == ["YEARLY"] and regle.get("BYMONTHDAY")
+                    and not any(regle.get(c) for c in ("BYMONTH", "BYWEEKNO", "BYYEARDAY"))):
+                regle["BYMONTH"] = [debut.dt.month]
+
+
 def lire_evenements(contenu: bytes, fuseau: ZoneInfo, debut: dt.datetime,
                     fin: dt.datetime, avec_notes: bool = True) -> list[Evenement]:
     calendrier = icalendar.Calendar.from_ical(contenu)
     calendrier = x_wr_timezone.to_standard(calendrier)
+    annuel_dans_son_mois(calendrier)
     requete = recurring_ical_events.of(calendrier, skip_bad_series=True)
     evenements: list[Evenement] = []
     for composant in requete.between(debut, fin):
