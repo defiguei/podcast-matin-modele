@@ -1,13 +1,10 @@
 {
-  "version": "2026-10-30.1",
+  "version": "2026-10-30.2",
   "date": "2026-10-30",
-  "titre": "Recherches en podcast ou par écrit, et une application plus fluide",
+  "titre": "Le podcast d'une recherche se lit de nouveau",
   "nouveautes": [
-    "Recherches : deux types, en podcast ou par écrit, et chacune a sa page de résultats (Modifier, en haut à droite, pour la régler) ; par écrit, « Plus de résultats » ajoute de nouveaux résultats à la liste.",
-    "Accueil : la date dans le bandeau orange, « Voir le contenu » à la place de « Sauter », et l'on glisse le logo et le titre pour passer d'un épisode à l'autre.",
-    "Épisode : glisser la grande image change d'épisode, « Tous » ouvre le calendrier, boutons plus compacts, et un sujet à creuser se décoche d'un second appui.",
-    "Planning : l'heure d'un jour s'applique dès qu'on la change (« Revenir à l'horaire habituel » pour l'annuler), et un curseur choisit de 1 à 30 jours sans épisode.",
-    "Réglages : les champs de « Moi » alignés à la même largeur ; les animateurs habituels n'apparaissent qu'en mode « Toujours les mêmes »."
+    "Correctif : le podcast d'une recherche se lit de nouveau depuis sa page (le bouton lecture ne répondait pas).",
+    "Planning : la légende garde « Autre heure », « Férié » et « Sauté »."
   ],
   "supprimes": [
     ".github/workflows/retours.yml",

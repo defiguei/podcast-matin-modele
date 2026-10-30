@@ -21,7 +21,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, rangerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-10-30.1";
+export const VERSION = "2026-10-30.2";
 const MAX_REFAITS = 6;
 const MAX_RECHERCHES = 15;
 const MAX_EPISODES = 60;      // épisodes récents, dans l'état ; les plus anciens vont dans l'archive de leur mois
@@ -30,11 +30,8 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
-  "Recherches : deux types, en podcast ou par écrit, et chacune a sa page de résultats (Modifier, en haut à droite, pour la régler) ; par écrit, « Plus de résultats » ajoute de nouveaux résultats à la liste.",
-  "Accueil : la date dans le bandeau orange, « Voir le contenu » à la place de « Sauter », et l'on glisse le logo et le titre pour passer d'un épisode à l'autre.",
-  "Épisode : glisser la grande image change d'épisode, « Tous » ouvre le calendrier, boutons plus compacts, et un sujet à creuser se décoche d'un second appui.",
-  "Planning : l'heure d'un jour s'applique dès qu'on la change (« Revenir à l'horaire habituel » pour l'annuler), et un curseur choisit de 1 à 30 jours sans épisode.",
-  "Réglages : les champs de « Moi » alignés à la même largeur ; les animateurs habituels n'apparaissent qu'en mode « Toujours les mêmes ».",
+  "Correctif : le podcast d'une recherche se lit de nouveau depuis sa page (le bouton lecture ne répondait pas).",
+  "Planning : la légende garde « Autre heure », « Férié » et « Sauté ».",
 ];
 
 // « 2026-10 » décalé de n mois.

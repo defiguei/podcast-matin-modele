@@ -620,6 +620,7 @@ function episodeParCle(cle) {
   return (S.d && S.d.episodes || []).find((e) => e.cle === cle)
     || Object.values(S.archives).flat().find((e) => e.cle === cle)
     || (S.d && S.d.resultats && S.d.resultats.episode && S.d.resultats.episode.cle === cle ? S.d.resultats.episode : null)
+    || Object.values((S.d && S.d.recherches_resultats) || {}).map((x) => x.episode).find((e) => e && e.cle === cle)
     || (S.rub && S.rub.resume && S.rub.resume.cle === cle ? S.rub.resume : null) || null;
 }
 
@@ -656,6 +657,7 @@ function jouer(ep, depuis = null) {
 }
 
 function basculer(ep) {
+  if (!ep) return annoncer("Cet audio n'est plus disponible : rouvre la page.", true);
   if (L.cle === ep.cle && !audio.paused) audio.pause(); else jouer(ep);
 }
 
@@ -2253,7 +2255,7 @@ function vuePlanning() {
       ${"<span></span>".repeat(decalage)}${jours.map(cellule).join("")}
     </div>
     <div class="legende"><span><i style="background:var(--aube);border-radius:50%"></i>Autre heure</span>
-      <span><i style="background:var(--vert);border-radius:50%"></i>Férié</span><span><s>12</s>&nbsp;Sauté</span><span><i style="width:22px;height:10px;border-radius:5px;background:var(--carte-2);background-image:linear-gradient(var(--doux),var(--doux));background-size:100% 2px;background-position:center;background-repeat:no-repeat"></i>Plusieurs jours</span></div>
+      <span><i style="background:var(--vert);border-radius:50%"></i>Férié</span><span><s>12</s>&nbsp;Sauté</span></div>
     <p class="aide">Touche un jour pour changer son heure ou ne pas avoir d'épisode (un ou plusieurs jours).</p>
   </section>
   <section class="bloc" aria-label="Heure de chaque jour">
@@ -2932,7 +2934,11 @@ document.addEventListener("click", (ev) => {
   const el = ev.target.closest("button");
   if (!el || el.disabled) return;
   const ds = el.dataset;
-  if (el.id === "mini-titre") { S.episode = L.cle; return aller("episode"); }
+  if (el.id === "mini-titre") {
+    if (String(L.cle).startsWith("recherche:")) { S.recherche = L.cle.slice(10); return aller("resultats"); }
+    if (L.cle === "idees:dernier") { S.recherche = null; return aller("resultats"); }
+    S.episode = L.cle; return aller("episode");
+  }
   if (ds.mini !== undefined) { if (audio.paused) audio.play(); else audio.pause(); return; }
   if (ds.vitesse !== undefined) return changerVitesse();
   if (ds.aller) return aller(ds.aller);
