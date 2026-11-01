@@ -105,9 +105,116 @@ export async function envoyerNotification(abonnement, message, cles, sujet, dela
 
 // Le service worker de l'application (/app/sw.js) : il affiche les notifications
 // et ouvre l'application sur l'épisode quand on les touche.
-export const SERVICE_WORKER = `// Podcast du matin : notifications de l'application.
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (ev) => ev.waitUntil(self.clients.claim()));
+export const SERVICE_WORKER = `// Podcast du matin : notifications et fonctionnement hors ligne de l'application.
+// Hors ligne : la page et ses icônes sont gardées (la page se rafraîchit à chaque ouverture avec du réseau),
+// les épisodes écoutés sont servis depuis le cache audio rempli par la page (avec les plages Range).
+// Les données (réglages, épisodes) sont gardées par la page elle-même.
+const COQUE = "podcast-coque-1";
+const POLICES = "podcast-polices";
+const AUDIO = "podcast-audio";
+const IMAGES = "podcast-images";
+const PAGE = "/app";
+const A_GARDER = ["/app/manifest.json", "/app/icone-192.png", "/app/icone-512.png", "/app/icone-masque.png", "/app/apple-touch-icon.png", "/app/badge.png"];
+const MAX_IMAGES = 200;
+const DELAI_RESEAU = 4000;   // au-delà, on ouvre la page gardée (réseau absent ou très mauvais)
+
+self.addEventListener("install", (ev) => {
+  ev.waitUntil((async () => {
+    try {
+      const cache = await caches.open(COQUE);
+      await Promise.all(A_GARDER.map((u) => cache.add(u).catch(() => {})));
+      const page = await fetch(PAGE, { cache: "no-store" });
+      if (page.ok) await cache.put(PAGE, page);
+    } catch (e) { /* pas de réseau à l'installation : la page sera gardée à la prochaine ouverture */ }
+    await self.skipWaiting();
+  })());
+});
+self.addEventListener("activate", (ev) => ev.waitUntil((async () => {
+  for (const nom of await caches.keys()) if (nom.indexOf("podcast-coque-") === 0 && nom !== COQUE) await caches.delete(nom);
+  await self.clients.claim();
+})()));
+
+const delai = (ms) => new Promise((_, refus) => setTimeout(() => refus(new Error("delai")), ms));
+
+// La page : le réseau d'abord (elle est toujours à jour), la copie gardée sans réseau.
+async function page(ev) {
+  const cache = await caches.open(COQUE);
+  const reseau = fetch(PAGE, { cache: "no-store" }).then(async (r) => {
+    if (r.ok) await cache.put(PAGE, r.clone());
+    return r;
+  });
+  try {
+    return await Promise.race([reseau, delai(DELAI_RESEAU)]);
+  } catch (e) {
+    const gardee = await cache.match(PAGE);
+    if (!gardee) return reseau;
+    ev.waitUntil(reseau.catch(() => {}));   // si le réseau finit par répondre, la copie est rafraîchie
+    return gardee;
+  }
+}
+
+// Icônes et polices : la copie gardée d'abord, rafraîchie en arrière-plan.
+async function coque(ev, nomCache) {
+  const cache = await caches.open(nomCache);
+  const gardee = await cache.match(ev.request);
+  const reseau = fetch(ev.request).then(async (r) => {
+    if (r.ok || r.type === "opaque") await cache.put(ev.request, r.clone());
+    return r;
+  });
+  if (gardee) { ev.waitUntil(reseau.catch(() => {})); return gardee; }
+  return reseau;
+}
+
+// Une plage d'un fichier gardé (le lecteur lit par morceaux et saute dans l'épisode).
+async function tranche(requete, gardee) {
+  const blob = await gardee.blob();
+  const total = blob.size;
+  const type = gardee.headers.get("Content-Type") || "audio/mpeg";
+  const base = { "Content-Type": type, "Accept-Ranges": "bytes" };
+  const plage = /^bytes=([0-9]*)-([0-9]*)$/.exec(requete.headers.get("Range") || "");
+  if (!plage || (plage[1] === "" && plage[2] === "")) {
+    return new Response(blob, { status: 200, headers: Object.assign({ "Content-Length": String(total) }, base) });
+  }
+  const debut = plage[1] === "" ? Math.max(0, total - Number(plage[2])) : Number(plage[1]);
+  const fin = plage[1] === "" || plage[2] === "" ? total - 1 : Math.min(Number(plage[2]), total - 1);
+  if (debut > fin || debut >= total) return new Response(null, { status: 416, headers: { "Content-Range": "bytes */" + total } });
+  return new Response(blob.slice(debut, fin + 1, type), { status: 206,
+    headers: Object.assign({ "Content-Length": String(fin - debut + 1), "Content-Range": "bytes " + debut + "-" + fin + "/" + total }, base) });
+}
+
+// Lecteur et pochettes : l'adresse est signée et expire, la copie gardée se retrouve par la clé (c=…).
+async function fichier(ev) {
+  const cle = new URL(ev.request.url).searchParams.get("c") || "";
+  if (!cle) return fetch(ev.request);
+  const clef = "/app/hors-ligne/" + encodeURIComponent(cle);
+  if (cle.indexOf("img:") === 0) {
+    const cache = await caches.open(IMAGES);
+    const gardee = await cache.match(clef);
+    if (gardee) return gardee;
+    const r = await fetch(ev.request);
+    if (r.ok) ev.waitUntil((async () => {
+      await cache.put(clef, r.clone());
+      const cles = await cache.keys();
+      for (const k of cles.slice(0, Math.max(0, cles.length - MAX_IMAGES))) await cache.delete(k);
+    })());
+    return r;
+  }
+  const gardee = await (await caches.open(AUDIO)).match(clef);
+  return gardee ? tranche(ev.request, gardee) : fetch(ev.request);
+}
+
+self.addEventListener("fetch", (ev) => {
+  if (ev.request.method !== "GET") return;
+  const url = new URL(ev.request.url);
+  if (url.origin === self.location.origin) {
+    if (url.pathname === "/app" || url.pathname === "/app/") return ev.respondWith(page(ev));
+    if (url.pathname === "/app/audio") return ev.respondWith(fichier(ev));
+    if (A_GARDER.indexOf(url.pathname) >= 0) return ev.respondWith(coque(ev, COQUE));
+  } else if (url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com") {
+    return ev.respondWith(coque(ev, POLICES));
+  }
+});
+
 self.addEventListener("push", (ev) => {
   let d = {};
   try { d = ev.data ? ev.data.json() : {}; } catch (e) { d = { corps: ev.data ? ev.data.text() : "" }; }

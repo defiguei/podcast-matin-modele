@@ -1524,6 +1524,12 @@ await scenario("Notifications de l'application (Web Push)", async () => {
   const codeSw = await sw.text();
   verifier(sw.status === 200 && sw.headers.get("service-worker-allowed") === "/app" && codeSw.includes("showNotification") && codeSw.includes("notificationclick"),
     "service worker servi, portée /app", sw.headers.get("service-worker-allowed"));
+  // Hors ligne : la page et les icônes gardées, l'audio gardé servi par plages (Range), jamais les autres routes.
+  verifier(["addEventListener(\"fetch\"", "podcast-coque-", "podcast-audio", "Content-Range", "Accept-Ranges", "/app/audio", "hors-ligne"].every((m) => codeSw.includes(m)),
+    "service worker hors ligne : page gardée, audio servi par plages");
+  const pageApp = (await obtenir(`${BOT}/app`)).texte;
+  verifier(["podcast-matin-audio-mo", "vider-audio", "data-place-audio", "lireDonneesGardees", "hors-ligne"].every((m) => pageApp.includes(m)),
+    "application : données gardées, place réglable pour l'audio gardé");
   let r = await app("etat");
   const clePublique = r.donnees.notifications?.cle || "";
   verifier(Buffer.from(clePublique, "base64url").length === 65 && r.donnees.notifications.abonnements.length === 0, "clé publique du bot pour s'abonner", clePublique);

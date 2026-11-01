@@ -251,6 +251,7 @@ nav.onglets-bas button[aria-current="page"] { color: var(--aube); font-weight: 6
 #annonce { position: fixed; left: 18px; right: 18px; bottom: calc(92px + var(--bas)); max-width: 524px; margin: 0 auto; background: var(--texte); color: var(--fond); border-radius: 14px; padding: 12px 14px; font-size: 14px; font-weight: 500; box-shadow: 0 10px 30px rgba(0,0,0,.4); z-index: 10; transform: translateY(20px); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
 #annonce.visible { transform: none; opacity: 1; }
 #annonce.erreur { background: var(--rouge); color: #2A0E0B; }
+#hors-ligne { position: fixed; top: calc(8px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); background: var(--carte-2); color: var(--doux-2); border: 1px solid var(--trait-2); border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 600; z-index: 9; pointer-events: none; white-space: nowrap; }
 .chargement { padding: 80px 24px; text-align: center; color: var(--doux); }
 .attente { display: inline-block; width: 22px; height: 22px; border: 2.5px solid var(--trait-2); border-top-color: var(--aube); border-radius: 50%; animation: tourne .8s linear infinite; margin-bottom: 12px; }
 @keyframes tourne { to { transform: rotate(360deg); } }
@@ -434,6 +435,7 @@ select.compacte { appearance: none; background-image: url("data:image/svg+xml,%3
 </div>
 <nav class="onglets-bas cache" id="nav" aria-label="Navigation"></nav>
 <div id="annonce" role="status" aria-live="polite"></div>
+<div id="hors-ligne" class="cache" role="status"></div>
 <div id="feuille" class="cache" role="dialog" aria-modal="true" aria-labelledby="feuille-titre"></div>
 <script>
 "use strict";
@@ -572,24 +574,155 @@ function ouvrirLien(url) {
 async function demander(action, extra = {}, options = {}) {
   if (S.occupe && !options.toujours) return { ok: false, occupe: true };
   S.occupe = true;
+  // Au démarrage avec des données gardées : un réseau muet ne fait pas attendre (options.delai, en ms).
+  const arret = options.delai ? new AbortController() : null;
+  const minuteur = arret ? setTimeout(() => arret.abort(), options.delai) : 0;
   try {
     const r = await fetch("/app/api", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Appareil": jetonAppareil.lire() },
       body: JSON.stringify({ action, ...extra }),
+      signal: arret ? arret.signal : undefined,
     });
-    const j = await r.json().catch(() => ({ ok: false, erreur: `Le bot ne répond pas (erreur ${r.status}).` }));
-    if (j.appareil === "inconnu") { jetonAppareil.ecrire(""); setTimeout(vueConnexionAppareil, 0); }
-    if (j.donnees) { S.d = j.donnees; S.charge = Date.now(); }
+    const j = await r.json().catch(() => ({ ok: false, reseau: r.status >= 500, erreur: `Le bot ne répond pas (erreur ${r.status}).` }));
+    if (j.appareil === "inconnu") { jetonAppareil.ecrire(""); viderHorsLigne(); setTimeout(vueConnexionAppareil, 0); }
+    if (j.donnees) { S.d = j.donnees; S.charge = Date.now(); garderDonnees(j.donnees); }
+    if (r.status < 500) marquerHorsLigne(false);
     if (!j.ok && !options.discret) { annoncer(j.erreur || "Impossible pour l'instant.", true); vibrer("error"); }
     return j;
   } catch (e) {
-    annoncer("Pas de connexion au bot. Vérifie ton réseau et réessaie.", true);
-    return { ok: false };
+    marquerHorsLigne(true);
+    if (!options.discret) annoncer("Pas de connexion au bot. Vérifie ton réseau et réessaie.", true);
+    return { ok: false, reseau: true };
   } finally {
+    clearTimeout(minuteur);
     S.occupe = false;
   }
 }
+
+// ───────────────────────────── hors ligne ──────────────────────────────
+// Le service worker (/app/sw.js) garde la page et ses icônes. Ici : les dernières données reçues du bot
+// (pour ouvrir l'application sans réseau) et les épisodes écoutés (l'audio, jusqu'à la place réglée).
+const CACHE_DONNEES = "podcast-donnees", CACHE_AUDIO = "podcast-audio", CACHE_IMAGES = "podcast-images";
+const CLE_DONNEES = "/app/hors-ligne/donnees";
+const cleCache = (cle) => `/app/hors-ligne/${encodeURIComponent(cle)}`;
+const CLE_PLACE_AUDIO = "podcast-matin-audio-mo", CLE_AUDIO_GARDE = "podcast-matin-audio-garde";
+const PLACES_AUDIO = [[0, "Aucune (ne rien garder)"], [100, "100 Mo"], [250, "250 Mo"], [500, "500 Mo"], [1000, "1 Go"], [2000, "2 Go"]];
+const PLACE_AUDIO_DEFAUT = 500;
+const cachesPossibles = () => typeof caches !== "undefined";
+
+function placeAudioMo() {
+  try { const v = localStorage.getItem(CLE_PLACE_AUDIO); if (v !== null && PLACES_AUDIO.some(([mo]) => mo === Number(v))) return Number(v); } catch (e) { /* stockage refusé */ }
+  return PLACE_AUDIO_DEFAUT;
+}
+// { clé d'épisode : { o: octets, vu: dernière écoute (ms), titre } }
+function audioGarde() {
+  try { const v = JSON.parse(localStorage.getItem(CLE_AUDIO_GARDE) || "{}"); return v && typeof v === "object" ? v : {}; } catch (e) { return {}; }
+}
+function ecrireAudioGarde(v) { try { localStorage.setItem(CLE_AUDIO_GARDE, JSON.stringify(v)); } catch (e) { /* stockage refusé */ } }
+const octetsGardes = (v = audioGarde()) => Object.values(v).reduce((n, x) => n + (x.o || 0), 0);
+
+// Dernières données du bot, gardées après chaque réponse (une fois par rafale de demandes).
+let donneesAGarder = null, minuteurDonnees = 0;
+function garderDonnees(donnees) {
+  if (!cachesPossibles()) return;
+  donneesAGarder = donnees;
+  clearTimeout(minuteurDonnees);
+  minuteurDonnees = setTimeout(async () => {
+    try {
+      const c = await caches.open(CACHE_DONNEES);
+      await c.put(CLE_DONNEES, new Response(JSON.stringify({ quand: Date.now(), donnees: donneesAGarder }), { headers: { "Content-Type": "application/json" } }));
+    } catch (e) { /* place insuffisante ou cache refusé : on s'en passe */ }
+  }, 1500);
+}
+async function lireDonneesGardees() {
+  if (!cachesPossibles()) return null;
+  try {
+    const r = await (await caches.open(CACHE_DONNEES)).match(CLE_DONNEES);
+    const j = r ? await r.json() : null;
+    return j && j.donnees && j.donnees.reglages ? j : null;
+  } catch (e) { return null; }
+}
+
+// Pastille « Hors ligne » : visible tant que le bot ne répond pas.
+function marquerHorsLigne(hors) {
+  if (Boolean(S.horsLigne) === hors) return;
+  S.horsLigne = hors;
+  majHorsLigne();
+}
+function majHorsLigne() {
+  const el = document.getElementById("hors-ligne");
+  if (!el) return;
+  const quand = S.horsLigne && S.charge ? ` · données du ${new Date(S.charge).toLocaleString("fr-CH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}` : "";
+  el.textContent = `Hors ligne${quand}`;
+  el.classList.toggle("cache", !S.horsLigne);
+}
+
+// Un épisode écouté reste disponible : copié en entier dans le cache audio, les plus anciens (écoutés il y a le plus
+// longtemps) s'effacent quand la place réglée est dépassée. Jamais celui qu'on écoute.
+const audioEnCours = new Set();
+async function garderAudio(ep) {
+  const place = placeAudioMo() * 1e6;
+  // Les épisodes ne changent jamais ; une recherche, elle, est refaite sous la même clé : on ne la garde pas.
+  if (!cachesPossibles() || !place || !ep || !ep.audio || !String(ep.cle).startsWith("ep:")) return;
+  const garde = audioGarde();
+  if (garde[ep.cle]) { garde[ep.cle].vu = Date.now(); return ecrireAudioGarde(garde); }
+  if (audioEnCours.has(ep.cle) || !navigator.onLine || (navigator.connection && navigator.connection.saveData)) return;
+  audioEnCours.add(ep.cle);
+  try {
+    const r = await fetch(ep.audio);
+    if (!r.ok || r.status !== 200) return;
+    const blob = await r.blob();
+    if (!blob.size || blob.size > place) return;
+    await (await caches.open(CACHE_AUDIO)).put(cleCache(ep.cle), new Response(blob, { headers: { "Content-Type": r.headers.get("Content-Type") || "audio/mpeg" } }));
+    const v = audioGarde();
+    v[ep.cle] = { o: blob.size, vu: Date.now(), titre: ep.titre || "" };
+    ecrireAudioGarde(v);
+    await elaguerAudio();
+    if (S.ecran === "reglage") dessiner();
+  } catch (e) { /* réseau coupé ou place refusée : l'épisode se lit quand même en ligne */ }
+  finally { audioEnCours.delete(ep.cle); }
+}
+async function elaguerAudio() {
+  if (!cachesPossibles()) return;
+  const place = placeAudioMo() * 1e6;
+  const v = audioGarde();
+  const c = await caches.open(CACHE_AUDIO);
+  while (octetsGardes(v) > place) {
+    const plusAncien = Object.keys(v).filter((k) => k !== L.cle).sort((a, b) => (v[a].vu || 0) - (v[b].vu || 0))[0];
+    if (!plusAncien) break;
+    await c.delete(cleCache(plusAncien)).catch(() => {});
+    delete v[plusAncien];
+  }
+  ecrireAudioGarde(v);
+}
+// Au démarrage : ce que le navigateur a vidé de lui-même sort de la liste, ce qui n'y figure pas est effacé.
+async function accorderAudioGarde() {
+  if (!cachesPossibles()) return;
+  try {
+    const c = await caches.open(CACHE_AUDIO);
+    const presents = new Set((await c.keys()).map((r) => decodeURIComponent(new URL(r.url).pathname.split("/").pop())));
+    const v = audioGarde();
+    for (const k of Object.keys(v)) if (!presents.has(k)) delete v[k];
+    for (const k of presents) if (!v[k]) await c.delete(cleCache(k));
+    ecrireAudioGarde(v);
+    await elaguerAudio();
+  } catch (e) { /* cache indisponible */ }
+}
+async function viderAudioGarde() {
+  if (cachesPossibles()) await caches.delete(CACHE_AUDIO).catch(() => {});
+  ecrireAudioGarde({});
+}
+// Appareil déconnecté ou retiré : plus rien de gardé (données, audio, pochettes).
+function viderHorsLigne() {
+  ecrireAudioGarde({});
+  if (cachesPossibles()) [CACHE_DONNEES, CACHE_AUDIO, CACHE_IMAGES].forEach((n) => caches.delete(n).catch(() => {}));
+}
+window.addEventListener("online", () => {
+  if (!S.horsLigne || !jetonAppareil.lire()) return;
+  demander("etat", {}, { discret: true }).then((j) => { if (j.ok) { S.archives = {}; dessiner(); } });
+});
+window.addEventListener("offline", () => { if (S.d) marquerHorsLigne(true); });
 
 // Une action qui change un réglage : message, vibration, nouvel affichage.
 async function changer(action, extra = {}, apres) {
@@ -649,6 +782,7 @@ async function chargerMois(mois) {
 function jouer(ep, depuis = null) {
   if (!ep || !ep.audio) return annoncer("L'audio de cet épisode n'est plus disponible.", true);
   if (L.cle !== ep.cle) {
+    if (!navigator.onLine && !audioGarde()[ep.cle]) return annoncer("Cet épisode n'est pas gardé sur l'appareil : écoute-le une première fois avec du réseau.", true);
     L.cle = ep.cle; L.ep = ep;
     audio.src = ep.audio;
     if ("mediaSession" in navigator) {
@@ -665,6 +799,7 @@ function jouer(ep, depuis = null) {
   }
   audio.play().catch(() => annoncer("Lecture impossible : touche encore ▶.", true));
   majLecteur();
+  garderAudio(ep);   // écouté : disponible sans réseau ensuite
 }
 
 function basculer(ep) {
@@ -727,6 +862,10 @@ function majLecteur() {
 ["play", "loadedmetadata"].forEach((ev) => audio.addEventListener(ev, appliquerVitesse));   // certains navigateurs l'oublient au changement d'épisode
 ["play", "pause", "timeupdate", "loadedmetadata", "ended"].forEach((ev) => audio.addEventListener(ev, majLecteur));
 audio.addEventListener("play", () => { if (!extrait.paused) extrait.pause(); });
+audio.addEventListener("error", () => {
+  if (!L.ep || audioGarde()[L.cle]) return;
+  annoncer(navigator.onLine ? "Lecture impossible : vérifie ton réseau puis réessaie." : "Cet épisode n'est pas gardé sur l'appareil : écoute-le une première fois avec du réseau.", true);
+});
 
 // Extraits de voix : deux voix partagent un fichier ; on ne lit que le passage de la voix choisie.
 const extrait = new Audio();
@@ -2640,6 +2779,7 @@ function vueReglage() {
           <p class="aide"><b>Apple Podcasts</b> : Bibliothèque › ⋯ › Ajouter une émission par URL. <b>AntennaPod</b> : + › Ajouter un podcast par son adresse RSS. Garde cette adresse pour toi : qui l'a peut écouter tes épisodes.</p>`
           : `<button type="button" class="bouton plein" data-action="creer-flux">Créer mon flux privé</button>`}
       </section>
+      ${vueHorsLigne()}
       <section class="carte" aria-labelledby="t-version"><h2 id="t-version">Version</h2>
         <p class="aide">Tu as la version ${h(d.version)}. Le dernier changement de réglage s'annule depuis la page Réglages.</p>
         ${d.stockage ? `<p class="aide">Épisodes gardés par ton bot (un an) : ${h(tailleLisible(d.stockage))} sur 5 Go offerts.</p>` : ""}
@@ -2655,6 +2795,19 @@ function vueReglage() {
         <button type="button" class="bouton gris" data-action="recharger">Recharger les données</button></section>`,
   }[cle];
   return `${entete(titre, "Réglages")}${corps ? corps() : ""}`;
+}
+
+// Réglages › Application : ce que cet appareil garde pour fonctionner sans réseau (propre à l'appareil).
+function vueHorsLigne() {
+  const garde = audioGarde(), n = Object.keys(garde).length, place = placeAudioMo();
+  return `<section class="carte" aria-labelledby="t-hors-ligne"><h2 id="t-hors-ligne">Hors ligne</h2>
+      <p class="aide">Sans réseau, l'application s'ouvre avec les dernières données reçues. Chaque épisode que tu écoutes reste disponible sur cet appareil ; quand la place réservée est pleine, les épisodes écoutés il y a le plus longtemps sont effacés.</p>
+      <div class="champ"><label for="place-audio">Place pour l'audio sur cet appareil</label>
+        <select id="place-audio" class="saisie" data-place-audio>
+          ${PLACES_AUDIO.map(([mo, nom]) => `<option value="${mo}"${mo === place ? " selected" : ""}>${h(nom)}</option>`).join("")}</select></div>
+      <p class="aide">${n ? `${n} épisode${n > 1 ? "s" : ""} gardé${n > 1 ? "s" : ""} : ${h(tailleLisible(octetsGardes(garde)))}.` : "Aucun épisode gardé pour l'instant."}</p>
+      ${n ? `<button type="button" class="bouton gris" data-action="vider-audio">Effacer l'audio gardé</button>` : ""}
+    </section>`;
 }
 
 // Chaque voix est un animateur possible, appelé par son prénom (son nom de voix
@@ -3213,7 +3366,7 @@ document.addEventListener("click", (ev) => {
     case "verifier-maj": return changer("verifier_maj", {});
     case "mettre-a-jour": return confirmer("Mettre à jour le code de ton podcast ? Tes réglages sont gardés.", () => changer("mettre_a_jour", {}));
     case "connecter-appareil": return connecterAppareil();
-    case "deconnecter-appareil": return confirmer("Déconnecter cet appareil ? Il faudra un nouveau code pour le rouvrir.", () => { jetonAppareil.ecrire(""); vueConnexionAppareil(); });
+    case "deconnecter-appareil": return confirmer("Déconnecter cet appareil ? Il faudra un nouveau code pour le rouvrir.", () => { jetonAppareil.ecrire(""); viderHorsLigne(); vueConnexionAppareil(); });
     case "renouveler-flux": return confirmer("Changer l'adresse du flux ? L'ancienne ne marchera plus : il faudra ajouter la nouvelle dans ton appli de podcasts.", () => changer("flux", { renouveler: true }));
     case "copier-flux": {
       const champ = document.getElementById("adresse-flux");
@@ -3225,6 +3378,7 @@ document.addEventListener("click", (ev) => {
     }
     case "extraits": return changer("extraits", { voix: S.aPreparer }, (j) => { if (j.ok) S.aPreparer = []; dessiner(); });
     case "recharger": return demarrer();
+    case "vider-audio": return confirmer("Effacer les épisodes gardés sur cet appareil ? Ils se re-téléchargeront quand tu les écouteras avec du réseau.", () => viderAudioGarde().then(() => { annoncer("Audio gardé effacé."); dessiner(); }));
   }
 });
 
@@ -3239,6 +3393,10 @@ document.addEventListener("change", (ev) => {
   const t = ev.target;
   if (!t.dataset) return;
   if (t.dataset.bulle) return ajouterBulle(t);
+  if (t.dataset.placeAudio !== undefined) {
+    try { localStorage.setItem(CLE_PLACE_AUDIO, String(Number(t.value))); } catch (e) { /* stockage refusé */ }
+    return elaguerAudio().then(() => { annoncer(Number(t.value) ? "Place réglée pour cet appareil." : "Plus aucun épisode ne sera gardé."); dessiner(); });
+  }
   if (t.dataset.duree !== undefined) return regler("format.duree_minutes", Number(t.value));
   if (t.dataset.region !== undefined) return changer("feries", { region: t.value });
   if (t.dataset.nomVoix) return changer("nom_voix", { voix: t.dataset.nomVoix, nom: t.value });
@@ -3438,7 +3596,16 @@ async function connecterAppareil() {
 
 async function demarrer() {
   if (!jetonAppareil.lire()) return vueConnexionAppareil();
-  const j = await demander("etat", {}, { toujours: true });
+  // Le service worker garde la page ; le navigateur est prié de ne pas vider ce que l'appareil garde.
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/app/sw.js", { scope: "/app" }).catch(() => {});
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  // Avec des données gardées, un réseau absent ou muet n'empêche pas d'ouvrir l'application (8 s au plus d'attente).
+  const gardees = await lireDonneesGardees();
+  let j = await demander("etat", {}, { toujours: true, delai: gardees ? 8000 : 0, discret: Boolean(gardees) });
+  if (!j.ok && j.reseau && gardees) {
+    S.d = gardees.donnees; S.charge = gardees.quand; S.horsLigne = true; majHorsLigne();
+    j = { ok: true };
+  }
   if (!j.ok || !S.d) {
     ecranEl.innerHTML = `<div class="chargement"><h1 style="margin-bottom:12px">Oups</h1>${h(j.erreur || "Le bot ne répond pas.")}<br><br>
       <button type="button" class="bouton plein" data-action="recharger">Réessayer</button></div>`;
@@ -3455,6 +3622,7 @@ async function demarrer() {
   else if (parametres.get("ecran") === "resultats" && S.d.resultats) { S.recherche = null; S.ecran = "resultats"; }
   if (parametres.toString() && history.replaceState) history.replaceState(null, "", "/app");
   dessiner();
+  accorderAudioGarde();
   lireNotifs().then(() => { if (S.ecran === "reglage") dessiner(); });
   if (clesEnTest().length) suivreTestsCles();     // un test de clé lancé sur GitHub avant de fermer
 }
