@@ -65,7 +65,7 @@ def oublier_remplissage():
     """Le faux Gemini écrit toujours très court : le podcast apprend à demander plus. Pour les contrôles
     de longueur exacte, on repart d'une mémoire sans cette correction."""
     m = memoire()
-    m["remplissage"] = None
+    m["remplissage_modeles"] = {}
     MEMOIRE.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
 
 
@@ -626,13 +626,14 @@ debit = memoire()["debit_mots_minute"]["lente"]
 verifier(f"entre {7 * debit} et" in appels_gemini("script")[0]["system_instruction"],
          f"durée de 7 minutes appliquée, au débit mesuré pour « lente » ({debit} mots/min)")
 # Gemini a écrit court (script de test de ~95 mots) : le podcast s'en souvient et demande plus la fois suivante.
-rempl = memoire()["remplissage"]
-verifier(isinstance(rempl, float) and 0.5 <= rempl < 0.9,
-         f"longueur : Gemini a écrit court, le réglage de remplissage baisse ({rempl})")
+rempl = memoire()["remplissage_modeles"].get("gemini-3.8-flash")
+verifier(isinstance(rempl, float) and podcast.REMPLISSAGE_MIN <= rempl < 0.9,
+         f"longueur : le modèle a écrit court, SON réglage de remplissage baisse ({rempl})")
 mots_avant = 7 * debit
-verifier(round(mots_avant / max(0.5, rempl)) > mots_avant, "longueur : la consigne suivante demandera plus de mots que la durée choisie")
-verifier(podcast._remplissage({"remplissage": 0.1}) == 0.5 and podcast._remplissage({}) == 1.0 and podcast._remplissage({"remplissage": 2}) == 1.0,
-         "remplissage : borné entre 0,5 et 1, 1 sans mesure")
+verifier(round(mots_avant / rempl) > mots_avant, "longueur : la consigne suivante demandera plus de mots que la durée choisie")
+verifier(podcast._remplissages({"remplissage_modeles": {"a": 0.01, "b": 9, "c": 0.8, "d": "x"}}) == {"a": 0.3, "b": 1.5, "c": 0.8}
+         and podcast._remplissages({}) == {} and podcast.remplissage_du_modele({}, "x") == 1.0,
+         "remplissage : par modèle, borné entre 0,3 et 1,5, 1 sans mesure")
 
 # 5f. Essai local sans envoi : la mémoire n'est pas modifiée.
 print("\n5f. Essai sans envoi")
@@ -661,7 +662,8 @@ m = memoire()
 m["preferences"] = podcast.memoire_vide()["preferences"]
 MEMOIRE.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
 
-# 5h. Gemini surchargé : on passe vite au modèle suivant, jusqu'au modèle léger.
+# 5h. Gemini surchargé : le modèle principal muet est retenté après une pause (pas le modèle léger) ;
+# celui qui refuse (quota du compte) n'est pas redemandé.
 print("\n5h. Gemini surchargé")
 appels.clear()
 sommeils.clear()
@@ -670,12 +672,15 @@ scenario["pannes"] = {"gemini-3.8-flash": ["timeout"], "gemini-3.6-flash": ["429
 a_la_date(2026, 10, 15)
 code = podcast.main([])
 essais = [c["model"] for c in appels_gemini("script")]
-verifier(code == 0 and essais == ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"],
-         f"modèle muet ou refus → suivant tout de suite, sans user le quota ; modèle léger en dernier recours : {essais}")
-verifier([x for x in sommeils if x > 10] == [], f"aucune attente inutile : {sommeils}")
+verifier(code == 0 and essais == ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.8-flash"],
+         f"modèle muet → retenté après une pause ; refus → pas redemandé (quota ménagé) ; pas de modèle léger : {essais}")
+verifier(sommeils.count(60) == 1 and not [x for x in sommeils if x > 60], f"une seule pause, de 60 s : {sommeils}")
+verifier(memoire()["remplissage_modeles"].keys() == {"gemini-3.8-flash"},
+         f"longueur mesurée pour le modèle qui a écrit : {memoire()['remplissage_modeles']}")
 verifier(memoire()["dernier_episode"]["date"] == "2026-10-15", "épisode quand même envoyé")
 
-# 5i. Tous surchargés au premier tour : nouveau tour après une pause.
+# 5i. Les modèles principaux surchargés au premier tour (et les légers aussi) : nouveau tour après une pause,
+# les modèles légers ne servent qu'en dernier recours.
 print("\n5i. Tous surchargés, puis ça repart")
 appels.clear()
 sommeils.clear()
@@ -684,9 +689,8 @@ scenario["pannes"] = {"gemini-3.8-flash": ["timeout"], "gemini-3.6-flash": ["429
 a_la_date(2026, 10, 16)
 code = podcast.main([])
 essais = [c["model"] for c in appels_gemini("script")]
-verifier(code == 0 and 60 in sommeils and essais == ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite",
-                                                     "gemini-3.1-flash-lite", "gemini-3.8-flash"],
-         f"second tour après 60 s, sans redemander au modèle qui a refusé : {essais} / attentes {sommeils}")
+verifier(code == 0 and 60 in sommeils and essais == ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.8-flash"],
+         f"second tour après 60 s, sans redemander au modèle qui a refusé ni passer aux légers : {essais} / attentes {sommeils}")
 
 # 5j. Rattrapage : seulement si l'épisode du matin n'est pas parti.
 print("\n5j. Rattrapage")
@@ -729,7 +733,7 @@ verifier(not evenements_bot("secrets"), "lecture des agendas : secrets GitHub pa
 print("\n5k. Échec avec rattrapage prévu")
 appels.clear()
 sommeils.clear()
-scenario["pannes"] = {m: ["timeout"] * 3 for m in ("gemini-3.8-flash", "gemini-3.6-flash",
+scenario["pannes"] = {m: ["timeout"] * 8 for m in ("gemini-3.8-flash", "gemini-3.6-flash",
                                                    "gemini-3.5-flash-lite", "gemini-3.1-flash-lite")}
 ancien_get = podcast.requests.get
 
@@ -751,7 +755,8 @@ alerte = evenements_bot("echec")
 verifier(code == 0 and "::warning::" in sortie.getvalue(), "code 0 (le rattrapage s'en charge) + avertissement dans GitHub")
 verifier(alerte and alerte[-1]["titre"].startswith("⏳") and "Nouvel essai automatique à 6 h 45" in alerte[-1]["message"]
          and "Les serveurs de Gemini ne répondent pas" in alerte[-1]["message"], f"notification claire : {alerte}")
-verifier(sommeils.count(60) == 1 and sommeils.count(180) == 1, f"trois tours espacés : {sommeils}")
+verifier(sommeils.count(60) == 2 and sommeils.count(180) == 2,
+         f"quatre tours espacés pour les modèles principaux (60, 180, 180 s), puis deux pour les légers (60 s) : {sommeils}")
 verifier(memoire()["dernier_episode"]["date"] == "2026-10-17", "épisode du jour non marqué comme envoyé")
 scenario["pannes"] = {}
 

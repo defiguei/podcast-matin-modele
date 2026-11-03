@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import contextlib
 import datetime as dt
 import functools
 import hashlib
@@ -71,7 +72,8 @@ NAVIGATEUR = (
 )
 TAUX_PAR_DEFAUT = 24_000          # Gemini TTS : 24 kHz, mono, 16 bits
 SEUIL_SCRIPT_COURT = 0.9         # sous 90 % des mots visés, on demande plus long
-REMPLISSAGE_MIN = 0.5            # un script ne fait jamais moins de la moitié de ce qu'on lui demande (garde-fou)
+REMPLISSAGE_MIN = 0.3            # garde-fous du réglage de longueur de chaque modèle (mots écrits / mots demandés) :
+REMPLISSAGE_MAX = 1.5            # un modèle léger écrit parfois moins de la moitié de ce qu'on lui demande, un autre déborde
 CARACTERES_PAR_SECONDE = 18       # débit moyen d'une voix française (mesuré : 15 à 21)
 
 JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
@@ -411,7 +413,7 @@ def memoire_vide() -> dict[str, Any]:
         "dernier_episode": {},
         "dernier_programme": "",       # date du dernier épisode programmé (hors épisodes à la demande)
         "debit_mots_minute": {},     # débit réellement mesuré, par vitesse
-        "remplissage": None,         # mots écrits / mots demandés (moyenne glissante) : Gemini écrit court, on demande plus
+        "remplissage_modeles": {},   # par modèle : mots écrits / mots demandés (moyenne glissante) ; chaque modèle écrit plus ou moins long
         "articles_vus": {},          # titre normalisé → date : actus déjà racontées (pas deux fois en une semaine)
         "lieux_presentes": [],       # déplacements déjà présentés : lieu, dates, idées proposées
     }
@@ -520,10 +522,25 @@ def decouvrir_modeles(reglages: dict, cle: str) -> dict[str, list[str]]:
     return resultat
 
 
-def _remplissage(memoire: dict) -> float:
-    """Part des mots demandés que Gemini écrit vraiment (1 = il tient la longueur). Mesurée à chaque épisode."""
-    valeur = memoire.get("remplissage")
-    return max(REMPLISSAGE_MIN, min(1.0, float(valeur))) if isinstance(valeur, (int, float)) else 1.0
+def _borner_remplissage(valeur: float) -> float:
+    return max(REMPLISSAGE_MIN, min(REMPLISSAGE_MAX, float(valeur)))
+
+
+def _remplissages(memoire: dict) -> dict[str, float]:
+    """Part des mots demandés que chaque modèle écrit vraiment (1 = il tient la longueur, moins = il écrit court).
+    Mesurée à chaque épisode, pour le modèle qui a écrit le script."""
+    mesures = memoire.get("remplissage_modeles")
+    if not isinstance(mesures, dict):
+        return {}
+    return {str(m): _borner_remplissage(v) for m, v in mesures.items()
+            if isinstance(v, (int, float)) and not isinstance(v, bool)}
+
+
+def remplissage_du_modele(effectifs: dict, modele: str | None) -> float:
+    """Réglage de longueur du modèle (1 tant qu'il n'a pas été mesuré). Sans modèle précisé : le premier modèle principal."""
+    if not modele:
+        modele = next(iter(effectifs.get("modeles_texte") or []), None)
+    return (effectifs.get("remplissages") or {}).get(modele, 1.0)
 
 
 def reglages_effectifs(reglages: dict, memoire: dict) -> dict[str, Any]:
@@ -542,7 +559,7 @@ def reglages_effectifs(reglages: dict, memoire: dict) -> dict[str, Any]:
     mesure = (memoire.get("debit_mots_minute") or {}).get(effectifs["vitesse_parole"])
     effectifs["mots_par_minute"] = (int(mesure) if isinstance(mesure, (int, float)) and 100 <= mesure <= 300
                                     else VITESSES[effectifs["vitesse_parole"]][1])
-    effectifs["remplissage"] = _remplissage(memoire)
+    effectifs["remplissages"] = _remplissages(memoire)
     effectifs["a_approfondir"] = [a for a in memoire.get("a_approfondir") or []
                                   if isinstance(a, dict) and a.get("sujet")][:5]
     effectifs.setdefault("ton", "naturel")
@@ -621,7 +638,7 @@ def effectifs_depuis_bot(reglages: dict, memoire: dict, config: dict) -> dict[st
     mesure = (memoire.get("debit_mots_minute") or {}).get(e["vitesse_parole"])
     e["mots_par_minute"] = (int(mesure) if isinstance(mesure, (int, float)) and 100 <= mesure <= 300
                             else VITESSES[e["vitesse_parole"]][1])
-    e["remplissage"] = _remplissage(memoire)
+    e["remplissages"] = _remplissages(memoire)
     deroule = config.get("deroule")
     e["deroule"] = deroule if isinstance(deroule, list) and deroule else [{"cle": c, "actif": True} for c in moteur.RUBRIQUES]
     e["config_bot"] = config
@@ -1042,6 +1059,22 @@ def temps_restant() -> float:
     return float("inf") if ECHEANCE is None else ECHEANCE - time.monotonic()
 
 
+RESERVE_SECOURS = 240      # secondes gardées pour les modèles légers (et la voix) quand les principaux insistent
+
+
+@contextlib.contextmanager
+def reserver_temps(secondes: float):
+    """Le temps d'un bloc, l'échéance est avancée de `secondes` : ce qui reste est gardé pour la suite."""
+    global ECHEANCE
+    ancienne = ECHEANCE
+    if ECHEANCE is not None:
+        ECHEANCE -= secondes
+    try:
+        yield
+    finally:
+        ECHEANCE = ancienne
+
+
 def attente_conseillee(reponse: requests.Response) -> float | None:
     """Délai conseillé par l'API après un refus (429), en secondes, s'il est indiqué."""
     trouve = (re.search(r'"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"', reponse.text)
@@ -1105,9 +1138,10 @@ def appeler_gemini(corps: dict, cle: str, delai: int) -> dict:
 
 
 def appeler_avec_repli(corps: dict, modeles: list[str], cle: str, delai: int,
-                       tours: int = 3) -> tuple[dict, str]:
-    """Essaie les modèles dans l'ordre. Quota du jour épuisé ou modèle inconnu :
-    il est écarté pour la suite. Surcharge : tour suivant après une pause."""
+                       tours: int = 3, adapter=None) -> tuple[dict, str]:
+    """Essaie les modèles dans l'ordre. Quota du jour épuisé, refus du compte (429) ou modèle inconnu :
+    il est écarté pour la suite. Surcharge du serveur (503, pas de réponse) : tour suivant après une pause.
+    `adapter(modele, corps)` ajuste la requête au modèle (longueur demandée, par exemple)."""
     erreurs: dict[str, str] = {}
     for tour in range(tours):
         if tour:
@@ -1121,7 +1155,8 @@ def appeler_avec_repli(corps: dict, modeles: list[str], cle: str, delai: int,
                 break
             delai_effectif = int(min(delai, max(30, temps_restant() - 30)))
             try:
-                return appeler_gemini({**corps, "model": modele}, cle, delai_effectif), modele
+                corps_modele = adapter(modele, corps) if adapter else corps
+                return appeler_gemini({**corps_modele, "model": modele}, cle, delai_effectif), modele
             except Refus as erreur:          # inutile d'user le quota en insistant
                 journal(f"Modèle {modele} refuse : {erreur}")
                 erreurs[modele] = str(erreur)
@@ -1139,14 +1174,14 @@ def appeler_avec_repli(corps: dict, modeles: list[str], cle: str, delai: int,
 
 def appeler_avec_variantes(variantes: list[dict], modeles: list[str], cle: str,
                            delai: int, etat: dict | None = None,
-                           tours: int = 3) -> tuple[dict, str]:
+                           tours: int = 3, adapter=None) -> tuple[dict, str]:
     """Envoie la requête complète, puis des versions simplifiées si l'API refuse
     un paramètre (l'API évolue vite : on reste robuste)."""
     depart = etat.get("variante", 0) if etat is not None else 0
     derniere: Exception | None = None
     for index in range(depart, len(variantes)):
         try:
-            resultat = appeler_avec_repli(variantes[index], modeles, cle, delai, tours)
+            resultat = appeler_avec_repli(variantes[index], modeles, cle, delai, tours, adapter)
             if etat is not None:
                 etat["variante"] = index
             return resultat
@@ -1204,7 +1239,7 @@ def analyser_json(texte: str) -> dict:
 
 def demander_json(systeme: str, entree: Any, schema: dict, modeles: list[str], cle: str,
                   reflexion: str | None = None, delai: int = 180,
-                  tours: int = 3) -> tuple[dict, str]:
+                  tours: int = 3, adapter=None) -> tuple[dict, str]:
     """Demande une réponse JSON structurée, avec des versions de repli."""
     base: dict[str, Any] = {"system_instruction": systeme, "input": entree, "store": False}
     texte_seul = entree if isinstance(entree, str) else "\n".join(
@@ -1223,7 +1258,7 @@ def demander_json(systeme: str, entree: Any, schema: dict, modeles: list[str], c
          "response_format": {"type": "text", "mime_type": "application/json"}},
         {**base, "input": texte_seul + rappel},
     ]
-    reponse, modele = appeler_avec_variantes(variantes, list(modeles), cle, delai, tours=tours)
+    reponse, modele = appeler_avec_variantes(variantes, list(modeles), cle, delai, tours=tours, adapter=adapter)
     try:
         return analyser_json(extraire_texte(reponse)), modele
     except ReponseIllisible as erreur:
@@ -1234,12 +1269,33 @@ def demander_json(systeme: str, entree: Any, schema: dict, modeles: list[str], c
         journal(f"Réponse de {modele} illisible ({erreur.detail}) : nouvel essai avec un autre modèle.")
         if not autres or temps_restant() < 150:
             raise ReponseIllisible(f"{modele}, {erreur.detail}") from None
-        reponse, second = appeler_avec_variantes(variantes, autres, cle, delai, tours=1)
+        reponse, second = appeler_avec_variantes(variantes, autres, cle, delai, tours=1, adapter=adapter)
         try:
             return analyser_json(extraire_texte(reponse)), second
         except ReponseIllisible as encore:
             raise ReponseIllisible(encore.detail, f"Gemini a renvoyé deux réponses illisibles ({modele} : {erreur.detail} ; "
                                                   f"{second} : {encore.detail}).") from None
+
+
+def demander_json_par_niveaux(systeme: str, entree: Any, schema: dict, principaux: list[str], secours: list[str],
+                              cle: str, reflexion: str | None = None, delai: int = 180,
+                              tours: int = 4, adapter=None) -> tuple[dict, str]:
+    """Les modèles principaux d'abord, et on insiste : tant que l'un d'eux est seulement surchargé côté
+    serveur (pas de réponse, HTTP 5xx), on refait un tour après une pause. Un refus lié au compte (quota,
+    429) l'écarte sans insister. Les modèles légers, qui écrivent plus court, ne servent que si plus aucun
+    modèle principal ne répond ; on leur garde alors RESERVE_SECOURS de l'échéance."""
+    secours = [m for m in secours if m not in principaux]
+    if not principaux:
+        return demander_json(systeme, entree, schema, secours, cle, reflexion=reflexion, delai=delai, tours=2, adapter=adapter)
+    if not secours:
+        return demander_json(systeme, entree, schema, principaux, cle, reflexion=reflexion, delai=delai, tours=tours, adapter=adapter)
+    try:
+        with reserver_temps(RESERVE_SECOURS):
+            return demander_json(systeme, entree, schema, principaux, cle, reflexion=reflexion, delai=delai,
+                                 tours=tours, adapter=adapter)
+    except ErreurPodcast as erreur:
+        journal(f"Aucun modèle principal ne répond ({str(erreur)[:200]}) : on passe aux modèles légers.")
+    return demander_json(systeme, entree, schema, secours, cle, reflexion=reflexion, delai=delai, tours=2, adapter=adapter)
 
 
 # ─────────────────────────────── déplacements ───────────────────────────────
@@ -1355,15 +1411,16 @@ def infos_locales(n: int) -> str:
 
 
 def consigne_systeme(effectifs: dict, rubriques: list[tuple[str, str]] | None = None,
-                     collectes: dict | None = None) -> str:
+                     collectes: dict | None = None, modele: str | None = None) -> str:
     noms_animateurs = [x["nom"] for x in effectifs["animateurs"]]
     seul = len(noms_animateurs) == 1
     a, b = noms_animateurs[0], noms_animateurs[-1]
     collectes = collectes or {}
     minutes = minutes_visees(effectifs, collectes)
-    # Gemini écrit souvent plus court que demandé : on demande en proportion de ce qu'il a réellement écrit.
+    # Chaque modèle écrit plus court (ou plus long) que demandé : on demande en proportion de ce que CE modèle
+    # a réellement écrit les fois précédentes.
     mots = round(minutes * effectifs.get("mots_par_minute", VITESSES[effectifs["vitesse_parole"]][1])
-                 / effectifs.get("remplissage", 1.0))
+                 / remplissage_du_modele(effectifs, modele))
     adresse = "Tutoie" if effectifs["tutoiement"] else "Vouvoie"
     prenom = effectifs.get("prenom_auditeur", "").strip()
     qui = f"{adresse} l'auditeur, qui s'appelle {prenom}." if prenom else f"{adresse} l'auditeur."
@@ -1539,6 +1596,7 @@ def nettoyer_script(script: dict, noms: list[str], rubriques: list[str] | None =
 
 
 script_mots_vises = [0]   # mots visés pour l'épisode en cours (mesure du remplissage, après l'épisode)
+script_modele = [""]      # modèle qui a écrit le script de l'épisode en cours (le remplissage se mesure par modèle)
 
 
 def ecrire_script(effectifs: dict, cle: str, maintenant: dt.datetime, agenda: str,
@@ -1546,17 +1604,22 @@ def ecrire_script(effectifs: dict, cle: str, maintenant: dt.datetime, agenda: st
                   rubriques: list[tuple[str, str]] | None = None, collectes: dict | None = None) -> dict:
     noms = [a["nom"] for a in effectifs["animateurs"]]
     cles = [c for c, _ in rubriques] if rubriques else None
-    # Les modèles légers (quotas bien plus larges) servent de dernier recours.
-    modeles = list(dict.fromkeys(effectifs["modeles_texte"] + effectifs["modeles_rapides"]))
+
+    def adapter(modele: str, corps: dict) -> dict:     # la longueur demandée dépend du modèle qui écrit
+        return {**corps, "system_instruction": consigne_systeme(effectifs, rubriques, collectes, modele)}
+
     systeme = consigne_systeme(effectifs, rubriques, collectes)
-    brut, modele = demander_json(
+    # Les modèles principaux d'abord, qu'on retente s'ils sont surchargés ; les légers en dernier recours.
+    brut, modele = demander_json_par_niveaux(
         systeme, demande_du_jour(effectifs, maintenant, agenda, sections, remarques),
-        schema_script(noms, cles), modeles, cle, reflexion=effectifs["reflexion"])
+        schema_script(noms, cles), effectifs["modeles_texte"], effectifs["modeles_rapides"], cle,
+        reflexion=effectifs["reflexion"], adapter=adapter)
     script = nettoyer_script(brut, noms, cles)
     mots = sum(len(r["texte"].split()) for r in script["repliques"])
     minutes = minutes_visees(effectifs, collectes)
     vise = round(minutes * effectifs.get("mots_par_minute", 180))
     script_mots_vises[0] = vise
+    script_modele[0] = modele
     if mots < SEUIL_SCRIPT_COURT * vise:     # script trop court (fréquent avec les modèles légers) : on le fait étoffer
         journal(f"Script trop court ({mots} mots pour {vise} visés) : demande d'une version plus longue.")
         try:
@@ -1565,7 +1628,7 @@ def ecrire_script(effectifs: dict, cle: str, maintenant: dt.datetime, agenda: st
                 demande_du_jour(effectifs, maintenant, agenda, sections, remarques)
                 + f"\n\nUne première version ne faisait que {mots} mots : c'est trop court. "
                   f"Écris une version complète d'au moins {vise} mots, en développant chaque sujet.",
-                schema_script(noms, cles), [modele], cle, reflexion=effectifs["reflexion"], tours=1)
+                schema_script(noms, cles), [modele], cle, reflexion=effectifs["reflexion"], tours=1, adapter=adapter)
             candidat = nettoyer_script(plus_long, noms, cles)
             mots_candidat = sum(len(r["texte"].split()) for r in candidat["repliques"])
             if mots_candidat > mots:
@@ -2340,14 +2403,19 @@ def main(arguments: list[str] | None = None) -> int:
             nouveau = mesure if not isinstance(ancien, (int, float)) else (ancien + mesure) / 2
             debits[effectifs["vitesse_parole"]] = round(max(100, min(300, nouveau)))
             journal(f"Débit mesuré : {mesure:.0f} mots/min (vitesse {effectifs['vitesse_parole']}).")
-        if script_mots_vises[0] >= 100 and mots_dits >= 50:
-            # Régulation : on a demandé vise / remplissage mots et obtenu mots_dits ; si l'on est en deçà de
-            # vise, le remplissage baisse (donc on demande plus la prochaine fois), au-delà il remonte vers 1.
-            demandes = script_mots_vises[0]
-            taux = max(REMPLISSAGE_MIN, min(1.0, effectifs.get("remplissage", 1.0) * mots_dits / demandes))
-            ancien_taux = memoire.get("remplissage")
-            memoire["remplissage"] = round(taux if not isinstance(ancien_taux, (int, float)) else (ancien_taux + taux) / 2, 3)
-            journal(f"Remplissage : {mots_dits} mots écrits pour {demandes:.0f} visés (réglage {taux:.0%}).")
+        if script_mots_vises[0] >= 100 and mots_dits >= 50 and script_modele[0]:
+            # Régulation par modèle : on a demandé vise / réglage mots et obtenu mots_dits ; si le modèle écrit court,
+            # son réglage baisse (on lui demandera plus la prochaine fois), s'il déborde, il remonte (au-delà de 1).
+            demandes, modele_ecrit = script_mots_vises[0], script_modele[0]
+            taux = _borner_remplissage(remplissage_du_modele(effectifs, modele_ecrit) * mots_dits / demandes)
+            mesures = memoire.get("remplissage_modeles")
+            mesures = mesures if isinstance(mesures, dict) else {}
+            ancien_taux = mesures.get(modele_ecrit)
+            mesures[modele_ecrit] = round(taux if not isinstance(ancien_taux, (int, float)) else (ancien_taux + taux) / 2, 3)
+            connus = set(effectifs.get("modeles_texte") or []) | set(effectifs.get("modeles_rapides") or []) | {modele_ecrit}
+            memoire["remplissage_modeles"] = {m: v for m, v in mesures.items() if m in connus}
+            journal(f"Remplissage de {modele_ecrit} : {mots_dits} mots écrits pour {demandes:.0f} visés "
+                    f"(réglage {mesures[modele_ecrit]:.0%}).")
         sauver_memoire(chemin_memoire, memoire)
         return 0
 

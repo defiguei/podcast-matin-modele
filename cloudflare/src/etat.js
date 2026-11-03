@@ -21,7 +21,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerChapitres, rangerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-11-01.1";
+export const VERSION = "2026-11-03.1";
 const MAX_REFAITS = 6;
 const MAX_RECHERCHES = 15;
 const MAX_EPISODES = 60;      // épisodes récents, dans l'état ; les plus anciens vont dans l'archive de leur mois
@@ -30,11 +30,8 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
-  "Hors ligne : l'application s'ouvre sans réseau (dernières données gardées) et garde les épisodes que tu écoutes ; la place réservée à l'audio se règle dans Réglages › Application.",
-  "Épisodes : la liste sous le calendrier met le dernier épisode en haut.",
-  "Épisode : Sources et Texte de l'épisode sont repliés à l'ouverture ; les sources se présentent comme celles des rubriques (nom en orange, adresse en gris).",
-  "Rubrique : « Ce qu'elle a raconté » devient un onglet ; « Faire un résumé » ouvre une recherche toute réglée (podcast ou écrit) sur l'historique de la rubrique, nouvelle source « Historique d'une rubrique ».",
-  "Recherches en podcast : chapitres par sujet, cliquables comme ceux de l'épisode du matin.",
+  "Épisodes : quand Gemini est surchargé (erreur du serveur, pas de réponse), les modèles principaux sont retentés après une pause avant de passer aux modèles légers, qui écrivent plus court. Un refus lié à ton compte (quota) ne fait rien retenter.",
+  "Durée : la longueur demandée s'ajuste à chaque modèle, d'après ce qu'il a réellement écrit les fois précédentes (plus un réglage unique pour tous).",
 ];
 
 // « 2026-10 » décalé de n mois.

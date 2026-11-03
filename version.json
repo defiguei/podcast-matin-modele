@@ -1,13 +1,10 @@
 {
-  "version": "2026-11-01.1",
-  "date": "2026-11-01",
-  "titre": "Application hors ligne",
+  "version": "2026-11-03.1",
+  "date": "2026-11-03",
+  "titre": "Épisodes à la bonne durée",
   "nouveautes": [
-    "Hors ligne : l'application s'ouvre sans réseau (dernières données gardées) et garde les épisodes que tu écoutes ; la place réservée à l'audio se règle dans Réglages › Application.",
-    "Épisodes : la liste sous le calendrier met le dernier épisode en haut.",
-    "Épisode : Sources et Texte de l'épisode sont repliés à l'ouverture ; les sources se présentent comme celles des rubriques (nom en orange, adresse en gris).",
-    "Rubrique : « Ce qu'elle a raconté » devient un onglet ; « Faire un résumé » ouvre une recherche toute réglée (podcast ou écrit) sur l'historique de la rubrique, nouvelle source « Historique d'une rubrique ».",
-    "Recherches en podcast : chapitres par sujet, cliquables comme ceux de l'épisode du matin."
+    "Épisodes : quand Gemini est surchargé (erreur du serveur, pas de réponse), les modèles principaux sont retentés après une pause avant de passer aux modèles légers, qui écrivent plus court. Un refus lié à ton compte (quota) ne fait rien retenter.",
+    "Durée : la longueur demandée s'ajuste à chaque modèle, d'après ce qu'il a réellement écrit les fois précédentes (plus un réglage unique pour tous)."
   ],
   "supprimes": [
     ".github/workflows/retours.yml",

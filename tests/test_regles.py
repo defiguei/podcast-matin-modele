@@ -1028,6 +1028,63 @@ except podcast.ReponseIllisible as erreur:
     verifier("deux réponses illisibles (gemini-3.6-flash" in str(erreur) and len(essais) == 2, f"deux échecs : message clair ({erreur})")
 podcast.requests.post = ancien
 
+# Surcharge du serveur (503) : les modèles principaux sont retentés avant les modèles légers.
+principaux, legers = ["gemini-3.8-flash", "gemini-3.6-flash"], ["gemini-3.5-flash-lite"]
+reponse_ok = Reponse(200, {"status": "completed", "steps": [{"type": "model_output", "content": [{"type": "text", "text": '{"ok": true}'}]}]})
+essais.clear()
+systemes = []
+
+
+def post_503_puis_bon(url, json=None, **kw):
+    essais.append(json["model"])
+    systemes.append(json["system_instruction"])
+    return Reponse(503, {"error": {"message": "overloaded"}}) if len(essais) <= 4 else reponse_ok
+
+
+podcast.requests.post = post_503_puis_bon
+podcast.ECHEANCE = None
+resultat, modele = podcast.demander_json_par_niveaux("base", "x", {"type": "object"}, principaux, legers, "cle",
+                                                     adapter=lambda m, corps: {**corps, "system_instruction": "pour " + m})
+verifier(modele == "gemini-3.8-flash" and not any("lite" in m for m in essais) and len(essais) == 5,
+         f"serveur surchargé : les modèles principaux sont retentés après une pause, pas les légers ({essais})")
+verifier(systemes[-1] == "pour gemini-3.8-flash" and systemes[1] == "pour gemini-3.8-flash" and systemes[2] == "pour gemini-3.6-flash",
+         f"la requête est adaptée au modèle interrogé : {systemes}")
+
+# Refus lié au compte (quota du jour) : inutile de retenter, on passe aux modèles légers.
+essais.clear()
+podcast.requests.post = lambda url, json=None, **kw: (essais.append(json["model"]) or (
+    Reponse(429, {"error": {"message": "Quota exceeded: GenerateRequestsPerDay"}}) if "lite" not in json["model"] else reponse_ok))
+resultat, modele = podcast.demander_json_par_niveaux("base", "x", {"type": "object"}, principaux, legers, "cle")
+verifier(essais == ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"] and modele == "gemini-3.5-flash-lite",
+         f"quota du compte épuisé : chaque principal une seule fois, puis le modèle léger ({essais})")
+
+# Tous les principaux restent surchargés : le modèle léger prend le relais, après plusieurs tours.
+essais.clear()
+podcast.requests.post = lambda url, json=None, **kw: (essais.append(json["model"]) or (
+    Reponse(503, {"error": {"message": "overloaded"}}) if "lite" not in json["model"] else reponse_ok))
+resultat, modele = podcast.demander_json_par_niveaux("base", "x", {"type": "object"}, principaux, legers, "cle")
+verifier(modele == "gemini-3.5-flash-lite" and sum(m == "gemini-3.8-flash" for m in essais) == 8 and essais[-1] == "gemini-3.5-flash-lite",
+         f"principaux toujours surchargés : 4 tours avant le modèle léger ({len(essais)} appels)")
+
+# Avec une échéance, du temps reste pour les modèles légers.
+essais.clear()
+podcast.ECHEANCE = podcast.time.monotonic() + 600
+podcast.requests.post = lambda url, json=None, **kw: (essais.append(json["model"]) or (
+    Reponse(503, {"error": {"message": "overloaded"}}) if "lite" not in json["model"] else reponse_ok))
+podcast.demander_json_par_niveaux("base", "x", {"type": "object"}, principaux, legers, "cle")
+verifier(abs(podcast.ECHEANCE - podcast.time.monotonic() - 600) < 5, "la réserve de temps est rendue après l'appel")
+podcast.ECHEANCE = None
+podcast.requests.post = ancien
+
+# Longueur par modèle : chaque modèle est réglé sur ce qu'il écrit vraiment.
+e_long = dict(e, remplissages={"gemini-3.8-flash": 1.0, "gemini-3.5-flash-lite": 0.4}, modeles_texte=["gemini-3.8-flash"])
+mots_de = lambda consigne: int(re.search(r"Longueur : entre (\d+) et", consigne).group(1))
+mots_1 = mots_de(podcast.consigne_systeme(e_long, modele="gemini-3.8-flash"))
+mots_2 = mots_de(podcast.consigne_systeme(e_long, modele="gemini-3.5-flash-lite"))
+mots_3 = mots_de(podcast.consigne_systeme(e_long, modele="inconnu"))
+verifier(mots_2 == round(mots_1 / 0.4) and mots_3 == mots_1 and mots_de(podcast.consigne_systeme(e_long)) == mots_1,
+         f"le modèle léger, qui écrit court, reçoit une demande plus longue ({mots_1} → {mots_2} mots)")
+
 print("\n10. Découverte des modèles")
 classes = podcast.classer_modeles(["gemini-2.5-flash", "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash",
                                    "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.1-flash-lite-preview", "gemini-flash-latest",

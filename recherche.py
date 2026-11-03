@@ -94,8 +94,8 @@ def valider_lien(lien: str, autorises: set[str]) -> str:
 
 def trouver_idees(collecte: moteur.Collecte, effectifs: dict, cle_gemini: str, exclues: list[str], maximum: int = 5) -> dict:
     systeme = consigne_idees(effectifs["ville_habituelle"], exclues, effectifs.get("tutoiement", True), maximum)
-    modeles = list(dict.fromkeys(effectifs["modeles_texte"] + effectifs["modeles_rapides"]))
-    brut, modele = p.demander_json(systeme, collecte.texte, schema_idees(maximum), modeles, cle_gemini, delai=150, tours=2)
+    brut, modele = p.demander_json_par_niveaux(systeme, collecte.texte, schema_idees(maximum), effectifs["modeles_texte"],
+                                               effectifs["modeles_rapides"], cle_gemini, delai=150, tours=3)
     autorises = liens_autorises(collecte)
     idees = []
     for idee in brut.get("idees") or []:
@@ -131,9 +131,9 @@ Longueur : environ {mots} mots. Remplis « titre » (court), « sujets » (les i
         if collecte.meteo:
             matiere.append(f"Météo : {Sources.meteo_en_mots(collecte.meteo)}")
         matiere.append(json.dumps(resultat, ensure_ascii=False))
-    modeles = list(dict.fromkeys(effectifs["modeles_texte"] + effectifs["modeles_rapides"]))
-    brut, _ = p.demander_json(systeme, f"Nous sommes le {p.date_longue(maintenant.date())}.\n\n" + "\n\n".join(matiere),
-                              p.schema_script(noms), modeles, cle_gemini, delai=150, tours=2)
+    brut, _ = p.demander_json_par_niveaux(systeme, f"Nous sommes le {p.date_longue(maintenant.date())}.\n\n" + "\n\n".join(matiere),
+                                          p.schema_script(noms), effectifs["modeles_texte"], effectifs["modeles_rapides"],
+                                          cle_gemini, delai=150, tours=3)
     script = p.nettoyer_script(brut, noms)
     minutage: list[float] = []
     pcm, taux = p.synthetiser(script, effectifs, cle_gemini, minutage)
@@ -174,8 +174,8 @@ def point_podcast(regle: dict, collecte: moteur.Collecte, effectifs: dict, cle_g
     systeme = consigne_point(titre, minutes, a, b, mots, effectifs.get("tutoiement", True))
     entree = (f"Nous sommes le {p.date_longue(maintenant.date())}, il est {maintenant:%H:%M}.\n"
               f"Demande de l'auditeur : {regle.get('consigne', '')}\n\n{collecte.texte}")
-    modeles = list(dict.fromkeys(effectifs["modeles_texte"] + effectifs["modeles_rapides"]))
-    brut, _ = p.demander_json(systeme, entree, schema_point(noms), modeles, cle_gemini, delai=150, tours=2)
+    brut, _ = p.demander_json_par_niveaux(systeme, entree, schema_point(noms), effectifs["modeles_texte"],
+                                          effectifs["modeles_rapides"], cle_gemini, delai=150, tours=3)
     # Un chapitre par sujet, comme dans l'épisode du matin : l'application les liste et mène au bon moment.
     sujets = p.nettoyer_liste(brut.get("sujets"), 12)
     cles = [str(i) for i in range(1, len(sujets) + 1)]
