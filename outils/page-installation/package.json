@@ -1,0 +1,15 @@
+{
+  "name": "page-installation-outils",
+  "private": true,
+  "description": "Fabrique docs/installer/outils.js (chiffrement des secrets GitHub, QR code) : npm ci && npm run fabriquer",
+  "type": "module",
+  "scripts": {
+    "fabriquer": "esbuild entree.mjs --bundle --format=esm --minify --legal-comments=inline --banner:js=\"// Fabriqué par outils/page-installation (npm run fabriquer) : tweetnacl (Unlicense), blakejs (MIT), qrcode-generator (MIT, Kazuhiko Arase). Ne pas modifier à la main.\" --outfile=../../docs/installer/outils.js"
+  },
+  "devDependencies": {
+    "blakejs": "1.2.1",
+    "esbuild": "0.25.10",
+    "qrcode-generator": "1.4.4",
+    "tweetnacl": "1.0.3"
+  }
+}

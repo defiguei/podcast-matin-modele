@@ -30,6 +30,11 @@ function versCerveau(env, chemin, requete) {
   }));
 }
 
+// Page d'installation (docs/installer, servie par GitHub Pages) : elle demande le premier
+// code de connexion au bot, avec le secret partagé qu'elle tire du jeton GitHub du bot.
+const CORS_INSTALLATION = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "X-Podcast-Secret", "Access-Control-Max-Age": "86400" };
+
 export default {
   async fetch(requete, env, ctx) {
     const url = new URL(requete.url);
@@ -104,7 +109,15 @@ export default {
 
     // GitHub (fabrication des épisodes) : lecture des réglages, événements.
     if (url.pathname.startsWith("/api/")) {
-      if (!(await secretValide(env, requete.headers.get("X-Podcast-Secret")))) return new Response("interdit", { status: 403 });
+      // Seul le code de connexion se demande aussi depuis un navigateur : la page d'installation
+      // (GitHub Pages) le montre en fin d'installation. Le secret partagé reste exigé.
+      const depuisLaPage = url.pathname === "/api/code-connexion";
+      if (depuisLaPage && requete.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_INSTALLATION });
+      if (!(await secretValide(env, requete.headers.get("X-Podcast-Secret")))) return new Response("interdit", { status: 403, headers: depuisLaPage ? CORS_INSTALLATION : {} });
+      if (depuisLaPage) {
+        const r = await versCerveau(env, url.pathname + url.search, requete);
+        return new Response(r.body, { status: r.status, headers: { "Content-Type": "application/json", ...CORS_INSTALLATION } });
+      }
       // Dépôt d'un fichier (MP3, pochette, extrait de voix) : rangé directement dans l'objet de son mois.
       if (url.pathname === "/api/fichier") {
         const nom = url.searchParams.get("nom") || "";

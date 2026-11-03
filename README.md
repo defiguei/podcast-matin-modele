@@ -8,7 +8,7 @@ Chaque matin, un épisode audio rien que pour toi : deux animateurs te parlent d
 - **Suisse, France ou Belgique** : le pays règle l'heure, les jours fériés, la devise et les médias.
 - **Mises à jour en un bouton**, sans toucher à tes réglages.
 
-> **Installer :** [docs/INSTALLATION.md](docs/INSTALLATION.md) · **Mettre à jour une ancienne installation :** [docs/MISE-A-JOUR.md](docs/MISE-A-JOUR.md)
+> **Installer (une dizaine de minutes) :** [la page d'installation](https://defiguei.github.io/podcast-matin-modele/installer/) ou, à la main, [docs/INSTALLATION.md](docs/INSTALLATION.md) · **Mettre à jour une ancienne installation :** [docs/MISE-A-JOUR.md](docs/MISE-A-JOUR.md)
 
 ---
 
@@ -118,7 +118,8 @@ Les faits précis (prix, horaires, dates) viennent des sources. Quand une inform
 | « Recherche web : non configurée » | Ajoute la clé Tavily dans Réglages › Sources › Services (Recherche web). |
 | Le bot ne répond plus | Ouvre `https://podcast.TON-SOUS-DOMAINE.workers.dev/installer` dans ton navigateur. |
 | Nouvel appareil, sans application ouverte ailleurs | Onglet *Actions* › *Code de connexion* › *Run workflow* : le code est dans le résumé de l'exécution. |
-| *Déployer le bot* en orange | Il manque `CLOUDFLARE_API_TOKEN` ou `CLOUDFLARE_ACCOUNT_ID` (secrets GitHub). |
+| *Déployer le bot* en orange | Il manque le secret GitHub `CLOUDFLARE_API_TOKEN`. |
+| *Déployer le bot* en rouge | Lis le message en haut de l'exécution : jeton refusé, plusieurs comptes Cloudflare, sous-domaine… ([docs/INSTALLATION.md](docs/INSTALLATION.md), « En cas de souci »). |
 | La mise à jour n'a pas touché aux fichiers d'automatisation | Le jeton GitHub n'a pas la permission *Workflows* : voir [docs/MISE-A-JOUR.md](docs/MISE-A-JOUR.md). |
 
 Le détail d'une exécution : onglet *Actions* de ton dépôt → l'exécution → ses étapes.
@@ -137,6 +138,8 @@ Le détail d'une exécution : onglet *Actions* de ton dépôt → l'exécution �
 | `horaire.py` | Filet de sécurité des déclenchements GitHub |
 | `mise_a_jour.py`, `version.json` | Mise à jour depuis le modèle |
 | `code_connexion.py` | Code de connexion à l'application, donné par GitHub |
+| `cloudflare/compte.mjs` | Au déploiement : compte Cloudflare et adresse du bot trouvés (sous-domaine `workers.dev` créé au besoin) |
+| `docs/installer/` | La page d'installation (GitHub Pages du modèle) ; `outils.js` vient de `outils/page-installation` (`npm ci && npm run fabriquer`) |
 | `reglages.toml` | Partie technique : modèles Gemini, débit du MP3… (l'application a le dernier mot) |
 | `memoire.json`, `preferences.json` | Débit réel de la voix, dernier épisode ; sauvegarde quotidienne des réglages |
 

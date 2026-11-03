@@ -1815,6 +1815,159 @@ await scenario("Déploiement : secrets transmis au bot", async () => {
   verifier(avertissementManquants(["GITHUB_TOKEN"]) === "" && avertissementManquants(["GEMINI_API_KEY"]).includes("BOT_GITHUB_TOKEN"), "le jeton GitHub est indispensable");
 });
 
+await scenario("Déploiement : compte Cloudflare et adresse du bot trouvés seuls", async () => {
+  const { trouver, candidatsSousDomaine, adresseDesFichiers, nomDuWorker, choisirCompte } = await import("../compte.mjs");
+  const { createServer } = await import("node:http");
+  const marque = "TON-" + "SOUS-DOMAINE";
+  verifier(nomDuWorker('name = "podcast"\nmain = "src/index.js"') === "podcast", "nom du Worker lu dans wrangler.toml");
+  verifier(adresseDesFichiers(`ADRESSE = "https://podcast.${marque}.workers.dev"`) === "" && adresseDesFichiers('ADRESSE = "https://podcast.zoe.workers.dev/"') === "https://podcast.zoe.workers.dev",
+    "adresse du dépôt : ignorée tant qu'elle n'est pas personnalisée");
+  const noms = candidatsSousDomaine("Zoé_Martin--42", () => "ab12");
+  verifier(noms[0] === "zo-martin-42" && noms.includes("zo-martin-42-podcast") && noms.every((n) => /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(n)), "sous-domaine : nom GitHub nettoyé d'abord", noms);
+  verifier(choisirCompte([{ id: "a", name: "A" }, { id: "b", name: "B" }]).erreur?.includes("CLOUDFLARE_ACCOUNT_ID"), "plusieurs comptes : on demande lequel");
+
+  // Faux Cloudflare : un compte, pas encore de sous-domaine, « zoe » déjà pris par quelqu'un d'autre.
+  const vus = [];
+  let sousDomaineDuCompte = null;
+  const serveur = createServer(async (req, res) => {
+    let corps = "";
+    for await (const morceau of req) corps += morceau;
+    vus.push({ methode: req.method, url: req.url, auth: req.headers.authorization, corps });
+    const repondre = (statut, json) => { res.writeHead(statut, { "Content-Type": "application/json" }); res.end(JSON.stringify(json)); };
+    if (req.headers.authorization !== "Bearer cf-bon") return repondre(403, { success: false, errors: [{ code: 10000, message: "Authentication error" }] });
+    if (req.url.startsWith("/accounts?")) return repondre(200, { success: true, result: [{ id: "c".repeat(32), name: "Compte de Zoé" }] });
+    if (req.url === `/accounts/${"c".repeat(32)}/workers/subdomain`) {
+      if (req.method === "GET") return sousDomaineDuCompte ? repondre(200, { success: true, result: { subdomain: sousDomaineDuCompte } }) : repondre(404, { success: false, errors: [{ code: 10007, message: "subdomain not found" }] });
+      const voulu = JSON.parse(corps).subdomain;
+      if (voulu === "zoe") return repondre(409, { success: false, errors: [{ code: 10032, message: "subdomain unavailable" }] });
+      sousDomaineDuCompte = voulu;
+      return repondre(200, { success: true, result: { subdomain: voulu } });
+    }
+    repondre(404, { success: false, errors: [{ message: "introuvable" }] });
+  });
+  await new Promise((ok) => serveur.listen(0, "127.0.0.1", ok));
+  const avant = process.env.CLOUDFLARE_API;
+  process.env.CLOUDFLARE_API = `http://127.0.0.1:${serveur.address().port}`;
+  const toml = `name = "podcast"\n[vars]\nADRESSE = "https://podcast.${marque}.workers.dev"\n`;
+  try {
+    let r = await trouver({ CLOUDFLARE_API_TOKEN: "cf-bon", GITHUB_REPOSITORY_OWNER: "Zoe" }, toml);
+    verifier(r.compte === "c".repeat(32) && r.adresse === "https://podcast.zoe-podcast.workers.dev" && r.notes.some((n) => n.includes("créé")),
+      "première installation : compte trouvé, sous-domaine créé (le nom pris est évité), adresse du bot", r);
+    r = await trouver({ CLOUDFLARE_API_TOKEN: "cf-bon", GITHUB_REPOSITORY_OWNER: "Zoe" }, toml);
+    verifier(r.adresse === "https://podcast.zoe-podcast.workers.dev" && !r.notes.some((n) => n.includes("créé")), "déploiements suivants : même adresse, rien de créé", r);
+    r = await trouver({ CLOUDFLARE_API_TOKEN: "cf-bon", CLOUDFLARE_ACCOUNT_ID: "d".repeat(32), ADRESSE_VARIABLE: "https://bot.exemple.ch/" }, toml);
+    verifier(r.compte === "d".repeat(32) && r.adresse === "https://bot.exemple.ch" && !vus.some((v) => v.url.includes("d".repeat(32))),
+      "compte et adresse imposés (secret, variable BOT_URL) : rien demandé à Cloudflare", r);
+    r = await trouver({ CLOUDFLARE_API_TOKEN: "cf-mauvais" }, toml);
+    verifier(r.erreur?.includes("CLOUDFLARE_API_TOKEN"), "jeton refusé : message clair", r);
+    r = await trouver({ CLOUDFLARE_API_TOKEN: "cf-mauvais", CLOUDFLARE_ACCOUNT_ID: "e".repeat(32) }, 'name = "podcast"\nADRESSE = "https://podcast.zoe.workers.dev"\n');
+    verifier(r.adresse === "https://podcast.zoe.workers.dev" && r.notes.some((n) => n.startsWith("::warning::")), "sous-domaine illisible : l'adresse déjà inscrite dans le dépôt sert", r);
+  } finally {
+    if (avant === undefined) delete process.env.CLOUDFLARE_API; else process.env.CLOUDFLARE_API = avant;
+    serveur.close();
+  }
+});
+
+await scenario("Page d'installation : jetons, secrets chiffrés, déploiement suivi, code de connexion", async () => {
+  const page = await import("../../docs/installer/installer.js");
+  const { ouvrirSceau, pairePourTests, qrSvg } = await import("../../docs/installer/outils.js");
+  const marque = "TON-" + "SOUS-DOMAINE";
+  // Liens pré-remplis.
+  const copie = new URL(page.lienCopie(page.modeleDeLaPage({ hostname: "zoe.github.io", pathname: "/mon-modele/installer/" })));
+  verifier(copie.searchParams.get("template_owner") === "zoe" && copie.searchParams.get("template_name") === "mon-modele" && copie.searchParams.get("visibility") === "private"
+    && copie.searchParams.get("name") === "podcast-matin", "copie : modèle de la page, dépôt privé « podcast-matin »", copie.href);
+  verifier(page.modeleDeLaPage({ hostname: "127.0.0.1", pathname: "/" }).nom === "podcast-matin-modele", "hors de GitHub Pages : le modèle public");
+  const jetonGh = new URL(page.lienJetonGitHub());
+  verifier(["actions", "contents", "workflows", "secrets"].every((p) => jetonGh.searchParams.get(p) === "write") && jetonGh.searchParams.get("expires_in") === "none",
+    "jeton GitHub : Actions, Contents, Workflows et Secrets déjà cochés", jetonGh.href);
+  const jetonCf = new URL(page.lienJetonCloudflare());
+  verifier(JSON.parse(jetonCf.searchParams.get("permissionGroupKeys")).some((p) => p.key === "workers_scripts" && p.type === "edit"), "jeton Cloudflare : Workers Scripts en écriture", jetonCf.href);
+  verifier(page.adresseDuToml(`ADRESSE = "https://podcast.${marque}.workers.dev"`) === "" && page.adresseDuToml('ADRESSE = "https://podcast.zoe.workers.dev/"') === "https://podcast.zoe.workers.dev",
+    "adresse lue dans wrangler.toml seulement une fois personnalisée");
+  verifier(await page.secretPartage("gh-test") === SECRET, "secret partagé calculé comme GitHub et le bot");
+  verifier(qrSvg("https://podcast.zoe.workers.dev/app#code=123456").startsWith("<svg"), "QR code en SVG");
+
+  // Faux GitHub ; « https://bot.essai » mène au bot local (vrai code de connexion, en-têtes CORS compris).
+  const paire = pairePourTests();
+  const vu = { secrets: {}, lance: 0, tours: 0, cors: [] };
+  const reglage = { prive: true, issue: "success", rate: "", sansSecrets: false };
+  const json = (statut, corps) => new Response(corps === undefined ? null : JSON.stringify(corps), { status: statut, headers: { "Content-Type": "application/json" } });
+  const fauxFetch = async (url, options = {}) => {
+    const u = new URL(url);
+    if (u.hostname === "bot.essai") {
+      const r = await fetch(`${BOT}${u.pathname}${u.search}`, options);
+      vu.cors.push(r.headers.get("Access-Control-Allow-Origin"));
+      return r;
+    }
+    const jeton = (options.headers?.Authorization || "").replace("Bearer ", "");
+    if (jeton !== "gh-test") return json(401, { message: "Bad credentials" });
+    const chemin = u.pathname, methode = options.method || "GET";
+    if (chemin === "/user") return json(200, { login: "zoe" });
+    if (chemin === "/repos/zoe/podcast-matin") return json(200, { private: reglage.prive });
+    if (chemin.endsWith("/contents/.github/workflows/deployer-bot.yml")) return json(200, {});
+    if (chemin.endsWith("/actions/workflows")) return json(200, { workflows: [] });
+    if (chemin.endsWith("/actions/secrets/public-key")) return reglage.sansSecrets ? json(403, { message: "Resource not accessible" }) : json(200, { key_id: "k1", key: paire.publique });
+    const secret = /\/actions\/secrets\/([A-Z_]+)$/.exec(chemin);
+    if (secret && methode === "PUT") {
+      const corps = JSON.parse(options.body);
+      vu.secrets[secret[1]] = corps.key_id === "k1" ? ouvrirSceau(corps.encrypted_value, paire.publique, paire.secrete) : null;
+      return json(201, {});
+    }
+    if (chemin.endsWith("/deployer-bot.yml/dispatches") && methode === "POST") { vu.lance++; vu.depart = Date.now(); return json(204); }
+    if (chemin.endsWith("/deployer-bot.yml/runs")) {
+      return json(200, { workflow_runs: vu.lance ? [{ id: 7, created_at: new Date(vu.depart).toISOString(), html_url: "https://github.com/zoe/podcast-matin/actions/runs/7" }] : [] });
+    }
+    const fini = vu.tours >= 2;
+    if (chemin.endsWith("/actions/runs/7/jobs")) {
+      vu.tours++;
+      const issue = (nom) => !fini ? null : nom === reglage.rate ? "failure" : reglage.rate ? "skipped" : "success";
+      return json(200, { jobs: [{ steps: ["Set up job", "Trouver ton compte Cloudflare et l'adresse du bot", "Mettre en ligne", "Inscrire l'adresse du bot dans ton dépôt"]
+        .map((name) => ({ name, status: fini ? "completed" : "in_progress", conclusion: issue(name) })) }] });
+    }
+    if (chemin.endsWith("/actions/runs/7")) return json(200, { status: fini ? "completed" : "in_progress", conclusion: fini ? reglage.issue : null });
+    if (chemin.endsWith("/contents/cloudflare/wrangler.toml")) return json(200, { content: Buffer.from('name = "podcast"\nADRESSE = "https://bot.essai"\n').toString("base64") });
+    return json(404, { message: "Not Found" });
+  };
+  const attendre = async () => {};
+
+  // Vérification du jeton GitHub.
+  let refus = await page.verifierGitHub({ jeton: "gh-faux", fetch: fauxFetch }).catch((e) => e);
+  verifier(refus instanceof page.ErreurInstallation && refus.message.includes("refuse"), "jeton GitHub refusé : message clair", refus?.message);
+  reglage.prive = false;
+  refus = await page.verifierGitHub({ jeton: "gh-test", fetch: fauxFetch }).catch((e) => e);
+  verifier(refus?.message?.includes("privé"), "dépôt public : on demande de le passer en privé", refus?.message);
+  reglage.prive = true; reglage.sansSecrets = true;
+  refus = await page.verifierGitHub({ jeton: "gh-test", fetch: fauxFetch }).catch((e) => e);
+  verifier(refus?.message?.includes("Secrets"), "permission Secrets manquante : dite", refus?.message);
+  reglage.sansSecrets = false;
+  const github = await page.verifierGitHub({ jeton: " gh-test \n", fetch: fauxFetch });
+  verifier(github.depot === "zoe/podcast-matin" && github.cle.id === "k1", "jeton GitHub vérifié : dépôt et clé des secrets", github);
+  verifier(/espace/.test(String(await Promise.resolve().then(() => page.verifierCloudflare("abc def")).catch((e) => e.message))), "jeton Cloudflare en deux morceaux : refusé");
+
+  // Installation complète.
+  const etapes = [];
+  const fin = await page.installer({ jetonGithub: "gh-test", jetonCloudflare: page.verifierCloudflare("cf-" + "x".repeat(40)), depot: github.depot, cle: github.cle,
+    fetch: fauxFetch, attendre, surEtape: (cle) => etapes.push(cle) });
+  verifier(vu.secrets.BOT_GITHUB_TOKEN === "gh-test" && vu.secrets.CLOUDFLARE_API_TOKEN === "cf-" + "x".repeat(40), "les deux secrets rangés, chiffrés pour le dépôt", Object.keys(vu.secrets));
+  verifier(vu.lance === 1 && etapes.includes("deploiement") && etapes.at(-1) === "code", "déploiement lancé une fois et suivi jusqu'au bout", etapes);
+  verifier(fin.adresse === "https://bot.essai" && fin.application.endsWith("/app") && vu.cors.every((v) => v === "*"),
+    "adresse du bot lue dans le dépôt, code demandé au bot (CORS autorisé)", { fin, cors: vu.cors });
+  // Un appareil est déjà connecté dans ces tests : pas de nouveau code à la fin de l'installation.
+  verifier(fin.code === null && fin.lien === fin.application, "appareil déjà connecté : pas de code, lien simple", fin);
+  const preflight = await fetch(`${BOT}/api/code-connexion`, { method: "OPTIONS" });
+  verifier(preflight.status === 204 && preflight.headers.get("Access-Control-Allow-Headers") === "X-Podcast-Secret", "pré-vérification du navigateur acceptée");
+  const sansSecret = await fetch(`${BOT}/api/code-connexion`);
+  verifier(sansSecret.status === 403 && sansSecret.headers.get("Access-Control-Allow-Origin") === "*", "sans secret : refusé, lisible par la page");
+  verifier(!(await fetch(`${BOT}/api/config`, { headers: entetesApi })).headers.get("Access-Control-Allow-Origin"), "le reste de l'API reste fermé aux pages");
+
+  // Déploiement raté : l'étape et le conseil, avec le lien de l'exécution.
+  Object.assign(vu, { lance: 0, tours: 0 });
+  Object.assign(reglage, { issue: "failure", rate: "Trouver ton compte Cloudflare et l'adresse du bot" });
+  const rate = await page.installer({ jetonGithub: "gh-test", jetonCloudflare: "cf-" + "x".repeat(40), depot: github.depot, cle: github.cle, fetch: fauxFetch, attendre }).catch((e) => e);
+  verifier(rate instanceof page.ErreurInstallation && rate.message.includes("Trouver ton compte") && rate.message.includes("étape 3") && rate.lien.endsWith("/runs/7"),
+    "déploiement raté : étape, conseil et lien vers l'exécution", rate?.message);
+});
+
 await scenario("Ancienne conversation oubliée, mini-podcast d'idées", async () => {
   // Un état d'avant : tableau épinglé, assistant, sondages, extraits chez la messagerie, appareils sans jeton…
   const e = (await etat()).etat;

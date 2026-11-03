@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://api.github.com https://*.workers.dev; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#12151C">
+<title>Installer Podcast Matin</title>
+<meta name="description" content="Installe ton podcast du matin en une dizaine de minutes, gratuitement.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --fond: #12151C; --carte: #1C212B; --carte-2: #262C38; --trait: #2C3340; --trait-2: #3A4250;
+  --texte: #F2EEE6; --doux: #9AA3B2; --doux-2: #C3C9D4; --eteint: #6B7383;
+  --aube: #F2A65A; --aube-clair: #F7C48E; --sur-aube: #1A1206; --aube-fond: #2A2620;
+  --vert: #8FD3A8; --vert-fond: #1E2A24; --rouge: #F28B82; --rouge-fond: #2E1F21;
+  --titre: "Bricolage Grotesque", system-ui, sans-serif; --corps: "Figtree", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--fond); color: var(--texte); font-family: var(--corps); font-size: 16px; line-height: 1.5; }
+body { padding: max(28px, env(safe-area-inset-top)) 16px max(40px, env(safe-area-inset-bottom)); }
+main { max-width: 580px; margin: 0 auto; }
+a { color: var(--aube); }
+:focus-visible { outline: 2px solid var(--aube); outline-offset: 2px; }
+h1, h2 { font-family: var(--titre); font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+h1 { font-size: clamp(30px, 8vw, 40px); line-height: 1.05; }
+h2 { font-size: 19px; line-height: 1.2; }
+p { margin: 0 0 12px; }
+.tete { display: flex; flex-direction: column; gap: 14px; margin-bottom: 28px; }
+.logo { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; background: var(--aube-fond); color: var(--aube); }
+.chapeau { color: var(--doux-2); font-size: 17px; margin: 0; }
+.besoins { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 0; padding: 0; list-style: none; }
+.besoins li { background: var(--carte); border: 1px solid var(--trait); border-radius: 999px; padding: 5px 12px; font-size: 14px; color: var(--doux-2); }
+
+.etape { background: var(--carte); border: 1px solid var(--trait); border-radius: 18px; margin-bottom: 12px; scroll-margin-top: 16px; }
+.etape > header { display: flex; align-items: center; gap: 14px; padding: 16px 18px; }
+.numero { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 15px;
+  background: var(--carte-2); color: var(--doux); border: 1px solid var(--trait-2); }
+.etape.ouverte .numero { background: var(--aube); color: var(--sur-aube); border-color: var(--aube); }
+.etape.faite .numero { background: var(--vert-fond); color: var(--vert); border-color: transparent; font-size: 0; }
+.etape.faite .numero::after { content: "✓"; font-size: 16px; }
+.etape:not(.ouverte) h2 { color: var(--doux-2); font-weight: 500; }
+.resume { margin-left: auto; color: var(--vert); font-size: 14px; text-align: right; overflow-wrap: anywhere; }
+.etape:not(.faite) .resume { display: none; }
+.corps { padding: 0 18px 20px 64px; }
+@media (max-width: 420px) { .corps { padding-left: 18px; } }
+.corps ol { margin: 0 0 14px; padding-left: 20px; }
+.corps li { margin-bottom: 6px; }
+.note { color: var(--doux); font-size: 14px; }
+b { color: var(--texte); font-weight: 600; }
+
+.bouton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 12px 20px; border-radius: 14px;
+  font: 600 16px var(--corps); text-decoration: none; cursor: pointer; border: 1px solid var(--trait-2); background: var(--carte-2); color: var(--texte); }
+.bouton.plein { background: var(--aube); border-color: var(--aube); color: var(--sur-aube); }
+.bouton:disabled { opacity: .55; cursor: progress; }
+.bouton:hover:not(:disabled) { filter: brightness(1.08); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 4px; }
+.actions .bouton { flex: 1 1 200px; }
+
+label { display: block; font-weight: 600; font-size: 14px; color: var(--doux-2); margin: 14px 0 6px; }
+input { width: 100%; min-height: 48px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--trait-2); background: var(--fond);
+  color: var(--texte); font: 15px ui-monospace, SFMono-Regular, Menlo, monospace; }
+input:focus { border-color: var(--aube); outline: none; }
+details { margin-top: 10px; color: var(--doux); font-size: 14px; }
+summary { cursor: pointer; }
+
+.erreur { background: var(--rouge-fond); border: 1px solid #5a3236; color: var(--texte); border-radius: 12px; padding: 12px 14px; margin-top: 12px; }
+.erreur p { margin: 0 0 6px; }
+.erreur p:last-child { margin: 0; }
+
+#suivi { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 8px; }
+#suivi li { display: flex; gap: 10px; align-items: baseline; color: var(--doux-2); font-size: 15px; }
+#suivi li::before { flex: none; width: 18px; text-align: center; }
+#suivi li.ok::before { content: "✓"; color: var(--vert); }
+#suivi li.encours::before { content: "●"; color: var(--aube); animation: pouls 1.2s ease-in-out infinite; }
+#suivi li.attente::before { content: "○"; color: var(--eteint); }
+#suivi li.attente { color: var(--eteint); }
+#suivi li.saute::before { content: "–"; color: var(--eteint); }
+#suivi li.saute { color: var(--eteint); }
+#suivi li.rate::before { content: "✕"; color: var(--rouge); }
+@keyframes pouls { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { #suivi li.encours::before { animation: none; } }
+
+#resultat { background: linear-gradient(180deg, var(--aube-fond), var(--carte) 60%); border: 1px solid #4a3a26; border-radius: 22px; padding: 22px 20px; margin-top: 18px; }
+#resultat h2 { font-size: 26px; margin-bottom: 8px; }
+.code-grand { font: 700 clamp(34px, 11vw, 46px) var(--titre); letter-spacing: .08em; color: var(--aube-clair); margin: 4px 0 0; }
+.qr-et-code { display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: center; margin: 16px 0; }
+#qr { width: 168px; background: #fff; border-radius: 14px; padding: 6px; }
+#qr svg { display: block; width: 100%; height: auto; }
+@media (max-width: 480px) { .qr-et-code { grid-template-columns: 1fr; } #qr { width: 190px; } }
+@media (pointer: coarse) and (max-width: 480px) { .sur-ordinateur { display: none; } }
+@media (pointer: fine) { .sur-telephone { display: none; } }
+.systeme { background: var(--carte); border: 1px solid var(--trait); border-radius: 14px; padding: 12px 14px; margin-top: 10px; font-size: 15px; }
+.systeme b { color: var(--aube-clair); }
+.adresse { overflow-wrap: anywhere; }
+
+footer { margin-top: 30px; color: var(--eteint); font-size: 13.5px; }
+footer p { margin-bottom: 8px; }
+footer a { color: var(--doux); }
+</style>
+</head>
+<body>
+<main>
+  <div class="tete">
+    <span class="logo" aria-hidden="true"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16"/><path d="M7 18a5 5 0 0 1 10 0"/><path d="M12 7v3M5.6 10.6l1.8 1.8M18.4 10.6l-1.8 1.8"/></svg></span>
+    <h1>Installe ton podcast du matin</h1>
+    <p class="chapeau">Chaque matin, un épisode audio rien que pour toi. Compte une dizaine de minutes : tu crées deux comptes gratuits, tu colles deux jetons, la page fait le reste.</p>
+    <ul class="besoins" aria-label="Ce qu'il te faut">
+      <li>Un compte GitHub</li><li>Un compte Cloudflare</li><li>Gratuit, sans carte bancaire</li>
+    </ul>
+  </div>
+
+  <section class="etape" data-etape="1">
+    <header><span class="numero">1</span><h2>Ta copie du podcast</h2><span class="resume">créée</span></header>
+    <div class="corps">
+      <ol>
+        <li>Pas encore de compte GitHub ? <a href="https://github.com/signup" target="_blank" rel="noopener">Crée-le</a> (gratuit), puis reviens ici.</li>
+        <li>Touche le bouton : tout est déjà rempli (nom <b>podcast-matin</b>, <b>Private</b>). Touche <b>Create repository</b>.</li>
+      </ol>
+      <div class="actions">
+        <a id="lien-copie" class="bouton plein" target="_blank" rel="noopener" href="#">Créer ma copie sur GitHub ↗</a>
+        <button id="copie-faite" class="bouton" type="button">C'est fait</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="etape" data-etape="2">
+    <header><span class="numero">2</span><h2>Le jeton GitHub de ton bot</h2><span class="resume" id="resume-github"></span></header>
+    <div class="corps" hidden>
+      <p class="note">Ton bot s'en sert pour lancer tes épisodes et installer les mises à jour.</p>
+      <ol>
+        <li>Touche le bouton : le nom et les permissions sont déjà remplis.</li>
+        <li>Dans <b>Repository access</b>, choisis <b>Only select repositories</b> puis <b>podcast-matin</b>.</li>
+        <li>Touche <b>Generate token</b>, puis copie le jeton (il commence par <code>github_pat_</code>).</li>
+      </ol>
+      <div class="actions"><a id="lien-jeton-github" class="bouton" target="_blank" rel="noopener" href="#">Créer le jeton GitHub ↗</a></div>
+      <label for="jeton-github">Colle ton jeton GitHub</label>
+      <input id="jeton-github" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…">
+      <details>
+        <summary>Ta copie porte un autre nom ?</summary>
+        <label for="nom-depot">Nom du dépôt</label>
+        <input id="nom-depot" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" value="podcast-matin">
+      </details>
+      <div class="actions"><button id="verifier-github" class="bouton plein" type="button">Vérifier et continuer</button></div>
+      <div id="erreur-github" class="erreur" role="alert" hidden></div>
+    </div>
+  </section>
+
+  <section class="etape" data-etape="3">
+    <header><span class="numero">3</span><h2>Le jeton Cloudflare</h2><span class="resume" id="resume-cloudflare"></span></header>
+    <div class="corps" hidden>
+      <p class="note">Cloudflare héberge gratuitement ton bot, ton application et tes épisodes.</p>
+      <ol>
+        <li>Pas encore de compte Cloudflare ? <a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener">Crée-le</a> (gratuit, sans carte bancaire). S'il te demande de confirmer ton adresse e-mail, fais-le.</li>
+        <li>Touche le bouton : la liste doit contenir <b>Workers Scripts · Edit</b>.</li>
+        <li>Touche <b>Continue to summary</b>, puis <b>Create Token</b>, et copie le jeton (il n'est montré qu'une fois).</li>
+      </ol>
+      <div class="actions"><a id="lien-jeton-cloudflare" class="bouton" target="_blank" rel="noopener" href="#">Créer le jeton Cloudflare ↗</a></div>
+      <label for="jeton-cloudflare">Colle ton jeton Cloudflare</label>
+      <input id="jeton-cloudflare" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Le jeton copié chez Cloudflare">
+      <details>
+        <summary>La liste ne contient pas « Workers Scripts · Edit » ?</summary>
+        <p>Dans <b>API Tokens</b>, touche <b>Create Token</b>, puis le modèle <b>Edit Cloudflare Workers</b> › <b>Use template</b>. Dans <i>Zone Resources</i>, choisis <i>All zones</i>, puis <b>Continue to summary</b> › <b>Create Token</b>.</p>
+      </details>
+      <div class="actions"><button id="verifier-cloudflare" class="bouton plein" type="button">Continuer</button></div>
+      <div id="erreur-cloudflare" class="erreur" role="alert" hidden></div>
+    </div>
+  </section>
+
+  <section class="etape" data-etape="4">
+    <header><span class="numero">4</span><h2>L'installation</h2></header>
+    <div class="corps" hidden>
+      <p>La page range tes jetons dans ton dépôt, met ton bot en ligne et te donne le code pour ouvrir l'application. Compte trois minutes : garde la page ouverte.</p>
+      <div class="actions"><button id="installer" class="bouton plein" type="button">Installer mon podcast</button></div>
+      <ul id="suivi" aria-live="polite" hidden></ul>
+      <div id="erreur-installation" class="erreur" role="alert" hidden></div>
+    </div>
+  </section>
+
+  <section id="resultat" hidden aria-live="polite">
+    <h2>C'est prêt 🎉</h2>
+    <p>Ton application : <a id="adresse-app" class="adresse" target="_blank" rel="noopener" href="#"></a></p>
+    <div class="qr-et-code">
+      <div id="qr" class="sur-ordinateur" role="img" aria-label="QR code de ton application"></div>
+      <div>
+        <p class="sur-ordinateur note">Scanne ce code avec l'appareil photo de ton téléphone.</p>
+        <div id="bloc-code">
+          <p class="note">Ton code de connexion</p>
+          <p id="code" class="code-grand"></p>
+          <p id="jusqua" class="note"></p>
+        </div>
+        <p id="deja-connecte" class="note" hidden>Un appareil est déjà connecté : pour en ajouter un, touche <b>Afficher un code</b> dans l'application (Réglages › Application).</p>
+      </div>
+    </div>
+    <div class="actions sur-telephone"><a id="ouvrir-app" class="bouton plein" href="#">Ouvrir l'application</a></div>
+    <div class="systeme"><b>iPhone</b> : dans Safari, touche Partager › « Sur l'écran d'accueil », ouvre l'application depuis l'icône, puis entre le code. C'est là que les notifications marchent.</div>
+    <div class="systeme"><b>Android</b> : dans Chrome, le code est déjà rempli ; Chrome propose ensuite d'installer l'application.</div>
+    <p class="note" style="margin-top:14px">Au premier lancement, l'application te guide : ton prénom, ta ville, l'heure de l'épisode, ton agenda et ta clé Gemini (gratuite).</p>
+  </section>
+
+  <footer>
+    <p>Tes jetons ne quittent pas ce navigateur, sauf vers GitHub (chiffrés, pour les secrets de ton dépôt). La page ne garde rien : la recharger efface tout.</p>
+    <p><a id="lien-manuel" href="#">Installer à la main</a> · <a id="lien-source" href="#">Code de cette page</a></p>
+  </footer>
+</main>
+<script type="module" src="installer.js"></script>
+</body>
+</html>

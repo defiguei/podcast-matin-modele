@@ -60,7 +60,7 @@ Le code du modèle est recopié dans ton dépôt, puis *Déployer le bot* démar
 |---|---|
 | *Mettre à jour* en rouge : « le modèle n'est pas accessible » | Le modèle n'est pas encore public : réessaie plus tard. |
 | Message « Fichiers d'automatisation non mis à jour » | Le secret `BOT_GITHUB_TOKEN` manque ou n'a pas la permission *Workflows* : corrige-le (étape 1), puis relance *Mettre à jour* à la main (étape 3). |
-| *Déployer le bot* en orange | Il manque `CLOUDFLARE_API_TOKEN` ou `CLOUDFLARE_ACCOUNT_ID` (voir [INSTALLATION.md](INSTALLATION.md), étape 2). |
+| *Déployer le bot* en orange | Il manque le secret `CLOUDFLARE_API_TOKEN` (voir [INSTALLATION.md](INSTALLATION.md), étape 3). |
 | Pas de code dans le résumé du déploiement | Onglet *Actions* › *Code de connexion* › *Run workflow* : le code est dans le résumé de l'exécution. |
 | Le bot ne semble pas activé | Ouvre `https://podcast.TON-SOUS-DOMAINE.workers.dev/installer` dans ton navigateur. |
 

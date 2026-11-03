@@ -1,10 +1,10 @@
 {
-  "version": "2026-11-03.1",
-  "date": "2026-11-03",
-  "titre": "Épisodes à la bonne durée",
+  "version": "2026-11-04.1",
+  "date": "2026-11-04",
+  "titre": "Installation simplifiée",
   "nouveautes": [
-    "Épisodes : quand Gemini est surchargé (erreur du serveur, pas de réponse), les modèles principaux sont retentés après une pause avant de passer aux modèles légers, qui écrivent plus court. Un refus lié à ton compte (quota) ne fait rien retenter.",
-    "Durée : la longueur demandée s'ajuste à chaque modèle, d'après ce qu'il a réellement écrit les fois précédentes (plus un réglage unique pour tous)."
+    "Installation simplifiée : une page web guide les nouveaux en une dizaine de minutes (deux jetons à coller, le reste se fait seul) et donne le code de connexion avec un QR code.",
+    "Déploiement : le compte Cloudflare et l'adresse du bot sont trouvés tout seuls (plus besoin de l'Account ID ni de la variable BOT_URL). Rien ne change pour ton installation."
   ],
   "supprimes": [
     ".github/workflows/retours.yml",

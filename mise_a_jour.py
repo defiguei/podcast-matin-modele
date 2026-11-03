@@ -11,6 +11,10 @@ Variables : MODELE (ex. « auteur/podcast-matin-modele »), VERSION, ADRESSE
 (adresse du bot), GITHUB_REPOSITORY, GH_TOKEN, et BOT_GITHUB_TOKEN (jeton du
 bot, avec la permission « Workflows » : secret partagé avec le bot, et envoi des
 fichiers d'automatisation).
+
+    python3 mise_a_jour.py --personnaliser   # fin du déploiement : à la première
+        installation, les repères du modèle (dépôt, adresse du bot) sont remplacés
+        dans le dépôt même (variables ADRESSE, GITHUB_REPOSITORY, BOT_GITHUB_TOKEN).
 """
 
 from __future__ import annotations
@@ -49,6 +53,70 @@ def relancer_deploiement() -> None:
 def fichiers(dossier: Path) -> set[str]:
     return {p.relative_to(dossier).as_posix() for p in dossier.rglob("*")
             if p.is_file() and ".git" not in p.relative_to(dossier).parts}
+
+
+# Dossiers fabriqués sur place (installation des outils, essais) : jamais personnalisés.
+FABRIQUES = {"node_modules", ".wrangler", "__pycache__", "sortie", ".venv"}
+
+
+def personnaliser(racine: Path, depot: str, hote: str) -> list[str]:
+    """Installation neuve (copie du modèle) : les repères du modèle remplacés, dans le
+    dépôt même, par ton dépôt et l'adresse de ton bot, comme le fait chaque mise à jour.
+    Renvoie les fichiers changés (aucun quand c'est déjà fait)."""
+    changes = []
+    for chemin in sorted(fichiers(racine)):
+        fichier = racine / chemin
+        if (chemin in PERSONNELS or chemin == "mise_a_jour.py" or FABRIQUES & set(Path(chemin).parts)
+                or not (fichier.suffix in TEXTE or fichier.name == ".gitignore")):
+            continue
+        try:
+            texte = fichier.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        nouveau = texte.replace(REPERE_DEPOT, depot).replace(REPERE_HOTE, hote)
+        if nouveau != texte:
+            fichier.write_text(nouveau, encoding="utf-8")
+            changes.append(chemin)
+    return changes
+
+
+def main_personnaliser() -> int:
+    """Fin du déploiement : inscrit ton dépôt et l'adresse de ton bot là où le modèle
+    a ses repères, puis les envoie (avec le jeton du bot : les fichiers
+    d'automatisation en font partie). Rien à faire après la première fois."""
+    adresse = os.environ.get("ADRESSE", "").strip().rstrip("/")
+    depot = os.environ.get("GITHUB_REPOSITORY", "").strip()
+    hote = urlparse(adresse).netloc
+    if not hote or not depot:
+        journal("::error::Adresse du bot ou dépôt inconnu : rien d'inscrit dans le dépôt.")
+        return 1
+    changes = personnaliser(RACINE, depot, hote)
+    if not changes:
+        journal(f"Dépôt déjà personnalisé (adresse du bot : {adresse}).")
+        return 0
+    jeton = jeton_du_bot()
+    if not jeton:
+        journal("::error title=Adresse du bot non inscrite::Il manque le secret BOT_GITHUB_TOKEN : ajoute-le (docs/INSTALLATION.md), puis relance « Déployer le bot ».")
+        return 1
+    # Sur la dernière version du dépôt (un envoi a pu arriver pendant le déploiement).
+    if git("fetch", "-q", "--depth=1", "origin", "main", verifier=False).returncode == 0:
+        git("reset", "-q", "--hard", "FETCH_HEAD")
+        changes = personnaliser(RACINE, depot, hote)
+        if not changes:
+            return 0
+    git("config", "user.name", "github-actions[bot]")
+    git("config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com")
+    git("add", "--", *changes)
+    # [skip ci] : le bot vient d'être déployé, inutile de tout relancer.
+    git("commit", "-q", "-m", "Installation : ton dépôt et l'adresse de ton bot [skip ci]")
+    pousse = git("-c", "http.https://github.com/.extraheader=", "push",
+                 f"https://x-access-token:{jeton}@github.com/{depot}.git", "HEAD:main", verifier=False)
+    if pousse.returncode:
+        journal("::error title=Adresse du bot non inscrite::Le jeton BOT_GITHUB_TOKEN n'a pas pu enregistrer l'adresse du bot dans ton dépôt : "
+                "il lui faut Contents et Workflows en « Read and write » sur ce dépôt (docs/INSTALLATION.md). Corrige-le, puis relance « Déployer le bot ».")
+        return 1
+    journal(f"::notice title=Installation::Adresse du bot inscrite dans ton dépôt ({len(changes)} fichier(s)) : {adresse}")
+    return 0
 
 
 def copier(modele: Path, cible: Path, depot: str, hote: str, sans_workflows: bool = False) -> tuple[list[str], list[str]]:
@@ -171,4 +239,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main_personnaliser() if "--personnaliser" in sys.argv[1:] else main())

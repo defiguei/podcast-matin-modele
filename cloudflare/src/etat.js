@@ -21,7 +21,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerChapitres, rangerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-11-03.1";
+export const VERSION = "2026-11-04.1";
 const MAX_REFAITS = 6;
 const MAX_RECHERCHES = 15;
 const MAX_EPISODES = 60;      // épisodes récents, dans l'état ; les plus anciens vont dans l'archive de leur mois
@@ -30,8 +30,8 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
-  "Épisodes : quand Gemini est surchargé (erreur du serveur, pas de réponse), les modèles principaux sont retentés après une pause avant de passer aux modèles légers, qui écrivent plus court. Un refus lié à ton compte (quota) ne fait rien retenter.",
-  "Durée : la longueur demandée s'ajuste à chaque modèle, d'après ce qu'il a réellement écrit les fois précédentes (plus un réglage unique pour tous).",
+  "Installation simplifiée : une page web guide les nouveaux en une dizaine de minutes (deux jetons à coller, le reste se fait seul) et donne le code de connexion avec un QR code.",
+  "Déploiement : le compte Cloudflare et l'adresse du bot sont trouvés tout seuls (plus besoin de l'Account ID ni de la variable BOT_URL). Rien ne change pour ton installation.",
 ];
 
 // « 2026-10 » décalé de n mois.

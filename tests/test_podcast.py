@@ -1010,6 +1010,65 @@ verifier("::notice title=Jeton GitHub::secret GitHub BOT_GITHUB_TOKEN." in journ
          and "::notice title=Jeton GitHub::aucun" in journaux_maj[""] and not re.search(r"\bbon\b", journaux_maj["bon"].replace("::add-mask::bon", "")),
          "mise à jour : d'où vient le jeton, dans le résumé (jamais sa valeur)")
 
+# Première installation : l'adresse du bot (trouvée par le déploiement) et le dépôt
+# remplacent les repères du modèle dans le dépôt même, envoyés avec le jeton du bot.
+def essai_personnaliser(jeton_github: str, deja: bool = False) -> tuple[int, Path, str]:
+    dossier = Path(tempfile.mkdtemp())
+    origine, travail = dossier / "origine.git", dossier / "travail"
+    sp.run(["git", "init", "-q", "--bare", "-b", "main", str(origine)], check=True)
+    travail.mkdir()
+    hote = "podcast.bob.workers.dev" if deja else mise_a_jour.REPERE_HOTE
+    depot = "bob/podcast-matin" if deja else mise_a_jour.REPERE_DEPOT
+    initialiser(travail, {
+        "podcast.py": f"DEPOT = '{depot}'\n",
+        "cloudflare/wrangler.toml": f'ADRESSE = "https://{hote}"\n',
+        ".github/workflows/podcast-du-matin.yml": f"env:\n  BOT_URL: https://{hote}\n",
+        "memoire.json": f'{{"note": "{mise_a_jour.REPERE_HOTE}"}}\n',
+        "cloudflare/node_modules/x/a.js": f"// {mise_a_jour.REPERE_HOTE}\n",
+    })
+    sp.run(["git", "remote", "add", "origin", str(origine)], cwd=travail, check=True)
+    sp.run(["git", "push", "-q", "origin", "main"], cwd=travail, check=True, capture_output=True)
+    git_real = mise_a_jour.git
+    def git_simule(*args, cwd=None, verifier=True):
+        args = list(args)
+        if "push" in args and any("x-access-token" in a for a in args):
+            if "x-access-token:bon@" not in " ".join(args):
+                return sp.CompletedProcess(args, 1, "", "refusing to allow ... workflow")
+            args = [a if "x-access-token" not in a else str(origine) for a in args]
+        return git_real(*args, cwd=cwd, verifier=verifier)
+    anciens = (mise_a_jour.RACINE, mise_a_jour.git)
+    mise_a_jour.RACINE, mise_a_jour.git = travail, git_simule
+    ancien_env = dict(os.environ)
+    os.environ.update({"ADRESSE": "https://podcast.bob.workers.dev/", "GITHUB_REPOSITORY": "bob/podcast-matin", "BOT_GITHUB_TOKEN": jeton_github})
+    journal = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(journal):
+            code = mise_a_jour.main_personnaliser()
+    finally:
+        mise_a_jour.RACINE, mise_a_jour.git = anciens
+        os.environ.clear(); os.environ.update(ancien_env)
+    resultat = dossier / "resultat"
+    sp.run(["git", "clone", "-q", str(origine), str(resultat)], check=True, capture_output=True)
+    return code, resultat, journal.getvalue()
+
+code, resultat, journal_p = essai_personnaliser("bon")
+journal_git = sp.run(["git", "log", "-1", "--format=%s"], cwd=resultat, capture_output=True, text=True).stdout
+verifier(code == 0 and "bob/podcast-matin" in (resultat / "podcast.py").read_text()
+         and "https://podcast.bob.workers.dev" in (resultat / "cloudflare/wrangler.toml").read_text()
+         and "podcast.bob.workers.dev" in (resultat / ".github/workflows/podcast-du-matin.yml").read_text(),
+         "installation : dépôt et adresse du bot inscrits partout, automatisation comprise")
+verifier(mise_a_jour.REPERE_HOTE in (resultat / "memoire.json").read_text() and mise_a_jour.REPERE_HOTE in (resultat / "cloudflare/node_modules/x/a.js").read_text(),
+         "installation : fichiers personnels et dossiers fabriqués laissés tels quels")
+verifier("[skip ci]" in journal_git and "::notice title=Installation::" in journal_p, f"installation : un seul envoi, sans tout relancer ({journal_git.strip()})")
+code, resultat, journal_p = essai_personnaliser("bon", deja=True)
+verifier(code == 0 and "déjà personnalisé" in journal_p and "départ" in sp.run(["git", "log", "-1", "--format=%s"], cwd=resultat, capture_output=True, text=True).stdout,
+         "déploiements suivants : rien à inscrire, aucun envoi")
+code, resultat, journal_p = essai_personnaliser("mauvais")
+verifier(code == 1 and "Workflows" in journal_p and mise_a_jour.REPERE_HOTE in (resultat / "cloudflare/wrangler.toml").read_text(),
+         "jeton sans « Workflows » : erreur claire, rien d'envoyé")
+code, _, journal_p = essai_personnaliser("")
+verifier(code == 1 and "BOT_GITHUB_TOKEN" in journal_p, "sans jeton du bot : erreur claire")
+
 # Code de connexion à l'application : demandé au bot, affiché dans le résumé de GitHub.
 print("\nCode de connexion")
 import code_connexion
