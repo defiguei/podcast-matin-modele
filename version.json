@@ -1,10 +1,10 @@
 {
-  "version": "2026-11-04.1",
+  "version": "2026-11-04.2",
   "date": "2026-11-04",
-  "titre": "Installation simplifiée",
+  "titre": "Lecture sans coupure",
   "nouveautes": [
-    "Installation simplifiée : une page web guide les nouveaux en une dizaine de minutes (deux jetons à coller, le reste se fait seul) et donne le code de connexion avec un QR code.",
-    "Déploiement : le compte Cloudflare et l'adresse du bot sont trouvés tout seuls (plus besoin de l'Account ID ni de la variable BOT_URL). Rien ne change pour ton installation."
+    "Lecture : l'épisode ne s'arrête plus en cours de route quand le téléphone est verrouillé ou l'application en arrière-plan (l'audio ne dépend plus du service worker, que le navigateur endort).",
+    "Lecture : un épisode gardé sur l'appareil se lit depuis sa mémoire, sans réseau ; après une coupure ou un lien expiré, la lecture reprend d'elle-même au même endroit."
   ],
   "supprimes": [
     ".github/workflows/retours.yml",

@@ -1524,12 +1524,17 @@ await scenario("Notifications de l'application (Web Push)", async () => {
   const codeSw = await sw.text();
   verifier(sw.status === 200 && sw.headers.get("service-worker-allowed") === "/app" && codeSw.includes("showNotification") && codeSw.includes("notificationclick"),
     "service worker servi, portée /app", sw.headers.get("service-worker-allowed"));
-  // Hors ligne : la page et les icônes gardées, l'audio gardé servi par plages (Range), jamais les autres routes.
-  verifier(["addEventListener(\"fetch\"", "podcast-coque-", "podcast-audio", "Content-Range", "Accept-Ranges", "/app/audio", "hors-ligne"].every((m) => codeSw.includes(m)),
-    "service worker hors ligne : page gardée, audio servi par plages");
+  // Hors ligne : la page, les icônes et les pochettes gardées. L'audio du lecteur ne passe jamais par le service
+  // worker (endormi par le navigateur quand le téléphone est verrouillé, il couperait la lecture) : route réseau,
+  // et le fetch laisse passer ; un épisode gardé se lit depuis la mémoire de la page.
+  verifier(["addEventListener(\"fetch\"", "podcast-coque-", "podcast-images", "/app/audio", "img:", "hors-ligne", 'requestDestination: "audio"', 'source: "network"'].every((m) => codeSw.includes(m))
+    && !["Content-Range", "podcast-audio", "tranche("].some((m) => codeSw.includes(m)),
+    "service worker hors ligne : page et pochettes gardées, l'audio du lecteur va au réseau");
   const pageApp = (await obtenir(`${BOT}/app`)).texte;
   verifier(["podcast-matin-audio-mo", "vider-audio", "data-place-audio", "lireDonneesGardees", "hors-ligne"].every((m) => pageApp.includes(m)),
     "application : données gardées, place réglable pour l'audio gardé");
+  verifier(["createObjectURL", "preparerLocal", "reprendreApresErreur", "expirationLien"].every((m) => pageApp.includes(m)),
+    "lecteur : épisode gardé lu en mémoire, reprise au même endroit après une coupure");
   let r = await app("etat");
   const clePublique = r.donnees.notifications?.cle || "";
   verifier(Buffer.from(clePublique, "base64url").length === 65 && r.donnees.notifications.abonnements.length === 0, "clé publique du bot pour s'abonner", clePublique);

@@ -21,7 +21,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerChapitres, rangerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-11-04.1";
+export const VERSION = "2026-11-04.2";
 const MAX_REFAITS = 6;
 const MAX_RECHERCHES = 15;
 const MAX_EPISODES = 60;      // épisodes récents, dans l'état ; les plus anciens vont dans l'archive de leur mois
@@ -30,8 +30,8 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
-  "Installation simplifiée : une page web guide les nouveaux en une dizaine de minutes (deux jetons à coller, le reste se fait seul) et donne le code de connexion avec un QR code.",
-  "Déploiement : le compte Cloudflare et l'adresse du bot sont trouvés tout seuls (plus besoin de l'Account ID ni de la variable BOT_URL). Rien ne change pour ton installation.",
+  "Lecture : l'épisode ne s'arrête plus en cours de route quand le téléphone est verrouillé ou l'application en arrière-plan (l'audio ne dépend plus du service worker, que le navigateur endort).",
+  "Lecture : un épisode gardé sur l'appareil se lit depuis sa mémoire, sans réseau ; après une coupure ou un lien expiré, la lecture reprend d'elle-même au même endroit.",
 ];
 
 // « 2026-10 » décalé de n mois.

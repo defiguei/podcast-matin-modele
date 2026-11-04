@@ -107,11 +107,13 @@ export async function envoyerNotification(abonnement, message, cles, sujet, dela
 // et ouvre l'application sur l'épisode quand on les touche.
 export const SERVICE_WORKER = `// Podcast du matin : notifications et fonctionnement hors ligne de l'application.
 // Hors ligne : la page et ses icônes sont gardées (la page se rafraîchit à chaque ouverture avec du réseau),
-// les épisodes écoutés sont servis depuis le cache audio rempli par la page (avec les plages Range).
-// Les données (réglages, épisodes) sont gardées par la page elle-même.
+// ainsi que les pochettes. Les données (réglages, épisodes) et les épisodes écoutés sont gardés par la page
+// elle-même, qui lit un épisode gardé depuis sa mémoire.
+// L'audio du lecteur ne passe JAMAIS par ici : téléphone verrouillé ou application en arrière-plan,
+// le navigateur endort le service worker (Chrome, Brave…), et un lecteur qui en dépendrait s'arrêterait
+// dès que sa réserve serait lue.
 const COQUE = "podcast-coque-1";
 const POLICES = "podcast-polices";
-const AUDIO = "podcast-audio";
 const IMAGES = "podcast-images";
 const PAGE = "/app";
 const A_GARDER = ["/app/manifest.json", "/app/icone-192.png", "/app/icone-512.png", "/app/icone-masque.png", "/app/apple-touch-icon.png", "/app/badge.png"];
@@ -119,6 +121,10 @@ const MAX_IMAGES = 200;
 const DELAI_RESEAU = 4000;   // au-delà, on ouvre la page gardée (réseau absent ou très mauvais)
 
 self.addEventListener("install", (ev) => {
+  // Le lecteur va droit au réseau, sans même réveiller ce service worker (Chrome 123 et suivants).
+  try {
+    if (ev.addRoutes) ev.waitUntil(Promise.resolve(ev.addRoutes({ condition: { requestDestination: "audio" }, source: "network" })).catch(() => {}));
+  } catch (e) { /* navigateur sans routes : le fetch ci-dessous laisse passer l'audio */ }
   ev.waitUntil((async () => {
     try {
       const cache = await caches.open(COQUE);
@@ -165,42 +171,19 @@ async function coque(ev, nomCache) {
   return reseau;
 }
 
-// Une plage d'un fichier gardé (le lecteur lit par morceaux et saute dans l'épisode).
-async function tranche(requete, gardee) {
-  const blob = await gardee.blob();
-  const total = blob.size;
-  const type = gardee.headers.get("Content-Type") || "audio/mpeg";
-  const base = { "Content-Type": type, "Accept-Ranges": "bytes" };
-  const plage = /^bytes=([0-9]*)-([0-9]*)$/.exec(requete.headers.get("Range") || "");
-  if (!plage || (plage[1] === "" && plage[2] === "")) {
-    return new Response(blob, { status: 200, headers: Object.assign({ "Content-Length": String(total) }, base) });
-  }
-  const debut = plage[1] === "" ? Math.max(0, total - Number(plage[2])) : Number(plage[1]);
-  const fin = plage[1] === "" || plage[2] === "" ? total - 1 : Math.min(Number(plage[2]), total - 1);
-  if (debut > fin || debut >= total) return new Response(null, { status: 416, headers: { "Content-Range": "bytes */" + total } });
-  return new Response(blob.slice(debut, fin + 1, type), { status: 206,
-    headers: Object.assign({ "Content-Length": String(fin - debut + 1), "Content-Range": "bytes " + debut + "-" + fin + "/" + total }, base) });
-}
-
-// Lecteur et pochettes : l'adresse est signée et expire, la copie gardée se retrouve par la clé (c=…).
-async function fichier(ev) {
-  const cle = new URL(ev.request.url).searchParams.get("c") || "";
-  if (!cle) return fetch(ev.request);
+// Pochettes : l'adresse est signée et expire, la copie gardée se retrouve par la clé (c=img:…).
+async function pochette(ev, cle) {
   const clef = "/app/hors-ligne/" + encodeURIComponent(cle);
-  if (cle.indexOf("img:") === 0) {
-    const cache = await caches.open(IMAGES);
-    const gardee = await cache.match(clef);
-    if (gardee) return gardee;
-    const r = await fetch(ev.request);
-    if (r.ok) ev.waitUntil((async () => {
-      await cache.put(clef, r.clone());
-      const cles = await cache.keys();
-      for (const k of cles.slice(0, Math.max(0, cles.length - MAX_IMAGES))) await cache.delete(k);
-    })());
-    return r;
-  }
-  const gardee = await (await caches.open(AUDIO)).match(clef);
-  return gardee ? tranche(ev.request, gardee) : fetch(ev.request);
+  const cache = await caches.open(IMAGES);
+  const gardee = await cache.match(clef);
+  if (gardee) return gardee;
+  const r = await fetch(ev.request);
+  if (r.ok) ev.waitUntil((async () => {
+    await cache.put(clef, r.clone());
+    const cles = await cache.keys();
+    for (const k of cles.slice(0, Math.max(0, cles.length - MAX_IMAGES))) await cache.delete(k);
+  })());
+  return r;
 }
 
 self.addEventListener("fetch", (ev) => {
@@ -208,7 +191,12 @@ self.addEventListener("fetch", (ev) => {
   const url = new URL(ev.request.url);
   if (url.origin === self.location.origin) {
     if (url.pathname === "/app" || url.pathname === "/app/") return ev.respondWith(page(ev));
-    if (url.pathname === "/app/audio") return ev.respondWith(fichier(ev));
+    if (url.pathname === "/app/audio") {
+      // Seules les pochettes passent par ici ; l'audio (lecteur, copie pour le hors ligne) va au réseau.
+      const cle = url.searchParams.get("c") || "";
+      if (cle.indexOf("img:") === 0 && ev.request.destination !== "audio") return ev.respondWith(pochette(ev, cle));
+      return;
+    }
     if (A_GARDER.indexOf(url.pathname) >= 0) return ev.respondWith(coque(ev, COQUE));
   } else if (url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com") {
     return ev.respondWith(coque(ev, POLICES));

@@ -678,6 +678,7 @@ async function garderAudio(ep) {
     const v = audioGarde();
     v[ep.cle] = { o: blob.size, vu: Date.now(), titre: ep.titre || "" };
     ecrireAudioGarde(v);
+    if (L.cle === ep.cle && LOCAL.cle !== ep.cle) poserLocal(ep.cle, blob);
     await elaguerAudio();
     if (S.ecran === "reglage") dessiner();
   } catch (e) { /* réseau coupé ou place refusée : l'épisode se lit quand même en ligne */ }
@@ -735,7 +736,54 @@ async function changer(action, extra = {}, apres) {
 // ─────────────────────────────── lecteur ────────────────────────────────
 const audio = new Audio();
 audio.preload = "metadata";
-const L = { cle: null, ep: null };
+// source : « reseau » (le bot, adresse signée) ou « local » (la copie gardée sur l'appareil, lue en mémoire).
+// reprise : position à retrouver après un changement de source ; relance : une seule reprise automatique par erreur.
+const L = { cle: null, ep: null, source: null, reprise: null, relance: 0 };
+
+// La copie de l'épisode en cours, en mémoire (adresse blob:) : ni réseau ni service worker,
+// donc rien ne peut couper la lecture, téléphone verrouillé ou sans réseau. Une seule à la fois.
+const LOCAL = { cle: null, url: null };
+function libererLocal() {
+  // Libérée un peu plus tard : le lecteur a le temps de passer à sa nouvelle source.
+  const url = LOCAL.url;
+  LOCAL.cle = null; LOCAL.url = null;
+  if (url) setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+function poserLocal(cle, blob) {
+  libererLocal();
+  LOCAL.cle = cle;
+  LOCAL.url = URL.createObjectURL(blob.type ? blob : new Blob([blob], { type: "audio/mpeg" }));
+}
+async function preparerLocal(cle) {
+  if (LOCAL.cle === cle && LOCAL.url) return LOCAL.url;
+  if (!cachesPossibles() || !audioGarde()[cle]) return null;
+  try {
+    const r = await (await caches.open(CACHE_AUDIO)).match(cleCache(cle));
+    if (!r) return null;
+    const blob = await r.blob();
+    if (!blob.size || L.cle !== cle) return null;   // un autre épisode a été lancé entre-temps
+    poserLocal(cle, blob);
+    return LOCAL.url;
+  } catch (e) { return null; }
+}
+// Change la source en gardant la position (et la lecture si elle était en cours).
+function changerSource(url, source, position, lire) {
+  L.source = source;
+  L.reprise = position > 0 ? position : null;
+  audio.src = url;
+  if (lire) audio.play().catch(() => annoncer("Lecture impossible : touche encore ▶.", true));
+}
+audio.addEventListener("loadedmetadata", () => {
+  if (L.reprise !== null) { const t = L.reprise; L.reprise = null; try { audio.currentTime = t; } catch (e) { /* hors de l'épisode */ } }
+});
+// Dernière position lue (un lecteur en erreur peut l'avoir oubliée).
+let positionConnue = 0;
+audio.addEventListener("timeupdate", () => { if (audio.currentTime > 0) positionConnue = audio.currentTime; });
+audio.addEventListener("emptied", () => { positionConnue = 0; });
+// Où en est l'écoute : la position à reprendre si un changement de source n'a pas encore abouti.
+const positionActuelle = () => L.reprise ?? Math.max(positionConnue, audio.currentTime || 0);
+// Expiration (secondes) d'une adresse signée par le bot (…&e=…).
+const expirationLien = (lien) => Number(new URLSearchParams(String(lien || "").split("?")[1] || "").get("e")) || 0;
 
 // Vitesse de lecture : 1×, 1,5×, 2× (un appui passe à la suivante), retenue sur l'appareil.
 const VITESSES_LECTURE = [1, 1.5, 2];
@@ -781,10 +829,27 @@ async function chargerMois(mois) {
 
 function jouer(ep, depuis = null) {
   if (!ep || !ep.audio) return annoncer("L'audio de cet épisode n'est plus disponible.", true);
+  const garde = Boolean(audioGarde()[ep.cle]);
+  L.relance = 0;   // une demande de l'auditeur : une reprise automatique de nouveau possible
   if (L.cle !== ep.cle) {
-    if (!navigator.onLine && !audioGarde()[ep.cle]) return annoncer("Cet épisode n'est pas gardé sur l'appareil : écoute-le une première fois avec du réseau.", true);
-    L.cle = ep.cle; L.ep = ep;
-    audio.src = ep.audio;
+    if (!navigator.onLine && !garde) return annoncer("Cet épisode n'est pas gardé sur l'appareil : écoute-le une première fois avec du réseau.", true);
+    L.cle = ep.cle; L.ep = ep; L.reprise = null;
+    if (LOCAL.cle !== ep.cle) libererLocal();
+    if (LOCAL.url) { L.source = "local"; audio.src = LOCAL.url; }
+    else if (garde && !navigator.onLine) {
+      // Sans réseau : la copie de l'appareil, lue en mémoire (un instant pour la charger).
+      L.source = null;
+      preparerLocal(ep.cle).then((url) => {
+        if (L.cle !== ep.cle) return;
+        if (!url) return annoncer("Cet épisode n'est plus gardé sur l'appareil : écoute-le avec du réseau.", true);
+        changerSource(url, "local", depuis || 0, true);
+        majLecteur();
+      });
+    } else {
+      // Avec réseau : tout de suite depuis le bot ; une copie gardée est préparée pour la reprise.
+      L.source = "reseau"; audio.src = ep.audio;
+      if (garde) preparerLocal(ep.cle);
+    }
     if ("mediaSession" in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({ title: ep.titre, artist: (S.d.animateurs || []).join(" & "), album: "Podcast Matin" });
       navigator.mediaSession.setActionHandler("play", () => audio.play());
@@ -793,13 +858,52 @@ function jouer(ep, depuis = null) {
       navigator.mediaSession.setActionHandler("seekforward", () => { audio.currentTime = audio.currentTime + 30; });
     }
   }
+  else if (audio.paused && L.source === "reseau") {
+    // Reprise d'un épisode en pause : la copie de l'appareil si elle est prête, sinon une adresse
+    // neuve si l'ancienne expire (elle vaut 24 h ; le lecteur la redemande en reprenant), ou
+    // un nouveau chargement après une erreur.
+    const position = depuis ?? positionActuelle();
+    const actuelle = audio.getAttribute("src");
+    if (LOCAL.cle === ep.cle && LOCAL.url) changerSource(LOCAL.url, "local", position, false);
+    else if (audio.error || (ep.audio !== actuelle && expirationLien(actuelle) * 1000 < Date.now() + 10 * 60000)) {
+      changerSource(ep.audio, "reseau", position, false);
+    }
+    if (L.reprise !== null) depuis = null;   // la position sera reprise au chargement
+  }
+  if (L.source === null) { majLecteur(); return; }   // copie en cours de chargement : la lecture partira d'elle-même
   if (depuis !== null) {
-    const aller = () => { audio.currentTime = depuis; };
-    if (audio.readyState >= 1) aller(); else audio.addEventListener("loadedmetadata", aller, { once: true });
+    if (audio.readyState >= 1) audio.currentTime = depuis; else L.reprise = depuis;
   }
   audio.play().catch(() => annoncer("Lecture impossible : touche encore ▶.", true));
   majLecteur();
   garderAudio(ep);   // écouté : disponible sans réseau ensuite
+}
+
+// Le lecteur n'a pas pu lire la suite (réseau coupé, adresse expirée) : on reprend une fois, au même endroit,
+// avec la copie de l'appareil ou une adresse neuve demandée au bot.
+async function reprendreApresErreur() {
+  const cle = L.cle;
+  if (!cle || !L.ep) return;
+  const position = positionActuelle();
+  if (L.source === "reseau" && L.relance < 1) {
+    L.relance++;
+    const local = await preparerLocal(cle);
+    if (L.cle !== cle) return;
+    if (local) return changerSource(local, "local", position, true);
+    if (navigator.onLine) {
+      const j = await demander("etat", {}, { discret: true });
+      const frais = j.ok ? episodeParCle(cle) : null;
+      if (L.cle !== cle) return;
+      if (frais && frais.audio) { L.ep = frais; return changerSource(frais.audio, "reseau", position, true); }
+    }
+  }
+  if (L.source === "local" && L.relance < 1 && navigator.onLine && L.ep.audio) {
+    // Copie abîmée ou effacée : le bot prend le relais.
+    L.relance++;
+    libererLocal();
+    return changerSource(L.ep.audio, "reseau", position, true);
+  }
+  annoncer(navigator.onLine ? "Lecture interrompue : vérifie ton réseau, puis touche ▶ pour reprendre." : "Plus de réseau : cet épisode n'est pas gardé sur l'appareil.", true);
 }
 
 function basculer(ep) {
@@ -862,10 +966,7 @@ function majLecteur() {
 ["play", "loadedmetadata"].forEach((ev) => audio.addEventListener(ev, appliquerVitesse));   // certains navigateurs l'oublient au changement d'épisode
 ["play", "pause", "timeupdate", "loadedmetadata", "ended"].forEach((ev) => audio.addEventListener(ev, majLecteur));
 audio.addEventListener("play", () => { if (!extrait.paused) extrait.pause(); });
-audio.addEventListener("error", () => {
-  if (!L.ep || audioGarde()[L.cle]) return;
-  annoncer(navigator.onLine ? "Lecture impossible : vérifie ton réseau puis réessaie." : "Cet épisode n'est pas gardé sur l'appareil : écoute-le une première fois avec du réseau.", true);
-});
+audio.addEventListener("error", () => { if (L.cle && audio.getAttribute("src")) reprendreApresErreur(); });
 
 // Extraits de voix : deux voix partagent un fichier ; on ne lit que le passage de la voix choisie.
 const extrait = new Audio();
@@ -896,7 +997,6 @@ extrait.addEventListener("timeupdate", () => {
   if (X.voix && extrait.currentTime >= X.fin) { extrait.pause(); extrait.currentTime = X.debut; }
 });
 ["play", "pause", "ended"].forEach((ev) => extrait.addEventListener(ev, majExtraits));
-audio.addEventListener("error", () => { if (L.cle) annoncer("L'audio ne se charge pas. Rouvre l'application pour rafraîchir le lien.", true); });
 
 // ─────────────────────────────── écrans ─────────────────────────────────
 const ONGLETS = [["accueil", "Accueil"], ["programme", "Épisode"], ["idees", "Recherches"], ["planning", "Planning"], ["reglages", "Réglages"]];
