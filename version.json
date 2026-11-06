@@ -1,10 +1,10 @@
 {
-  "version": "2026-11-04.2",
-  "date": "2026-11-04",
-  "titre": "Lecture sans coupure",
+  "version": "2026-11-06.1",
+  "date": "2026-11-06",
+  "titre": "Actu locale en voyage, ordre des rubriques",
   "nouveautes": [
-    "Lecture : l'épisode ne s'arrête plus en cours de route quand le téléphone est verrouillé ou l'application en arrière-plan (l'audio ne dépend plus du service worker, que le navigateur endort).",
-    "Lecture : un épisode gardé sur l'appareil se lit depuis sa mémoire, sans réseau ; après une coupure ou un lien expiré, la lecture reprend d'elle-même au même endroit."
+    "Actu locale : nouvelle option « En pause pendant mes voyages » ; les jours où ton agenda montre que tu es en voyage, pas d'actu de ta ville (« Mes déplacements » raconte celle du lieu où tu es).",
+    "Ton épisode : glisser une rubrique par sa poignée marche jusqu'en haut et en bas de la liste (la page défile toute seule), et le nouvel ordre est toujours enregistré."
   ],
   "supprimes": [
     ".github/workflows/retours.yml",

@@ -1360,6 +1360,81 @@ _sys_point = _recherche.consigne_point("Sortie samedi", 3, "Léa", "Hugo", 450, 
 verifier("répond à la demande" in _sys_point and "idées (sorties" in _sys_point and "état des lieux" in _sys_point,
          "recherche en podcast : un état des lieux pour un sujet, des idées pour une sortie")
 
+# Actu locale en pause pendant un voyage : le voyage en cours se voit dans l'agenda (aller passé, retour à venir).
+print("\nActu locale en pause pendant un voyage")
+_ICS_VOYAGE = ENTETE + b"""BEGIN:VEVENT
+UID:v1
+DTSTART;TZID=Europe/Zurich:20261104T080000
+DTEND;TZID=Europe/Zurich:20261104T103000
+SUMMARY:Vol Gen\xc3\xa8ve - Lisbonne
+END:VEVENT
+BEGIN:VEVENT
+UID:v2
+DTSTART;TZID=Europe/Zurich:20261108T180000
+DTEND;TZID=Europe/Zurich:20261108T203000
+SUMMARY:Vol retour Lisbonne - Gen\xc3\xa8ve
+END:VEVENT
+BEGIN:VEVENT
+UID:v3
+DTSTART;TZID=Europe/Zurich:20261106T100000
+DTEND;TZID=Europe/Zurich:20261106T110000
+SUMMARY:Point d'\xc3\xa9quipe
+END:VEVENT
+END:VCALENDAR
+"""
+_maint_v = dt.datetime(2026, 11, 6, 6, 30, tzinfo=ZH)
+_vus_v, _req_v = [], []
+_rep_v = {"deplacements": [
+    {"lieu": "Bâle", "pays": "Suisse", "quand": "jeudi 12 novembre", "nature": "rencontre", "evenement": "Atelier à Bâle",
+     "recherche": "Bâle", "du": "2026-11-12", "au": "2026-11-12"},
+    {"lieu": "Lisbonne", "pays": "Portugal", "quand": "jusqu'au dimanche 8 novembre", "nature": "voyage",
+     "evenement": "Vol retour Lisbonne - Genève", "recherche": "Lisbonne", "du": "2026-11-04", "au": "2026-11-08"},
+    {"lieu": "Paris", "pays": "France", "quand": "du 20 au 25 octobre", "nature": "voyage", "evenement": "Paris",
+     "recherche": "Paris", "du": "2026-10-20", "au": "2026-10-25"}]}
+_anciens_v = (podcast.telecharger, podcast.demander_json, podcast.chercher_actus, podcast.articles_de_flux, podcast.lire_actualites)
+podcast.telecharger = lambda url, *a, **k: _ICS_VOYAGE
+podcast.demander_json = lambda systeme, entree, schema, *a, **k: (_vus_v.append((systeme, entree)) or (json.loads(json.dumps(_rep_v)), "faux"))
+podcast.chercher_actus = lambda requete, *a, **k: (_req_v.append(requete) or [])
+podcast.articles_de_flux = lambda *a, **k: []
+podcast.lire_actualites = lambda *a, **k: ([], [])
+_reg_v = podcast.charger_reglages(RACINE_TEST / "reglages.toml")
+
+
+def _contenu_voyage(pause, deroule=None):
+    _vus_v.clear(); _req_v.clear()
+    config = {"actus": {"ville": "Lausanne", "locale_pause_deplacement": pause},
+              "deroule": deroule or [{"cle": c, "actif": c != "actualites"} for c in podcast.moteur.RUBRIQUES]}
+    eff = podcast.effectifs_depuis_bot(_reg_v, podcast.memoire_vide(), config)
+    return podcast.preparer_contenu(eff, "cle", _maint_v, ["https://agenda.exemple/a.ics"], podcast.memoire_vide())
+
+
+try:
+    _c_v = _contenu_voyage(True)
+    _titres_v = [t for t, _ in _c_v.sections]
+    _dep_v = dict(_c_v.sections).get("DÉPLACEMENTS", "")
+    verifier(_vus_v and "Vol Genève - Lisbonne" in _vus_v[0][1] and "déjà passés" in _vus_v[0][1]
+             and "(2026-11-06)" in _vus_v[0][1] and "Point d'équipe" not in _vus_v[0][1],
+             "repérage : l'aller passé est montré à part, avec la date du jour")
+    verifier([d["lieu"] for d in _c_v.deplacements] == ["Lisbonne", "Bâle"] and _c_v.deplacements[0]["en_cours"]
+             and not _c_v.deplacements[1]["en_cours"], f"voyage en cours d'abord, voyage fini écarté, rencontre jamais « en cours » : {_c_v.deplacements}")
+    verifier("Lisbonne (Portugal) — voyage, jusqu'au dimanche 8 novembre, en cours : il y est en ce moment" in _dep_v,
+             "DÉPLACEMENTS : le voyage en cours est signalé aux animateurs")
+    verifier(not any(t.startswith("ACTU LOCALE") for t in _titres_v) and "Lausanne" not in _req_v
+             and "actu_locale" not in [c for c, _ in _c_v.rubriques],
+             f"option active + voyage en cours : pas d'actu locale, aucune recherche sur la ville ({_req_v})")
+    _contenu_voyage(False)
+    verifier("Lausanne" in _req_v, "option coupée : l'actu locale se cherche comme d'habitude")
+    _c_v = _contenu_voyage(True, [{"cle": c, "actif": c not in ("actualites", "deplacements")} for c in podcast.moteur.RUBRIQUES])
+    verifier(_vus_v and "Lausanne" not in _req_v and not _c_v.deplacements and "Lisbonne" not in _req_v,
+             "Mes déplacements retirée : le voyage est repéré pour mettre l'actu locale en pause, sans être présenté")
+    _rep_v["deplacements"] = [{"lieu": "Lisbonne", "pays": "Portugal", "quand": "", "nature": "voyage",
+                               "evenement": "Vol retour Lisbonne - Genève", "recherche": "Lisbonne", "du": "", "au": ""}]
+    _c_v = _contenu_voyage(True)
+    verifier(_c_v.deplacements[0]["du"] == "2026-11-08" and not _c_v.deplacements[0]["en_cours"] and "Lausanne" in _req_v,
+             "sans dates de Gemini : celles de l'événement ; pas de pause si le voyage n'a pas commencé")
+finally:
+    podcast.telecharger, podcast.demander_json, podcast.chercher_actus, podcast.articles_de_flux, podcast.lire_actualites = _anciens_v
+
 print("\nRÉSULTAT :", "tout est vert ✅" if not echecs else f"{len(echecs)} échec(s) ❌")
 for e in echecs:
     print("  -", e)

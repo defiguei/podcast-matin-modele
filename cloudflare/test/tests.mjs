@@ -470,15 +470,17 @@ await scenario("Consignes par rubrique, Actualités globales et Actu locale rég
   verifier(r.ok && r.donnees.reglages.consignes_rubriques.agenda.length === 2 && r.donnees.listes.consignes_pretes_rubriques.agenda.length > 0,
     "consignes de l'Agenda (et consignes toutes prêtes de la rubrique)", r.donnees.reglages.consignes_rubriques);
   verifier((await app("liste", { chemin: "consignes_rubriques.inconnue", valeurs: ["x"] })).ok === false, "rubrique inconnue refusée");
-  for (const [chemin, valeur] of [["actus.locale_sujets", 3], ["actus.locale_articles", 7], ["actus.locale_fraicheur_heures", 72], ["actus.articles", 20], ["format.nombre_sujets", 4]]) {
+  verifier(r.donnees.reglages.actus.locale_pause_deplacement === false, "actu locale : pas de pause en voyage par défaut", r.donnees.reglages.actus);
+  for (const [chemin, valeur] of [["actus.locale_sujets", 3], ["actus.locale_articles", 7], ["actus.locale_fraicheur_heures", 72], ["actus.articles", 20], ["format.nombre_sujets", 4],
+                                  ["actus.locale_pause_deplacement", true]]) {
     r = await app("regler", { chemin, valeur });
   }
   await app("liste", { chemin: "actus.locale_preferes", valeurs: ["travaux", "culture"] });
   r = await app("liste", { chemin: "actus.locale_a_eviter", valeurs: ["culture"] });
   let { config } = await etat();
   verifier(config.actus.locale_sujets === 3 && config.actus.locale_articles === 7 && config.actus.locale_fraicheur_heures === 72 && config.actus.articles === 20
-           && config.actus.locale_preferes.join() === "travaux" && config.actus.locale_a_eviter.join() === "culture",
-    "actu locale : sujets, articles lus, âge, thèmes (un thème évité n'est plus préféré)", config.actus);
+           && config.actus.locale_preferes.join() === "travaux" && config.actus.locale_a_eviter.join() === "culture" && config.actus.locale_pause_deplacement === true,
+    "actu locale : sujets, articles lus, âge, thèmes (un thème évité n'est plus préféré), pause en voyage", config.actus);
   verifier((await app("regler", { chemin: "actus.citer_sources", valeur: "oral" })).ok === false && !("citer" in r.donnees.listes),
     "« Citer les sources » a disparu");
   verifier(r.donnees.deroule.find((x) => x.cle === "actualites")?.nom === "Actualités globales", "nom affiché dans l'épisode");

@@ -99,6 +99,8 @@ INDICES_DEPLACEMENT = re.compile(
     r"match|restaurant|resto)\b",
     re.IGNORECASE)
 INDICE_VILLE = re.compile(r"\b(à|au|aux|en)\s+[A-ZÉÈÀÂÎÔ][\w'-]+")
+# Événements des derniers jours montrés au repérage des déplacements : l'aller d'un voyage déjà commencé.
+JOURS_RECENTS = 7
 
 # Sons non verbaux compris par Gemini TTS ; toute autre balise <...> est retirée.
 BALISES_AUTORISEES = {
@@ -166,6 +168,7 @@ REGLAGES_PAR_DEFAUT: dict[str, Any] = {
     "locale_articles": 3,
     "locale_sujets": 2,
     "locale_fraicheur_heures": 168,
+    "locale_pause_deplacement": False,   # pas d'actu locale pendant un voyage repéré dans l'agenda
     "articles_actus": 40,
     "agendas_exclus": [],
     "inclure_notes_agenda": True,
@@ -624,6 +627,7 @@ def effectifs_depuis_bot(reglages: dict, memoire: dict, config: dict) -> dict[st
     e["locale_fraicheur_heures"] = _borne(ac.get("locale_fraicheur_heures"), 6, 336, 168)
     e["locale_preferes"] = nettoyer_liste(ac.get("locale_preferes"))
     e["locale_a_eviter"] = nettoyer_liste(ac.get("locale_a_eviter"))
+    e["locale_pause_deplacement"] = bool(ac.get("locale_pause_deplacement", False))
     e["consignes"] = nettoyer_liste(config.get("consignes"), 20, LONGUEUR_CONSIGNE)
     # Ce que lisent les rubriques fournies : leurs agendas (Agenda, Mes déplacements), leurs flux (Actu locale, À creuser).
     integrees = config.get("sources_integrees") if isinstance(config.get("sources_integrees"), dict) else {}
@@ -773,10 +777,13 @@ def nom_agenda(contenu: bytes, url: str, numero: int) -> str:
 
 
 def lire_agendas(urls: list[str], reglages: dict, maintenant: dt.datetime,
-                 horizon_jours: int) -> tuple[list[Evenement], list[str]]:
+                 horizon_jours: int, recents: list[Evenement] | None = None) -> tuple[list[Evenement], list[str]]:
+    """Les événements d'aujourd'hui à l'horizon (et ceux déjà en cours). Avec « recents », on y range
+    aussi ceux des JOURS_RECENTS derniers jours, finis avant aujourd'hui (l'aller d'un voyage en cours)."""
     fuseau = maintenant.tzinfo
     debut = debut_du_jour(maintenant)
     fin = debut + dt.timedelta(days=horizon_jours)
+    lu_depuis = debut - dt.timedelta(days=JOURS_RECENTS) if recents is not None else debut
     evenements: list[Evenement] = []
     problemes: list[str] = []
     exclus = set(reglages.get("agendas_exclus") or [])
@@ -786,11 +793,13 @@ def lire_agendas(urls: list[str], reglages: dict, maintenant: dt.datetime,
     for numero, url in enumerate(urls, 1):
         try:
             contenu = telecharger(url)
-            trouves = lire_evenements(contenu, fuseau, debut, fin,
+            trouves = lire_evenements(contenu, fuseau, lu_depuis, fin,
                                       reglages["inclure_notes_agenda"])
             identifiant_a = identifiant_agenda(url)
             for ev in trouves:
                 ev.agenda = identifiant_a
+            passes = [ev for ev in trouves if ev.debut < debut and (ev.fin or ev.debut) <= debut]
+            trouves = [ev for ev in trouves if not (ev.debut < debut and (ev.fin or ev.debut) <= debut)]
             AGENDAS_VUS.append({"id": identifiant_a, "nom": nom_agenda(contenu, url, numero), "nb": len(trouves)})
             for ev in trouves:
                 if ev.debut < fin_apercu and len(AGENDA_APERCU) < 120:
@@ -802,6 +811,8 @@ def lire_agendas(urls: list[str], reglages: dict, maintenant: dt.datetime,
                 continue
             journal(f"Agenda {numero} : {len(trouves)} événement(s) sur {horizon_jours} jour(s).")
             evenements.extend(trouves)
+            if recents is not None:
+                recents.extend(passes)
         except Exception as erreur:  # un agenda illisible ne bloque pas l'épisode
             journal(f"Agenda {numero} illisible : {erreur}")
             problemes.append(f"agenda {numero} inaccessible")
@@ -1316,8 +1327,10 @@ def schema_deplacements() -> dict:
                         "nature": {"type": "string", "enum": ["voyage", "rencontre", "sortie"]},
                         "evenement": {"type": "string"},
                         "recherche": {"type": "string"},
+                        "du": {"type": "string"},
+                        "au": {"type": "string"},
                     },
-                    "required": ["lieu", "pays", "quand", "nature", "evenement", "recherche"],
+                    "required": ["lieu", "pays", "quand", "nature", "evenement", "recherche", "du", "au"],
                 },
             },
         },
@@ -1330,19 +1343,45 @@ def evoque_un_lieu(evenement: Evenement) -> bool:
                 or INDICE_VILLE.search(evenement.titre))
 
 
+def _date_iso(texte: Any) -> dt.date | None:
+    try:
+        return dt.date.fromisoformat(str(texte or "").strip()[:10])
+    except ValueError:
+        return None
+
+
+def periode_deplacement(element: dict, evenements: list[Evenement]) -> tuple[dt.date | None, dt.date | None]:
+    """Premier et dernier jour sur place : ceux donnés par Gemini, sinon ceux de l'événement de l'agenda."""
+    du, au = _date_iso(element.get("du")), _date_iso(element.get("au"))
+    if du and au and au < du:
+        du, au = au, du
+    if not du:
+        titre = cle_titre(str(element.get("evenement", "")))
+        evenement = next((e for e in evenements if titre and cle_titre(e.titre) == titre), None)
+        if evenement is not None:
+            du, au = evenement.debut.date(), au or dernier_jour(evenement)
+    return du, (au or du)
+
+
 def reperer_deplacements(evenements: list[Evenement], effectifs: dict, cle: str,
                          maintenant: dt.datetime,
-                         prochain: Evenement | None = None) -> list[dict[str, Any]]:
+                         prochain: Evenement | None = None,
+                         recents: list[Evenement] | None = None) -> list[dict[str, Any]]:
     """Demande à Gemini quels événements à venir sont des voyages, des rencontres
-    ou des sorties qui méritent des idées d'activités et les actus du lieu."""
+    ou des sorties qui méritent des idées d'activités et les actus du lieu.
+    Chacun dit aussi ses dates (« du », « au ») et s'il est « en_cours » : un voyage où l'auditeur
+    est aujourd'hui (l'Actu locale peut alors se mettre en pause). Les événements des derniers jours
+    (« recents ») aident seulement à savoir qu'il est déjà parti."""
     if effectifs["jours_deplacements"] <= 0:
         return []
+    aujourd_hui = maintenant.date()
     limite = debut_du_jour(maintenant) + dt.timedelta(days=effectifs["jours_deplacements"])
     candidats = [e for e in evenements if e.debut < limite and evoque_un_lieu(e)]
     if prochain is not None and prochain not in candidats and evoque_un_lieu(prochain):
         candidats.append(prochain)         # agenda vide : le prochain événement, même lointain
     if not candidats:
         return []
+    passes = [e for e in recents or [] if evoque_un_lieu(e)][-15:]
     ville = effectifs.get("ville_habituelle") or "inconnue"
     systeme = f"""Tu repères dans l'agenda de l'auditeur les déplacements et les sorties à venir, pour que son podcast du matin lui propose des idées d'activités, de la culture et les actus du lieu.
 Ville où il vit : {ville}.
@@ -1351,11 +1390,15 @@ Retiens au plus deux événements, les plus marquants :
 - une rencontre ou une sortie dans une autre ville ou région que celle où il vit ;
 - ou, dans sa ville, une sortie de loisir dans un lieu précis (concert, spectacle, musée, festival, match, restaurant…).
 Ignore les réunions en ligne (Teams, Zoom, Meet…), les rendez-vous de routine (travail, médecin, cours ou sport habituels) et les lieux trop vagues. Si sa ville est inconnue, ne retiens que les voyages explicites (vol, train, hôtel, séjour, vacances, conférence dans une ville…) et les sorties de loisir.
-Pour chacun : le lieu en clair (ville ou région ; pour une sortie dans sa ville, le nom du lieu et la ville), le pays, quand (en toutes lettres, ex. « du jeudi 22 au dimanche 25 octobre »), la nature (voyage, rencontre ou sortie), le titre de l'événement, et une requête de recherche d'actualités très simple (en général le nom de la ville ; pour une sortie dans sa ville, le nom du lieu ou de l'artiste).
+Un voyage déjà commencé (aller passé, hôtel en cours, retour à venir) compte : s'il y en a un, retiens-le toujours. Ne retiens jamais un déplacement déjà terminé.
+Pour chacun : le lieu en clair (ville ou région ; pour une sortie dans sa ville, le nom du lieu et la ville), le pays, quand (en toutes lettres, ex. « du jeudi 22 au dimanche 25 octobre »), la nature (voyage, rencontre ou sortie), le titre de l'événement, une requête de recherche d'actualités très simple (en général le nom de la ville ; pour une sortie dans sa ville, le nom du lieu ou de l'artiste), et « du » et « au » : le premier et le dernier jour sur place, au format AAAA-MM-JJ (le même jour pour une sortie ou une rencontre d'un jour ; vides si tu ne peux pas le savoir).
 S'il n'y a rien de tel, renvoie une liste vide."""
-    lignes = [f"- {quand_court(e)} : {e.titre}" + (f" — lieu : {e.lieu}" if e.lieu else "")
-              for e in candidats[:25]]
-    entree = f"Aujourd'hui : {date_longue(maintenant.date())}.\nÉvénements à venir :\n" + "\n".join(lignes)
+    ligne = lambda e: f"- {quand_court(e)} : {e.titre}" + (f" — lieu : {e.lieu}" if e.lieu else "")
+    entree = (f"Aujourd'hui : {date_longue(aujourd_hui)} ({aujourd_hui.isoformat()}).\nÉvénements à venir :\n"
+              + "\n".join(ligne(e) for e in candidats[:25]))
+    if passes:
+        entree += ("\nÉvénements des derniers jours, déjà passés (seulement pour savoir s'il est déjà parti) :\n"
+                   + "\n".join(ligne(e) for e in passes))
     try:
         resultat, _ = demander_json(systeme, entree, schema_deplacements(),
                                     effectifs["modeles_rapides"], cle, delai=120, tours=1)
@@ -1366,10 +1409,18 @@ S'il n'y a rien de tel, renvoie une liste vide."""
     for element in resultat.get("deplacements") or []:
         if not isinstance(element, dict) or not str(element.get("lieu", "")).strip():
             continue
-        deplacements.append({cle: str(element.get(cle, "")).strip()[:120] for cle in
-                             ("lieu", "pays", "quand", "nature", "evenement", "recherche")})
+        deplacement: dict[str, Any] = {cle: str(element.get(cle, "")).strip()[:120] for cle in
+                                       ("lieu", "pays", "quand", "nature", "evenement", "recherche")}
+        du, au = periode_deplacement(element, candidats + passes)
+        if au and au < aujourd_hui:
+            continue                       # déjà fini : rien à présenter
+        deplacement["du"], deplacement["au"] = (du.isoformat() if du else ""), (au.isoformat() if au else "")
+        # En voyage aujourd'hui : un séjour ou un voyage (pas une sortie ni un rendez-vous ailleurs).
+        deplacement["en_cours"] = bool(deplacement["nature"] == "voyage" and du and du <= aujourd_hui <= au)
+        deplacements.append(deplacement)
+    deplacements.sort(key=lambda d: not d["en_cours"])     # le voyage en cours d'abord, gardé quoi qu'il arrive
     if deplacements:
-        journal("Déplacements repérés : " + ", ".join(d["lieu"] for d in deplacements))
+        journal("Déplacements repérés : " + ", ".join(d["lieu"] + (" (en cours)" if d["en_cours"] else "") for d in deplacements))
     return deplacements[:int(effectifs.get("max_deplacements") or 2)]
 
 
@@ -2045,8 +2096,9 @@ def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: l
     horizon = max(effectifs["jours_agenda"], effectifs["horizon_prochain_evenement_jours"],
                   effectifs["jours_deplacements"])
     tous: list[Evenement] = []
+    recents: list[Evenement] = []             # finis ces derniers jours : pour savoir s'il est déjà en voyage
     if urls:
-        tous, problemes = lire_agendas(urls, effectifs, maintenant, horizon)
+        tous, problemes = lire_agendas(urls, effectifs, maintenant, horizon, recents)
         remarques += problemes
     else:
         journal("Aucun agenda configuré (ajoute-en un dans l'application, Réglages › Sources › Agendas).")
@@ -2072,12 +2124,20 @@ def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: l
     deja_racontes = articles_deja_traites(memoire, maintenant)
     journal(f"Mémoire : {len(deja_racontes)} actu(s) déjà racontée(s) ces {JOURS_MEMOIRE_ARTICLES} derniers jours, écartée(s).")
     vus |= deja_racontes                                  # pas deux fois la même actu sur plusieurs jours
-    # Les déplacements se cherchent dans les agendas choisis dans leur fiche.
+    # Les déplacements se cherchent dans les agendas choisis dans leur fiche. On les repère aussi quand
+    # l'Actu locale doit se taire pendant un voyage, même si la rubrique Mes déplacements est retirée.
     pour_deplacements = evenements_choisis(tous, integrees.get("deplacements"))
     prochain_deplacement = pour_deplacements[0] if pour_deplacements and not [
         e for e in pour_deplacements if e.debut < fin_fenetre] else None
-    deplacements = (reperer_deplacements(pour_deplacements, effectifs, cle, maintenant, prochain_deplacement)
-                    if pour_deplacements and rubrique_active(effectifs, "deplacements") else [])
+    avec_deplacements = rubrique_active(effectifs, "deplacements")
+    avec_locale = bool(effectifs["ville_habituelle"]) and rubrique_active(effectifs, "actu_locale")
+    pause_locale_possible = avec_locale and bool(effectifs.get("locale_pause_deplacement"))
+    deplacements = (reperer_deplacements(pour_deplacements, effectifs, cle, maintenant, prochain_deplacement,
+                                         evenements_choisis(recents, integrees.get("deplacements")))
+                    if pour_deplacements and (avec_deplacements or pause_locale_possible) else [])
+    en_voyage = [d for d in deplacements if d.get("en_cours")]
+    if not avec_deplacements:
+        deplacements = []
     for deplacement in deplacements:
         deplacement["articles"] = garder_nouveaux(
             chercher_actus(deplacement["recherche"] or deplacement["lieu"], effectifs,
@@ -2087,7 +2147,10 @@ def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: l
     collectes = preparer_regles(effectifs, cle, maintenant, tous, forcees, vus, titres_regles, lire_rubrique)
     locales: list[Article] = []
     locales_deja_dites = False
-    if effectifs["ville_habituelle"] and rubrique_active(effectifs, "actu_locale"):
+    if pause_locale_possible and en_voyage:
+        journal(f"Actu locale en pause : en voyage ({en_voyage[0]['lieu']}).")
+        avec_locale = False
+    if avec_locale:
         ville = effectifs["ville_habituelle"]
         voulues = int(effectifs.get("locale_articles", 3))
         heures_locales = float(effectifs.get("locale_fraicheur_heures", 168))
@@ -2143,8 +2206,9 @@ def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: l
         lignes = []
         for d in deplacements:
             pays = f" ({d['pays']})" if d["pays"] else ""
-            lignes.append(f"- {d['lieu']}{pays} — {d['nature']}, {d['quand']} "
-                          f"(événement : « {d['evenement']} »)")
+            lignes.append(f"- {d['lieu']}{pays} — {d['nature']}, {d['quand']}"
+                          + (", en cours : il y est en ce moment" if d.get("en_cours") else "")
+                          + f" (événement : « {d['evenement']} »)")
             if d.get("deja"):
                 lignes.append(deja_presente_en_mots(d["deja"], maintenant))
             lignes += [f"  {ligne_article(a, maintenant)}" for a in d["articles"]] or [

@@ -1006,6 +1006,8 @@ const SOUS_ECRANS = { fiche: "programme", integree: "programme", catalogue: "pro
 const parent = (ecran) => (ecran === "fiche" && S.fiche && S.fiche.origine) || SOUS_ECRANS[ecran];
 
 function dessiner() {
+  // Pendant qu'on glisse une rubrique, redessiner lui arracherait la ligne tenue : on attend la fin du geste.
+  if (S.glisse && S.ecran === "programme") { S.aRedessiner = true; return; }
   const vues = { accueil: vueAccueil, programme: vueProgramme, fiche: vueFiche, integree: vueIntegree, catalogue: vueCatalogue, idees: vueIdees,
                  planning: vuePlanning, reglages: vueReglages, reglage: vueReglage, episode: vueEpisode, episodes: vueEpisodes,
                  resultats: vueResultats, parler: vueParler, bienvenue: vueBienvenue };
@@ -1582,7 +1584,7 @@ function resumeReglagesIntegree(cle) {
     case "ouverture": return "Salutation et programme";
     case "agenda": return `${r.agenda.jours} jours à l'avance${r.agendas.length ? ` · ${lus} agenda${lus > 1 ? "s" : ""}` : ""}`;
     case "deplacements": return r.agenda.deplacements ? `Si un voyage approche (${r.agenda.jours_deplacements} j)` : "Repérage désactivé";
-    case "actu_locale": return r.actus.ville ? `${r.actus.ville} · ${pluriel(r.actus.locale_sujets, "sujet")} · ${r.actus.locale_articles} lus` : "Ville à préciser (Réglages › Moi)";
+    case "actu_locale": return r.actus.ville ? `${r.actus.ville} · ${pluriel(r.actus.locale_sujets, "sujet")} · ${r.actus.locale_articles} lus${r.actus.locale_pause_deplacement ? " · en pause en voyage" : ""}` : "Ville à préciser (Réglages › Moi)";
     case "approfondissements": return r.a_approfondir.length ? `${r.a_approfondir.length} sujet${r.a_approfondir.length > 1 ? "s" : ""} au prochain épisode` : "Quand tu demandes de creuser";
     case "actualites": return `${pluriel(r.format.nombre_sujets, "sujet")} · ${r.actus.articles} lus · ${r.actus.flux.length} flux`;
     case "cloture": return "Premier rendez-vous et mot de la fin";
@@ -2414,19 +2416,39 @@ function choixJour(vue) {
 function ordreAffiche() { return [...document.querySelectorAll("#deroule li")].map((li) => li.dataset.cle); }
 function renumeroter() { document.querySelectorAll("#deroule li .num").forEach((el, i) => { el.textContent = i + 1; }); }
 
-let envoiDeroule = null;
+// L'ordre est pris au moment du geste et montré tout de suite (S.d.deroule réordonné) ; l'envoi au bot
+// attend la fin d'une autre demande en cours au lieu d'être perdu (demander refuse quand S.occupe), et
+// les interrupteurs touchés entre-temps partent avec lui. Si le bot refuse, on relit son état.
+let envoiDeroule = null, actifsEnAttente = {}, derouleConfirme = null;
 function enregistrerDeroule(actifs) {
+  const ordre = ordreAffiche();
+  if (!ordre.length) return;
+  const parCle = new Map(S.d.deroule.map((x) => [x.cle, x]));
+  const change = ordre.join(",") !== S.d.deroule.map((x) => x.cle).join(",");
+  if (!actifs && !change && !Object.keys(actifsEnAttente).length) return;
+  if (!derouleConfirme) derouleConfirme = S.d.deroule.map((x) => ({ ...x }));   // pour revenir en arrière
+  if (change && ordre.length === parCle.size && ordre.every((c) => parCle.has(c))) S.d.deroule = ordre.map((c) => parCle.get(c));
+  for (const [cle, actif] of Object.entries(actifs || {})) { const x = parCle.get(cle); if (x) x.actif = actif; }
+  Object.assign(actifsEnAttente, actifs || {});
   clearTimeout(envoiDeroule);
-  envoiDeroule = setTimeout(async () => {
-    const avant = S.d.deroule.map((x) => x.cle).join(",");
-    const ordre = ordreAffiche();
-    if (!actifs && ordre.join(",") === avant) return;
-    const j = await demander("deroule", { ordre, actifs: actifs || {} });
-    if (j.ok) { vibrer("success"); annoncer("Déroulé enregistré"); }
-    if (S.ecran === "programme") dessiner();
-  }, actifs ? 0 : 350);
+  envoiDeroule = setTimeout(() => envoyerDeroule(ordre, 0), actifs ? 0 : 350);
+}
+async function envoyerDeroule(ordre, essai) {
+  if (S.occupe && essai < 50) { envoiDeroule = setTimeout(() => envoyerDeroule(ordre, essai + 1), 200); return; }
+  const actifs = actifsEnAttente, avant = derouleConfirme;
+  actifsEnAttente = {}; derouleConfirme = null;
+  const j = await demander("deroule", { ordre, actifs }, { toujours: true });
+  if (j.ok) { vibrer("success"); annoncer("Déroulé enregistré"); }
+  else if (j.reseau || !(await demander("etat", {}, { discret: true, toujours: true })).ok) { if (avant) S.d.deroule = avant; }
+  if (S.ecran === "programme") dessiner();
 }
 
+// Glisser une rubrique par sa poignée. Le doigt est suivi par toute la fenêtre, pas seulement par la poignée :
+// au-delà du haut ou du bas de la liste, ou à côté de la poignée, le geste continue, et le relâcher enregistre
+// toujours. La ligne tenue garde sa place dans la page (ce sont ses voisines qui passent de l'autre côté) :
+// la retirer, même pour la remettre aussitôt, ferait perdre au navigateur le doigt qu'il lui rattachait.
+// Près du haut de l'écran ou de la barre d'onglets, la page défile toute seule.
+const MARGE_DEFILE = 72, VITESSE_DEFILE = 18;   // px de la bordure où l'on défile ; px par image au plus
 function brancherGlisser() {
   const liste = document.getElementById("deroule");
   if (!liste) return;
@@ -2437,41 +2459,63 @@ function brancherGlisser() {
       ev.preventDefault();
       const voisin = ev.key === "ArrowUp" ? li.previousElementSibling : li.nextElementSibling;
       if (!voisin || !voisin.classList.contains("mobile")) return;
-      if (ev.key === "ArrowUp") liste.insertBefore(li, voisin); else liste.insertBefore(voisin, li);
+      if (ev.key === "ArrowUp") liste.insertBefore(voisin, li.nextElementSibling); else liste.insertBefore(voisin, li);
       renumeroter(); poignee.focus(); enregistrerDeroule();
     });
     poignee.addEventListener("pointerdown", (ev) => {
-      if (ev.button !== undefined && ev.button !== 0) return;
+      if ((ev.button !== undefined && ev.button !== 0) || S.glisse) return;
       ev.preventDefault();
-      poignee.setPointerCapture(ev.pointerId);
-      const departY = ev.clientY, departHaut = li.offsetTop;
+      try { poignee.setPointerCapture(ev.pointerId); } catch { /* le suivi par la fenêtre suffit */ }
+      const doigt = ev.pointerId, departY = ev.clientY + window.scrollY, departHaut = li.offsetTop;
+      let y = ev.clientY, image = 0, fini = false;
+      S.glisse = true;
       li.classList.add("glisse");
       vibrer("choix");
-      const bouger = (e) => {
+      const placer = () => {
+        if (!li.isConnected) return finir();
         const mobiles = [...liste.querySelectorAll("li.mobile")];
-        const haut = mobiles[0].offsetTop, bas = mobiles[mobiles.length - 1].offsetTop + mobiles[mobiles.length - 1].offsetHeight - li.offsetHeight;
-        const voulu = Math.max(haut, Math.min(bas, departHaut + (e.clientY - departY)));
-        const milieu = voulu + li.offsetHeight / 2;
-        for (let cran = 0; cran < 20; cran++) {
+        const dernier = mobiles[mobiles.length - 1];
+        const haut = mobiles[0].offsetTop, bas = dernier.offsetTop + dernier.offsetHeight - li.offsetHeight;
+        const voulu = Math.max(haut, Math.min(bas, departHaut + (y + window.scrollY - departY)));
+        // On passe une voisine dès que le bord de la ligne tenue dépasse son milieu (comparer les milieux
+        // empêchait d'atteindre la première et la dernière place : la ligne s'arrête au bord, pas au-delà).
+        for (let cran = 0; cran < 40; cran++) {
           const avant = li.previousElementSibling, apres = li.nextElementSibling;
-          if (avant && avant.classList.contains("mobile") && milieu < avant.offsetTop + avant.offsetHeight / 2) liste.insertBefore(li, avant);
-          else if (apres && apres.classList.contains("mobile") && milieu > apres.offsetTop + apres.offsetHeight / 2) liste.insertBefore(apres, li);
+          if (avant && avant.classList.contains("mobile") && voulu < avant.offsetTop + avant.offsetHeight / 2) liste.insertBefore(avant, li.nextElementSibling);
+          else if (apres && apres.classList.contains("mobile") && voulu + li.offsetHeight > apres.offsetTop + apres.offsetHeight / 2) liste.insertBefore(apres, li);
           else break;
           vibrer("choix"); renumeroter();
         }
         li.style.transform = `translateY(${voulu - li.offsetTop}px)`;
       };
-      const finir = () => {
-        poignee.removeEventListener("pointermove", bouger);
-        poignee.removeEventListener("pointerup", finir);
-        poignee.removeEventListener("pointercancel", finir);
+      // Défilement automatique : plus le doigt s'enfonce dans la bordure, plus la page va vite.
+      const defiler = () => {
+        if (fini) return;
+        const basVisible = navEl.classList.contains("cache") ? window.innerHeight : navEl.getBoundingClientRect().top;
+        let pas = 0;
+        if (y < MARGE_DEFILE) pas = -Math.min(VITESSE_DEFILE, Math.ceil((MARGE_DEFILE - y) / 4));
+        else if (y > basVisible - MARGE_DEFILE) pas = Math.min(VITESSE_DEFILE, Math.ceil((y - basVisible + MARGE_DEFILE) / 4));
+        if (pas) { const avant = window.scrollY; window.scrollBy(0, pas); if (window.scrollY !== avant) placer(); }
+        image = requestAnimationFrame(defiler);
+      };
+      const bouger = (e) => { if (e.pointerId !== doigt) return; e.preventDefault(); y = e.clientY; placer(); };
+      const finir = (e) => {
+        if (fini || (e && e.pointerId !== undefined && e.pointerId !== doigt)) return;
+        fini = true;
+        cancelAnimationFrame(image);
+        window.removeEventListener("pointermove", bouger);
+        window.removeEventListener("pointerup", finir);
+        window.removeEventListener("pointercancel", finir);
+        S.glisse = false;
         li.classList.remove("glisse");
         li.style.transform = "";
-        enregistrerDeroule();
+        if (li.isConnected) enregistrerDeroule();
+        if (S.aRedessiner) { S.aRedessiner = false; if (S.ecran === "programme") dessiner(); }
       };
-      poignee.addEventListener("pointermove", bouger);
-      poignee.addEventListener("pointerup", finir);
-      poignee.addEventListener("pointercancel", finir);
+      window.addEventListener("pointermove", bouger, { passive: false });
+      window.addEventListener("pointerup", finir);
+      window.addEventListener("pointercancel", finir);
+      image = requestAnimationFrame(defiler);
     });
   });
 }
@@ -3170,6 +3214,10 @@ function corpsActus(locale) {
       <div class="reglage"><span>Articles lus</span>${locale ? pas(c.articles, valeur(c.articles), 1, 10, 1) : pas(c.articles, valeur(c.articles), 5, 60, 5)}</div>
       <div class="reglage"><span>Âge maximum des nouvelles</span>${choix(c.age, age, ages.concat(ages.some(([v]) => v === age) ? [] : [[age, `${age} h`]]))}</div>
     </section>
+    ${locale ? `<section class="bloc">${interrupteur("En pause pendant mes voyages", a.locale_pause_deplacement, 'data-regler-bool="actus.locale_pause_deplacement"')}</section>
+    <p class="aide">${a.locale_pause_deplacement && !r.agenda.deplacements
+      ? "Pour savoir quand tu voyages, active d'abord « Repérer mes déplacements dans l'agenda » (fiche Mes déplacements)."
+      : "Les jours où ton agenda montre que tu es en voyage (repéré comme pour « Mes déplacements »), pas d'actu de ta ville : « Mes déplacements » raconte celle du lieu où tu es. Une sortie ou un rendez-vous ailleurs ne la coupe pas."}</p>` : ""}
     <div class="champ"><span class="etiquette">Thèmes préférés</span>${etiquettes(c.preferes, valeur(c.preferes), locale ? "Ex. travaux, culture" : "Ex. vélo, économie")}</div>
     <div class="champ"><span class="etiquette">Thèmes à éviter</span>${etiquettes(c.eviter, valeur(c.eviter), locale ? "Ex. faits divers" : "Ex. sport, people")}</div>
     <p class="aide">${locale
@@ -3361,10 +3409,11 @@ document.addEventListener("click", (ev) => {
   if (ds.actif) {
     const x = S.d.deroule.find((y) => y.cle === ds.actif);
     if (!x) return;
-    el.setAttribute("aria-checked", String(!x.actif));
-    el.closest("li").classList.toggle("eteint", x.actif);
+    const actif = !x.actif;                 // enregistrerDeroule le note aussitôt dans S.d (deux appuis rapides s'annulent)
+    el.setAttribute("aria-checked", String(actif));
+    el.closest("li").classList.toggle("eteint", !actif);
     vibrer("choix");
-    return enregistrerDeroule({ [ds.actif]: !x.actif });
+    return enregistrerDeroule({ [ds.actif]: actif });
   }
   if (S.fiche && S.ecran === "fiche") {
     const f = S.fiche.f;

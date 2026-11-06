@@ -27,7 +27,7 @@ export const REGLAGES_APP = [
   "voix.animateurs.0.nom", "voix.animateurs.0.voix", "voix.animateurs.1.nom", "voix.animateurs.1.voix",
   "agenda.jours", "agenda.horizon", "agenda.notes", "agenda.deplacements", "agenda.jours_deplacements", "agenda.max_deplacements",
   "actus.ville", "actus.fraicheur_heures", "actus.articles",
-  "actus.locale_sujets", "actus.locale_articles", "actus.locale_fraicheur_heures",
+  "actus.locale_sujets", "actus.locale_articles", "actus.locale_fraicheur_heures", "actus.locale_pause_deplacement",
   "planning.rattrapage", "planning.delai_rattrapage", "planning.feries", "planning.avance_minutes",
   "planning.feries_region", "voix.solo", "voix.mode", "pays",
 ];

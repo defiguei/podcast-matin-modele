@@ -361,7 +361,8 @@ export function configParDefaut() {
     // Actualités globales et Actu locale se règlent de la même façon : thèmes préférés et à
     // éviter, âge maximum des nouvelles, nombre de sujets racontés et d'articles lus.
     actus: { ville: "", sujets_preferes: [], sujets_a_eviter: [], flux_lus: fluxDuPays(PAYS_DEFAUT).map((f) => f.id), fraicheur_heures: 36, articles: 30,
-             locale_sujets: 2, locale_articles: 3, locale_fraicheur_heures: 168, locale_preferes: [], locale_a_eviter: [] },
+             locale_sujets: 2, locale_articles: 3, locale_fraicheur_heures: 168, locale_preferes: [], locale_a_eviter: [],
+             locale_pause_deplacement: false },   // pas d'actu locale le temps d'un voyage repéré dans l'agenda
     // Réglages › Sources : catégories coupées (aucune rubrique ne les lit), tous les flux RSS
     // ([{ id, nom, url, pays? }] ; « pays » : proposé pour ce pays, il suit un changement de pays)
     // et les sites de référence ([{ id, nom, domaine }]).
@@ -440,6 +441,7 @@ export const REGLAGES = {
   "actus.locale_fraicheur_heures": { nom: "Âge max. de l'actu locale (h)", valider: entier(6, 336) },
   "actus.locale_preferes": { nom: "Thèmes préférés (actu locale)", valider: liste() },
   "actus.locale_a_eviter": { nom: "Thèmes à éviter (actu locale)", valider: liste() },
+  "actus.locale_pause_deplacement": { nom: "Actu locale en pause pendant mes voyages", gemini: "Actu locale en pause les jours où l'agenda montre un voyage en cours (oui/non)", valider: booleen },
   "consignes": { nom: "Consignes de style", gemini: "Consignes de style, pour tout l'épisode", valider: liste(20, LONGUEUR_CONSIGNE) },
   ...Object.fromEntries(Object.entries(RUBRIQUES).map(([cle, nom]) => [`consignes_rubriques.${cle}`,
     { nom: `Consignes · ${nom}`, gemini: `Consignes propres à la rubrique ${nom}`, valider: liste(20, LONGUEUR_CONSIGNE) }])),
