@@ -3588,8 +3588,24 @@ document.addEventListener("keydown", (ev) => {
   if (ev.key === "Enter" && ev.target.dataset && (ev.target.dataset.nomVoix || ev.target.dataset.agendaNom)) { ev.preventDefault(); ev.target.blur(); return; }
   if (ev.key === "Enter" && !ev.shiftKey && ev.target.id === "demande") { ev.preventDefault(); const v = ev.target.value; ev.target.value = ""; envoyerDemande(v); }
 });
+// Une nouvelle version du modèle ? Cherchée à l'ouverture et à chaque retour dans l'application, sans
+// message (le bot ne relit le modèle qu'une fois toutes les 10 minutes), en plus de sa vérification de la
+// nuit. Si elle apparaît, l'accueil et les réglages se redessinent (pas pendant une saisie ni un glisser).
+let majCherchee = 0;
+async function chercherMajAuto(essai = 0) {
+  if (!S.d || S.horsLigne || !jetonAppareil.lire() || Date.now() - majCherchee < 10 * 60000) return;
+  if (S.occupe) { if (essai < 5) setTimeout(() => chercherMajAuto(essai + 1), 1500); return; }
+  majCherchee = Date.now();
+  const avant = S.d.maj ? S.d.maj.version : "";
+  const j = await demander("verifier_maj", { auto: true }, { discret: true });
+  if (!j.ok) { majCherchee = 0; return; }
+  const saisie = document.activeElement && document.activeElement.matches && document.activeElement.matches("input, textarea, select");
+  if ((S.d.maj ? S.d.maj.version : "") !== avant && ["accueil", "reglages", "reglage"].includes(S.ecran) && !saisie && !S.glisse) dessiner();
+}
+
 // Après une longue absence, les données (et les liens audio) se rafraîchissent.
 document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && S.d) setTimeout(chercherMajAuto, 1500);
   if (document.visibilityState === "visible" && S.d && surEcranApplication()) suivreAppareils();
   if (document.visibilityState === "visible" && S.d && Date.now() - S.charge > 30 * 60000 && S.ecran !== "fiche") {
     S.archives = {};   // mois archivés rechargés à la demande, avec des liens neufs
@@ -3773,6 +3789,7 @@ async function demarrer() {
   dessiner();
   accorderAudioGarde();
   lireNotifs().then(() => { if (S.ecran === "reglage") dessiner(); });
+  setTimeout(chercherMajAuto, 1500);           // une nouvelle version publiée depuis la vérification de la nuit ?
   if (clesEnTest().length) suivreTestsCles();     // un test de clé lancé sur GitHub avant de fermer
 }
 

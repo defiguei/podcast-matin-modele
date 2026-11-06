@@ -1664,6 +1664,15 @@ await scenario("Appareils : connexion par code, manifeste, icônes", async () =>
 await scenario("Mises à jour depuis le modèle", async () => {
   let r = await app("verifier_maj");
   verifier(r.ok && r.donnees.maj?.version === "2099-01-01.1" && r.donnees.maj.nouveautes.length === 2 && r.donnees.maj_modele === "ok", "nouvelle version vue", r.donnees.maj);
+  // À l'ouverture de l'application : sans message, et le modèle n'est relu qu'au bout de 10 minutes.
+  await vider();
+  r = await app("verifier_maj", { auto: true });
+  verifier(r.ok && !r.message && !(await appels()).some((a) => a.service === "modele"), "ouverture juste après une vérification : le modèle n'est pas relu");
+  const avantMaj = (await etat()).etat;
+  await envoyerJson(`${BOT}/test/etat`, { etat: { ...avantMaj, maj: null, maj_verifie_ms: Date.now() - 11 * 60 * 1000 } });
+  r = await app("verifier_maj", { auto: true });
+  verifier(r.ok && !r.message && r.donnees.maj?.version === "2099-01-01.1" && (await appels()).some((a) => a.service === "modele"),
+    "ouverture de l'application : une version publiée depuis la nuit est vue tout de suite", r.donnees.maj);
   await vider();
   r = await app("mettre_a_jour");
   const lance = lancements(await appels()).find((a) => a.workflow === "mettre-a-jour.yml");

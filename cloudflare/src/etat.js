@@ -21,15 +21,17 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerChapitres, rangerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-11-06.1";
+export const VERSION = "2026-11-06.2";
 const MAX_REFAITS = 6;
 const MAX_RECHERCHES = 15;
+const MAJ_AUTO_MS = 10 * 60 * 1000;   // à l'ouverture de l'application : le modèle est relu au plus toutes les 10 minutes
 const MAX_EPISODES = 60;      // épisodes récents, dans l'état ; les plus anciens vont dans l'archive de leur mois
 const MAX_ARCHIVE_MOIS = 400; // épisodes gardés par mois d'archive (bien plus que nécessaire)
 const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et les douze précédents
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
+  "Mises à jour : une nouvelle version est cherchée dès que tu ouvres l'application (ou y reviens), plus seulement la nuit ; plus besoin de lancer la recherche à la main.",
   "Actu locale : nouvelle option « En pause pendant mes voyages » ; les jours où ton agenda montre que tu es en voyage, pas d'actu de ta ville (« Mes déplacements » raconte celle du lieu où tu es).",
   "Ton épisode : glisser une rubrique par sa poignée marche jusqu'en haut et en bas de la liste (la page défile toute seule), et le nouvel ordre est toujours enregistré.",
 ];
@@ -607,6 +609,7 @@ export class Etat extends DurableObject {
     // Une fois par jour : une nouvelle version du modèle ?
     if (this.env.MODELE && etat.maj_verifie !== m.date && m.heure >= "04:00") {
       etat.maj_verifie = m.date;
+      etat.maj_verifie_ms = Date.now();
       await this.verifierMaj(etat);
       await this.ecrireEtat(etat);
     }
@@ -1290,9 +1293,14 @@ export class Etat extends DurableObject {
             : refus("L'essai n'est arrivé nulle part : réactive les notifications sur ton téléphone.");
         }
         case "verifier_maj":
+          // auto : l'application qui s'ouvre (ou revient au premier plan) demande sans bruit ;
+          // le modèle n'est relu que si la dernière vérification date de plus de 10 minutes.
+          if (demande.auto && Date.now() - (etat.maj_verifie_ms || 0) < MAJ_AUTO_MS) return reponse();
           await this.verifierMaj(etat);
           etat.maj_verifie = ctx.aujourdHui;
+          etat.maj_verifie_ms = Date.now();
           await this.ecrireEtat(etat);
+          if (demande.auto) return reponse();
           return reponse({ message: etat.maj_modele === "prive" ? "Le modèle n'est pas public : pas de mise à jour possible pour l'instant."
             : etat.maj_modele !== "ok" ? "Le modèle ne répond pas : réessaie plus tard."
             : etat.maj && plusRecente(etat.maj.version, VERSION) ? `Version ${etat.maj.version} disponible.` : "Tu as la dernière version." });
@@ -1520,7 +1528,7 @@ export class Etat extends DurableObject {
     const modele = this.env.MODELE;
     if (!modele) return;
     try {
-      const r = await fetch(`${this.env.MODELE_BRUT || "https://raw.githubusercontent.com"}/${modele}/main/version.json`, { headers: { "Cache-Control": "no-cache" } });
+      const r = await fetch(`${this.env.MODELE_BRUT || "https://raw.githubusercontent.com"}/${modele}/main/version.json?t=${Date.now()}`, { headers: { "Cache-Control": "no-cache" } });
       if (!r.ok) { etat.maj_modele = r.status === 404 ? "prive" : "injoignable"; return; }
       const v = await r.json();
       etat.maj_modele = "ok";
