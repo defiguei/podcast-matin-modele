@@ -337,6 +337,18 @@ verifier(saints and "Prénom fêté aujourd'hui" in c1.texte and "Thérèse" in 
          "15 octobre : prénoms fêtés (Thérèse), sans liste de saints")
 verifier(isinstance(sources.saints_du_jour(dt.date(2028, 2, 29)), list), "29 février sans erreur")
 
+# La météo d'une rubrique sans lieu propre suit le déplacement en cours.
+r_meteo = {"id": "R9", "titre": "Météo", "consigne": "La météo du jour.", "recherche": {"fiche": {}, "sources": ["meteo"], "requetes": []}}
+c_chez = moteur.collecter(r_meteo, moteur.plan_par_defaut(r_meteo, "Yverdon-les-Bains"), FaussesSources(), jeudi, "Yverdon-les-Bains")
+verifier("Météo prévue (Yverdon-les-Bains) :" in c_chez.texte and "déplacement" not in c_chez.texte, "météo : chez lui sans déplacement")
+c_voyage = moteur.collecter(r_meteo, moteur.plan_par_defaut(r_meteo, "Yverdon-les-Bains"), FaussesSources(), jeudi,
+                            "Yverdon-les-Bains", ville_meteo="Vallorbe")
+verifier("Météo prévue (Vallorbe, où il est en déplacement) :" in c_voyage.texte and "Yverdon" not in c_voyage.texte.split("Consigne")[1],
+         f"météo : le lieu du déplacement en cours : {c_voyage.texte}")
+c_inconnu = moteur.collecter(r_meteo, moteur.plan_par_defaut(r_meteo, "Yverdon-les-Bains"), FaussesSources(), jeudi,
+                             "Yverdon-les-Bains", ville_meteo="Lieu introuvable")
+verifier("Météo prévue (Yverdon-les-Bains) :" in c_inconnu.texte, "météo : lieu du déplacement introuvable, retour chez lui")
+
 # ───────────── 5 ter. prénoms, saints, journées et fêtes (données de référence) ─────────────
 import fetes  # noqa: E402
 import subprocess  # noqa: E402

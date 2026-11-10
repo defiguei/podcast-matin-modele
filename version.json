@@ -1,11 +1,10 @@
 {
-  "version": "2026-11-06.2",
-  "date": "2026-11-06",
-  "titre": "Mises à jour vues à l'ouverture, actu locale en voyage",
+  "version": "2026-11-10.1",
+  "date": "2026-11-10",
+  "titre": "Déplacements mieux repérés, météo du lieu où tu es",
   "nouveautes": [
-    "Mises à jour : une nouvelle version est cherchée dès que tu ouvres l'application (ou y reviens), plus seulement la nuit ; plus besoin de lancer la recherche à la main.",
-    "Actu locale : nouvelle option « En pause pendant mes voyages » ; les jours où ton agenda montre que tu es en voyage, pas d'actu de ta ville (« Mes déplacements » raconte celle du lieu où tu es).",
-    "Ton épisode : glisser une rubrique par sa poignée marche jusqu'en haut et en bas de la liste (la page défile toute seule), et le nouvel ordre est toujours enregistré."
+    "Déplacements : le podcast repère mieux que tu es parti (week-end ou séjour sur plusieurs jours, même si l'événement s'appelle juste « Belfort »), et la rubrique Météo prévoit le temps là où tu es, plus chez toi.",
+    "Actu locale en pause pendant mes voyages : elle se coupe désormais pour tout déplacement hors de ta ville (rencontre, sortie, séjour), plus seulement pour un « voyage »."
   ],
   "supprimes": [
     ".github/workflows/retours.yml",

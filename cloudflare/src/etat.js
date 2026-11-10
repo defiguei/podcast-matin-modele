@@ -21,7 +21,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerChapitres, rangerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-11-06.2";
+export const VERSION = "2026-11-10.1";
 const MAX_REFAITS = 6;
 const MAX_RECHERCHES = 15;
 const MAJ_AUTO_MS = 10 * 60 * 1000;   // à l'ouverture de l'application : le modèle est relu au plus toutes les 10 minutes
@@ -31,9 +31,8 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
-  "Mises à jour : une nouvelle version est cherchée dès que tu ouvres l'application (ou y reviens), plus seulement la nuit ; plus besoin de lancer la recherche à la main.",
-  "Actu locale : nouvelle option « En pause pendant mes voyages » ; les jours où ton agenda montre que tu es en voyage, pas d'actu de ta ville (« Mes déplacements » raconte celle du lieu où tu es).",
-  "Ton épisode : glisser une rubrique par sa poignée marche jusqu'en haut et en bas de la liste (la page défile toute seule), et le nouvel ordre est toujours enregistré.",
+  "Déplacements : le podcast repère mieux que tu es parti (week-end ou séjour sur plusieurs jours, même si l'événement s'appelle juste « Belfort »), et la rubrique Météo prévoit le temps là où tu es, plus chez toi.",
+  "Actu locale en pause pendant mes voyages : elle se coupe désormais pour tout déplacement hors de ta ville (rencontre, sortie, séjour), plus seulement pour un « voyage ».",
 ];
 
 // « 2026-10 » décalé de n mois.

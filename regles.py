@@ -341,10 +341,13 @@ def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: s
               chercher_actus: Callable[[str], list[str]] | None = None, profondeur: int = 1,
               config: dict | None = None, lire_flux: Callable[[dict], list[str]] | None = None,
               agenda: list[str] | None = None, nombre_requetes: int | None = None,
-              lire_rubrique: Callable[[str], tuple[str, list[dict]]] | None = None) -> Collecte:
+              lire_rubrique: Callable[[str], tuple[str, list[dict]]] | None = None,
+              ville_meteo: str = "") -> Collecte:
     """Va chercher les informations dont la règle a besoin et prépare sa section.
     Seules les sources cochées dans sa fiche sont lues (sources_lues). « nombre_requetes » : le
-    nombre de recherches web voulu (recherche ponctuelle par écrit) ; sinon 1 + profondeur."""
+    nombre de recherches web voulu (recherche ponctuelle par écrit) ; sinon 1 + profondeur.
+    « ville_meteo » : là où l'auditeur est en déplacement aujourd'hui ; la météo d'une rubrique sans lieu
+    propre se prévoit là plutôt que dans « ville »."""
     r = regle
     recherche = r.get("recherche") or {}
     fiche = recherche.get("fiche") or {}
@@ -397,12 +400,15 @@ def collecter(regle: dict, plan: dict, sources: Sources, jour: dt.date, ville: s
             lignes.append(f"Météo prévue ({collecte.point['nom']}, {date_longue(collecte.date_cible)}) : {Sources.meteo_en_mots(collecte.meteo)}")
         elif (collecte.date_cible - jour).days > 15:
             lignes.append("Météo : trop tôt pour une prévision fiable.")
-    elif besoin_meteo and ville:
-        point_ville = sources.geocoder(ville)
+    elif besoin_meteo and (ville_meteo or ville):
+        # En déplacement, la météo est celle du lieu où il est ; si ce lieu est introuvable, celle de chez lui.
+        point_ville = (ville_meteo and sources.geocoder(ville_meteo)) or (sources.geocoder(ville) if ville else None)
+        en_deplacement = bool(ville_meteo and point_ville and cle(point_ville["nom"]) != cle(ville))
         if point_ville:
             collecte.meteo = sources.meteo(point_ville["lat"], point_ville["lon"], collecte.date_cible)
             if collecte.meteo:
-                lignes.append(f"Météo prévue ({point_ville['nom']}) : {Sources.meteo_en_mots(collecte.meteo)}")
+                lignes.append(f"Météo prévue ({point_ville['nom']}{', où il est en déplacement' if en_deplacement else ''}) : "
+                              f"{Sources.meteo_en_mots(collecte.meteo)}")
 
     # Train précis : état en temps réel (retard, suppression, voie, correspondances).
     suivi = plan.get("train") if "transports" in noms_sources else None

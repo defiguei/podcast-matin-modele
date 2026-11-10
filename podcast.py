@@ -1339,8 +1339,21 @@ def schema_deplacements() -> dict:
 
 
 def evoque_un_lieu(evenement: Evenement) -> bool:
+    # Un événement sur plusieurs jours (week-end, séjour) est presque toujours un déplacement, même si son
+    # titre n'est que « Belfort » : Gemini en juge, on ne l'écarte pas d'avance.
     return bool(evenement.lieu or INDICES_DEPLACEMENT.search(evenement.titre)
-                or INDICE_VILLE.search(evenement.titre))
+                or INDICE_VILLE.search(evenement.titre)
+                or dernier_jour(evenement) > evenement.debut.date())
+
+
+def est_ailleurs(lieu: str, ville: str) -> bool:
+    """Le lieu d'un déplacement n'est pas la ville où l'auditeur vit (« Yverdon-les-Bains » = « Yverdon »)."""
+    lieu_cle, ville_cle = cle_titre(lieu), cle_titre(ville or "")
+    if not lieu_cle:
+        return False
+    if not ville_cle:
+        return True
+    return not (lieu_cle in ville_cle or ville_cle in lieu_cle)
 
 
 def _date_iso(texte: Any) -> dt.date | None:
@@ -1391,6 +1404,7 @@ Retiens au plus deux événements, les plus marquants :
 - ou, dans sa ville, une sortie de loisir dans un lieu précis (concert, spectacle, musée, festival, match, restaurant…).
 Ignore les réunions en ligne (Teams, Zoom, Meet…), les rendez-vous de routine (travail, médecin, cours ou sport habituels) et les lieux trop vagues. Si sa ville est inconnue, ne retiens que les voyages explicites (vol, train, hôtel, séjour, vacances, conférence dans une ville…) et les sorties de loisir.
 Un voyage déjà commencé (aller passé, hôtel en cours, retour à venir) compte : s'il y en a un, retiens-le toujours. Ne retiens jamais un déplacement déjà terminé.
+Un événement sur plusieurs jours (week-end, séjour), même dont le titre n'est qu'un nom de ville, est un déplacement si la ville n'est pas celle où il vit. Si l'auditeur est là-bas aujourd'hui, mets bien « du » et « au » : c'est ce qui change ses actus locales et sa météo.
 Pour chacun : le lieu en clair (ville ou région ; pour une sortie dans sa ville, le nom du lieu et la ville), le pays, quand (en toutes lettres, ex. « du jeudi 22 au dimanche 25 octobre »), la nature (voyage, rencontre ou sortie), le titre de l'événement, une requête de recherche d'actualités très simple (en général le nom de la ville ; pour une sortie dans sa ville, le nom du lieu ou de l'artiste), et « du » et « au » : le premier et le dernier jour sur place, au format AAAA-MM-JJ (le même jour pour une sortie ou une rencontre d'un jour ; vides si tu ne peux pas le savoir).
 S'il n'y a rien de tel, renvoie une liste vide."""
     ligne = lambda e: f"- {quand_court(e)} : {e.titre}" + (f" — lieu : {e.lieu}" if e.lieu else "")
@@ -1400,8 +1414,10 @@ S'il n'y a rien de tel, renvoie une liste vide."""
         entree += ("\nÉvénements des derniers jours, déjà passés (seulement pour savoir s'il est déjà parti) :\n"
                    + "\n".join(ligne(e) for e in passes))
     try:
-        resultat, _ = demander_json(systeme, entree, schema_deplacements(),
-                                    effectifs["modeles_rapides"], cle, delai=120, tours=1)
+        # Deux tours et, au besoin, les modèles principaux : un repérage raté, c'est les actus et la météo de
+        # chez lui pendant un voyage.
+        modeles = list(dict.fromkeys(list(effectifs["modeles_rapides"]) + list(effectifs.get("modeles_texte") or [])))
+        resultat, _ = demander_json(systeme, entree, schema_deplacements(), modeles, cle, delai=120, tours=2)
     except ErreurPodcast as erreur:
         journal(f"Repérage des déplacements impossible : {erreur}")
         return []
@@ -1415,8 +1431,10 @@ S'il n'y a rien de tel, renvoie une liste vide."""
         if au and au < aujourd_hui:
             continue                       # déjà fini : rien à présenter
         deplacement["du"], deplacement["au"] = (du.isoformat() if du else ""), (au.isoformat() if au else "")
-        # En voyage aujourd'hui : un séjour ou un voyage (pas une sortie ni un rendez-vous ailleurs).
-        deplacement["en_cours"] = bool(deplacement["nature"] == "voyage" and du and du <= aujourd_hui <= au)
+        # Là-bas aujourd'hui : un voyage, une rencontre ou une sortie hors de sa ville dont les dates couvrent
+        # aujourd'hui. Peu importe la nature choisie par Gemini (un week-end à Belfort passait pour une « rencontre »).
+        deplacement["en_cours"] = bool(du and du <= aujourd_hui <= au
+                                       and est_ailleurs(deplacement["lieu"], effectifs.get("ville_habituelle", "")))
         deplacements.append(deplacement)
     deplacements.sort(key=lambda d: not d["en_cours"])     # le voyage en cours d'abord, gardé quoi qu'il arrive
     if deplacements:
@@ -2031,13 +2049,23 @@ def raison_lisible(message: str) -> str:
     return tronquer(message, 300)
 
 
+def a_une_rubrique_meteo(effectifs: dict) -> bool:
+    """Une rubrique de l'épisode lit la météo (et n'est pas suspendue) : il faut savoir où est l'auditeur."""
+    suspendues = {r.get("cle") for r in effectifs.get("deroule") or [] if not r.get("actif", True)}
+    return any("meteo" in (((r.get("recherche") or {}).get("sources")) or [])
+               and not (r.get("rubrique") and r.get("id") in suspendues)
+               for r in (effectifs.get("config_bot") or {}).get("regles") or [] if isinstance(r, dict))
+
+
 def preparer_regles(effectifs: dict, cle: str, maintenant: dt.datetime, evenements: list[Evenement],
                     forcees: list[str] | None = None, vus: set[str] | None = None,
-                    titres_actus: list[str] | None = None, lire_rubrique: Any = None) -> dict:
+                    titres_actus: list[str] | None = None, lire_rubrique: Any = None,
+                    ville_meteo: str = "") -> dict:
     """Rubriques du jour : sélection, vérification des conditions d'agenda et
     préparation des recherches (un appel au modèle léger), puis collecte.
     Les actus des rubriques évitent celles déjà racontées (« vus ») ; leurs titres
-    sont ajoutés à « titres_actus » pour la mémoire."""
+    sont ajoutés à « titres_actus » pour la mémoire. « ville_meteo » : le lieu du déplacement en cours,
+    où se prévoit la météo à la place de la ville habituelle."""
     vus = set() if vus is None else vus
     titres_actus = [] if titres_actus is None else titres_actus
     config = effectifs.get("config_bot")
@@ -2080,7 +2108,7 @@ def preparer_regles(effectifs: dict, cle: str, maintenant: dt.datetime, evenemen
         try:
             collectes[regle["id"]] = moteur.collecter(regle, plan, sources, jour, effectifs["ville_habituelle"], actus,
                                                       config=config, lire_flux=flux_specialise, agenda=agendas.get(regle["id"], []),
-                                                      lire_rubrique=lire_rubrique)
+                                                      lire_rubrique=lire_rubrique, ville_meteo=ville_meteo)
             journal(f"Rubrique {regle['id']} appliquée ({regle.get('titre', '')}).")
         except Exception as erreur:          # une règle en panne ne bloque pas l'épisode
             journal(f"Rubrique {regle['id']} : collecte impossible ({type(erreur).__name__} : {erreur}).")
@@ -2134,8 +2162,13 @@ def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: l
     pause_locale_possible = avec_locale and bool(effectifs.get("locale_pause_deplacement"))
     deplacements = (reperer_deplacements(pour_deplacements, effectifs, cle, maintenant, prochain_deplacement,
                                          evenements_choisis(recents, integrees.get("deplacements")))
-                    if pour_deplacements and (avec_deplacements or pause_locale_possible) else [])
+                    if pour_deplacements and (avec_deplacements or pause_locale_possible or a_une_rubrique_meteo(effectifs))
+                    else [])
     en_voyage = [d for d in deplacements if d.get("en_cours")]
+    # La météo suit l'auditeur : là où il est en déplacement aujourd'hui, sinon chez lui.
+    ville_meteo = en_voyage[0]["lieu"] if en_voyage else ""
+    if ville_meteo:
+        journal(f"Météo : prévue pour {ville_meteo} (en déplacement), pas pour {effectifs.get('ville_habituelle') or 'chez lui'}.")
     if not avec_deplacements:
         deplacements = []
     for deplacement in deplacements:
@@ -2144,7 +2177,8 @@ def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: l
                            maintenant, lus_pour(4), 7), vus, 4)
         deplacement["deja"] = lieu_deja_presente(memoire, deplacement, maintenant)
     titres_regles: list[str] = []
-    collectes = preparer_regles(effectifs, cle, maintenant, tous, forcees, vus, titres_regles, lire_rubrique)
+    collectes = preparer_regles(effectifs, cle, maintenant, tous, forcees, vus, titres_regles, lire_rubrique,
+                                ville_meteo=ville_meteo)
     locales: list[Article] = []
     locales_deja_dites = False
     if pause_locale_possible and en_voyage:

@@ -1432,6 +1432,27 @@ try:
     _c_v = _contenu_voyage(True)
     verifier(_c_v.deplacements[0]["du"] == "2026-11-08" and not _c_v.deplacements[0]["en_cours"] and "Lausanne" in _req_v,
              "sans dates de Gemini : celles de l'événement ; pas de pause si le voyage n'a pas commencé")
+    # Un week-end à Belfort classé « rencontre » par Gemini : il y est, donc pause de l'actu locale et météo de Belfort.
+    _rep_v["deplacements"] = [{"lieu": "Belfort", "pays": "France", "quand": "du vendredi 6 au dimanche 8 novembre",
+                               "nature": "rencontre", "evenement": "Belfort", "recherche": "Belfort",
+                               "du": "2026-11-06", "au": "2026-11-08"}]
+    _c_v = _contenu_voyage(True)
+    verifier(_c_v.deplacements and _c_v.deplacements[0]["en_cours"] and "Lausanne" not in _req_v,
+             f"week-end ailleurs classé « rencontre » : il y est, l'actu locale se tait ({_c_v.deplacements})")
+    # Même lieu que sa ville (une sortie à Lausanne) : jamais « en cours ».
+    _rep_v["deplacements"] = [{"lieu": "Lausanne", "pays": "Suisse", "quand": "ce soir", "nature": "sortie",
+                               "evenement": "Concert", "recherche": "Lausanne", "du": "2026-11-06", "au": "2026-11-06"}]
+    _c_v = _contenu_voyage(True)
+    verifier(_c_v.deplacements and not _c_v.deplacements[0]["en_cours"] and "Lausanne" in _req_v,
+             "sortie dans sa propre ville : pas un déplacement, l'actu locale continue")
+    # Détection et comparaison des lieux.
+    _titre_seul = podcast.Evenement("Belfort", dt.datetime(2026, 11, 6, tzinfo=ZH), dt.datetime(2026, 11, 9, tzinfo=ZH), True)
+    _un_jour = podcast.Evenement("Dentiste", dt.datetime(2026, 11, 6, 9, tzinfo=ZH), dt.datetime(2026, 11, 6, 10, tzinfo=ZH), False)
+    verifier(podcast.evoque_un_lieu(_titre_seul) and not podcast.evoque_un_lieu(_un_jour),
+             "un événement sur plusieurs jours est candidat même sans mot-indice dans son titre")
+    verifier(not podcast.est_ailleurs("Yverdon", "Yverdon-les-Bains") and not podcast.est_ailleurs("Lausanne", "Lausanne")
+             and podcast.est_ailleurs("Belfort", "Yverdon-les-Bains") and podcast.est_ailleurs("Belfort", ""),
+             "est_ailleurs : même ville (nom court ou long) ou non")
 finally:
     podcast.telecharger, podcast.demander_json, podcast.chercher_actus, podcast.articles_de_flux, podcast.lire_actualites = _anciens_v
 
