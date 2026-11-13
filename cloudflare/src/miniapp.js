@@ -132,7 +132,7 @@ function testVisible(maintenant, t) {
   if (!t) return null;
   if (!t.en_cours) return t;
   const enCours = maintenant - (t.lance_ms || 0) < 5 * 60 * 1000;
-  return enCours ? { ...t, en_cours: true } : { ok: false, quand: t.quand || null, message: "GitHub n'a pas renvoyé de résultat : regarde l'exécution « Tester mes clés » dans l'onglet Actions." };
+  return enCours ? { ...t, en_cours: true } : { ok: false, quand: t.quand || null, message: `GitHub n'a pas renvoyé de résultat : regarde l'exécution « ${t.workflow || "Tester mes clés"} » dans l'onglet Actions.` };
 }
 
 // Réglages › Sources, rangé par type d'outil : services (avec leur clé), flux, sites, agendas,

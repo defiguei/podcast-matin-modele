@@ -755,7 +755,7 @@ def lire_evenements(contenu: bytes, fuseau: ZoneInfo, debut: dt.datetime,
     return evenements
 
 
-AGENDAS_VUS: list[dict] = []     # agendas lus à ce lancement : {id, nom, nb} (envoyés au bot)
+AGENDAS_VUS: list[dict] = []     # agendas configurés à ce lancement : {id, nom, nb[, illisible, erreur]} (envoyés au bot)
 AGENDA_APERCU: list[dict] = []   # 14 prochains jours, tous agendas : aperçu dans l'application
 
 
@@ -816,6 +816,11 @@ def lire_agendas(urls: list[str], reglages: dict, maintenant: dt.datetime,
         except Exception as erreur:  # un agenda illisible ne bloque pas l'épisode
             journal(f"Agenda {numero} illisible : {erreur}")
             problemes.append(f"agenda {numero} inaccessible")
+            # Il reste dans la liste du bot, marqué illisible : un agenda configuré n'en disparaît jamais.
+            identifiant_a = identifiant_agenda(url)
+            if not any(a["id"] == identifiant_a for a in AGENDAS_VUS):
+                AGENDAS_VUS.append({"id": identifiant_a, "nom": nom_agenda(b"", url, numero), "nb": 0,
+                                    "illisible": True, "erreur": str(erreur)[:160]})
     # Doublons possibles si un même événement figure dans deux agendas.
     vus, uniques = set(), []
     for evenement in sorted(evenements, key=lambda e: (e.debut, not e.journee_entiere)):
@@ -1070,7 +1075,9 @@ def temps_restant() -> float:
     return float("inf") if ECHEANCE is None else ECHEANCE - time.monotonic()
 
 
-RESERVE_SECOURS = 240      # secondes gardées pour les modèles légers (et la voix) quand les principaux insistent
+RESERVE_SECOURS = 300      # secondes gardées pour les modèles légers (et la voix) quand les principaux insistent
+DUREE_EXECUTION = 45 * 60  # temps donné à un épisode, avant le délai du workflow (50 min)
+TOURS_EPISODE = 30         # tours sur les modèles principaux pour l'épisode : c'est le temps qui arrête
 
 
 @contextlib.contextmanager
@@ -1543,7 +1550,7 @@ Style et règles :
 - Écris les heures comme on les dit (« 9 h 30 », « midi », « 14 h ») et les nombres de façon naturelle.
 - Avec parcimonie ({MAX_BALISES} fois au maximum sur tout l'épisode), tu peux insérer ces sons non verbaux, écrits en anglais entre chevrons : <laugh>, <chuckle>, <sigh>, <breath>, <short pause>.
 - {"Pas de réaction entre barres verticales : il n'y a qu'une voix." if seul else f"{MAX_REACTIONS - 1} fois au maximum, tu peux glisser une très courte réaction de l'autre animateur entre barres verticales au milieu d'une réplique, par exemple : « Et le budget a été adopté hier soir |ah enfin| après trois jours de débat. »"}
-- Longueur : entre {mots} et {round(mots * 1.1)} mots au total, pour durer {minutes:g} minutes à l'oral, en {round(minutes * 6)} à {round(minutes * 10)} répliques. C'est important : n'écris pas moins de {mots} mots ; développe plutôt les sujets.{preferences}
+- Longueur : entre {mots} et {round(mots * 1.1)} mots au total, pour durer {minutes:g} minutes à l'oral, en {round(minutes * 6)} à {round(minutes * 10)} répliques. C'est important : n'écris pas moins de {mots} mots ; développe plutôt les sujets. La clôture reste courte quoi qu'il arrive : ne rallonge jamais les au revoir pour atteindre la longueur.{preferences}
 
 Remplis aussi « titre » (court, accrocheur, sans date), « sujets » (les sujets d'actualité traités, dans l'ordre, en quelques mots chacun), « sources » (les numéros des articles dont l'épisode parle) et, pour chaque réplique, « rubrique » : la clé de la rubrique du déroulé à laquelle elle appartient, parmi {", ".join(cles)}."""
 
@@ -1629,6 +1636,53 @@ def nettoyer_replique(texte: str, compteurs: dict[str, int]) -> str:
     return re.sub(r"\s+([.,])", r"\1", texte)
 
 
+# La clôture : un rappel et le mot de la fin. Un modèle (léger surtout) qui manque de matière
+# pour atteindre la longueur demandée rallonge parfois les au revoir pendant des minutes.
+CLOTURE_REPLIQUES = 4      # au plus : les 3 premières et la dernière
+CLOTURE_MOTS = 140         # au plus sur toute la clôture
+CLOTURE_MOTS_REPLIQUE = 60  # une réplique de clôture plus longue est coupée (début et dernière phrase)
+
+
+def phrases(texte: str) -> list[str]:
+    return [p for p in re.split(r"(?<=[.!?…])\s+", texte.strip()) if p]
+
+
+def raccourcir_replique_cloture(texte: str) -> str:
+    if len(texte.split()) <= CLOTURE_MOTS_REPLIQUE:
+        return texte
+    liste = phrases(texte)
+    if len(liste) < 2:
+        return texte
+    gardees, mots = [], len(liste[-1].split())
+    for phrase in liste[:-1]:
+        if gardees and mots + len(phrase.split()) > CLOTURE_MOTS_REPLIQUE:
+            break
+        gardees.append(phrase)
+        mots += len(phrase.split())
+    return " ".join(gardees + [liste[-1]])
+
+
+def raccourcir_cloture(repliques: list[dict]) -> list[dict]:
+    """Garde une clôture courte : seules les dernières répliques d'affilée marquées « cloture » sont
+    touchées (les 3 premières et la toute dernière, au plus CLOTURE_MOTS mots)."""
+    debut = len(repliques)
+    while debut > 0 and repliques[debut - 1].get("rubrique") == "cloture":
+        debut -= 1
+    fin = repliques[debut:]
+    if not fin:
+        return repliques
+    avant = sum(len(r["texte"].split()) for r in fin)
+    fin = [{**r, "texte": raccourcir_replique_cloture(r["texte"])} for r in fin]
+    if len(fin) > CLOTURE_REPLIQUES:
+        fin = fin[:CLOTURE_REPLIQUES - 1] + fin[-1:]
+    while len(fin) > 2 and sum(len(r["texte"].split()) for r in fin) > CLOTURE_MOTS:
+        del fin[-2]                       # on retire par la fin, en gardant le dernier mot
+    apres = sum(len(r["texte"].split()) for r in fin)
+    if apres < avant:
+        journal(f"Clôture trop longue ({avant} mots) : ramenée à {apres} mots.")
+    return repliques[:debut] + fin
+
+
 def nettoyer_script(script: dict, noms: list[str], rubriques: list[str] | None = None) -> dict:
     compteurs = {"balises": 0, "reactions": 0}
     par_nom = {sans_accents(n).lower(): n for n in noms}
@@ -1653,6 +1707,8 @@ def nettoyer_script(script: dict, noms: list[str], rubriques: list[str] | None =
             if rubriques is not None:
                 replique["rubrique"] = rubrique
             repliques.append(replique)
+    if rubriques is not None and "cloture" in rubriques:
+        repliques = raccourcir_cloture(repliques)
     if len(repliques) < 4:
         raise ErreurPodcast("Le script renvoyé par Gemini est trop court ou vide.")
     sources = sorted({int(s) for s in script.get("sources") or []
@@ -1682,7 +1738,7 @@ def ecrire_script(effectifs: dict, cle: str, maintenant: dt.datetime, agenda: st
     brut, modele = demander_json_par_niveaux(
         systeme, demande_du_jour(effectifs, maintenant, agenda, sections, remarques),
         schema_script(noms, cles), effectifs["modeles_texte"], effectifs["modeles_rapides"], cle,
-        reflexion=effectifs["reflexion"], adapter=adapter)
+        reflexion=effectifs["reflexion"], tours=TOURS_EPISODE, adapter=adapter)
     script = nettoyer_script(brut, noms, cles)
     mots = sum(len(r["texte"].split()) for r in script["repliques"])
     minutes = minutes_visees(effectifs, collectes)
@@ -2332,9 +2388,10 @@ def main(arguments: list[str] | None = None) -> int:
         mode = "rattrapage"
     forcees = identifiants_regles(options.regles)
 
-    # Fin au plus tard, avant le délai du workflow (25 min).
+    # Fin au plus tard, avant le délai du workflow (50 min) : un épisode écrit par un modèle
+    # principal, même en retard, vaut mieux qu'un épisode à l'heure écrit par un modèle léger.
     global ECHEANCE
-    ECHEANCE = time.monotonic() + 22 * 60
+    ECHEANCE = time.monotonic() + DUREE_EXECUTION
     chemin_memoire = RACINE / FICHIER_MEMOIRE
     config_bot: dict | None = None
     export: dict | None = None

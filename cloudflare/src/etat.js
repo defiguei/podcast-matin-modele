@@ -21,7 +21,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerChapitres, rangerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-11-10.1";
+export const VERSION = "2026-11-13.1";
 const MAX_REFAITS = 6;
 const MAX_RECHERCHES = 15;
 const MAJ_AUTO_MS = 10 * 60 * 1000;   // à l'ouverture de l'application : le modèle est relu au plus toutes les 10 minutes
@@ -31,8 +31,9 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
-  "Déplacements : le podcast repère mieux que tu es parti (week-end ou séjour sur plusieurs jours, même si l'événement s'appelle juste « Belfort »), et la rubrique Météo prévoit le temps là où tu es, plus chez toi.",
-  "Actu locale en pause pendant mes voyages : elle se coupe désormais pour tout déplacement hors de ta ville (rencontre, sortie, séjour), plus seulement pour un « voyage ».",
+  "Gemini surchargé : le podcast attend bien plus longtemps que les meilleurs modèles répondent (jusqu'à 45 minutes) avant de confier l'épisode à un modèle léger ; un épisode un peu en retard plutôt qu'un épisode bâclé.",
+  "Clôture : le mot de la fin reste court (quelques répliques), même quand le modèle manque de matière ; fini les minutes d'au revoir.",
+  "Agendas : un agenda qui ne répond pas (panne d'Outlook, par exemple) ne disparaît plus de la liste ; il est marqué « Illisible ce matin », garde son nom et se teste toujours.",
 ];
 
 // « 2026-10 » décalé de n mois.
@@ -1141,14 +1142,21 @@ export class Etat extends DurableObject {
             const lien = (this.cles.agendas || []).find((a) => a.id === id);
             if (!lien) {
               if (!(etat.agendas || []).some((a) => a.id === id)) return refus("Agenda inconnu : relis la liste.");
-              // Agenda du secret GitHub : le bot n'a pas son adresse, GitHub le relit.
-              await this.gh.lancer("agendas.yml", {}).catch(() => {});
-              return reponse({ message: "Cet agenda vient du secret GitHub : je le fais relire, la liste se met à jour d'ici une minute." });
+              // Agenda du secret GitHub : le bot n'a pas son adresse, GitHub le relit (résultat par l'événement « agendas »).
+              try {
+                await this.gh.lancer("agendas.yml", {});
+              } catch (erreur) {
+                return refus(`GitHub ne relit pas l'agenda (${erreur.message}).`);
+              }
+              etat.tests_outils = { ...(etat.tests_outils || {}), [cle]: { en_cours: true, lance_ms: this.maintenant(), quand: ctx.maintenantIso,
+                attente: "Cet agenda vient du secret GitHub : test en cours depuis GitHub, résultat dans une minute environ.", workflow: "Lire mes agendas" } };
+              await this.ecrireEtat(etat);
+              return reponse({ message: "Cet agenda vient du secret GitHub : je le fais relire, résultat dans une minute environ.", attendre_test: true });
             }
             test = await lireAgenda(lien.url);
             const prochain = (etat.agenda_apercu || []).find((ev) => ev.agenda === id && ev.debut >= ctx.maintenantIso.slice(0, 16));
             if (test.ok && prochain) test.message += ` Prochain : ${prochain.titre} (${dateCourte(prochain.debut.slice(0, 10))}${prochain.journee ? "" : ` à ${prochain.debut.slice(11, 16).replace(":", "h")}`}).`;
-            if (test.ok) etat.agendas = (etat.agendas || []).map((a) => a.id === id ? { ...a, nom: test.nom || a.nom, nb: test.nb } : a);
+            if (test.ok) etat.agendas = (etat.agendas || []).map((a) => a.id === id ? { id: a.id, nom: test.nom || a.nom, nb: test.nb } : a);
           } else return refus("Outil inconnu.");
           // Le service refuse les questions du bot (Google, souvent) : le test part sur GitHub,
           // d'où le podcast le lit vraiment, et le résultat revient par l'événement « outils ».
@@ -1681,14 +1689,38 @@ export class Etat extends DurableObject {
       return { ok: true };
     }
     if (ev.type === "agendas") {
+      // Tous les agendas configurés, lus ou non : un agenda qui ne répond pas un matin reste dans la
+      // liste, marqué illisible (avec son nom et son nombre d'événements d'avant), et se teste toujours.
+      const avant = new Map((etat.agendas || []).map((a) => [a.id, a]));
       const liste = (ev.liste || []).filter((x) => x && /^[0-9a-f]{6,16}$/.test(x.id)).slice(0, 12)
-        .map((x) => ({ id: x.id, nom: String(x.nom || "Agenda").slice(0, 60), nb: Number(x.nb) || 0 }));
+        .map((x) => {
+          if (!x.illisible) return { id: x.id, nom: String(x.nom || "Agenda").slice(0, 60), nb: Number(x.nb) || 0 };
+          const ancien = avant.get(x.id);
+          return { id: x.id, nom: ancien?.nom || String(x.nom || "Agenda").slice(0, 60), nb: ancien?.nb || 0,
+                   illisible: ctx.maintenantIso, erreur: String(x.erreur || "").slice(0, 160) };
+        });
+      // Un agenda ajouté dans l'application n'est retiré que par l'auditeur (« Retirer »).
+      for (const lien of this.cles.agendas || []) {
+        if (!liste.some((a) => a.id === lien.id) && avant.has(lien.id)) liste.push(avant.get(lien.id));
+      }
+      const illisibles = new Set(liste.filter((a) => a.illisible).map((a) => a.id));
       etat.agendas = liste;
       etat.agendas_vus = ctx.maintenantIso;
       if (Array.isArray(ev.evenements)) {
-        etat.agenda_apercu = ev.evenements.slice(0, 120).filter((x) => x && /^[0-9a-f]{6,16}$/.test(x.agenda) && /^\d{4}-\d{2}-\d{2}/.test(x.debut || ""))
+        const recus = ev.evenements.slice(0, 120).filter((x) => x && /^[0-9a-f]{6,16}$/.test(x.agenda) && /^\d{4}-\d{2}-\d{2}/.test(x.debut || ""))
           .map((x) => ({ agenda: x.agenda, titre: String(x.titre || "").slice(0, 80), debut: String(x.debut).slice(0, 25),
                          fin: x.fin ? String(x.fin).slice(0, 25) : null, journee: Boolean(x.journee), lieu: String(x.lieu || "").slice(0, 60) }));
+        // L'aperçu d'un agenda illisible : celui de sa dernière lecture.
+        const garde = (etat.agenda_apercu || []).filter((x) => illisibles.has(x.agenda) && x.debut >= ctx.maintenantIso.slice(0, 10));
+        etat.agenda_apercu = [...recus, ...garde].sort((a, b) => a.debut.localeCompare(b.debut)).slice(0, 120);
+      }
+      // Test d'un agenda du secret GitHub (relu par agendas.yml) : son résultat.
+      for (const a of liste) {
+        const cle = `agenda:${a.id}`;
+        if (!etat.tests_outils?.[cle]?.en_cours) continue;
+        etat.tests_outils[cle] = a.illisible
+          ? { ok: false, message: `L'agenda ne répond pas (${a.erreur || "lecture impossible"}) (testé depuis GitHub)`, quand: ctx.maintenantIso, ou: "github" }
+          : { ok: true, message: `Agenda « ${a.nom} » lu : ${a.nb} événement${a.nb > 1 ? "s" : ""} (testé depuis GitHub).`, quand: ctx.maintenantIso, ou: "github" };
       }
       await this.ecrireEtat(etat);
       return { ok: true };

@@ -1,10 +1,11 @@
 {
-  "version": "2026-11-10.1",
-  "date": "2026-11-10",
-  "titre": "Déplacements mieux repérés, météo du lieu où tu es",
+  "version": "2026-11-13.1",
+  "date": "2026-11-13",
+  "titre": "Meilleurs modèles attendus, clôture courte, agendas toujours listés",
   "nouveautes": [
-    "Déplacements : le podcast repère mieux que tu es parti (week-end ou séjour sur plusieurs jours, même si l'événement s'appelle juste « Belfort »), et la rubrique Météo prévoit le temps là où tu es, plus chez toi.",
-    "Actu locale en pause pendant mes voyages : elle se coupe désormais pour tout déplacement hors de ta ville (rencontre, sortie, séjour), plus seulement pour un « voyage »."
+    "Gemini surchargé : le podcast attend bien plus longtemps que les meilleurs modèles répondent (jusqu'à 45 minutes) avant de confier l'épisode à un modèle léger ; un épisode un peu en retard plutôt qu'un épisode bâclé.",
+    "Clôture : le mot de la fin reste court (quelques répliques), même quand le modèle manque de matière ; fini les minutes d'au revoir.",
+    "Agendas : un agenda qui ne répond pas (panne d'Outlook, par exemple) ne disparaît plus de la liste ; il est marqué « Illisible ce matin », garde son nom et se teste toujours."
   ],
   "supprimes": [
     ".github/workflows/retours.yml",

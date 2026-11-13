@@ -733,8 +733,8 @@ verifier(not evenements_bot("secrets"), "lecture des agendas : secrets GitHub pa
 print("\n5k. Échec avec rattrapage prévu")
 appels.clear()
 sommeils.clear()
-scenario["pannes"] = {m: ["timeout"] * 8 for m in ("gemini-3.8-flash", "gemini-3.6-flash",
-                                                   "gemini-3.5-flash-lite", "gemini-3.1-flash-lite")}
+scenario["pannes"] = {m: ["timeout"] * 80 for m in ("gemini-3.8-flash", "gemini-3.6-flash",
+                                                    "gemini-3.5-flash-lite", "gemini-3.1-flash-lite")}
 ancien_get = podcast.requests.get
 
 
@@ -755,8 +755,8 @@ alerte = evenements_bot("echec")
 verifier(code == 0 and "::warning::" in sortie.getvalue(), "code 0 (le rattrapage s'en charge) + avertissement dans GitHub")
 verifier(alerte and alerte[-1]["titre"].startswith("⏳") and "Nouvel essai automatique à 6 h 45" in alerte[-1]["message"]
          and "Les serveurs de Gemini ne répondent pas" in alerte[-1]["message"], f"notification claire : {alerte}")
-verifier(sommeils.count(60) == 2 and sommeils.count(180) == 2,
-         f"quatre tours espacés pour les modèles principaux (60, 180, 180 s), puis deux pour les légers (60 s) : {sommeils}")
+verifier(sommeils.count(60) == 2 and sommeils.count(180) == podcast.TOURS_EPISODE - 2,
+         f"modèles principaux redemandés tant qu'il reste du temps (60 puis 180 s), puis deux tours pour les légers (60 s) : {sommeils}")
 verifier(memoire()["dernier_episode"]["date"] == "2026-10-17", "épisode du jour non marqué comme envoyé")
 scenario["pannes"] = {}
 

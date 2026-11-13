@@ -453,6 +453,23 @@ await scenario("Agendas : liste, choix, lecture", async () => {
   await vider();
   await app("lire_agendas");
   verifier(lancements(await appels())[0]?.workflow === "agendas.yml", "lecture des agendas demandée");
+  // Outlook ne répond pas un matin : l'agenda reste dans la liste, marqué illisible, avec son nom d'avant.
+  await evenement({ type: "agendas", liste: [{ id: "aaaa111111", nom: "Perso (Google)", nb: 12 },
+    { id: "bbbb222222", nom: "Outlook", nb: 0, illisible: true, erreur: "téléchargement impossible (ConnectionError)" }] });
+  r = await app("etat");
+  let travail = r.donnees.reglages.agendas.find((a) => a.id === "bbbb222222");
+  verifier(r.donnees.reglages.agendas.length === 2 && travail?.nom === "Travail (Outlook)" && travail.nb === 30 && travail.illisible && /ConnectionError/.test(travail.erreur),
+    "agenda illisible gardé, avec son nom et son nombre d'événements d'avant", JSON.stringify(travail));
+  // Il se teste toujours : GitHub le relit et le résultat revient avec la liste.
+  await vider();
+  r = await app("outil_tester", { cle: "agenda:bbbb222222" });
+  verifier(r.ok && r.attendre_test && lancements(await appels())[0]?.workflow === "agendas.yml", "test d'un agenda du secret : relu par GitHub", JSON.stringify(r));
+  r = await app("etat");
+  verifier(r.donnees.reglages.sources.agendas.bbbb222222.test?.en_cours, "test en cours montré", JSON.stringify(r.donnees.reglages.sources.agendas.bbbb222222.test));
+  await evenement({ type: "agendas", liste: [{ id: "aaaa111111", nom: "Perso (Google)", nb: 12 }, { id: "bbbb222222", nom: "Travail (Outlook)", nb: 31 }] });
+  r = await app("etat");
+  travail = r.donnees.reglages.agendas.find((a) => a.id === "bbbb222222");
+  verifier(!travail.illisible && travail.nb === 31 && r.donnees.reglages.sources.agendas.bbbb222222.test?.ok === true, "relu : plus illisible, test réussi", JSON.stringify(travail));
 });
 
 await scenario("Consignes par rubrique, Actualités globales et Actu locale réglées pareil", async () => {

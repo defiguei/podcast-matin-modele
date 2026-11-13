@@ -39,7 +39,7 @@ env:
 jobs:
   podcast:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 50
     steps:
       - name: Récupérer le code
         uses: actions/checkout@v6

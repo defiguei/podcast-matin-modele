@@ -774,6 +774,17 @@ verifier(chapitres == [(0.0, "Ouverture"), (4.1, "Agenda"), (9.6, "Saint du jour
          f"chapitres : {chapitres}")
 verifier(podcast.minute_seconde(61.8) == "1:02" and podcast.minute_seconde(0) == "0:00", "minutage lisible")
 verifier(podcast.calculer_chapitres(script, [0.0], rubriques) == [], "minutage incomplet : pas de chapitres")
+# Clôture rallongée (modèle léger à court de matière) : ramenée à quelques répliques.
+_longue = dict(brut, repliques=brut["repliques"][:-1] + [
+    {"animateur": "Léa" if i % 2 == 0 else "Hugo", "texte": "Merci d'avoir écouté, vraiment merci. " * 6 + f"Au revoir {i} !",
+     "rubrique": "cloture"} for i in range(25)])
+_court = podcast.nettoyer_script(_longue, ["Léa", "Hugo"], cles)
+_fin = [r for r in _court["repliques"] if r["rubrique"] == "cloture"]
+verifier(len(_fin) <= podcast.CLOTURE_REPLIQUES and sum(len(r["texte"].split()) for r in _fin) <= podcast.CLOTURE_MOTS
+         and _fin[-1]["texte"].endswith("Au revoir 24 !") and _court["repliques"][4]["texte"] == "Les actus.",
+         f"clôture de 25 répliques ramenée à {len(_fin)} répliques, le dernier mot gardé, le reste intact")
+verifier(podcast.nettoyer_script(brut, ["Léa", "Hugo"], cles)["repliques"][-1]["texte"] == "À demain.",
+         "clôture courte : inchangée")
 jpeg = creer_pochette(jeudi, "Grottes, grève et saint Géraud : un jeudi bien rempli pour finir la semaine")
 verifier(jpeg and jpeg[:2] == b"\xff\xd8" and len(jpeg) < 200_000, f"pochette JPEG ({len(jpeg or b'')} octets)")
 from PIL import Image  # noqa: E402
@@ -1123,6 +1134,20 @@ tous, _ = podcast.lire_agendas([url_a, url_b], {**reg, "agendas_exclus": []}, ma
 verifier({e_.titre for e_ in tous} == {"Dentiste", "Réunion"} and [a["nb"] for a in podcast.AGENDAS_VUS] == [1, 1], "deux agendas lus et listés")
 tous, _ = podcast.lire_agendas([url_a, url_b], {**reg, "agendas_exclus": [identifiant_a]}, maint, 30)
 verifier({e_.titre for e_ in tous} == {"Réunion"} and len(podcast.AGENDAS_VUS) == 2, "agenda décoché ignoré, mais toujours listé")
+
+
+def _outlook_en_panne(url, *a, **k):
+    if url == url_b:
+        raise podcast.ErreurPodcast("téléchargement impossible (outlook.office365.com/…, ConnectionError)")
+    return ics_a
+
+
+podcast.telecharger = _outlook_en_panne
+tous, problemes = podcast.lire_agendas([url_a, url_b], {**reg, "agendas_exclus": []}, maint, 30)
+_b = [a for a in podcast.AGENDAS_VUS if a["id"] == podcast.identifiant_agenda(url_b)]
+verifier({e_.titre for e_ in tous} == {"Dentiste"} and len(podcast.AGENDAS_VUS) == 2 and _b and _b[0].get("illisible")
+         and "ConnectionError" in _b[0]["erreur"] and "secret" not in _b[0]["erreur"] and problemes,
+         "agenda illisible : toujours listé, marqué illisible, sans son adresse")
 podcast.telecharger = ancien_telechargement
 
 c = config_bot()

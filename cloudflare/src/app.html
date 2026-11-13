@@ -2157,7 +2157,7 @@ function utilisePar(x) {
 // Dernier test d'un outil (service, flux, site, agenda) : ce qu'il a appris et quand.
 function resultatTest(t) {
   if (!t) return "";
-  if (t.en_cours) return `<p class="test-cle" role="status">⏳ Le service refuse les questions du bot : test en cours depuis GitHub, résultat dans une minute environ.</p>`;
+  if (t.en_cours) return `<p class="test-cle" role="status">⏳ ${h(t.attente || "Le service refuse les questions du bot : test en cours depuis GitHub, résultat dans une minute environ.")}</p>`;
   const quand = t.quand ? ` <span style="opacity:.75">· ${h(dateLongue(t.quand.slice(0, 10)))} à ${h(t.quand.slice(11, 16))}</span>` : "";
   return `<p class="test-cle ${t.ok ? "ok" : "ko"}" role="status">${t.ok ? "✓" : "✗"} ${h(t.message)}${quand}</p>`;
 }
@@ -2231,6 +2231,14 @@ function ongletSites() {
   </section>`).join("") : `<p class="aide">Aucun site pour l'instant.</p>`}`;
 }
 
+// « Illisible ce matin » (ou ce soir, hier, le 12 novembre) : quand un agenda n'a pas pu être lu.
+function quandIllisible(iso) {
+  const jour = String(iso).slice(0, 10), heure = Number(String(iso).slice(11, 13));
+  if (jour === S.d.aujourdhui) return heure < 12 ? "Illisible ce matin" : heure < 18 ? "Illisible cet après-midi" : "Illisible ce soir";
+  if (jour === plusJours(S.d.aujourdhui, -1)) return "Illisible hier";
+  return `Illisible le ${dateLongue(jour)}`;
+}
+
 function ongletAgendas() {
   const r = S.d.reglages, s = r.sources, c = S.d.connexions;
   const lus = r.agendas.filter((a) => !r.agenda.exclus.includes(a.id)).length;
@@ -2238,7 +2246,8 @@ function ongletAgendas() {
   ${blocAjoutAgenda(false)}
   ${r.agendas.map((a) => { const info = (s.agendas || {})[a.id] || { rubriques: [], test: null }; const app = c.agendas.some((x) => x.id === a.id);
     return `<section class="carte" aria-labelledby="t-ag-${a.id}">
-    <div class="entre"><h2 id="t-ag-${a.id}" style="display:flex;align-items:center;min-width:0">${pastilleAgenda(a.id)}<span style="overflow-wrap:anywhere">${h(a.nom)}</span></h2><span class="badge neutre">${a.nb} évén.</span></div>
+    <div class="entre"><h2 id="t-ag-${a.id}" style="display:flex;align-items:center;min-width:0">${pastilleAgenda(a.id)}<span style="overflow-wrap:anywhere">${h(a.nom)}</span></h2>${a.illisible ? `<span class="badge" style="color:var(--rouge)">${h(quandIllisible(a.illisible))}</span>` : `<span class="badge neutre">${a.nb} évén.</span>`}</div>
+    ${a.illisible ? `<p class="test-cle ko" role="status">✗ Pas pu le lire ${h(quandIllisible(a.illisible).replace(/^Illisible /, ""))}${a.erreur ? ` (${h(a.erreur)})` : ""} : l'épisode s'est fait sans lui. Il reste configuré et sera relu au prochain épisode ; « Tester » pour réessayer.</p>` : ""}
     <label class="aide" for="nom-ag-${a.id}" style="margin:0">Son nom dans l'application${a.nom_fichier ? ` (dans le fichier : « ${h(a.nom_fichier)} »)` : ""}</label>
     <input id="nom-ag-${a.id}" class="nom-agenda" maxlength="40" value="${h(a.nom)}" placeholder="${h(a.nom_fichier || a.nom)}" data-agenda-nom="${h(a.id)}" autocomplete="off" spellcheck="false" enterkeyhint="done">
     <p class="aide" style="margin:0">${app ? "Ajouté dans l'application" : "Vient du secret GitHub CALENDAR_ICS_URL"}</p>
@@ -3100,7 +3109,7 @@ function blocAjoutAgenda(avecListe = true) {
     <p class="aide">Colle l'adresse secrète de ton agenda.<br><b>Google Agenda</b> (sur ordinateur) : ⚙️ Paramètres › ton agenda › Intégrer l'agenda › « Adresse secrète au format iCal ».<br><b>Outlook</b> : Paramètres › Calendrier › Calendriers partagés › Publier un calendrier › lien ICS.</p>
     <div class="ajout"><input class="saisie" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://…/basic.ics" data-nouveau="agenda-url" aria-label="Adresse iCal de l'agenda">
       <button type="button" class="bouton gris" data-action="agenda-ajouter">Ajouter</button></div>
-    ${avecListe && S.d.reglages.agendas.length ? `<div class="bloc" style="background:var(--carte-2)">${S.d.reglages.agendas.map((a) => `<div class="reglage"><span>${pastilleAgenda(a.id)}${h(a.nom)} <span class="aide">${a.nb} évén.${c.agendas.some((x) => x.id === a.id) ? "" : " · secret GitHub"}</span></span>
+    ${avecListe && S.d.reglages.agendas.length ? `<div class="bloc" style="background:var(--carte-2)">${S.d.reglages.agendas.map((a) => `<div class="reglage"><span>${pastilleAgenda(a.id)}${h(a.nom)} <span class="aide">${a.illisible ? h(quandIllisible(a.illisible).toLowerCase()) : `${a.nb} évén.`}${c.agendas.some((x) => x.id === a.id) ? "" : " · secret GitHub"}</span></span>
       <button type="button" class="lien" style="color:var(--rouge)" data-agenda-retirer="${h(a.id)}">Retirer</button></div>`).join("")}</div>` : ""}
     ${avecListe && (S.d.reglages.agendas_retires || []).length ? `<p class="aide" style="margin-top:8px">Retirés (plus lus) :</p><div class="bloc" style="background:var(--carte-2)">${S.d.reglages.agendas_retires.map((a) => `<div class="reglage"><span>${pastilleAgenda(a.id)}${h(a.nom)}</span>
       <button type="button" class="lien" data-agenda-remettre="${h(a.id)}">Remettre</button></div>`).join("")}</div>` : ""}
