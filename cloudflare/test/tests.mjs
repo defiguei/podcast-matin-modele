@@ -1492,6 +1492,17 @@ await scenario("Fichiers gardés par le bot : dépôt, lecture par plages, archi
   verifier(l.statut === 206 && pareil(l.octets, 0), "un épisode archivé s'écoute toujours");
   verifier((await app("texte", { cle: archive.cle })).texte?.includes("Bonjour"), "et son texte se lit");
   verifier((await app("episodes_mois", { mois: "2025-01" })).ok === false, "mois sans archive : refus");
+  // Supprimer depuis l'application : un épisode archivé (audio, pochette, texte) et un récent.
+  const recent = r.donnees.episodes.find((x) => x.titre === "Épisode 3");
+  r = await app("episodes_supprimer", { cles: [archive.cle, recent.cle, "ep:2026-01-01:1"] });
+  verifier(r.ok && /2 épisodes supprimés/.test(r.message) && !r.donnees.episodes.some((x) => x.cle === recent.cle), "deux épisodes supprimés (un récent, un archivé)", r.message || r.erreur);
+  const mois10 = await app("episodes_mois", { mois: "2026-10" });
+  verifier(!(mois10.mois_episodes?.episodes || []).some((x) => x.cle === archive.cle), "plus dans l'archive du mois", mois10.mois_episodes?.episodes.map((x) => x.titre));
+  l = await lire(archive.audio, "bytes=0-9");
+  verifier(l.statut === 404 && (await lire(archive.image)).statut === 404, "son audio et sa pochette sont effacés", l.statut);
+  verifier(!(await app("texte", { cle: archive.cle })).texte, "son texte aussi");
+  verifier(!(await obtenir(`${BOT}${base}.xml`)).texte.includes("Gardé par le bot"), "il quitte le flux privé");
+  verifier((await app("episodes_supprimer", { cles: [archive.cle] })).ok === false, "déjà supprimé : refus");
 
   // Un an plus tard (le mois en cours et les douze précédents sont gardés) : le ménage de la nuit.
   await horloge("2027-12-02T03:30", true);
@@ -1502,6 +1513,31 @@ await scenario("Fichiers gardés par le bot : dépôt, lecture par plages, archi
   l = await lire(archive.audio, "bytes=0-9");
   verifier(l.statut === 404, "son audio n'est plus servi", l.statut);
   verifier(!(await etat()).etat.episodes.some((x) => x.audio && x.date < "2026-12"), "plus de lien vers un fichier effacé");
+  await horloge("2026-10-20T10:00");
+});
+
+await scenario("Épisode remplacé par un neuf", async () => {
+  await horloge("2026-10-21T08:00");
+  await evenement({ type: "episode", date: "2026-10-21", titre: "Raté", ref: 70000, mode: "planifie", transcription: "Léa : Au revoir… au revoir…" });
+  await evenement({ type: "episode", date: "2026-10-20", titre: "Hier", ref: 70000, mode: "planifie" });
+  let r = await app("etat");
+  const rate = r.donnees.episodes.find((x) => x.titre === "Raté"), hier = r.donnees.episodes.find((x) => x.titre === "Hier");
+  verifier((await app("episode_remplacer", { cle: hier.cle })).ok === false, "un épisode d'un autre jour ne se remplace pas");
+  await vider();
+  r = await app("episode_remplacer", { cle: rate.cle });
+  verifier(r.ok && r.donnees.remplacement === rate.cle && lancements(await appels())[0]?.workflow === "podcast-du-matin.yml", "épisode neuf lancé, l'ancien marqué", r.message || r.erreur);
+  verifier((await app("episode_remplacer", { cle: rate.cle })).ok === false, "pas deux remplacements à la fois");
+  verifier((await app("etat")).donnees.episodes.some((x) => x.cle === rate.cle), "l'ancien reste tant que le neuf n'est pas là");
+  await evenement({ type: "episode", date: "2026-10-21", titre: "Neuf", ref: 81500, mode: "manuel" });
+  r = await app("etat");
+  verifier(!r.donnees.episodes.some((x) => x.cle === rate.cle) && r.donnees.episodes.some((x) => x.titre === "Neuf") && !r.donnees.remplacement,
+    "le neuf arrivé, l'ancien est supprimé", r.donnees.episodes.map((x) => x.titre).slice(-3));
+  // Un remplacement qui échoue : l'ancien reste et on peut le redemander.
+  const neuf = r.donnees.episodes.find((x) => x.titre === "Neuf");
+  await app("episode_remplacer", { cle: neuf.cle });
+  await evenement({ type: "echec", titre: "Échec", message: "Gemini muet" });
+  r = await app("etat");
+  verifier(r.donnees.episodes.some((x) => x.cle === neuf.cle) && !r.donnees.remplacement, "échec : l'épisode reste, le remplacement est oublié");
   await horloge("2026-10-20T10:00");
 });
 

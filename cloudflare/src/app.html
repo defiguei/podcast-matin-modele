@@ -289,6 +289,17 @@ input.avance { width: 100%; accent-color: var(--aube); margin: 0; height: 24px; 
 .zone-glisse.grande:focus-visible { outline-offset: 4px; }
 .transcription { white-space: pre-wrap; font-size: 15px; line-height: 1.55; color: var(--doux-2); }
 .episode-ligne { display: flex; align-items: center; gap: 12px; background: var(--carte); border-radius: 16px; padding: 12px 14px; border: 0; width: 100%; text-align: left; color: var(--texte); }
+/* Liste des épisodes : la ligne ouvre l'épisode, le bouton « ··· » au bout ouvre son menu (supprimer, remplacer). */
+.episode-ligne.cadre { padding: 0; gap: 0; }
+.episode-ligne.cadre .ouvrir { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 12px 4px 12px 14px; border: 0; background: none; color: inherit; text-align: left; font: inherit; }
+.episode-ligne.cadre .menu-ep { flex: none; width: 48px; align-self: stretch; display: flex; align-items: center; justify-content: center; border: 0; background: none; color: var(--doux); border-radius: 0 16px 16px 0; }
+/* Réglages › Épisodes : une ligne par épisode, cochée pour la suppression. */
+.choix-ep { width: 100%; border: 0; background: none; color: var(--texte); text-align: left; font: inherit; }
+.choix-ep + .choix-ep { border-top: 1px solid var(--trait); }
+.choix-ep .case { flex: none; width: 26px; height: 26px; border-radius: 8px; border: 1.5px solid var(--trait-2); display: flex; align-items: center; justify-content: center; color: var(--sur-aube); }
+.choix-ep[aria-checked="true"] .case { background: var(--rouge); border-color: var(--rouge); color: #fff; }
+.bouton.rouge { background: var(--rouge); color: #fff; }
+.bouton:disabled { opacity: .45; }
 .sources { display: flex; flex-direction: column; }
 /* Une source : le nom du lien en orange, l'adresse du site en gris dessous ; toute la ligne ouvre le lien. */
 .sources button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 7px 0; border: 0; border-top: 1px solid var(--trait); background: none; text-align: left; width: 100%; min-width: 0; }
@@ -816,6 +827,43 @@ function episodeParCle(cle) {
     || null;
 }
 
+// Menu « ··· » d'un épisode (liste des épisodes) : le supprimer, ou le remplacer par un neuf (épisode du jour).
+function menuEpisode(cle) {
+  const ep = episodeParCle(cle);
+  if (!ep) return;
+  const duJour = ep.date === S.d.aujourdhui;
+  const boutons = [];
+  if (duJour) boutons.push({ id: "remplacer", type: "default", text: "Remplacer par un épisode neuf" });
+  boutons.push({ id: "supprimer", type: "destructive", text: "Supprimer l'épisode" });
+  choisir(ep.titre || "Épisode", duJour ? "Que veux-tu faire ?" : `${majuscule(dateLongue(ep.date))} · seul l'épisode du jour se remplace par un neuf (il parle de l'actualité d'aujourd'hui).`, boutons, (choix) => {
+    if (choix === "remplacer") return confirmer("Préparer un épisode neuf ? Il remplacera celui-ci dès qu'il sera prêt (quelques minutes). S'il n'aboutit pas, celui-ci reste.",
+      () => changer("episode_remplacer", { cle }));
+    if (choix === "supprimer") return confirmer(`Supprimer « ${ep.titre || "cet épisode"} » ? Son audio et son texte seront effacés.`, () => supprimerEpisodes([cle]));
+  });
+}
+
+// Supprimer des épisodes : chez le bot, puis la copie gardée sur cet appareil et les mois déjà chargés.
+async function supprimerEpisodes(cles) {
+  const j = await demander("episodes_supprimer", { cles });
+  if (!j.ok) return dessiner();
+  vibrer("success"); annoncer(j.message || "Supprimé.");
+  for (const c of cles) delete S.archives[c.slice(3, 10)];
+  S.selEp = (S.selEp || []).filter((c) => !cles.includes(c));
+  if (L.cle && cles.includes(L.cle)) { audio.pause(); L.cle = null; L.ep = null; libererLocal(); }
+  oublierCopies(cles);
+  if (S.ecran === "episode" && cles.includes(S.episode)) { S.episode = null; return aller("episodes"); }
+  dessiner();
+}
+
+async function oublierCopies(cles) {
+  if (!cachesPossibles()) return;
+  try {
+    const c = await caches.open(CACHE_AUDIO), v = audioGarde();
+    for (const k of cles) { await c.delete(cleCache(k)).catch(() => {}); delete v[k]; }
+    ecrireAudioGarde(v);
+  } catch (e) { /* cache indisponible */ }
+}
+
 // Un mois plus ancien que les épisodes récents : demandé au bot, gardé pour la session.
 async function chargerMois(mois) {
   if (S.archives[mois] || S.chargementMois === mois) return;
@@ -1247,11 +1295,12 @@ function vueEpisodes() {
     </div>
   </section>
   ${enCours ? `<p class="aide">Chargement des épisodes de ce mois…</p>` : ""}
-  <div class="liste">${eps.filter((x) => x.date.slice(0, 7) === mois).map((ep) => `<button type="button" class="episode-ligne" data-episode="${h(ep.cle)}">
+  <div class="liste">${eps.filter((x) => x.date.slice(0, 7) === mois).map((ep) => `<div class="episode-ligne cadre">
+    <button type="button" class="ouvrir" data-episode="${h(ep.cle)}">
     ${ep.image ? `<img src="${h(ep.image)}" alt="" class="miniature petite">` : `<span class="miniature petite vide-img" aria-hidden="true">${icone("aube", 20, 1.4)}</span>`}
     <span style="flex:1;display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600">${h(ep.titre)}</span>
-    <span class="sous" style="font-size:13px">${h(majuscule(ep.texte))}${ep.duree ? ` · ${minSec(ep.duree)}` : ""}</span></span>
-    ${icone("suite", 18, 2)}</button>`).join("")}</div>`;
+    <span class="sous" style="font-size:13px">${S.d.remplacement === ep.cle ? "Épisode neuf en préparation…" : `${h(majuscule(ep.texte))}${ep.duree ? ` · ${minSec(ep.duree)}` : ""}`}</span></span></button>
+    <button type="button" class="menu-ep" data-menu-ep="${h(ep.cle)}" aria-label="Options de l'épisode « ${h(ep.titre)} »">${icone("plusieurs", 20, 2)}</button></div>`).join("")}</div>`;
 }
 
 function vueEpisode() {
@@ -2247,7 +2296,7 @@ function ongletAgendas() {
   ${r.agendas.map((a) => { const info = (s.agendas || {})[a.id] || { rubriques: [], test: null }; const app = c.agendas.some((x) => x.id === a.id);
     return `<section class="carte" aria-labelledby="t-ag-${a.id}">
     <div class="entre"><h2 id="t-ag-${a.id}" style="display:flex;align-items:center;min-width:0">${pastilleAgenda(a.id)}<span style="overflow-wrap:anywhere">${h(a.nom)}</span></h2>${a.illisible ? `<span class="badge" style="color:var(--rouge)">${h(quandIllisible(a.illisible))}</span>` : `<span class="badge neutre">${a.nb} évén.</span>`}</div>
-    ${a.illisible ? `<p class="test-cle ko" role="status">✗ Pas pu le lire ${h(quandIllisible(a.illisible).replace(/^Illisible /, ""))}${a.erreur ? ` (${h(a.erreur)})` : ""} : l'épisode s'est fait sans lui. Il reste configuré et sera relu au prochain épisode ; « Tester » pour réessayer.</p>` : ""}
+    ${a.illisible ? `<p class="test-cle ko" role="status">✗ Pas pu le lire ${h(quandIllisible(a.illisible).replace(/^Illisible /, ""))} : l'épisode s'est fait sans lui. Il reste configuré et sera relu au prochain épisode ; « Tester » pour réessayer.${a.erreur ? `<br><span style="opacity:.75">Détail : ${h(a.erreur)}</span>` : ""}</p>` : ""}
     <label class="aide" for="nom-ag-${a.id}" style="margin:0">Son nom dans l'application${a.nom_fichier ? ` (dans le fichier : « ${h(a.nom_fichier)} »)` : ""}</label>
     <input id="nom-ag-${a.id}" class="nom-agenda" maxlength="40" value="${h(a.nom)}" placeholder="${h(a.nom_fichier || a.nom)}" data-agenda-nom="${h(a.id)}" autocomplete="off" spellcheck="false" enterkeyhint="done">
     <p class="aide" style="margin:0">${app ? "Ajouté dans l'application" : "Vient du secret GitHub CALENDAR_ICS_URL"}</p>
@@ -2827,6 +2876,10 @@ const SECTIONS = [
     const k = S.d.connexions.cles.gemini;
     return k.source === "app" ? `Clé dans l'application · …${k.fin}` : k.source === "github" ? "Clé dans le secret GitHub" : k.source === "absente" ? "Clé manquante : rien ne part" : "Clé vérifiée au prochain épisode";
   }],
+  ["episodes", "Épisodes", "casque", () => {
+    const n = S.d.episodes.length + (S.d.mois_archives || []).length;
+    return n ? `${S.d.episodes.length} récent${S.d.episodes.length > 1 ? "s" : ""}${S.d.stockage ? ` · ${tailleLisible(S.d.stockage)}` : ""} · choisir ceux à supprimer` : "Aucun épisode";
+  }],
   ["application", "Application", "telephone", () => `Version ${S.d.version}${S.d.flux ? " · flux privé actif" : ""}`],
 ];
 
@@ -2923,6 +2976,7 @@ function vueReglage() {
         ? `<div class="suggestion"><span>Elle parle de ton agenda : sa place est dans la rubrique Agenda.</span>
           <button type="button" class="lien" data-consigne-agenda="${i}">La ranger dans l'Agenda</button>
           <button type="button" class="lien" data-consigne-rubrique="${i}">En faire un rappel selon l'agenda</button></div>` : "")}`,
+    episodes: () => vueGererEpisodes(),
     application: () => `${vueAppareils(d)}
       <section class="carte" aria-labelledby="t-flux"><h2 id="t-flux">Dans ton appli de podcasts</h2>
         <p class="aide">Écoute tes épisodes dans Apple Podcasts, AntennaPod… : téléchargés pendant la nuit, sur l'écran verrouillé et en voiture.</p>
@@ -2948,6 +3002,36 @@ function vueReglage() {
         <button type="button" class="bouton gris" data-action="recharger">Recharger les données</button></section>`,
   }[cle];
   return `${entete(titre, "Réglages")}${corps ? corps() : ""}`;
+}
+
+// Réglages › Épisodes : on coche les épisodes à supprimer (par épisode, par mois ou tous), puis un seul bouton.
+// Les mois de l'archive se chargent à la demande.
+function vueGererEpisodes() {
+  const d = S.d, deja = new Set(d.episodes.map((x) => x.cle));
+  const tous = [...d.episodes, ...Object.values(S.archives).flat().filter((x) => !deja.has(x.cle))]
+    .sort((a, b) => b.date.localeCompare(a.date) || b.cle.localeCompare(a.cle));
+  const connus = new Set(tous.map((x) => x.cle));
+  S.selEp = (S.selEp || []).filter((c) => connus.has(c));
+  const sel = new Set(S.selEp);
+  const parMois = {};
+  for (const ep of tous) (parMois[ep.date.slice(0, 7)] ||= []).push(ep);
+  const aCharger = (d.mois_archives || []).filter((m) => !S.archives[m]).sort().reverse();
+  const nomMois = (m) => { const x = dateObj(`${m}-01`); return `${majuscule(MOIS[x.getUTCMonth()])} ${x.getUTCFullYear()}`; };
+  const tousCoches = tous.length && tous.every((x) => sel.has(x.cle));
+  if (!tous.length && !aCharger.length) return `<div class="vide">Aucun épisode pour l'instant.</div>`;
+  return `<p class="aide" style="font-size:14px;color:var(--doux-2)">Coche les épisodes à supprimer : leur audio et leur texte sont effacés de ton bot, de cet appareil et de ton flux privé. Ça ne se rattrape pas.</p>
+  <div class="deux"><button type="button" class="bouton gris" data-ep-tout>${tousCoches ? "Tout décocher" : "Tout cocher"}</button>
+    <button type="button" class="bouton rouge" data-action="supprimer-episodes" ${sel.size ? "" : "disabled"}>Supprimer${sel.size ? ` (${sel.size})` : ""}</button></div>
+  ${Object.entries(parMois).map(([m, liste]) => {
+    const tout = liste.every((x) => sel.has(x.cle));
+    return `<section class="carte" aria-labelledby="t-ep-${m}"><div class="entre"><h2 id="t-ep-${m}">${h(nomMois(m))}</h2>
+      <button type="button" class="lien" data-ep-mois="${m}">${tout ? "Tout décocher" : "Tout cocher"}</button></div>
+      <div class="bloc" style="background:var(--carte-2)">${liste.map((ep) => `<button type="button" class="reglage choix-ep" role="checkbox" aria-checked="${sel.has(ep.cle)}" data-ep-choisir="${h(ep.cle)}">
+        <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-weight:600;overflow-wrap:anywhere">${h(ep.titre || "Épisode")}</span>
+        <span class="aide">${h(majuscule(dateLongue(ep.date)))}${ep.heure ? ` · ${h(heure(ep.heure))}` : ""}${ep.duree ? ` · ${minSec(ep.duree)}` : ""}</span></span>
+        <span class="case" aria-hidden="true">${sel.has(ep.cle) ? icone("coche", 16, 2.4) : ""}</span></button>`).join("")}</div></section>`;
+  }).join("")}
+  ${aCharger.map((m) => `<button type="button" class="bouton gris" data-ep-charger="${m}" ${S.chargementMois === m ? "disabled" : ""}>${S.chargementMois === m ? "Chargement…" : `Voir les épisodes de ${h(nomMois(m).toLowerCase())}`}</button>`).join("")}`;
 }
 
 // Réglages › Application : ce que cet appareil garde pour fonctionner sans réseau (propre à l'appareil).
@@ -3386,6 +3470,19 @@ document.addEventListener("click", (ev) => {
   if (ds.bienvenue) return bienvenueSuivante(Number(ds.bienvenue));
   if (ds.bienvenueWeekend !== undefined) { B.weekendActif = !B.weekendActif; vibrer("choix"); return dessiner(); }
   if (ds.episode) { S.episode = ds.episode; return aller("episode"); }
+  if (ds.menuEp) return menuEpisode(ds.menuEp);
+  if (ds.epChoisir) { const sel = new Set(S.selEp || []); if (sel.has(ds.epChoisir)) sel.delete(ds.epChoisir); else sel.add(ds.epChoisir); S.selEp = [...sel]; vibrer("choix"); return dessiner(); }
+  if (ds.epMois) {
+    const liste = [...S.d.episodes, ...Object.values(S.archives).flat()].filter((x) => x.date.slice(0, 7) === ds.epMois).map((x) => x.cle);
+    const sel = new Set(S.selEp || []), tout = liste.every((c) => sel.has(c));
+    for (const c of liste) if (tout) sel.delete(c); else sel.add(c);
+    S.selEp = [...sel]; vibrer("choix"); return dessiner();
+  }
+  if (ds.epTout !== undefined) {
+    const liste = [...S.d.episodes, ...Object.values(S.archives).flat()].map((x) => x.cle);
+    S.selEp = liste.every((c) => (S.selEp || []).includes(c)) ? [] : [...new Set(liste)]; vibrer("choix"); return dessiner();
+  }
+  if (ds.epCharger) return chargerMois(ds.epCharger);
   if (ds.moisEp !== undefined) { if (ds.moisEp) { S.moisEpisodes = ds.moisEp; dessiner(); } return; }
   if (ds.lire) return basculer(episodeParCle(ds.lire));
   if (ds.chapitre) return jouer(episodeParCle(ds.chapitre), Number(ds.t));
@@ -3460,6 +3557,11 @@ document.addEventListener("click", (ev) => {
       return dessiner();
     }
     case "garder": return garderDansEpisodes();
+    case "supprimer-episodes": {
+      const cles = S.selEp || [];
+      if (!cles.length) return;
+      return confirmer(`Supprimer ${cles.length > 1 ? `ces ${cles.length} épisodes` : "cet épisode"} ? Audio et texte seront effacés, sans retour possible.`, () => supprimerEpisodes(cles));
+    }
     case "retour": return retour();
     case "modifier-recherche": return ouvrirFiche(S.recherche, null, "resultats");
     case "plus": return S.ecran === "integree" ? menuIntegree() : menuFiche();

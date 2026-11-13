@@ -21,8 +21,9 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerChapitres, rangerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-11-13.1";
+export const VERSION = "2026-11-13.2";
 const MAX_REFAITS = 6;
+const REMPLACEMENT_MS = 60 * 60 * 1000;   // « Remplacer par un neuf » : l'ancien n'est retiré que si le neuf arrive dans l'heure
 const MAX_RECHERCHES = 15;
 const MAJ_AUTO_MS = 10 * 60 * 1000;   // à l'ouverture de l'application : le modèle est relu au plus toutes les 10 minutes
 const MAX_EPISODES = 60;      // épisodes récents, dans l'état ; les plus anciens vont dans l'archive de leur mois
@@ -31,9 +32,7 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
-  "Gemini surchargé : le podcast attend bien plus longtemps que les meilleurs modèles répondent (jusqu'à 45 minutes) avant de confier l'épisode à un modèle léger ; un épisode un peu en retard plutôt qu'un épisode bâclé.",
-  "Clôture : le mot de la fin reste court (quelques répliques), même quand le modèle manque de matière ; fini les minutes d'au revoir.",
-  "Agendas : un agenda qui ne répond pas (panne d'Outlook, par exemple) ne disparaît plus de la liste ; il est marqué « Illisible ce matin », garde son nom et se teste toujours.",
+  "Épisodes : le menu « ··· » de chaque épisode (liste des épisodes) permet de le supprimer, ou de remplacer celui du jour par un épisode neuf ; Réglages › Épisodes pour en supprimer plusieurs d'un coup.",
 ];
 
 // « 2026-10 » décalé de n mois.
@@ -826,6 +825,52 @@ export class Etat extends DurableObject {
     }
   }
 
+  // Supprimer des épisodes (application) : la fiche (récents ou archive du mois), le texte, l'audio et la
+  // pochette, et leurs passages dans la mémoire des rubriques. Renvoie combien ont été trouvés.
+  async supprimerEpisodes(etat, cles) {
+    const voulus = new Set((cles || []).filter((c) => typeof c === "string" && /^ep:\d{4}-\d{2}-\d{2}(:\d+)?$/.test(c)));
+    if (!voulus.size) return 0;
+    let trouves = 0;
+    const fichiers = [];
+    const garder = (ep) => {
+      if (!voulus.has(cleEpisode(ep))) return true;
+      trouves++;
+      for (const nom of [ep.audio, ep.pochette]) if (nom && nomValide(nom)) fichiers.push(nom);
+      return false;
+    };
+    etat.episodes = (etat.episodes || []).filter(garder);
+    const mois = new Set([...voulus].map((c) => c.slice(3, 10)));
+    for (const m of mois) {
+      if (!(etat.archives || []).includes(m)) continue;
+      const liste = (await this.ctx.storage.get(`archive:${m}`)) || [];
+      const reste = liste.filter(garder);
+      if (reste.length === liste.length) continue;
+      if (reste.length) await this.ctx.storage.put(`archive:${m}`, reste);
+      else {
+        await this.ctx.storage.delete(`archive:${m}`);
+        etat.archives = etat.archives.filter((x) => x !== m);
+      }
+    }
+    const textes = [...voulus].map((c) => `texte:${c}`);
+    for (let i = 0; i < textes.length; i += 128) await this.ctx.storage.delete(textes.slice(i, i + 128));
+    const objets = new Set();
+    for (const nom of fichiers) {
+      objets.add(objetDuNom(nom));
+      await objetAudio(this.env, objetDuNom(nom)).fetch(new Request(`https://audio.interne/f/${encodeURIComponent(nom)}`, { method: "DELETE" })).catch(() => {});
+    }
+    etat.stockage = etat.stockage || {};
+    for (const objet of objets) {
+      const liste = await (await objetAudio(this.env, objet).fetch(new Request("https://audio.interne/liste"))).json().catch(() => null);
+      if (Array.isArray(liste)) etat.stockage[objet] = liste.reduce((total, f) => total + (Number(f.taille) || 0), 0);
+    }
+    for (const [cle, entrees] of await this.ctx.storage.list({ prefix: "rub:" })) {
+      const reste = (entrees || []).filter((x) => !voulus.has(x.episode));
+      if (reste.length !== (entrees || []).length) await this.ctx.storage.put(cle, reste);
+    }
+    if (etat.a_remplacer && voulus.has(etat.a_remplacer.cle)) delete etat.a_remplacer;
+    return trouves;
+  }
+
   // Un épisode par sa clé : parmi les récents, sinon dans l'archive de son mois.
   async trouverEpisode(etat, cle) {
     const recent = (etat.episodes || []).find((ep) => cleEpisode(ep) === cle);
@@ -877,6 +922,7 @@ export class Etat extends DurableObject {
       maj: etat.maj && plusRecente(etat.maj.version, VERSION) ? etat.maj : null,
       maj_etat: etat.maj_etat ? { etat: etat.maj_etat.etat, version: etat.maj_etat.version, message: etat.maj_etat.message || "" } : null,
       maj_modele: etat.maj_modele || null,
+      remplacement: etat.a_remplacer && this.maintenant() - (etat.a_remplacer.ms || 0) < REMPLACEMENT_MS ? etat.a_remplacer.cle : null,
       adresse_app: `${etat.adresse || this.env.ADRESSE || ""}/app`,
       appareils: (etat.appareils || []).map((a) => ({ id: a.id, nom: a.nom, cree_le: a.cree_le, vu_le: a.vu_le })),
       code_appareil: etat.code_appareil && etat.code_appareil.expire > Date.now() && etat.code_appareil.essais < 5
@@ -1419,6 +1465,27 @@ export class Etat extends DurableObject {
           episode.coches = [...new Set([...(episode.coches || []), geste])];
           break;
         }
+        case "episodes_supprimer": {
+          const cles = Array.isArray(demande.cles) ? demande.cles.slice(0, 500) : [];
+          if (!cles.length) return refus("Choisis au moins un épisode.");
+          const n = await this.supprimerEpisodes(etat, cles);
+          if (!n) return refus("Ces épisodes ne sont plus là : relis la liste.");
+          await this.ecrireEtat(etat);
+          return reponse({ message: n > 1 ? `${n} épisodes supprimés.` : "Épisode supprimé.", supprimes: cles });
+        }
+        case "episode_remplacer": {
+          // Un épisode neuf (le contenu d'aujourd'hui) prend la place de celui-ci : seulement pour un épisode du jour.
+          const ancien = await this.trouverEpisode(etat, String(demande.cle || ""));
+          if (!ancien) return refus("Cet épisode n'est plus là : relis la liste.");
+          if (ancien.date !== ctx.aujourdHui) return refus("Seul un épisode d'aujourd'hui peut être remplacé : un épisode neuf parle de l'actualité du jour.");
+          if (etat.a_remplacer && this.maintenant() - (etat.a_remplacer.ms || 0) < REMPLACEMENT_MS) return refus("Un épisode neuf est déjà en préparation : attends qu'il arrive.");
+          const lance = await this.lancerEpisode([]);
+          if (!lance.ok) return refus(lance.erreur || "Épisode non lancé.");
+          await relire();      // lancerEpisode a écrit l'état (compte du jour)
+          etat.a_remplacer = { cle: cleEpisode(ancien), ms: this.maintenant() };
+          await this.ecrireEtat(etat);
+          return reponse({ message: "Épisode neuf en préparation (quelques minutes) : il remplacera celui-ci dès qu'il sera prêt." });
+        }
         case "episodes_mois": {
           // Un mois de l'archive (au-delà des épisodes récents), pour le calendrier des épisodes.
           const mois = String(demande.mois || "");
@@ -1623,6 +1690,12 @@ export class Etat extends DurableObject {
       const tous = [...etat.episodes.filter((x) => !meme(x)), episode];
       etat.episodes = tous.slice(-MAX_EPISODES);
       await this.archiver(etat, tous.slice(0, -MAX_EPISODES));
+      // « Remplacer par un neuf » : l'ancien épisode s'en va quand le neuf est arrivé (pas avant).
+      const remplace = etat.a_remplacer;
+      if (remplace && this.maintenant() - (remplace.ms || 0) < REMPLACEMENT_MS && remplace.cle !== cleEpisode(episode)) {
+        await this.supprimerEpisodes(etat, [remplace.cle]);
+      }
+      delete etat.a_remplacer;
       if (ev.mode !== "manuel") etat.declenchements[episode.date] = { ...(etat.declenchements[episode.date] || {}), envoye: true };
       // Un nouvel épisode efface les tests de clés réussis (l'encart vert) : la clé a fait ses preuves.
       if (etat.tests_cles) etat.tests_cles = Object.fromEntries(Object.entries(etat.tests_cles).filter(([, t]) => !t?.ok || t.en_cours));
@@ -1644,7 +1717,9 @@ export class Etat extends DurableObject {
       return { ok: true };
     }
     if (ev.type === "echec") {
-      // L'épisode n'a pas pu être préparé (GitHub) : prévenir par notification.
+      // L'épisode n'a pas pu être préparé (GitHub) : prévenir par notification. Un remplacement demandé
+      // n'aura pas lieu (l'ancien épisode reste) : on peut le redemander.
+      if (etat.a_remplacer) { delete etat.a_remplacer; await this.ecrireEtat(etat); }
       await this.notifier(etat, { titre: String(ev.titre || "Podcast du matin").slice(0, 80),
         corps: String(ev.message || "").slice(0, 200), url: "/app", tag: "echec" });
       return { ok: true };
