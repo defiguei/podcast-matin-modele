@@ -260,6 +260,44 @@ await scenario("Podcast ponctuel sur un sujet : ni épisode du jour, ni durée c
   await envoyerJson(`${BOT}/test/etat`, { etat: { ...apres, refaits: refaitsAvant } });
 });
 
+await scenario("Nouvelle recherche dite : une recherche, pas une rubrique ; questions pour l'affiner", async () => {
+  const refaitsAvant = (await etat()).etat.refaits || null;
+  // Gemini en faisait une rubrique de l'épisode.
+  await gemini({ operations: [{ action: "nouvelle_regle", regle: { modele: "sortie", titre: "Concerts de jazz", consigne: "Trouvez des concerts de jazz à Lausanne.", periode_type: "toujours", place: "agenda", sources: ["web"] } }],
+                 reponse: "", questions: [] });
+  let r = await app("parler", { texte: "Fais une nouvelle recherche sur les concerts de jazz à Lausanne" });
+  let { config, etat: e } = await etat();
+  const regle = config.regles.find((x) => x.titre === "Concerts de jazz");
+  verifier(regle?.periode.type === "ponctuelle" && !config.deroule.some((x) => x.cle === regle.id), "créée comme recherche, hors de l'épisode", regle?.periode);
+  verifier(compris(r).includes("Recherche « Concerts de jazz » créée"), "annoncée comme une recherche", compris(r));
+  const questions = r.message_compris?.questions || [];
+  verifier(questions.length >= 1 && questions.some((q) => /qui|budget|quand/i.test(q)), "questions sur les champs vides (Gemini n'en posait pas)", questions);
+  verifier(e.a_preciser?.id === regle?.id && r.ouvrir?.recherche === true, "questions gardées pour la réponse", e.a_preciser);
+  // La réponse précise la même recherche et la relance.
+  await vider();
+  await gemini({ operations: [{ action: "modifier_regle", id: regle.id, regle: { avec_qui: "ma femme", budget_max: 40 } }], reponse: "", questions: [] });
+  r = await app("parler", { texte: "avec ma femme, 40 francs max" });
+  const liste = await appels();
+  const contexte = JSON.stringify(liste.find((a) => a.service === "gemini")?.corps || {});
+  verifier(contexte.includes("vient d'être créée") && contexte.includes(regle.id), "Gemini sait à quoi répond le message", contexte.slice(0, 200));
+  ({ config, etat: e } = await etat());
+  const precisee = config.regles.find((x) => x.id === regle.id);
+  verifier(precisee.recherche.fiche.avec_qui === "ma femme" && precisee.recherche.fiche.budget.max === 40 && config.regles.filter((x) => x.titre === "Concerts de jazz").length === 1,
+    "la même recherche est complétée", precisee.recherche.fiche);
+  verifier(lancements(liste).some((l) => l.workflow === "recherche.yml" && l.entrees.regles === regle.id), "et relancée", lancements(liste));
+  verifier(!e.a_preciser && !(r.message_compris?.questions || []).length, "plus de question en attente", e.a_preciser);
+  // Une rubrique demandée comme telle reste une rubrique, avec les questions de Gemini.
+  await gemini({ operations: [{ action: "nouvelle_regle", regle: { titre: "Optique suisse", consigne: "Présentez une recherche récente en optique en Suisse.", periode_type: "toujours" } }],
+                 reponse: "", questions: ["Quels jours ?", "Plutôt recherche académique ou entreprises ?"] });
+  r = await app("parler", { texte: "Ajoute une rubrique chaque matin sur la recherche en optique en Suisse" });
+  ({ config } = await etat());
+  const rubrique = config.regles.find((x) => x.titre === "Optique suisse");
+  verifier(rubrique?.periode.type === "toujours" && compris(r).includes("Rubrique « Optique suisse » créée"), "une rubrique reste une rubrique", rubrique?.periode);
+  verifier((r.message_compris?.questions || []).join("|") === "Quels jours ?|Plutôt recherche académique ou entreprises ?", "questions de Gemini montrées", r.message_compris?.questions);
+  const apres = (await etat()).etat;
+  await envoyerJson(`${BOT}/test/etat`, { etat: { ...apres, refaits: refaitsAvant } });
+});
+
 await scenario("API pour GitHub", async () => {
   const r = await fetch(`${BOT}/api/config`, { headers: entetesApi });
   const donnees = await r.json();

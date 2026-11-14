@@ -103,8 +103,9 @@ export function schemaOperations() {
         },
       },
       reponse: decrit(texte, "Seulement ce qui s'ajoute aux changements : réponse à une question, demande impossible et pourquoi. Vide sinon."),
+      questions: decrit(listeTextes, "Après nouvelle_regle seulement : 1 à 3 questions courtes sur les champs encore vides qui amélioreraient vraiment la rubrique ou la recherche. Vide si rien d'utile ne manque ou sans création."),
     },
-    required: ["entendu", "operations", "reponse"],
+    required: ["entendu", "operations", "reponse", "questions"],
   };
 }
 
@@ -168,11 +169,15 @@ Le modèle règle déjà la place, la longueur et les sources : ne remplis que c
 - importance : normale | prioritaire
 Une information exacte (saint du jour, jour férié, météo, horaire de train) doit venir d'une source, pas de tes connaissances.
 
+RECHERCHE OU RUBRIQUE : une RECHERCHE est ponctuelle (onglet Recherches, faite une fois, hors épisode) ; une RUBRIQUE revient dans l'épisode. « fais une recherche sur… », « une nouvelle recherche », « cherche-moi… », « trouve-moi… », « recherche des idées de… » = nouvelle_regle avec periode_type ponctuelle, JAMAIS une rubrique de l'épisode. Ne crée une rubrique (periode_type toujours, jours, dates, une_fois) que si l'auditeur parle d'une rubrique, de son épisode ou de son podcast du matin, ou d'un rendez-vous qui revient (« chaque matin », « tous les lundis », « demain dans mon épisode »).
+
 PODCAST PONCTUEL SUR UN SUJET : « fais-moi un podcast de 3 minutes sur les retards CFF en ce moment », « fais le point sur… », « résume-moi où en est… » = UNE seule opération nouvelle_regle avec periode_type ponctuelle, rendu point, minutes = la durée demandée, consigne = le sujet et l'angle (état des lieux à l'heure actuelle), sources adaptées (actus, web, transports pour les trains…) ; « résume-moi ce que la rubrique X a raconté » = pour seule source l'historique de cette rubrique (rubrique:…). Il est fabriqué et envoyé tout seul : n'ajoute JAMAIS nouvel_episode, resultats, ni regler format.duree_minutes (c'est la durée de l'épisode quotidien, à ne changer que si l'auditeur parle de son épisode habituel). rendu idees : quand l'auditeur veut des résultats à lire (une liste d'idées de sortie, d'activités, de cadeaux, d'articles) plutôt qu'un podcast à écouter.
 
 RUBRIQUES INTÉGRÉES DU DÉROULÉ (clés) : ${Object.entries(RUBRIQUES).map(([c, n]) => `${c} (${n})`).join(", ")}.
 
 Si un message contient plusieurs demandes, renvoie plusieurs opérations. Ne change que ce qui est demandé. Si une information indispensable manque (une heure, une date), ne devine pas : n'émets pas l'opération et demande-la dans « reponse ».
+QUESTIONS : à chaque nouvelle_regle, regarde les champs restés vides et pose dans « questions » 1 à 3 questions courtes, ${adresse}, sur ceux qui changeraient vraiment le résultat (sortie ou idées : où, quand, avec qui et quels âges, budget, transport ; recherche en podcast : angle, région ou pays, durée ; rubrique de l'épisode : quels jours, à quel moment de l'épisode, quelle longueur, sources particulières). Ne demande jamais ce qui est déjà dit ou que le modèle règle déjà bien ; vide si rien d'utile ne manque. La rubrique est créée quand même : les questions servent seulement à l'affiner.
+
 reponse : vide si tout est traduit en opérations (l'application annonce elle-même les changements, ne les récapitule pas). Sinon une ou deux phrases, ${adresse} : réponse à une question, ou ce qui est impossible et pourquoi.`;
 }
 
@@ -188,7 +193,10 @@ Déroulé : ${config.deroule.map((r) => `${r.cle}${r.actif ? "" : " (désactivé
 Rubriques :
 ${regles}
 Sujets du dernier épisode : ${sujets}
-
+${ctx.aPreciser ? `
+À L'INSTANT : ${ctx.aPreciser.recherche ? "la recherche" : "la rubrique"} ${ctx.aPreciser.id} « ${ctx.aPreciser.titre} » vient d'être créée, et tu as demandé : ${ctx.aPreciser.questions.join(" ")}
+Si le message y répond, même en quelques mots (« avec ma femme », « 50 francs max », « le samedi », « non c'est bon »), c'est modifier_regle id ${ctx.aPreciser.id} avec ce qu'il précise (rien si « c'est bon »), PAS une nouvelle rubrique ni une nouvelle recherche.
+` : ""}
 Message de l'auditeur :`;
 }
 
@@ -384,12 +392,39 @@ export function heureDemandee(op) {
   throw new Error("je n'ai pas compris l'heure (dis par exemple « 6 h 30 », ou « aucun » pour ne pas avoir d'épisode)");
 }
 
+// ─────────────── questions après une création (champs à préciser) ───────────────
+export function nettoyerQuestions(liste) {
+  return (Array.isArray(liste) ? liste : []).map((q) => String(q || "").replace(/\s+/g, " ").trim().slice(0, 160)).filter(Boolean).slice(0, 3);
+}
+
+// Quand Gemini n'en pose pas : les champs utiles restés vides, d'après ce qui a été dit (« dit »).
+export function questionsParDefaut(regle, dit = {}) {
+  const q = [];
+  const fiche = regle.recherche?.fiche || {};
+  const sortie = regle.modele === "sortie" || (regle.periode.type === "ponctuelle" && regle.recherche?.rendu !== "point");
+  if (sortie) {
+    if (!rempli(fiche.ou)) q.push("Où, ou dans quel rayon ?");
+    if (!rempli(fiche.quand)) q.push("Pour quand ?");
+    if (!rempli(fiche.avec_qui)) q.push("Avec qui (et quels âges) ?");
+    if (!rempli(fiche.budget?.max)) q.push("Un budget maximum ?");
+    if (!fiche.transport || fiche.transport === "aucun") q.push("Comment tu te déplaces ?");
+  } else if (regle.periode.type === "ponctuelle") {
+    q.push("Un angle, une région ou un pays à privilégier ?");
+    if (!(typeof dit.minutes === "number" && dit.minutes > 0)) q.push(`Une autre durée que ${regle.recherche?.minutes || 3} minutes ?`);
+  } else {
+    if (regle.periode.type === "toujours" && !(Array.isArray(dit.jours) && dit.jours.length)) q.push("Tous les jours, ou certains jours seulement ?");
+    if (regle.rubrique && !rempli(dit.place) && !rempli(dit.longueur)) q.push("À quel moment de l'épisode, et quelle longueur ?");
+    if (!(Array.isArray(dit.sources) && dit.sources.length)) q.push("Une source particulière (site, flux, agenda) ?");
+  }
+  return q.slice(0, 3);
+}
+
 // Applique les opérations ; renvoie les changements lisibles, les actions à mener, et ce qui
 // est lourd (à confirmer avant d'enregistrer). Les suppressions passent en dernier, de la plus
 // grande à la plus petite, pour que les numéros cités par Gemini restent les bons.
 export function appliquerOperations(config, operations, ctx) {
-  const changements = [], actions = [], erreurs = [], reglesCreees = [], lourds = [], suppressions = [];
-  const liste = garderPonctuel(config, Array.isArray(operations) ? operations.filter((op) => op && typeof op === "object") : []);
+  const changements = [], actions = [], erreurs = [], reglesCreees = [], lourds = [], suppressions = [], dits = [], precisees = [];
+  const liste = garderPonctuel(config, versRecherche(Array.isArray(operations) ? operations.filter((op) => op && typeof op === "object") : [], ctx.message));
   const numero = (op) => Number(/(\d+)/.exec(String(op.id || ""))?.[1] || 0);
   const ordonnees = [...liste.filter((op) => op.action !== "supprimer_regle"),
                      ...liste.filter((op) => op.action === "supprimer_regle").sort((a, b) => numero(b) - numero(a))];
@@ -399,6 +434,8 @@ export function appliquerOperations(config, operations, ctx) {
       if (resultat?.changement) changements.push(resultat.changement);
       if (resultat?.action) actions.push(resultat.action);
       if (resultat?.regle) reglesCreees.push(resultat.regle);
+      if (resultat?.dit) dits.push([resultat.regle, resultat.dit]);
+      if (resultat?.precisee) precisees.push(resultat.precisee);
       if (resultat?.lourd) lourds.push(resultat.lourd);
       if (resultat?.suppression) suppressions.push(resultat.suppression);
     } catch (erreur) {
@@ -406,7 +443,23 @@ export function appliquerOperations(config, operations, ctx) {
     }
   }
   nettoyerPlanning(config.planning, ctx.aujourdHui);
-  return { changements, actions, erreurs, reglesCreees, lourds, suppressions };
+  // Ce qui reste à préciser sur la (première) création : les questions de Gemini, sinon les champs vides utiles.
+  const demandees = nettoyerQuestions(ctx.questions);
+  const questions = dits.length ? (demandees.length ? demandees : questionsParDefaut(dits[0][0], dits[0][1])) : [];
+  const creee = dits.length ? { id: dits[0][0].id, titre: dits[0][0].titre, recherche: dits[0][0].periode.type === "ponctuelle" } : null;
+  return { changements, actions, erreurs, reglesCreees, lourds, suppressions, questions, creee, precisees };
+}
+
+// « Fais une nouvelle recherche sur… » : une recherche (onglet Recherches), pas une rubrique de
+// l'épisode, même si Gemini en crée une. Seulement quand l'auditeur ne parle ni de rubrique, ni
+// de son épisode, ni d'un rendez-vous qui revient.
+const PARLE_RECHERCHE = /\brecherche\b|\bcherche[- ](?:moi|nous)\b|\btrouve[- ](?:moi|nous)\b/;
+const PARLE_RUBRIQUE = /\brubrique|\bchronique|\bepisode|\bpodcast du (?:matin|jour)|\bmon podcast\b|\bchaque (?:jour|matin|semaine|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\b|\btous les (?:jours|matins|lundis|mardis|mercredis|jeudis|vendredis|samedis|dimanches)\b/;
+export function versRecherche(operations, message) {
+  const m = normaliserTexte(message || "");
+  if (!PARLE_RECHERCHE.test(m) || PARLE_RUBRIQUE.test(m)) return operations;
+  return operations.map((op) => op.action === "nouvelle_regle" && op.regle && typeof op.regle === "object" && op.regle.periode_type !== "ponctuelle"
+    ? { ...op, regle: { ...op.regle, periode_type: "ponctuelle", place: undefined, longueur: undefined, jours: undefined, debut: undefined, fin: undefined } } : op);
 }
 
 // Un podcast ponctuel ne touche jamais l'épisode du jour. Quand une recherche ponctuelle est créée,
@@ -515,10 +568,11 @@ function appliquerUne(config, op, ctx) {
     }
     case "nouvelle_regle": {
       const regle = nouvelleRubrique(config, op.regle || {}, ctx);
-      const changement = `Rubrique « ${regle.titre} » créée (${decrirePlace(config, regle)} ; ${sourcesEnMots(config, regle)})`;
+      const nom = regle.periode.type === "ponctuelle" ? "Recherche" : "Rubrique";
+      const changement = `${nom} « ${regle.titre} » créée (${decrirePlace(config, regle)} ; ${sourcesEnMots(config, regle)})`;
       // Une recherche ponctuelle part tout de suite, dans son format (point en audio, ou idées écrites).
       const action = regle.periode.type === "ponctuelle" ? { type: "resultats", ids: [regle.id], format: formatRecherche(regle) } : null;
-      return { changement, regle, action };
+      return { changement, regle, action, dit: op.regle || {} };
     }
     case "modifier_regle": {
       const id = identifiantRegle(op.id);
@@ -540,7 +594,12 @@ function appliquerUne(config, op, ctx) {
         placerRubriqueApres(config, id, nouvellePlace);
         regle.rubrique.apres = nouvellePlace;
       }
-      return { changement: `Rubrique « ${regle.titre} » modifiée (${decrirePlace(config, regle)})`, regle };
+      // La réponse aux questions posées à la création d'une recherche : on la relance, précisée.
+      if (regle.periode.type === "ponctuelle") {
+        const relance = ctx.aPreciser?.id === id ? { type: "resultats", ids: [id], format: formatRecherche(regle) } : null;
+        return { changement: `Recherche « ${regle.titre} » précisée (${decrirePlace(config, regle)})`, regle, action: relance, precisee: id };
+      }
+      return { changement: `Rubrique « ${regle.titre} » modifiée (${decrirePlace(config, regle)})`, regle, precisee: id };
     }
     case "supprimer_regle": {
       const id = identifiantRegle(op.id);
@@ -663,12 +722,13 @@ export function resumerJours(jours) {
 // Gemini n'est gardée que si elle ne risque pas de contredire ce qui a été fait : elle
 // accompagne des changements réussis, ou répond quand il n'y a rien à changer.
 export function messageCompris(resultat) {
-  const { changements = [], erreurs = [], a_confirmer: aConfirmer = [], reponse = "", suites = [] } = resultat;
+  const { changements = [], erreurs = [], a_confirmer: aConfirmer = [], reponse = "", suites = [], questions = [] } = resultat;
   const note = String(reponse || "").trim();
   if (aConfirmer.length) {
     return { titre: "À confirmer avant que je l'applique :", lignes: aConfirmer, erreurs, note: "", confirmer: true };
   }
-  if (changements.length) return { titre: "C'est fait :", lignes: [...changements, ...suites], erreurs, note: erreurs.length ? "" : note };
+  if (changements.length) return { titre: "C'est fait :", lignes: [...changements, ...suites], erreurs, note: erreurs.length ? "" : note,
+    questions: nettoyerQuestions(questions) };
   if (erreurs.length) return { titre: "Je n'ai rien changé.", lignes: suites, erreurs, note: "" };
   return { titre: "", lignes: suites, erreurs, note: note || (suites.length ? "" : "Je n'ai rien changé.") };
 }

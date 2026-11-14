@@ -1443,6 +1443,7 @@ function historiqueDemandes() {
     const corps = [lignes.length ? `<ul>${lignes.map((c) => `<li>${h(c)}</li>`).join("")}</ul>` : "",
       d.erreurs.length ? d.erreurs.map((x) => `⚠️ ${h(x)}`).join("<br>") : "",
       issue[d.issue] ? `<i>${h(issue[d.issue])}</i>` : "",
+      htmlQuestions(d.questions),
       !lignes.length && !d.erreurs.length ? "Rien changé." : "",
       d.operations && d.operations !== "[]" ? `<details><summary style="font-size:12px;color:var(--doux)">Détail technique</summary><code style="font-size:11px;word-break:break-all">${h(d.operations)}</code></details>` : ""]
       .filter(Boolean).join("");
@@ -1459,7 +1460,15 @@ function htmlCompris(m) {
   return [m.titre ? `<b>${h(m.titre)}</b>` : "",
     m.lignes.length ? `<ul>${m.lignes.map((c) => `<li>${h(c)}</li>`).join("")}</ul>` : "",
     m.erreurs.length ? `<div style="margin-top:6px">${m.erreurs.map((x) => `⚠️ ${h(x)}`).join("<br>")}</div>` : "",
-    m.note ? `<div style="margin-top:6px">${h(m.note)}</div>` : ""].filter(Boolean).join("");
+    m.note ? `<div style="margin-top:6px">${h(m.note)}</div>` : "",
+    htmlQuestions(m.questions)].filter(Boolean).join("");
+}
+
+// Ce qu'on peut encore préciser après une création : il suffit de répondre, à l'écrit ou à la voix.
+function htmlQuestions(questions) {
+  if (!questions || !questions.length) return "";
+  return `<div style="margin-top:8px"><b>Pour l'affiner, si tu veux :</b><ul>${questions.map((q) => `<li>${h(q)}</li>`).join("")}</ul>`
+    + `<span style="font-size:12px;color:var(--doux)">Réponds simplement, je complète.</span></div>`;
 }
 
 async function envoyerDemande(texte, audio = null) {
@@ -1484,7 +1493,7 @@ function afficherReponse(j) {
     if (m.confirmer) boutons.push(`<button type="button" data-action="parler-confirmer">Oui, appliquer</button>`, `<button type="button" data-action="parler-abandonner">Non</button>`);
     else if (j.changements && j.changements.length) boutons.push(`<button type="button" data-action="annuler">Annuler</button>`);
     if (j.ouvrir && !m.confirmer) {
-      if (j.ouvrir.ecran === "fiche" && j.ouvrir.id) boutons.push(`<button type="button" data-ouvrir="${h(j.ouvrir.id)}">Voir la rubrique</button>`);
+      if (j.ouvrir.ecran === "fiche" && j.ouvrir.id) boutons.push(`<button type="button" data-ouvrir="${h(j.ouvrir.id)}">${j.ouvrir.recherche ? "Voir la recherche" : "Voir la rubrique"}</button>`);
       else if (j.ouvrir.ecran === "recherche") boutons.push(`<button type="button" data-action="nouvelle-recherche">Préparer la recherche</button>`);
       else if (DESTINATIONS[j.ouvrir.ecran]) boutons.push(`<button type="button" data-destination="${DESTINATIONS[j.ouvrir.ecran]}">Ouvrir</button>`);
     }

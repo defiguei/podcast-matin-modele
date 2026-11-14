@@ -72,6 +72,13 @@ export function plusRecente(a, b) {
   return false;
 }
 
+// Les questions posées après la dernière création, encore valables (30 min, rubrique toujours là).
+function aPreciserValide(etat, config) {
+  const a = etat.a_preciser;
+  if (!a || Date.now() - a.quand > 30 * 60_000 || !config.regles.some((r) => r.id === a.id && r.titre === a.titre)) return null;
+  return a;
+}
+
 export class Etat extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
@@ -337,7 +344,7 @@ export class Etat extends DurableObject {
     const ctx = this.contexte();
     const config = await this.lireConfig();
     const etat = await this.lireEtat();
-    const contenus = [{ type: "text", text: contexteComprehension(config, { ...ctx, dernierEpisode: etat.episodes.at(-1) }) }];
+    const contenus = [{ type: "text", text: contexteComprehension(config, { ...ctx, dernierEpisode: etat.episodes.at(-1), aPreciser: aPreciserValide(etat, config) }) }];
     if (indice) contenus.push({ type: "text", text: `(Contexte : ${indice})` });
     if (texte) contenus.push({ type: "text", text: texte.slice(0, 2000) });
     if (audio) contenus.push(audio);
@@ -354,6 +361,7 @@ export class Etat extends DurableObject {
       entendu: audio ? String(reponse?.entendu || "").trim().slice(0, 1000) : "",
       operations: Array.isArray(reponse?.operations) ? reponse.operations.slice(0, 20) : [],
       reponse: String(reponse?.reponse || "").trim().slice(0, 600),
+      questions: Array.isArray(reponse?.questions) ? reponse.questions.slice(0, 3) : [],
     };
     // Une rubrique créée reçoit un titre et une consigne rédigés, jamais la phrase de l'auditeur.
     const message = compris.texte || compris.entendu;
@@ -375,7 +383,7 @@ export class Etat extends DurableObject {
     const etat = await this.lireEtat();
     const ancienne = cloner(config);
     const message = compris.texte || compris.entendu || "(vocal)";
-    const resultat = appliquerOperations(config, compris.operations, { ...ctx, message });
+    const resultat = appliquerOperations(config, compris.operations, { ...ctx, message, questions: compris.questions, aPreciser: aPreciserValide(etat, config) });
     const base = { reponse: compris.reponse || "", entendu: compris.entendu || "", vocal: Boolean(compris.vocal) };
     const trace = { quand: ctx.maintenantIso, message: message.slice(0, 300), vocal: Boolean(compris.vocal),
                     operations: JSON.stringify(compris.operations).slice(0, 1500), erreurs: resultat.erreurs };
@@ -386,6 +394,9 @@ export class Etat extends DurableObject {
       return { ...base, config: ancienne, changements: [], actions: [], erreurs: resultat.erreurs, reglesCreees: [], a_confirmer: resultat.changements };
     }
     delete etat.a_confirmer;
+    // Les questions posées après une création : gardées 30 min pour comprendre la réponse.
+    if (resultat.creee && resultat.questions.length) etat.a_preciser = { ...resultat.creee, questions: resultat.questions, quand: Date.now() };
+    else if (resultat.creee || (etat.a_preciser && resultat.precisees.includes(etat.a_preciser.id))) delete etat.a_preciser;
     for (const action of resultat.actions.filter((a) => a.type === "ajouter_source")) {
       try { resultat.changements.push(await this.ajouterFlux(config, action.valeur, true)); } catch (erreur) { resultat.erreurs.push(`Source : ${erreur.message}`); }
     }
@@ -393,7 +404,7 @@ export class Etat extends DurableObject {
     // Une demande confirmée complète sa ligne « en attente » de l'historique.
     const enAttente = confirme ? [...(etat.historique || [])].reverse().find((d) => d.issue === "attente") : null;
     if (enAttente) Object.assign(enAttente, { changements: resultat.changements, erreurs: resultat.erreurs, a_confirmer: [], issue: "confirme" });
-    else etat.historique = [...(etat.historique || []), { ...trace, changements: resultat.changements, erreurs: resultat.erreurs, issue: null }].slice(-30);
+    else etat.historique = [...(etat.historique || []), { ...trace, changements: resultat.changements, erreurs: resultat.erreurs, questions: resultat.questions, issue: null }].slice(-30);
     if (resultat.changements.length) await this.enregistrer(config, etat, ancienne, resultat.changements.length > 1 ? `${resultat.changements[0]} (+${resultat.changements.length - 1})` : resultat.changements[0]);
     else await this.ecrireEtat(etat);
     return { ...base, config, ...resultat, a_confirmer: [] };
@@ -899,7 +910,7 @@ export class Etat extends DurableObject {
       reponse: resultat.reponse || "", entendu: resultat.entendu || "", vocal: Boolean(resultat.vocal),
       changements: resultat.changements, erreurs: resultat.erreurs, suites, a_confirmer: resultat.a_confirmer || [],
       message_compris: messageCompris({ ...resultat, suites }),
-      ouvrir: resultat.reglesCreees[0] ? { ecran: "fiche", id: resultat.reglesCreees[0].id }
+      ouvrir: resultat.reglesCreees[0] ? { ecran: "fiche", id: resultat.reglesCreees[0].id, recherche: resultat.reglesCreees[0].periode.type === "ponctuelle" }
         : afficher ? { ecran: afficher.type === "assistant" ? "recherche" : afficher.valeur } : null,
     };
   }

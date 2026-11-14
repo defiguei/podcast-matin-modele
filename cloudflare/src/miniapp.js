@@ -256,7 +256,7 @@ export function donneesApp(config, etat, ctx, version, liens = { episodes: {}, v
     // Les dernières demandes au bot (écrites ou vocales) : ce qui a été compris et fait.
     demandes: (etat.historique || []).slice(-10).reverse().map((d) => ({
       quand: d.quand, message: d.message, vocal: Boolean(d.vocal), changements: d.changements || [], erreurs: d.erreurs || [],
-      a_confirmer: d.a_confirmer || [], issue: d.issue || null, operations: d.operations || "" })),
+      a_confirmer: d.a_confirmer || [], issue: d.issue || null, operations: d.operations || "", questions: d.questions || [] })),
     deroule: config.deroule.map((el) => {
       const regle = config.regles.find((r) => r.id === el.cle);
       return { cle: el.cle, actif: el.actif !== false, nom: regle ? (regle.rubrique?.titre || regle.titre) : nomRubrique(config, el.cle),
