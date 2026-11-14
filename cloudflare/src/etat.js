@@ -21,7 +21,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerChapitres, rangerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-11-13.2";
+export const VERSION = "2026-11-14.1";
 const MAX_REFAITS = 6;
 const REMPLACEMENT_MS = 60 * 60 * 1000;   // « Remplacer par un neuf » : l'ancien n'est retiré que si le neuf arrive dans l'heure
 const MAX_RECHERCHES = 15;
@@ -32,7 +32,8 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
-  "Épisodes : le menu « ··· » de chaque épisode (liste des épisodes) permet de le supprimer, ou de remplacer celui du jour par un épisode neuf ; Réglages › Épisodes pour en supprimer plusieurs d'un coup.",
+  "Demande au bot : « fais une recherche sur… » crée une recherche (onglet Recherches), plus une rubrique de l'épisode.",
+  "Après chaque rubrique ou recherche créée, le bot pose quelques questions sur ce qui reste à préciser (où, quand, avec qui, budget, jours, place…) ; il suffit de répondre pour la compléter (une recherche est alors relancée).",
 ];
 
 // « 2026-10 » décalé de n mois.
