@@ -1244,6 +1244,29 @@ _arts = podcast.articles_de_flux({"config_bot": {"sources": {"flux": [{"id": "lo
                                  ["flux:local001"], dt.datetime(2026, 10, 29, 8, 0, tzinfo=dt.timezone.utc), 48)
 podcast.telecharger = _ancien_tel
 verifier([a.titre for a in _arts] == ["Travaux rue du Lac"] and _arts[0].source == "La Région", f"flux cochés lus ({[a.titre for a in _arts]})")
+# Relevé des lectures (Réglages › Sources : « Lu ce matin », « Échec ce matin »).
+import lectures as _lectures
+_lectures.oublier()
+_maintenant_l = dt.datetime(2026, 10, 29, 8, 0, tzinfo=dt.timezone.utc)
+_reg_l = {"recherches_actus": True, "langue_actus": "fr", "pays_actus": "CH"}
+_ancien_tel = podcast.telecharger
+podcast.telecharger = lambda url, *a, **k: b"""<rss><channel><item><title>Travaux rue du Lac</title><pubDate>Thu, 29 Oct 2026 06:00:00 +0000</pubDate></item></channel></rss>"""
+podcast.chercher_actus("Yverdon", _reg_l, _maintenant_l, 4)
+podcast.telecharger = lambda url, *a, **k: b"<rss><channel></channel></rss>"
+podcast.chercher_actus("Sujet introuvable", _reg_l, _maintenant_l, 4)
+def _refus(url, *a, **k):
+    raise podcast.ErreurPodcast("téléchargement impossible (news.google.com, HTTP 429)")
+podcast.telecharger = _refus
+_arts_l, _pb_l = podcast.lire_actualites({"fraicheur_heures": 24, "articles_par_flux": 8,
+    "flux": [{"nom": "Google Actualités – Suisse", "url": "https://news.google.com/rss?hl=fr&gl=CH&ceid=CH:fr"}]}, _maintenant_l)
+podcast.telecharger = _ancien_tel
+_rel = _lectures.releve()
+verifier(_rel["service:actus"]["reussies"] == 2 and not _rel["service:actus"]["echecs"],
+         f"une recherche Google Actualités sans article n'est pas un échec ({_rel.get('service:actus')})")
+_g = _rel.get("url:https://news.google.com/rss?hl=fr&gl=CH&ceid=CH:fr") or {}
+verifier(_g.get("echecs") == 1 and "429" in _g.get("erreur", "") and "news.google" not in _g.get("erreur", ""),
+         f"flux refusé noté avec sa raison, sans l'adresse ({_g})")
+_lectures.oublier()
 verifier([podcast.periode_recherche(h) for h in (12, 36, 48, 72, 168, 336)] == ["12h", "36h", "2d", "3d", "7d", "14d"],
          "âge des nouvelles en heures ou en jours pour Google Actualités")
 

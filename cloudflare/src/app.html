@@ -2219,6 +2219,31 @@ function resultatTest(t) {
   const quand = t.quand ? ` <span style="opacity:.75">· ${h(dateLongue(t.quand.slice(0, 10)))} à ${h(t.quand.slice(11, 16))}</span>` : "";
   return `<p class="test-cle ${t.ok ? "ok" : "ko"}" role="status">${t.ok ? "✓" : "✗"} ${h(t.message)}${quand}</p>`;
 }
+// Dernière lecture d'un outil par un épisode ou une recherche (chaque matin, sans rien toucher) :
+// « Lu ce matin », « Échec ce matin : … », avec le dernier jour où il a marché.
+function quandLu(l) {
+  const heure = Number(String(l.quand || "").slice(11, 13));
+  if (l.date === S.d.aujourdhui) return heure < 12 ? "ce matin" : heure < 18 ? "cet après-midi" : "ce soir";
+  if (l.date === plusJours(S.d.aujourdhui, -1)) return "hier";
+  return `le ${dateLongue(l.date)}`;
+}
+const lectureEnEchec = (l) => Boolean(l && l.echecs && !l.reussies);
+function resultatLecture(l) {
+  if (!l) return "";
+  const quand = quandLu(l);
+  if (lectureEnEchec(l)) {
+    const marche = l.dernier_ok ? ` Dernière lecture réussie : ${l.dernier_ok === plusJours(S.d.aujourdhui, -1) ? "hier" : `le ${dateLongue(l.dernier_ok)}`}.` : "";
+    return `<p class="test-cle ko" role="status">✗ Échec ${h(quand)} : ${h(l.erreur || "pas de réponse")}.${h(marche)}</p>`;
+  }
+  const partiel = l.echecs ? ` · ${l.echecs} échec${l.echecs > 1 ? "s" : ""} sur ${l.reussies + l.echecs} (${h(l.erreur)})` : "";
+  return `<p class="test-cle ${l.echecs ? "" : "ok"}" role="status">✓ Lu ${h(quand)}${l.detail ? ` · ${h(l.detail)}` : ""}${partiel}</p>`;
+}
+// En tête d'un onglet : les outils dont la dernière lecture a échoué.
+function alerteLectures(liste) {
+  const ko = liste.filter((x) => lectureEnEchec(x.lecture));
+  if (!ko.length) return "";
+  return `<div class="alerte" role="status">${ko.length > 1 ? `${ko.length} sources n'ont pas marché` : "Une source n'a pas marché"} à la dernière lecture : ${ko.map((x) => h(x.nom)).join(", ")}.</div>`;
+}
 const boutonTester = (cle, texte = "Tester") => `<button type="button" class="bouton gris" data-tester-outil="${h(cle)}">${texte}</button>`;
 
 const ONGLETS_SOURCES = [["services", "Services"], ["flux", "Flux"], ["sites", "Sites"], ["agendas", "Agendas"], ["donnees", "Données"]];
@@ -2235,11 +2260,13 @@ function vueSources() {
 function ongletServices() {
   const s = S.d.reglages.sources;
   return `<p class="aide" style="font-size:14px;color:var(--doux-2)">Les services que tes rubriques interrogent. Une clé se range avec le service qui en a besoin ; chacun se teste, sans dépenser de crédit.</p>
+  ${alerteLectures(s.categories.filter((c) => c.type === "services"))}
   ${s.categories.filter((c) => c.type === "services").map((c) => `<section class="carte${c.coupee ? " retiree" : ""}" aria-labelledby="t-src-${c.cle}">
-    <h2 id="t-src-${c.cle}">${h(c.nom)}</h2>
+    <div class="entre"><h2 id="t-src-${c.cle}">${h(c.nom)}</h2>${lectureEnEchec(c.lecture) ? `<span class="badge manque">Échec</span>` : ""}</div>
     <p style="margin:0;line-height:1.45">${h(c.apporte)}</p>
     <div class="ou-cherche"><span><b>Où</b> · ${h(c.ou)}</span><span><b>Lu par</b> · ${h(utilisePar(c))}</span></div>
     ${c.cle_api && S.d.connexions.cles[c.cle_api] ? corpsCle(c.cle_api, S.d.connexions.cles[c.cle_api], true) : ""}
+    ${resultatLecture(c.lecture)}
     ${c.cle === "web" ? "" : `${resultatTest(c.test)}${boutonTester(`service:${c.cle}`, c.cle === "transports" ? "Tester le service" : "Tester")}`}
     ${c.coupee && c.aussi ? `<p class="aide">Retiré de tes rubriques ; ${h(c.aussi)} continuent de s'en servir (elles se règlent dans Ton épisode).</p>` : ""}
     <div class="bloc" style="background:var(--carte-2)">${interrupteur("Utilisable par mes rubriques", !c.coupee, `data-source-utilisable="${c.cle}"`)}</div>
@@ -2253,7 +2280,7 @@ function luParFlux(f) {
 
 function ongletFlux() {
   const s = S.d.reglages.sources;
-  return `<p class="aide" style="font-size:14px;color:var(--doux-2)">Tous tes flux RSS, médias et sites spécialisés. Chaque rubrique coche ceux qu'elle lit : les Actualités globales dans leur fiche, les autres dans « Où elle cherche ».</p>
+  return `${alerteLectures(s.flux)}<p class="aide" style="font-size:14px;color:var(--doux-2)">Tous tes flux RSS, médias et sites spécialisés. Chaque rubrique coche ceux qu'elle lit : les Actualités globales dans leur fiche, les autres dans « Où elle cherche ».</p>
   <section class="carte" aria-labelledby="t-flux-ajout"><h2 id="t-flux-ajout">Ajouter un flux</h2>
     <div class="ajout"><input class="saisie" maxlength="300" placeholder="Nom du média ou adresse de son flux" data-nouveau="flux" aria-label="Ajouter un flux">
       <button type="button" class="bouton gris" data-action="flux-ajouter">Ajouter</button></div>
@@ -2262,9 +2289,10 @@ function ongletFlux() {
       <p class="aide">Ils s'ajoutent aussi à tes Actualités globales.</p>` : ""}
   </section>
   ${s.flux.map((f) => `<section class="carte" aria-labelledby="t-${f.id}">
-    <div class="entre"><h2 id="t-${f.id}" style="min-width:0;overflow-wrap:anywhere">${h(f.nom)}</h2>${f.actualites ? `<span class="badge ok">Actualités</span>` : ""}</div>
+    <div class="entre"><h2 id="t-${f.id}" style="min-width:0;overflow-wrap:anywhere">${h(f.nom)}</h2>${lectureEnEchec(f.lecture) ? `<span class="badge manque">Échec</span>` : f.actualites ? `<span class="badge ok">Actualités</span>` : ""}</div>
     <p class="aide" style="margin:0;word-break:break-all">${h(f.url)}</p>
     <div class="ou-cherche"><span><b>Lu par</b> · ${h(luParFlux(f))}</span></div>
+    ${resultatLecture(f.lecture)}
     ${resultatTest(f.test)}
     <div class="deux">${boutonTester(f.cle)}<button type="button" class="bouton gris" style="color:var(--rouge)" data-flux-retirer="${h(f.id)}">Retirer</button></div>
   </section>`).join("")}`;
@@ -2879,7 +2907,8 @@ const SECTIONS = [
   ["sources", "Sources", "sources", () => {
     const s = S.d.reglages.sources, n = (x, mot) => `${x} ${mot}${x > 1 ? "s" : ""}`;
     const services = s.categories.filter((c) => c.type === "services" && !c.coupee).length;
-    return `${n(services, "service")} · ${s.flux.length} flux · ${n(s.sites.length, "site")} · ${n(S.d.reglages.agendas.length, "agenda")}`;
+    const ko = [...s.categories, ...s.flux].filter((x) => !x.coupee && lectureEnEchec(x.lecture)).length;
+    return `${ko ? `⚠ ${ko} en échec · ` : ""}${n(services, "service")} · ${s.flux.length} flux · ${n(s.sites.length, "site")} · ${n(S.d.reglages.agendas.length, "agenda")}`;
   }],
   ["gemini", "Gemini", "cle", () => {
     const k = S.d.connexions.cles.gemini;

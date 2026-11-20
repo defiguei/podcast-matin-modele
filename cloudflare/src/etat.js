@@ -21,7 +21,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerChapitres, rangerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-11-14.1";
+export const VERSION = "2026-11-20.1";
 const MAX_REFAITS = 6;
 const REMPLACEMENT_MS = 60 * 60 * 1000;   // « Remplacer par un neuf » : l'ancien n'est retiré que si le neuf arrive dans l'heure
 const MAX_RECHERCHES = 15;
@@ -32,8 +32,9 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
-  "Demande au bot : « fais une recherche sur… » crée une recherche (onglet Recherches), plus une rubrique de l'épisode.",
-  "Après chaque rubrique ou recherche créée, le bot pose quelques questions sur ce qui reste à préciser (où, quand, avec qui, budget, jours, place…) ; il suffit de répondre pour la compléter (une recherche est alors relancée).",
+  "Réglages › Sources : chaque flux et chaque service montre sa dernière lecture par l'épisode (« Lu ce matin » ou « Échec ce matin » avec la raison), et une source en échec est signalée en haut de l'onglet.",
+  "Test de Google Actualités depuis GitHub : deux nouveaux essais quand Google limite les questions (erreur 429), et un message qui explique que ce n'est pas forcément une panne.",
+  "Une recherche Google Actualités qui ne trouve aucun article n'est plus comptée comme un échec.",
 ];
 
 // « 2026-10 » décalé de n mois.
@@ -78,6 +79,26 @@ function aPreciserValide(etat, config) {
   const a = etat.a_preciser;
   if (!a || Date.now() - a.quand > 30 * 60_000 || !config.regles.some((r) => r.id === a.id && r.titre === a.titre)) return null;
   return a;
+}
+
+// Relevé des lectures d'une exécution GitHub (`lectures.py`) : par source (`service:…`, `url:…`),
+// la dernière lecture (réussies, échecs, détail ou erreur) et le dernier jour où elle a marché.
+// Une source qui n'a pas servi garde sa lecture d'avant ; 30 jours sans lecture : oubliée.
+export function rangerLectures(etat, lectures, ctx) {
+  if (!lectures || typeof lectures !== "object") return;
+  const anciennes = etat.lectures || {};
+  const toutes = { ...anciennes };
+  for (const [cle, l] of Object.entries(lectures).slice(0, 60)) {
+    if (!/^(service:[a-z]{2,16}|url:https?:\/\/\S{3,500})$/.test(cle) || !l || typeof l !== "object") continue;
+    const reussies = Math.max(0, Math.floor(Number(l.reussies) || 0)), echecs = Math.max(0, Math.floor(Number(l.echecs) || 0));
+    if (!reussies && !echecs) continue;
+    const avant = anciennes[cle] || {};
+    toutes[cle] = { date: ctx.aujourdHui, quand: ctx.maintenantIso, reussies, echecs,
+      detail: String(l.detail || "").slice(0, 160), erreur: echecs ? String(l.erreur || "").slice(0, 200) : "",
+      dernier_ok: reussies ? ctx.aujourdHui : avant.dernier_ok || null };
+  }
+  const limite = new Date(Date.parse(`${ctx.aujourdHui}T12:00:00Z`) - 30 * 86400000).toISOString().slice(0, 10);
+  etat.lectures = Object.fromEntries(Object.entries(toutes).filter(([, l]) => (l.date || "") >= limite).slice(-100));
 }
 
 export class Etat extends DurableObject {
@@ -1683,6 +1704,9 @@ export class Etat extends DurableObject {
   async recevoirEvenement(ev) {
     const ctx = this.contexte();
     const etat = await this.lireEtat();
+    // Ce que chaque source a donné pendant l'exécution (épisode, échec, recherche) : montré sous
+    // chaque source de Réglages › Sources (« Lu ce matin », « Échec ce matin »).
+    if (["episode", "echec", "recherche"].includes(ev.type)) rangerLectures(etat, ev.lectures, ctx);
     if (ev.type === "episode") {
       const episode = {
         date: ev.date || ctx.aujourdHui, titre: ev.titre || "", sujets: ev.sujets || [],
@@ -1731,7 +1755,8 @@ export class Etat extends DurableObject {
     if (ev.type === "echec") {
       // L'épisode n'a pas pu être préparé (GitHub) : prévenir par notification. Un remplacement demandé
       // n'aura pas lieu (l'ancien épisode reste) : on peut le redemander.
-      if (etat.a_remplacer) { delete etat.a_remplacer; await this.ecrireEtat(etat); }
+      delete etat.a_remplacer;
+      await this.ecrireEtat(etat);
       await this.notifier(etat, { titre: String(ev.titre || "Podcast du matin").slice(0, 80),
         corps: String(ev.message || "").slice(0, 200), url: "/app", tag: "echec" });
       return { ok: true };

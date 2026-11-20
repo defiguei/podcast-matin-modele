@@ -22,13 +22,30 @@ export async function testerToutes(env, demandees = []) {
 
 // Des outils que le service refuse au bot (Google Actualités, souvent) : testés d'ici, comme le
 // podcast les lit. OUTILS = [{ cle: "flux:…", url } | { cle: "service:actus", ville, pays, profil } | { cle: "site:…", domaine }].
-export async function testerOutils(liste = []) {
+// Google limite parfois les questions venues des machines de GitHub (erreur 429, adresses
+// partagées) : on réessaie après une pause avant de conclure, et on dit ce que ça veut dire.
+export const PAUSES_REFUS = [20000, 45000];
+export async function testerOutils(liste = [], pauses = PAUSES_REFUS) {
   const resultats = {};
   for (const o of liste.slice(0, 10)) {
     const [type, id] = String(o?.cle || "").split(":");
-    if (type === "flux" && /^https?:\/\//.test(o.url || "")) resultats[o.cle] = await testerFlux(o.url);
-    else if (type === "service" && id) resultats[o.cle] = await testerService({}, id, { ville: o.ville || "", profil: o.profil || {}, pays: o.pays || "CH" });
-    else if (type === "site" && o.domaine) resultats[o.cle] = await testerSite(o.domaine);
+    let tester = null;
+    if (type === "flux" && /^https?:\/\//.test(o.url || "")) tester = () => testerFlux(o.url);
+    else if (type === "service" && id) tester = () => testerService({}, id, { ville: o.ville || "", profil: o.profil || {}, pays: o.pays || "CH" });
+    else if (type === "site" && o.domaine) tester = () => testerSite(o.domaine);
+    if (!tester) continue;
+    let r = await tester();
+    for (const pause of pauses) {
+      if (r.ok || !r.bloque) break;
+      await new Promise((fin) => setTimeout(fin, pause));
+      r = await tester();
+    }
+    if (!r.ok && r.bloque && /\b429\b/.test(r.message || "")) {
+      const qui = id === "actus" || /google\./i.test(o.url || "") ? "Google limite" : "Le site limite";
+      r.message = `${qui} en ce moment les questions venues de GitHub (erreur 429, même après deux essais). `
+        + "Ce n'est pas forcément une panne : la ligne « Lu ce matin » dit si l'épisode l'a lu. Réessaie dans une heure.";
+    }
+    resultats[o.cle] = r;
   }
   for (const r of Object.values(resultats)) delete r.bloque;
   return resultats;

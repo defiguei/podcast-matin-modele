@@ -27,6 +27,7 @@ from urllib.parse import quote, urlencode
 import requests
 
 import fetes
+import lectures
 import pays
 
 RACINE = Path(__file__).resolve().parent
@@ -104,6 +105,36 @@ def distance_km(a: tuple[float, float], b: tuple[float, float]) -> float:
     return 6371 * 2 * math.asin(math.sqrt(h))
 
 
+# Le service (Réglages › Sources) qu'interroge une adresse : pour le relevé des lectures.
+SERVICES_PAR_ADRESSE = (
+    ("api.open-meteo.com", "service:meteo"), ("api.tavily.com", "service:web"),
+    ("wikivoyage.org", "service:wikivoyage"), ("wikipedia.org", "service:lieux"), ("overpass", "service:lieux"),
+    ("transport.opendata.ch", "service:transports"), ("search.ch", "service:transports"),
+    ("irail.be", "service:transports"), ("api.sncf.com", "service:transports"),
+)
+
+
+def source_de(url: str) -> str:
+    """Clé de relevé du service d'une adresse (vide : géocodage, sans source à montrer)."""
+    return next((cle for morceau, cle in SERVICES_PAR_ADRESSE if morceau in url), "")
+
+
+def raison(erreur: Exception) -> str:
+    """L'erreur d'un service, en clair."""
+    statut = getattr(getattr(erreur, "response", None), "status_code", None)
+    if statut == 429:
+        return "le service limite les questions (erreur 429), trop de demandes"
+    if statut in (401, 403):
+        return f"le service refuse l'accès (erreur {statut}) : la clé est peut-être expirée"
+    if statut:
+        return f"le service répond par une erreur {statut}"
+    if isinstance(erreur, requests.Timeout):
+        return "le service ne répond pas (délai dépassé)"
+    if isinstance(erreur, requests.ConnectionError):
+        return "le service est injoignable"
+    return type(erreur).__name__
+
+
 class Sources:
     """Accès aux services ; un cache évite de redemander deux fois la même chose."""
 
@@ -119,9 +150,16 @@ class Sources:
     def _json(self, methode: str, url: str, delai: int = 20, **options) -> Any:
         options.setdefault("headers", {})
         options["headers"].setdefault("User-Agent", AGENT)
-        reponse = self.session.request(methode, url, timeout=delai, **options)
-        reponse.raise_for_status()
-        return reponse.json()
+        source = source_de(url)
+        try:
+            reponse = self.session.request(methode, url, timeout=delai, **options)
+            reponse.raise_for_status()
+            donnees = reponse.json()
+        except Exception as erreur:
+            lectures.noter(source, False, raison(erreur))
+            raise
+        lectures.noter(source, True)
+        return donnees
 
     def _memo(self, cle_cache: str, fonction, *args):
         if cle_cache not in self.cache:

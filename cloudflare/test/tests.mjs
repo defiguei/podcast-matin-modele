@@ -588,6 +588,19 @@ await scenario("Réglages › Sources : services, flux, sites, agendas, données
   r = await app("outil_tester", { cle: `flux:${leFlux.id}` });
   verifier(r.ok && r.message.startsWith("1 article") && r.donnees.reglages.sources.flux.find((f) => f.id === leFlux.id).test?.ok, "flux testé", r.message || r.erreur);
   verifier(Array.isArray(s.proposes), "médias proposés pour le pays", s.proposes);
+  // Dernière lecture par l'épisode : « Lu ce matin » ou « Échec ce matin », sans test à la main.
+  await evenement({ type: "echec", titre: "x", message: "y", lectures: {
+    [`url:${leFlux.url}`]: { reussies: 1, echecs: 0, detail: "8 articles" },
+    "service:actus": { reussies: 3, echecs: 0, detail: "recherche « Yverdon » : 5 articles" } } });
+  await evenement({ type: "echec", titre: "x", message: "y", lectures: {
+    [`url:${leFlux.url}`]: { reussies: 0, echecs: 1, erreur: "le site limite les questions (erreur 429), trop de demandes" },
+    "url:pas-une-adresse": { reussies: 1 } } });
+  r = await app("etat");
+  const lu = r.donnees.reglages.sources.flux.find((f) => f.id === leFlux.id).lecture;
+  verifier(lu?.echecs === 1 && !lu.reussies && lu.erreur.includes("429") && lu.dernier_ok === (await etat()).etat.lectures[`url:${leFlux.url}`].date,
+    "flux en échec à la dernière lecture, avec le dernier jour réussi", lu);
+  verifier(r.donnees.reglages.sources.categories.find((c) => c.cle === "actus").lecture?.reussies === 3
+    && !Object.keys((await etat()).etat.lectures).some((k) => k.includes("pas-une")), "service lu ; clé douteuse écartée", (await etat()).etat.lectures);
   // Sites de référence : ajout (vérifié), test, choisi par une rubrique, retrait.
   verifier((await app("site_ajouter", { valeur: "pas une adresse" })).ok === false, "site : il faut une adresse");
   r = await app("site_ajouter", { valeur: "mort.ch" });

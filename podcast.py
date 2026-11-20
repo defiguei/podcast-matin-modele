@@ -55,6 +55,7 @@ import recurring_ical_events
 import requests
 import x_wr_timezone
 
+import lectures
 import pays as pays_auditeur
 import regles as moteur
 from liaison import Bot, appliquer_cles, config_de_secours, secrets_presents
@@ -669,9 +670,11 @@ def articles_de_flux(effectifs: dict, choix: list[str] | None, maintenant: dt.da
         try:
             trouves = lire_flux(telecharger(flux["url"], 20, essais=2), str(flux.get("nom") or ""), maximum, seuil)
             journal(f"Flux « {flux.get('nom', '?')} » : {len(trouves)} article(s).")
+            lectures.noter(f"url:{flux['url']}", True, compter_articles(len(trouves)))
             articles += trouves
         except Exception as erreur:
             journal(f"Flux « {flux.get('nom', '?')} » ignoré : {erreur}")
+            lectures.noter(f"url:{flux['url']}", False, raison_echec(erreur))
     return articles
 
 
@@ -958,9 +961,11 @@ def lire_actualites(reglages: dict, maintenant: dt.datetime
             trouves = lire_flux(telecharger(url, 20), nom,
                                 int(reglages["articles_par_flux"]), seuil)
             journal(f"Flux « {nom or masquer(url)} » : {len(trouves)} article(s).")
+            lectures.noter(f"url:{url}", True, compter_articles(len(trouves)))
             articles.extend(trouves)
         except Exception as erreur:
             journal(f"Flux « {nom or masquer(url)} » ignoré : {erreur}")
+            lectures.noter(f"url:{url}", False, raison_echec(erreur))
             problemes.append(nom or masquer(url))
     return articles, problemes
 
@@ -975,8 +980,10 @@ def lire_flux_specialise(flux: dict, maintenant: dt.datetime, vus: set[str] | No
     seuil = maintenant.astimezone(dt.timezone.utc) - dt.timedelta(days=jours)
     try:
         articles = lire_flux(telecharger(url, 20, essais=2), nom, maximum * 2, seuil)
+        lectures.noter(f"url:{url}", True, compter_articles(len(articles)))
     except Exception as erreur:
         journal(f"Flux spécialisé « {nom or masquer(url)} » ignoré : {erreur}")
+        lectures.noter(f"url:{url}", False, raison_echec(erreur))
         return []
     gardes = garder_nouveaux(articles, set() if vus is None else vus, maximum)
     if titres is not None:
@@ -1003,12 +1010,46 @@ def chercher_actus(requete: str, reglages: dict, maintenant: dt.datetime,
                                langue=langue, pays=pays)
     seuil = maintenant.astimezone(dt.timezone.utc) - dt.timedelta(hours=heures)
     try:
-        articles = lire_flux(telecharger(url, 20, essais=2), "Google Actualités", maximum, seuil)
+        contenu = telecharger(url, 20, essais=2)
     except Exception as erreur:
-        journal(f"Recherche « {requete} » sans résultat : {erreur}")
+        journal(f"Recherche « {requete} » impossible : {erreur}")
+        lectures.noter("service:actus", False, raison_echec(erreur))
+        return []
+    try:
+        articles = lire_flux(contenu, "Google Actualités", maximum, seuil)
+    except ErreurPodcast as erreur:
+        if b"<rss" in contenu[:2000]:       # réponse normale, mais rien sur ce sujet : pas une panne
+            journal(f"Recherche « {requete} » : aucun article.")
+            lectures.noter("service:actus", True)
+        else:
+            journal(f"Recherche « {requete} » sans résultat : {erreur}")
+            lectures.noter("service:actus", False, "Google a répondu par une page au lieu des articles")
         return []
     journal(f"Recherche « {requete} » : {len(articles)} article(s).")
+    lectures.noter("service:actus", True, f"recherche « {requete[:60]} » : {compter_articles(len(articles))}")
     return articles
+
+
+def compter_articles(nombre: int) -> str:
+    return f"{nombre} article{'s' if nombre > 1 else ''}"
+
+
+def raison_echec(erreur: Exception) -> str:
+    """L'erreur d'une lecture, en clair et sans adresse."""
+    texte = str(erreur)
+    statut = re.search(r"HTTP (\d{3})", texte)
+    if statut:
+        code = int(statut.group(1))
+        return {429: "le site limite les questions (erreur 429), trop de demandes",
+                403: "le site refuse l'accès (erreur 403)", 404: "adresse introuvable (erreur 404)"}.get(
+                    code, f"le site répond par une erreur {code}")
+    if "Timeout" in texte:
+        return "le site ne répond pas (délai dépassé)"
+    if "ConnectionError" in texte:
+        return "le site est injoignable"
+    if "vide ou illisible" in texte:
+        return "le flux est vide ou illisible"
+    return re.sub(r"https?://\S+", "…", texte)[:160]
 
 
 def garder_nouveaux(articles: list[Article], vus: set[str], maximum: int | None = None) -> list[Article]:
@@ -2366,6 +2407,7 @@ def heure_plus(heure: str, minutes: int) -> str:
 
 
 def main(arguments: list[str] | None = None) -> int:
+    lectures.oublier()      # le relevé ne porte que sur cette exécution
     analyseur = argparse.ArgumentParser(description="Génère et envoie le podcast du matin.")
     analyseur.add_argument("--sans-envoi", action="store_true",
                            help="ne confie rien au bot ; écrit le MP3 dans sortie/")
@@ -2530,6 +2572,7 @@ def main(arguments: list[str] | None = None) -> int:
             "rubriques": rubriques_pour_bot(script, contenu.rubriques, sources_episode(
                 script, contenu.articles, contenu.collectes)),
             "ref": int(maintenant.strftime("%H%M%S")),   # distingue les épisodes d'un même jour
+            "lectures": lectures.releve(),   # ce que chaque source a donné ce matin (Réglages › Sources)
         }
         if bot.evenement(evenement):
             journal("Bot prévenu : l'épisode est dans l'application (notification envoyée).")
@@ -2593,7 +2636,8 @@ def main(arguments: list[str] | None = None) -> int:
                     "titre": "⏳ Podcast du matin : raté pour l'instant" if essai_suivant else
                              ("⚠️ Épisode pas préparé" if mode == "manuel" else "⚠️ Pas d'épisode aujourd'hui"),
                     "message": (f"Nouvel essai automatique à {heure_lisible(essai_suivant)}. " if essai_suivant else "")
-                               + raison_lisible(message)[:150]})
+                               + raison_lisible(message)[:150],
+                    "lectures": lectures.releve()})
             except Exception:
                 pass
         if not isinstance(erreur, ErreurPodcast):

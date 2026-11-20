@@ -140,6 +140,7 @@ function testVisible(maintenant, t) {
 function sourcesVisibles(config, etat, aujourdHui, ms = Date.now()) {
   const coupees = config.sources?.coupees || [];
   const tests = etat.tests_outils || {};
+  const lectures = etat.lectures || {};
   const qui = (s) => config.regles.filter((r) => (r.recherche?.sources || []).includes(s)).map((r) => ({ id: r.id, titre: r.titre }));
   const lus = new Set(config.actus.flux_lus || []);
   const apercu = apercuDonnees(config, aujourdHui);
@@ -148,12 +149,13 @@ function sourcesVisibles(config, etat, aujourdHui, ms = Date.now()) {
   const fourniesPour = (cle) => Object.keys(SOURCES_INTEGREES).filter((r) => r === "actualites" ? cle.startsWith("flux:") && lus.has(cle.slice(5))
     : (integrees[r] || []).includes(cle) || (cle.startsWith("agenda:") && (integrees[r] || []).includes("agenda"))).map((r) => RUBRIQUES[r]);
   const categories = Object.entries(SOURCES).map(([cle, nom]) => ({ cle, nom, ...INFOS_SOURCES[cle], type: RANGEMENT_SOURCES[cle],
-    coupee: coupees.includes(cle), rubriques: qui(cle), test: testVisible(ms, tests[`service:${cle}`]), aujourdhui: apercu[cle] || null }));
+    coupee: coupees.includes(cle), rubriques: qui(cle), test: testVisible(ms, tests[`service:${cle}`]), aujourdhui: apercu[cle] || null,
+    lecture: lectures[`service:${cle}`] || null }));
   const urls = new Set((config.sources?.flux || []).map((f) => f.url));
   return {
     categories,
     flux: (config.sources?.flux || []).map((f) => ({ ...f, cle: `flux:${f.id}`, actualites: lus.has(f.id), fournies: fourniesPour(`flux:${f.id}`),
-      rubriques: qui(`flux:${f.id}`), test: testVisible(ms, tests[`flux:${f.id}`]) })),
+      rubriques: qui(`flux:${f.id}`), test: testVisible(ms, tests[`flux:${f.id}`]), lecture: lectures[`url:${f.url}`] || null })),
     proposes: fluxProposes(config).filter((f) => !urls.has(f.url)),
     sites: (config.sources?.sites || []).map((x) => ({ ...x, cle: `site:${x.id}`, rubriques: qui(`site:${x.id}`), test: testVisible(ms, tests[`site:${x.id}`]) })),
     // Agendas : les rubriques qui n'en lisent qu'un, et le dernier test de chacun.

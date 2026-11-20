@@ -20,6 +20,7 @@ import re
 import time
 from typing import Any
 
+import lectures
 import pays
 import podcast as p
 import regles as moteur
@@ -204,7 +205,7 @@ def lancer_point(regles: list[dict], collectes: list[moteur.Collecte], effectifs
         sources = [{"titre": t, "lien": u} for t, u in dict.fromkeys(collecte.liens) if u.startswith("https://")][:8]
         if not audio_bot:
             raise p.ErreurPodcast("Le bot n'a pas pu garder le podcast : rien n'est parti (bot injoignable ?).")
-        bot.evenement({"type": "recherche", "regles": [regle["id"]], "idees": [], "format": "point",
+        bot.evenement({"type": "recherche", "lectures": lectures.releve(), "regles": [regle["id"]], "idees": [], "format": "point",
                        "audio": audio_bot, "titre_audio": script["titre"], "duree": duree,
                        "chapitres": [[round(t), titre] for t, titre in chapitres],
                        "resultats": [{"regle": regle["id"], "titre": regle.get("titre", ""),
@@ -314,7 +315,7 @@ def lancer_ecrit_essentielles(regles: list[dict], collectes: list[moteur.Collect
     for regle, collecte in zip(regles, collectes):
         resume = resume_ecrit(regle, collecte, effectifs, cle_gemini, maintenant)
         sources = [{"titre": t, "lien": u} for t, u in dict.fromkeys(collecte.liens) if u.startswith("https://")][:8]
-        bot.evenement({"type": "recherche", "regles": [regle["id"]], "idees": [], "format": "ecrit",
+        bot.evenement({"type": "recherche", "lectures": lectures.releve(), "regles": [regle["id"]], "idees": [], "format": "ecrit",
                        "audio": None, "titre_audio": "", "duree": 0,
                        "resultats": [{"regle": regle["id"], "titre": regle.get("titre", ""), "intro": resume["texte"],
                                       "conseil": "", "idees": [], "sources": sources}]})
@@ -450,7 +451,7 @@ def lancer(identifiants: list[str], format_: str, effectifs: dict, cle_gemini: s
         audio_bot = nom_bot if bot.deposer(nom_bot, mp3, "audio/mpeg") else None
         if not audio_bot:
             raise p.ErreurPodcast("Le bot n'a pas pu garder le mini-podcast : rien n'est parti (bot injoignable ?).")
-    bot.evenement({"type": "recherche", "regles": [r["id"] for r, _, _ in traitees],
+    bot.evenement({"type": "recherche", "lectures": lectures.releve(), "regles": [r["id"] for r, _, _ in traitees],
                    "idees": [i["titre"] for _, _, res in traitees for i in res["idees"]][:10],
                    "format": format_, "audio": audio_bot, "titre_audio": titre_audio, "duree": duree,
                    # Pour l'application : les idées complètes, rubrique par rubrique.
