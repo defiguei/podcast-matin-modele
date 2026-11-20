@@ -21,7 +21,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerChapitres, rangerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-11-20.2";
+export const VERSION = "2026-11-20.3";
 const MAX_REFAITS = 6;
 const REMPLACEMENT_MS = 60 * 60 * 1000;   // « Remplacer par un neuf » : l'ancien n'est retiré que si le neuf arrive dans l'heure
 const MAX_RECHERCHES = 15;
@@ -32,6 +32,7 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
+  "Mes déplacements : le podcast cherche maintenant les sorties du moment pendant ton séjour (expositions, concerts, spectacles, marchés, fêtes), sur place et aux alentours, et les propose avant les classiques ouverts toute l'année.",
   "Mes déplacements : une sortie dans un lieu de ta ville (un spectacle à L'Échandole, par exemple) n'est plus prise pour un voyage, l'Actu locale et la météo de chez toi restent.",
   "Réglages › Sources : chaque flux et chaque service montre sa dernière lecture par l'épisode (« Lu ce matin » ou « Échec ce matin » avec la raison), et une source en échec est signalée en haut de l'onglet.",
   "Test de Google Actualités depuis GitHub : deux nouveaux essais quand Google limite les questions (erreur 429), et un message qui explique que ce n'est pas forcément une panne.",

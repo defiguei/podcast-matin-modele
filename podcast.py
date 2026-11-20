@@ -137,8 +137,12 @@ INSTRUCTIONS_RUBRIQUES = {
     "deplacements": ("Ses déplacements (voyages et sorties repérés dans son agenda), seulement si la section DÉPLACEMENTS est fournie : pour chacun, "
                      "rappelle quand c'est, propose deux ou trois idées d'activités, de visites ou de culture sur "
                      "place (ou autour du lieu de la sortie), puis les actus locales utiles. Pour les idées, "
-                     "appuie-toi sur tes connaissances générales (lieux emblématiques, quartiers, musées, "
-                     "spécialités), sans inventer d'événement daté, d'horaire ni de prix. Si la section indique "
+                     "commence par les « sorties du moment » fournies (exposition, concert, spectacle, marché, "
+                     "fête, festival datés pendant son séjour, sur place ou aux alentours) : dis leur date et leur "
+                     "lieu tels qu'indiqués, et préfère ce qui est local et de saison aux attractions ouvertes "
+                     "toute l'année. Seulement s'il en manque, complète par une idée tirée de tes connaissances "
+                     "générales (lieu emblématique, quartier, musée, spécialité), sans inventer d'événement daté, "
+                     "d'horaire ni de prix. Si la section indique "
                      "qu'un lieu a déjà été présenté, fais court : un rappel de la date et une seule idée "
                      "nouvelle, jamais une des idées déjà proposées. Note chaque idée proposée dans « idees »."),
     "actu_locale": ("L'actu locale, seulement si la section ACTU LOCALE est fournie : {infos_locales} de "
@@ -1378,8 +1382,10 @@ def schema_deplacements() -> dict:
                         "du": {"type": "string"},
                         "au": {"type": "string"},
                         "dans_sa_ville": {"type": "boolean"},
+                        "alentours": {"type": "string"},
                     },
-                    "required": ["lieu", "pays", "quand", "nature", "evenement", "recherche", "du", "au", "dans_sa_ville"],
+                    "required": ["lieu", "pays", "quand", "nature", "evenement", "recherche", "du", "au", "dans_sa_ville",
+                                 "alentours"],
                 },
             },
         },
@@ -1437,6 +1443,62 @@ def periode_deplacement(element: dict, evenements: list[Evenement]) -> tuple[dt.
     return du, (au or du)
 
 
+# ─────────────────── sorties du moment autour d'un déplacement ───────────────────
+# Les idées d'un déplacement venaient des connaissances de Gemini : des classiques ouverts toute
+# l'année. On cherche aussi ce qui se passe pendant le séjour, sur place et aux alentours.
+ETIQUETTE_SORTIES = "sortie du moment"
+MAX_SORTIES = 6
+JOURS_AVANT_SORTIES = 30          # plus loin, les programmes ne sont pas encore publiés
+PAYS_TAVILY = {"suisse": "switzerland", "france": "france", "belgique": "belgium", "italie": "italy",
+               "allemagne": "germany", "espagne": "spain", "portugal": "portugal", "autriche": "austria",
+               "royaume uni": "united kingdom", "pays bas": "netherlands", "luxembourg": "luxembourg"}
+MOTS_SORTIES = "exposition OR concert OR spectacle OR festival OR marché OR théâtre OR fête"
+MOIS_FR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre",
+           "novembre", "décembre"]
+
+
+def periode_en_mots(du: dt.date, au: dt.date) -> str:
+    """« 21 novembre 2026 », « 21 au 23 novembre 2026 », « 30 novembre au 2 décembre 2026 »."""
+    if du == au:
+        return f"{du.day} {MOIS_FR[du.month - 1]} {du.year}"
+    if (du.month, du.year) == (au.month, au.year):
+        return f"{du.day} au {au.day} {MOIS_FR[au.month - 1]} {au.year}"
+    return f"{du.day} {MOIS_FR[du.month - 1]} au {au.day} {MOIS_FR[au.month - 1]} {au.year}"
+
+
+def sorties_du_moment(deplacement: dict, effectifs: dict, maintenant: dt.datetime, sources: Sources) -> list[Article]:
+    """Expositions, concerts, spectacles, marchés… pendant le séjour, sur place et aux alentours :
+    une recherche web (Tavily, si la clé est là et la recherche web pas retirée) et une recherche
+    Google Actualités. Rien pour une sortie d'un soir dans sa ville ni pour un séjour lointain."""
+    if deplacement.get("chez_lui"):
+        return []
+    aujourd_hui = maintenant.date()
+    du = _date_iso(deplacement.get("du")) or aujourd_hui
+    au = _date_iso(deplacement.get("au")) or du
+    du = max(du, aujourd_hui)
+    if au < du or (du - aujourd_hui).days > JOURS_AVANT_SORTIES:
+        return []
+    deplacement["periode_sorties"] = periode_en_mots(du, au)
+    lieu, alentours = deplacement["lieu"], str(deplacement.get("alentours") or "").strip()
+    zone = f"{lieu} {alentours}".strip()
+    trouvees: list[Article] = []
+    coupees = set((((effectifs.get("config_bot") or {}).get("sources") or {}).get("coupees")) or [])
+    if "web" not in coupees:
+        pays = PAYS_TAVILY.get(cle_titre(str(deplacement.get("pays") or "")), "")
+        requete = f"agenda sorties culturelles événements {zone} {deplacement['periode_sorties']}"
+        for r in sources.web(requete, maximum=6, pays=pays).get("resultats", []):
+            domaine = urlparse(r["url"]).netloc.removeprefix("www.")
+            trouvees.append(Article(titre=r["titre"] or domaine, resume=tronquer(r["contenu"], 350), lien=r["url"],
+                                    source=domaine, etiquette=ETIQUETTE_SORTIES))
+    for article in chercher_actus(f"{alentours.split(',')[0].strip() or lieu} ({MOTS_SORTIES})", effectifs,
+                                  maintenant, 6, 14):
+        article.etiquette = ETIQUETTE_SORTIES
+        trouvees.append(article)
+    if trouvees:
+        journal(f"Sorties du moment autour de {lieu} ({deplacement['periode_sorties']}) : {len(trouvees)} piste(s).")
+    return trouvees
+
+
 def reperer_deplacements(evenements: list[Evenement], effectifs: dict, cle: str,
                          maintenant: dt.datetime,
                          prochain: Evenement | None = None,
@@ -1466,7 +1528,7 @@ Retiens au plus deux événements, les plus marquants :
 Ignore les réunions en ligne (Teams, Zoom, Meet…), les rendez-vous de routine (travail, médecin, cours ou sport habituels) et les lieux trop vagues. Si sa ville est inconnue, ne retiens que les voyages explicites (vol, train, hôtel, séjour, vacances, conférence dans une ville…) et les sorties de loisir.
 Un voyage déjà commencé (aller passé, hôtel en cours, retour à venir) compte : s'il y en a un, retiens-le toujours. Ne retiens jamais un déplacement déjà terminé.
 Un événement sur plusieurs jours (week-end, séjour), même dont le titre n'est qu'un nom de ville, est un déplacement si la ville n'est pas celle où il vit. Si l'auditeur est là-bas aujourd'hui, mets bien « du » et « au » : c'est ce qui change ses actus locales et sa météo.
-Pour chacun : le lieu en clair (ville ou région ; pour une sortie dans sa ville, le nom du lieu et la ville), le pays, quand (en toutes lettres, ex. « du jeudi 22 au dimanche 25 octobre »), la nature (voyage, rencontre ou sortie), le titre de l'événement, une requête de recherche d'actualités très simple (en général le nom de la ville ; pour une sortie dans sa ville, le nom du lieu ou de l'artiste), et « du » et « au » : le premier et le dernier jour sur place, au format AAAA-MM-JJ (le même jour pour une sortie ou une rencontre d'un jour ; vides si tu ne peux pas le savoir), et « dans_sa_ville » : vrai si le lieu est dans sa ville ou ses environs immédiats (une salle, un théâtre, un restaurant, un quartier de chez lui), faux s'il part ailleurs.
+Pour chacun : le lieu en clair (ville ou région ; pour une sortie dans sa ville, le nom du lieu et la ville), le pays, quand (en toutes lettres, ex. « du jeudi 22 au dimanche 25 octobre »), la nature (voyage, rencontre ou sortie), le titre de l'événement, une requête de recherche d'actualités très simple (en général le nom de la ville ; pour une sortie dans sa ville, le nom du lieu ou de l'artiste), et « du » et « au » : le premier et le dernier jour sur place, au format AAAA-MM-JJ (le même jour pour une sortie ou une rencontre d'un jour ; vides si tu ne peux pas le savoir), et « dans_sa_ville » : vrai si le lieu est dans sa ville ou ses environs immédiats (une salle, un théâtre, un restaurant, un quartier de chez lui), faux s'il part ailleurs, et « alentours » : la ville voisine plus grande ou la région où chercher des sorties culturelles autour du lieu (ex. « Pays de Gex, Ferney-Voltaire, Genève » pour Prévessin-Moëns ; vide pour une grande ville).
 S'il n'y a rien de tel, renvoie une liste vide."""
     ligne = lambda e: f"- {quand_court(e)} : {e.titre}" + (f" — lieu : {e.lieu}" if e.lieu else "")
     entree = (f"Aujourd'hui : {date_longue(aujourd_hui)} ({aujourd_hui.isoformat()}).\nÉvénements à venir :\n"
@@ -1487,7 +1549,7 @@ S'il n'y a rien de tel, renvoie une liste vide."""
         if not isinstance(element, dict) or not str(element.get("lieu", "")).strip():
             continue
         deplacement: dict[str, Any] = {cle: str(element.get(cle, "")).strip()[:120] for cle in
-                                       ("lieu", "pays", "quand", "nature", "evenement", "recherche")}
+                                       ("lieu", "pays", "quand", "nature", "evenement", "recherche", "alentours")}
         du, au = periode_deplacement(element, candidats + passes)
         if au and au < aujourd_hui:
             continue                       # déjà fini : rien à présenter
@@ -2286,11 +2348,15 @@ def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: l
         journal(f"Météo : prévue pour {ville_meteo} (en déplacement), pas pour {effectifs.get('ville_habituelle') or 'chez lui'}.")
     if not avec_deplacements:
         deplacements = []
+    web_deplacements = Sources(os.environ.get("TAVILY_API_KEY", ""))
     for deplacement in deplacements:
-        deplacement["articles"] = garder_nouveaux(
+        deplacement["deja"] = lieu_deja_presente(memoire, deplacement, maintenant)
+        sorties = sorties_du_moment(deplacement, effectifs, maintenant, web_deplacements)
+        deplacement["articles"] = garder_nouveaux(sorties, vus, MAX_SORTIES) + garder_nouveaux(
             chercher_actus(deplacement["recherche"] or deplacement["lieu"], effectifs,
                            maintenant, lus_pour(4), 7), vus, 4)
-        deplacement["deja"] = lieu_deja_presente(memoire, deplacement, maintenant)
+    if web_deplacements.credits_tavily:
+        journal(f"Sorties du moment : {web_deplacements.credits_tavily} crédit(s) Tavily.")
     titres_regles: list[str] = []
     collectes = preparer_regles(effectifs, cle, maintenant, tous, forcees, vus, titres_regles, lire_rubrique,
                                 ville_meteo=ville_meteo)
@@ -2360,7 +2426,15 @@ def preparer_contenu(effectifs: dict, cle: str, maintenant: dt.datetime, urls: l
                           + f" (événement : « {d['evenement']} »)")
             if d.get("deja"):
                 lignes.append(deja_presente_en_mots(d["deja"], maintenant))
-            lignes += [f"  {ligne_article(a, maintenant)}" for a in d["articles"]] or [
+            sorties = [a for a in d["articles"] if a.etiquette == ETIQUETTE_SORTIES]
+            actus_lieu = [a for a in d["articles"] if a.etiquette != ETIQUETTE_SORTIES]
+            if sorties:
+                lignes.append(f"  Sorties du moment ({d.get('periode_sorties') or 'pendant son séjour'}"
+                              + (f", sur place et à {d['alentours']}" if d.get("alentours") else "") + ") :")
+                lignes += [f"    {ligne_article(a, maintenant)}" for a in sorties]
+            else:
+                lignes.append("  (aucune sortie datée trouvée pour ces dates : idées générales seulement)")
+            lignes += [f"  {ligne_article(a, maintenant)}" for a in actus_lieu] or [
                 "  (pas d'actualité nouvelle sur ce lieu)"]
         sections.append(("DÉPLACEMENTS", "\n".join(lignes)))
     if locales:

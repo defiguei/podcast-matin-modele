@@ -429,15 +429,18 @@ class Sources:
 
     # ── recherche web ──
     def web(self, requete: str, maximum: int = 5, images: bool = False, jours: int | None = None,
-            domaines: list[str] | None = None) -> dict:
+            domaines: list[str] | None = None, pays: str | None = None) -> dict:
         """Recherche Tavily (1 crédit par recherche simple). Sans clé : résultat vide.
-        « domaines » : la recherche se limite à ces sites (sites de référence de l'auditeur)."""
+        « domaines » : la recherche se limite à ces sites (sites de référence de l'auditeur).
+        « pays » : pays de Tavily où chercher (« france »…), vide = partout ; par défaut la Suisse."""
         if not self.tavily_cle or not requete.strip():
             return {"resultats": [], "images": []}
         def chercher() -> dict:
             corps: dict[str, Any] = {"query": requete[:380], "search_depth": "basic", "max_results": maximum,
                                      "include_answer": False, "include_images": images, "topic": "general",
-                                     "country": "switzerland"}
+                                     "country": "switzerland" if pays is None else pays}
+            if not corps["country"]:
+                corps.pop("country")
             if jours:
                 corps["time_range"] = "week" if jours <= 7 else "month" if jours <= 31 else "year"
             if domaines:
@@ -467,7 +470,7 @@ class Sources:
             images_trouvees = [i if isinstance(i, str) else i.get("url", "") for i in donnees.get("images") or []]
             journal(f"Recherche web « {requete[:60]} » : {len(resultats)} résultat(s).")
             return {"resultats": resultats, "images": [i for i in images_trouvees if i]}
-        return self._memo(f"web:{cle(requete)}:{maximum}:{images}:{jours}:{','.join(domaines or [])}", chercher)
+        return self._memo(f"web:{cle(requete)}:{maximum}:{images}:{jours}:{','.join(domaines or [])}:{pays}", chercher)
 
 
 # ── calendrier ──

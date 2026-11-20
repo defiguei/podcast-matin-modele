@@ -1483,6 +1483,35 @@ try:
              and podcast.lieu_dans_sa_ville({"lieu": "La Marive, Yverdon", "evenement": "x"}, [], "Yverdon-les-Bains")
              and not podcast.lieu_dans_sa_ville({"lieu": "Belfort", "evenement": "x"}, [], "Yverdon-les-Bains"),
              "lieu de l'agenda dans sa ville : reconnu même si Gemini se trompe")
+    # Sorties du moment : agenda culturel pendant le séjour, sur place et aux alentours.
+    class _FauxWeb:
+        credits_tavily = 0
+        def __init__(self): self.requetes = []
+        def web(self, requete, maximum=5, pays=None, **k):
+            self.requetes.append((requete, pays))
+            return {"resultats": [{"titre": "Marché de Noël de Ferney-Voltaire", "url": "https://www.paysdegex.fr/agenda/noel",
+                                   "contenu": "Du 21 au 23 novembre, place de la mairie.", "score": 1}]}
+    _web = _FauxWeb()
+    _dep_s = {"lieu": "Prévessin-Moëns", "pays": "France", "alentours": "Pays de Gex, Ferney-Voltaire, Genève",
+              "du": "2026-11-07", "au": "2026-11-08", "recherche": "Prévessin-Moëns"}
+    _req_v.clear()
+    _s = podcast.sorties_du_moment(_dep_s, {"recherches_actus": True}, _maint_v, _web)
+    verifier(_web.requetes and "Pays de Gex" in _web.requetes[0][0] and "7 au 8 novembre 2026" in _web.requetes[0][0]
+             and _web.requetes[0][1] == "france" and _s and _s[0].source == "paysdegex.fr"
+             and _s[0].etiquette == podcast.ETIQUETTE_SORTIES and any("exposition OR" in r and "Pays de Gex" in r for r in _req_v),
+             f"sorties du moment : recherche web datée dans le bon pays et Google Actualités aux alentours ({_web.requetes}, {_req_v})")
+    verifier(not podcast.sorties_du_moment({**_dep_s, "du": "2027-03-01", "au": "2027-03-02"}, {}, _maint_v, _FauxWeb())
+             and not podcast.sorties_du_moment({**_dep_s, "chez_lui": True}, {}, _maint_v, _FauxWeb())
+             and not (_w := _FauxWeb()).requetes and not podcast.sorties_du_moment(
+                 _dep_s, {"config_bot": {"sources": {"coupees": ["web"]}}}, _maint_v, _w) and not _w.requetes,
+             "pas de sorties : séjour lointain, sortie chez lui, recherche web retirée")
+    _rep_v["deplacements"] = [{**_dep_s, "quand": "ce week-end", "nature": "voyage", "evenement": "Week-end Prévessin",
+                               "du": "2026-11-06", "au": "2026-11-08", "dans_sa_ville": False}]
+    _c_v = _contenu_voyage(True)
+    _dep_v = dict(_c_v.sections).get("DÉPLACEMENTS", "")
+    verifier("(aucune sortie datée trouvée" in _dep_v and any("OR" in r for r in _req_v)
+             and "sorties du moment" in podcast.INSTRUCTIONS_RUBRIQUES["deplacements"],
+             f"DÉPLACEMENTS : les sorties datées sont cherchées et la consigne les met en premier ({_dep_v})")
     # Détection et comparaison des lieux.
     _titre_seul = podcast.Evenement("Belfort", dt.datetime(2026, 11, 6, tzinfo=ZH), dt.datetime(2026, 11, 9, tzinfo=ZH), True)
     _un_jour = podcast.Evenement("Dentiste", dt.datetime(2026, 11, 6, 9, tzinfo=ZH), dt.datetime(2026, 11, 6, 10, tzinfo=ZH), False)
