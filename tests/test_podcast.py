@@ -1468,6 +1468,21 @@ try:
     _c_v = _contenu_voyage(True)
     verifier(_c_v.deplacements and not _c_v.deplacements[0]["en_cours"] and "Lausanne" in _req_v,
              "sortie dans sa propre ville : pas un déplacement, l'actu locale continue")
+    # Un spectacle dans un lieu de sa ville que Gemini nomme seul (« Echandolle ») : chez lui, pas en voyage.
+    _rep_v["deplacements"] = [{"lieu": "Echandolle", "pays": "Suisse", "quand": "ce soir", "nature": "sortie",
+                               "evenement": "Dopamine", "recherche": "Dopamine", "du": "2026-11-06", "au": "2026-11-06",
+                               "dans_sa_ville": True}]
+    _c_v = _contenu_voyage(True)
+    verifier(_c_v.deplacements and not _c_v.deplacements[0]["en_cours"] and "Lausanne" in _req_v,
+             f"sortie dans un lieu de sa ville (dit par Gemini) : l'actu locale continue ({_c_v.deplacements})")
+    _rep_v["deplacements"][0]["dans_sa_ville"] = False
+    _evs_v = [podcast.Evenement("Dopamine", dt.datetime(2026, 11, 6, 20, tzinfo=ZH), dt.datetime(2026, 11, 6, 22, tzinfo=ZH), False,
+                                lieu="Théâtre de l'Échandole, Place Pestalozzi, 1400 Yverdon-les-Bains")]
+    verifier(podcast.lieu_dans_sa_ville(_rep_v["deplacements"][0], _evs_v, "Yverdon-les-Bains")
+             and not podcast.lieu_dans_sa_ville(_rep_v["deplacements"][0], _evs_v, "Lausanne")
+             and podcast.lieu_dans_sa_ville({"lieu": "La Marive, Yverdon", "evenement": "x"}, [], "Yverdon-les-Bains")
+             and not podcast.lieu_dans_sa_ville({"lieu": "Belfort", "evenement": "x"}, [], "Yverdon-les-Bains"),
+             "lieu de l'agenda dans sa ville : reconnu même si Gemini se trompe")
     # Détection et comparaison des lieux.
     _titre_seul = podcast.Evenement("Belfort", dt.datetime(2026, 11, 6, tzinfo=ZH), dt.datetime(2026, 11, 9, tzinfo=ZH), True)
     _un_jour = podcast.Evenement("Dentiste", dt.datetime(2026, 11, 6, 9, tzinfo=ZH), dt.datetime(2026, 11, 6, 10, tzinfo=ZH), False)

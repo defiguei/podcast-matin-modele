@@ -1377,8 +1377,9 @@ def schema_deplacements() -> dict:
                         "recherche": {"type": "string"},
                         "du": {"type": "string"},
                         "au": {"type": "string"},
+                        "dans_sa_ville": {"type": "boolean"},
                     },
-                    "required": ["lieu", "pays", "quand", "nature", "evenement", "recherche", "du", "au"],
+                    "required": ["lieu", "pays", "quand", "nature", "evenement", "recherche", "du", "au", "dans_sa_ville"],
                 },
             },
         },
@@ -1402,6 +1403,18 @@ def est_ailleurs(lieu: str, ville: str) -> bool:
     if not ville_cle:
         return True
     return not (lieu_cle in ville_cle or ville_cle in lieu_cle)
+
+
+def lieu_dans_sa_ville(element: dict, evenements: list[Evenement], ville: str) -> bool:
+    """Le lieu inscrit dans l'agenda (ou donné par Gemini) nomme la ville où l'auditeur vit :
+    « Théâtre L'Échandole, Yverdon-les-Bains » est chez lui, même si Gemini n'a gardé que « Echandolle »."""
+    noyau = re.sub(r"(-| )les(-| )bains$|(-| )sur(-| ).*$", "", cle_titre(ville or "")).strip()
+    if len(noyau) < 3:
+        return False
+    titre = cle_titre(str(element.get("evenement", "")))
+    evenement = next((e for e in evenements if titre and cle_titre(e.titre) == titre), None)
+    textes = [str(element.get("lieu", "")), str(element.get("recherche", ""))] + ([evenement.lieu or ""] if evenement else [])
+    return any(re.search(rf"(^|\W){re.escape(noyau)}(\W|$)", cle_titre(t)) for t in textes)
 
 
 def _date_iso(texte: Any) -> dt.date | None:
@@ -1453,7 +1466,7 @@ Retiens au plus deux événements, les plus marquants :
 Ignore les réunions en ligne (Teams, Zoom, Meet…), les rendez-vous de routine (travail, médecin, cours ou sport habituels) et les lieux trop vagues. Si sa ville est inconnue, ne retiens que les voyages explicites (vol, train, hôtel, séjour, vacances, conférence dans une ville…) et les sorties de loisir.
 Un voyage déjà commencé (aller passé, hôtel en cours, retour à venir) compte : s'il y en a un, retiens-le toujours. Ne retiens jamais un déplacement déjà terminé.
 Un événement sur plusieurs jours (week-end, séjour), même dont le titre n'est qu'un nom de ville, est un déplacement si la ville n'est pas celle où il vit. Si l'auditeur est là-bas aujourd'hui, mets bien « du » et « au » : c'est ce qui change ses actus locales et sa météo.
-Pour chacun : le lieu en clair (ville ou région ; pour une sortie dans sa ville, le nom du lieu et la ville), le pays, quand (en toutes lettres, ex. « du jeudi 22 au dimanche 25 octobre »), la nature (voyage, rencontre ou sortie), le titre de l'événement, une requête de recherche d'actualités très simple (en général le nom de la ville ; pour une sortie dans sa ville, le nom du lieu ou de l'artiste), et « du » et « au » : le premier et le dernier jour sur place, au format AAAA-MM-JJ (le même jour pour une sortie ou une rencontre d'un jour ; vides si tu ne peux pas le savoir).
+Pour chacun : le lieu en clair (ville ou région ; pour une sortie dans sa ville, le nom du lieu et la ville), le pays, quand (en toutes lettres, ex. « du jeudi 22 au dimanche 25 octobre »), la nature (voyage, rencontre ou sortie), le titre de l'événement, une requête de recherche d'actualités très simple (en général le nom de la ville ; pour une sortie dans sa ville, le nom du lieu ou de l'artiste), et « du » et « au » : le premier et le dernier jour sur place, au format AAAA-MM-JJ (le même jour pour une sortie ou une rencontre d'un jour ; vides si tu ne peux pas le savoir), et « dans_sa_ville » : vrai si le lieu est dans sa ville ou ses environs immédiats (une salle, un théâtre, un restaurant, un quartier de chez lui), faux s'il part ailleurs.
 S'il n'y a rien de tel, renvoie une liste vide."""
     ligne = lambda e: f"- {quand_court(e)} : {e.titre}" + (f" — lieu : {e.lieu}" if e.lieu else "")
     entree = (f"Aujourd'hui : {date_longue(aujourd_hui)} ({aujourd_hui.isoformat()}).\nÉvénements à venir :\n"
@@ -1481,8 +1494,13 @@ S'il n'y a rien de tel, renvoie une liste vide."""
         deplacement["du"], deplacement["au"] = (du.isoformat() if du else ""), (au.isoformat() if au else "")
         # Là-bas aujourd'hui : un voyage, une rencontre ou une sortie hors de sa ville dont les dates couvrent
         # aujourd'hui. Peu importe la nature choisie par Gemini (un week-end à Belfort passait pour une « rencontre »).
-        deplacement["en_cours"] = bool(du and du <= aujourd_hui <= au
-                                       and est_ailleurs(deplacement["lieu"], effectifs.get("ville_habituelle", "")))
+        # Une sortie dans sa ville (un spectacle à L'Échandole, à Yverdon) n'est jamais un voyage : ni pause de
+        # l'Actu locale, ni météo d'ailleurs. Gemini le dit (« dans_sa_ville »), et le lieu de l'agenda aussi.
+        ville_habituelle = effectifs.get("ville_habituelle", "")
+        chez_lui = element.get("dans_sa_ville") is True or lieu_dans_sa_ville(element, candidats + passes, ville_habituelle)
+        deplacement["chez_lui"] = chez_lui
+        deplacement["en_cours"] = bool(du and du <= aujourd_hui <= au and not chez_lui
+                                       and est_ailleurs(deplacement["lieu"], ville_habituelle))
         deplacements.append(deplacement)
     deplacements.sort(key=lambda d: not d["en_cours"])     # le voyage en cours d'abord, gardé quoi qu'il arrive
     if deplacements:
