@@ -324,6 +324,11 @@ input.avance { width: 100%; accent-color: var(--aube); margin: 0; height: 24px; 
 .case-ep.avec { background: var(--carte-2); color: var(--texte); }
 .case-ep img, .case-ep .sans-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .case-ep .sans-img { display: flex; align-items: center; justify-content: center; color: var(--aube); background: var(--aube-fond); }
+.case-ep.vide-jour { cursor: pointer; }
+.case-ep.vide-jour:active, .case-ep.vide-jour:hover { background: var(--carte-2); color: var(--texte); }
+.case-ep.passe-hors { cursor: default; opacity: .55; }
+.case-ep.prepare { background: var(--aube-fond); color: var(--aube); }
+.case-ep.prepare::after { content: "⏳"; position: absolute; right: 2px; top: 1px; font-size: 10px; }
 .case-ep.avec .num { position: absolute; left: 3px; bottom: 2px; font-size: 11px; font-weight: 700; color: #fff; background: rgba(14,16,22,.7); border-radius: 6px; padding: 0 4px; }
 .enregistre { flex: 1; min-height: 52px; display: flex; align-items: center; gap: 10px; background: var(--carte); border-radius: 14px; padding: 0 6px 0 14px; font-size: 14px; color: var(--doux-2); font-variant-numeric: tabular-nums; }
 .enregistre .point { width: 10px; height: 10px; border-radius: 50%; background: var(--rouge); animation: clignote 1s ease-in-out infinite; }
@@ -827,19 +832,40 @@ function episodeParCle(cle) {
     || null;
 }
 
-// Menu « ··· » d'un épisode (liste des épisodes) : le supprimer, ou le remplacer par un neuf (épisode du jour).
+// Menu « ··· » d'un épisode (liste des épisodes, et en haut de sa fiche) : le remplacer par un neuf
+// (pour son jour : un épisode d'un jour passé est refait avec l'agenda et les actus de ce jour-là),
+// le supprimer, ou annuler (bouton de la feuille).
+const limiteRattrapage = () => plusJours(S.d.aujourdhui, -(S.d.jours_rattrapage || 30));
 function menuEpisode(cle) {
   const ep = episodeParCle(cle);
   if (!ep) return;
   const duJour = ep.date === S.d.aujourdhui;
+  const remplacable = ep.date <= S.d.aujourdhui && ep.date >= limiteRattrapage();
   const boutons = [];
-  if (duJour) boutons.push({ id: "remplacer", type: "default", text: "Remplacer par un épisode neuf" });
+  if (remplacable) boutons.push({ id: "remplacer", type: "default", text: "Remplacer par un épisode neuf" });
   boutons.push({ id: "supprimer", type: "destructive", text: "Supprimer l'épisode" });
-  choisir(ep.titre || "Épisode", duJour ? "Que veux-tu faire ?" : `${majuscule(dateLongue(ep.date))} · seul l'épisode du jour se remplace par un neuf (il parle de l'actualité d'aujourd'hui).`, boutons, (choix) => {
-    if (choix === "remplacer") return confirmer("Préparer un épisode neuf ? Il remplacera celui-ci dès qu'il sera prêt (quelques minutes). S'il n'aboutit pas, celui-ci reste.",
+  const message = remplacable ? `${majuscule(dateLongue(ep.date))} · que veux-tu faire ?`
+    : `${majuscule(dateLongue(ep.date))} · trop ancien pour être refait (${S.d.jours_rattrapage || 30} jours au plus).`;
+  choisir(ep.titre || "Épisode", message, boutons, (choix) => {
+    if (choix === "remplacer") return confirmer(duJour
+      ? "Préparer un épisode neuf ? Il remplacera celui-ci dès qu'il sera prêt (quelques minutes). S'il n'aboutit pas, celui-ci reste."
+      : `Refaire l'épisode du ${dateLongue(ep.date)} ? Le neuf reprend l'agenda et les actus de ce jour-là et remplacera celui-ci dès qu'il sera prêt. S'il n'aboutit pas, celui-ci reste.`,
       () => changer("episode_remplacer", { cle }));
     if (choix === "supprimer") return confirmer(`Supprimer « ${ep.titre || "cet épisode"} » ? Son audio et son texte seront effacés.`, () => supprimerEpisodes([cle]));
   });
+}
+
+// Une date sans épisode dans le calendrier des épisodes : un jour passé se rattrape (épisode de ce
+// jour-là, rangé à sa date), aujourd'hui se prépare tout de suite, un jour à venir s'ouvre dans le planning.
+function jourSansEpisode(date) {
+  const d = S.d;
+  if (date > d.aujourdhui) return toucherJour(date);
+  if (d.rattrapage === date) return annoncer("L'épisode de ce jour est en préparation : il arrive dans quelques minutes.");
+  if (date < limiteRattrapage()) return annoncer(`Trop ancien : un épisode se rattrape pour un jour des ${d.jours_rattrapage || 30} derniers jours.`, true);
+  const passe = date < d.aujourdhui;
+  choisir(majuscule(dateLongue(date)), passe ? "Pas d'épisode ce jour-là. Le préparer maintenant, avec l'agenda et les actus de ce jour-là ?"
+    : "Pas encore d'épisode aujourd'hui.", [{ id: "generer", type: "default", text: passe ? "Préparer l'épisode de ce jour" : "Préparer l'épisode maintenant" }],
+    () => changer("episode_jour", { date }));
 }
 
 // Supprimer des épisodes : chez le bot, puis la copie gardée sur cet appareil et les mois déjà chargés.
@@ -1048,7 +1074,7 @@ extrait.addEventListener("timeupdate", () => {
 
 // ─────────────────────────────── écrans ─────────────────────────────────
 const ONGLETS = [["accueil", "Accueil"], ["programme", "Épisode"], ["idees", "Recherches"], ["planning", "Planning"], ["reglages", "Réglages"]];
-const SOUS_ECRANS = { fiche: "programme", integree: "programme", catalogue: "programme", episode: "accueil", episodes: "accueil",
+const SOUS_ECRANS = { fiche: "programme", integree: "programme", catalogue: "programme", episode: "episodes", episodes: "accueil",
                       resultats: "idees", parler: "accueil", reglage: "reglages" };
 // Écran d'où l'on vient (une recherche ouverte depuis les idées y revient).
 const parent = (ecran) => (ecran === "fiche" && S.fiche && S.fiche.origine) || SOUS_ECRANS[ecran];
@@ -1112,6 +1138,8 @@ function aller(ecran) {
 
 function retour() {
   if (V.enCours) couperVocal();
+  // D'un épisode, la flèche ramène au calendrier des épisodes, sur le mois de cet épisode.
+  if (S.ecran === "episode") { const ep = episodeParCle(S.episode); if (ep) S.moisEpisodes = ep.date.slice(0, 7); }
   aller(parent(S.ecran) || "accueil");
 }
 
@@ -1260,7 +1288,7 @@ function brancherGlisseEpisodes() {
 function vueEpisodes() {
   const d = S.d, recents = d.episodes, archives = d.mois_archives || [];
   if (!recents.length && !archives.length) return `${entete("Épisodes")}<div class="vide">Aucun épisode pour l'instant.</div>`;
-  const moisListe = [...new Set([...recents.map((x) => x.date.slice(0, 7)), ...archives])].sort();
+  const moisListe = [...new Set([...recents.map((x) => x.date.slice(0, 7)), ...archives, d.aujourdhui.slice(0, 7)])].sort();
   const mois = S.moisEpisodes && moisListe.includes(S.moisEpisodes) ? S.moisEpisodes : moisListe.at(-1);
   // Le mois affiché : ses épisodes récents, plus ceux de l'archive (chargés à la demande).
   if (archives.includes(mois) && !S.archives[mois]) setTimeout(() => chargerMois(mois), 0);
@@ -1276,12 +1304,19 @@ function vueEpisodes() {
   for (const x of eps) if (!parJour[x.date]) parJour[x.date] = x;   // le plus récent du jour
   const cellule = (date) => {
     const x = parJour[date];
-    if (!x) return `<span class="case-ep${date === d.aujourdhui ? " aujourdhui" : ""}"><span class="num">${Number(date.slice(8))}</span></span>`;
+    if (!x) {
+      // Une date vide se touche : rattraper un jour passé, préparer aujourd'hui, ou régler un jour à venir.
+      const prepare = d.rattrapage === date, trop = date < limiteRattrapage();
+      const libelle = prepare ? "épisode en préparation" : trop ? "pas d'épisode" : date > d.aujourdhui ? "régler ce jour dans le planning" : "préparer l'épisode de ce jour";
+      return `<button type="button" class="case-ep vide-jour${date === d.aujourdhui ? " aujourdhui" : ""}${prepare ? " prepare" : ""}${trop ? " passe-hors" : ""}"
+        data-jour-ep="${date}" aria-label="${h(dateLongue(date))} : ${libelle}"><span class="num">${Number(date.slice(8))}</span></button>`;
+    }
     return `<button type="button" class="case-ep avec" data-episode="${h(x.cle)}" aria-label="${h(dateLongue(date))} : ${h(x.titre)}">
       ${x.image ? `<img src="${h(x.image)}" alt="">` : `<span class="sans-img" aria-hidden="true">${icone("aube", 20, 1.4)}</span>`}
       <span class="num">${Number(date.slice(8))}</span></button>`;
   };
   const enCours = archives.includes(mois) && !S.archives[mois];
+  const aideCal = `<p class="aide" style="margin:8px 0 0">Touche un jour sans épisode : un jour passé (${d.jours_rattrapage || 30} jours au plus) se prépare avec son agenda et ses actus, un jour à venir se règle dans le planning.</p>`;
   return `${entete("Épisodes", `${recents.length} épisode${recents.length > 1 ? "s" : ""}`)}
   <section class="carte">
     <div class="entre"><h2>${majuscule(MOIS[m.getUTCMonth()])} ${m.getUTCFullYear()}</h2>
@@ -1293,6 +1328,7 @@ function vueEpisodes() {
       ${["L", "M", "M", "J", "V", "S", "D"].map((x) => `<span class="tete" aria-hidden="true">${x}</span>`).join("")}
       ${"<span></span>".repeat(decalage)}${jours.map(cellule).join("")}
     </div>
+    ${d.rattrapage ? `<p class="aide" role="status" style="margin:8px 0 0">⏳ Épisode du ${h(dateLongue(d.rattrapage))} en préparation…</p>` : aideCal}
   </section>
   ${enCours ? `<p class="aide">Chargement des épisodes de ce mois…</p>` : ""}
   <div class="liste">${eps.filter((x) => x.date.slice(0, 7) === mois).map((ep) => `<div class="episode-ligne cadre">
@@ -1317,8 +1353,10 @@ function vueEpisode() {
   }
   // Sources et texte : repliés à l'ouverture d'un épisode (et chaque fois qu'on en change).
   if (S.replisEp !== ep.cle) { S.replisEp = ep.cle; S.replis.sources = true; S.replis.texte = true; }
-  // La grande image se glisse : épisode suivant ou précédent. « Tous » ouvre le calendrier des épisodes.
-  return `${entete("", majuscule(ep.texte), `<button type="button" class="lien" style="padding:0 10px" data-aller="episodes">Tous</button>`)}
+  // La grande image se glisse : épisode suivant ou précédent. La flèche ramène au calendrier des épisodes ;
+  // « ··· » : remplacer, supprimer ou annuler.
+  return `${entete("", majuscule(ep.texte), `<button type="button" class="icone" data-menu-ep="${h(ep.cle)}" aria-label="Options de l'épisode : remplacer ou supprimer">${icone("plusieurs", 22, 2)}</button>`)}
+  ${S.d.remplacement === ep.cle ? `<p class="aide" role="status" style="text-align:center">⏳ Épisode neuf en préparation : il remplacera celui-ci.</p>` : ""}
   <div class="zone-glisse grande" data-glisse-ep="episode" tabindex="0" role="group" aria-roledescription="carrousel" aria-describedby="aide-glisse-ep">
     ${ep.image ? `<img src="${h(ep.image)}" alt="Miniature de l'épisode" class="grande-miniature" draggable="false">`
       : `<span class="grande-miniature vide-img" aria-hidden="true">${icone("aube", 72, 1)}</span>`}
@@ -3509,6 +3547,7 @@ document.addEventListener("click", (ev) => {
   if (ds.bienvenueWeekend !== undefined) { B.weekendActif = !B.weekendActif; vibrer("choix"); return dessiner(); }
   if (ds.episode) { S.episode = ds.episode; return aller("episode"); }
   if (ds.menuEp) return menuEpisode(ds.menuEp);
+  if (ds.jourEp) return jourSansEpisode(ds.jourEp);
   if (ds.epChoisir) { const sel = new Set(S.selEp || []); if (sel.has(ds.epChoisir)) sel.delete(ds.epChoisir); else sel.add(ds.epChoisir); S.selEp = [...sel]; vibrer("choix"); return dessiner(); }
   if (ds.epMois) {
     const liste = [...S.d.episodes, ...Object.values(S.archives).flat()].filter((x) => x.date.slice(0, 7) === ds.epMois).map((x) => x.cle);

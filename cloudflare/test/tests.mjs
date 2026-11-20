@@ -1573,7 +1573,6 @@ await scenario("Épisode remplacé par un neuf", async () => {
   await evenement({ type: "episode", date: "2026-10-20", titre: "Hier", ref: 70000, mode: "planifie" });
   let r = await app("etat");
   const rate = r.donnees.episodes.find((x) => x.titre === "Raté"), hier = r.donnees.episodes.find((x) => x.titre === "Hier");
-  verifier((await app("episode_remplacer", { cle: hier.cle })).ok === false, "un épisode d'un autre jour ne se remplace pas");
   await vider();
   r = await app("episode_remplacer", { cle: rate.cle });
   verifier(r.ok && r.donnees.remplacement === rate.cle && lancements(await appels())[0]?.workflow === "podcast-du-matin.yml", "épisode neuf lancé, l'ancien marqué", r.message || r.erreur);
@@ -1589,6 +1588,34 @@ await scenario("Épisode remplacé par un neuf", async () => {
   await evenement({ type: "echec", titre: "Échec", message: "Gemini muet" });
   r = await app("etat");
   verifier(r.donnees.episodes.some((x) => x.cle === neuf.cle) && !r.donnees.remplacement, "échec : l'épisode reste, le remplacement est oublié");
+  // Un épisode d'un jour passé : refait pour son jour (rattrapage), rangé à sa date.
+  await vider();
+  r = await app("episode_remplacer", { cle: hier.cle });
+  const lanceHier = lancements(await appels()).find((x) => x.workflow === "podcast-du-matin.yml");
+  verifier(r.ok && lanceHier?.entrees?.date === "2026-10-20", "épisode d'hier : refait pour son jour", { r: r.erreur || r.message, lanceHier });
+  await evenement({ type: "episode", date: "2026-10-20", titre: "Hier refait", ref: 83000, mode: "manuel", retro: true });
+  r = await app("etat");
+  verifier(!r.donnees.episodes.some((x) => x.cle === hier.cle) && r.donnees.episodes[0].titre === "Neuf"
+           && r.donnees.episodes.findIndex((x) => x.titre === "Hier refait") > 0 && r.donnees.dernier.titre === "Neuf",
+    "le refait remplace l'ancien à sa date, sans passer pour le dernier épisode", r.donnees.episodes.map((x) => `${x.date} ${x.titre}`).slice(0, 4));
+  // Une date vide du calendrier des épisodes.
+  verifier((await app("episode_jour", { date: "2026-10-25" })).ok === false, "jour à venir : pas d'épisode tout de suite (c'est le planning)");
+  verifier((await app("episode_jour", { date: "2026-09-01" })).ok === false, "jour trop ancien : refusé");
+  await vider();
+  r = await app("episode_jour", { date: "2026-10-18" });
+  const lanceVide = lancements(await appels()).find((x) => x.workflow === "podcast-du-matin.yml");
+  verifier(r.ok && lanceVide?.entrees?.date === "2026-10-18" && r.donnees.rattrapage === "2026-10-18" && r.donnees.jours_rattrapage === 30,
+    "date vide passée : épisode de ce jour-là lancé, « en préparation »", { r: r.erreur || r.message, lanceVide });
+  verifier((await app("episode_jour", { date: "2026-10-18" })).ok === false, "pas deux fois le même jour en même temps");
+  await evenement({ type: "episode", date: "2026-10-18", titre: "Dimanche rattrapé", ref: 83500, mode: "manuel", retro: true });
+  r = await app("etat");
+  verifier(!r.donnees.rattrapage && r.donnees.episodes.some((x) => x.date === "2026-10-18") && r.donnees.dernier.titre === "Neuf",
+    "épisode rattrapé arrivé : rangé au 18, plus « en préparation »");
+  await vider();
+  r = await app("episode_jour", { date: "2026-10-21" });
+  const lanceAuj = lancements(await appels()).find((x) => x.workflow === "podcast-du-matin.yml");
+  verifier(r.ok && lanceAuj && !("date" in (lanceAuj.entrees || {})), "aujourd'hui : un épisode à la demande, sans date", lanceAuj);
+  await evenement({ type: "echec", titre: "Échec", message: "x" });
   await horloge("2026-10-20T10:00");
 });
 

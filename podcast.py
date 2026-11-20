@@ -341,6 +341,51 @@ def heure_actuelle(fuseau: ZoneInfo) -> dt.datetime:
     return dt.datetime.now(fuseau)
 
 
+# ───────────────────────── rattrapage d'un jour passé ─────────────────────────
+# Une date vide touchée dans le calendrier des épisodes (ou « Remplacer » sur un épisode d'avant) :
+# l'épisode se prépare comme ce matin-là. Les actus sont bornées à la fin de ce jour (FIN_ACTUS).
+JOURS_RATTRAPAGE = 30
+FIN_ACTUS: dt.datetime | None = None
+
+
+def jour_de_rattrapage(texte: str, maintenant: dt.datetime) -> dt.date | None:
+    """La date demandée si c'est un jour passé (30 jours au plus) ; aujourd'hui ou vide : None."""
+    texte = str(texte or "").strip()
+    if not texte:
+        return None
+    try:
+        jour = dt.date.fromisoformat(texte[:10])
+    except ValueError:
+        raise ErreurPodcast(f"Date de rattrapage illisible : « {texte} ».")
+    ecart = (maintenant.date() - jour).days
+    if ecart == 0:
+        return None
+    if ecart < 0 or ecart > JOURS_RATTRAPAGE:
+        raise ErreurPodcast(f"Un épisode se rattrape pour un jour passé, {JOURS_RATTRAPAGE} jours au plus (demandé : {jour}).")
+    return jour
+
+
+def matin_du_jour(jour: dt.date, config_bot: dict, maintenant: dt.datetime) -> dt.datetime:
+    """Le moment de l'épisode ce jour-là : son heure au planning, sinon l'heure habituelle de ce jour, sinon 7 h."""
+    import horaire
+    planning = config_bot.get("planning") or {}
+    heure = None
+    with contextlib.suppress(Exception):
+        heure = horaire.heure_prevue(planning, jour) or (planning.get("jours") or {}).get(
+            ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"][jour.weekday()])
+    try:
+        h, m = (int(x) for x in str(heure or "07:00").split(":")[:2])
+    except ValueError:
+        h, m = 7, 0
+    return dt.datetime(jour.year, jour.month, jour.day, h, m, tzinfo=maintenant.tzinfo)
+
+
+def definir_jour_passe(matin: dt.datetime | None) -> None:
+    """Borne les actus à la fin du jour rattrapé (None : plus de borne)."""
+    global FIN_ACTUS
+    FIN_ACTUS = None if matin is None else debut_du_jour(matin) + dt.timedelta(days=1)
+
+
 def debut_du_jour(moment: dt.datetime) -> dt.datetime:
     return moment.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -940,6 +985,8 @@ def lire_flux(contenu: bytes, nom_flux: str, maximum: int,
         date = dt.datetime(*moment[:6], tzinfo=dt.timezone.utc) if moment else None
         if seuil is not None and date is not None and date < seuil:
             continue
+        if FIN_ACTUS is not None and (date is None or date >= FIN_ACTUS):
+            continue                         # rattrapage : rien d'après le jour de l'épisode
         resume = nettoyer_html(entree.get("summary", "") or entree.get("description", ""))
         if cle_titre(resume).startswith(cle_titre(titre)[:40]):
             resume = ""                      # résumé qui ne fait que répéter le titre
@@ -1010,8 +1057,12 @@ def chercher_actus(requete: str, reglages: dict, maintenant: dt.datetime,
     heures = float(heures) if heures else float(jours) * 24
     langue = str(reglages["langue_actus"])
     pays = str(reglages["pays_actus"])
-    url = URL_RECHERCHE.format(requete=quote_plus(f"{requete} when:{periode_recherche(heures)}"),
-                               langue=langue, pays=pays)
+    if FIN_ACTUS is not None:          # rattrapage : les nouvelles de ces jours-là, pas d'aujourd'hui
+        debut_periode = (FIN_ACTUS - dt.timedelta(hours=heures)).date()
+        borne = f"after:{debut_periode - dt.timedelta(days=1)} before:{FIN_ACTUS.date()}"
+    else:
+        borne = f"when:{periode_recherche(heures)}"
+    url = URL_RECHERCHE.format(requete=quote_plus(f"{requete} {borne}"), langue=langue, pays=pays)
     seuil = maintenant.astimezone(dt.timezone.utc) - dt.timedelta(hours=heures)
     try:
         contenu = telecharger(url, 20, essais=2)
@@ -2500,11 +2551,14 @@ def heure_plus(heure: str, minutes: int) -> str:
 
 def main(arguments: list[str] | None = None) -> int:
     lectures.oublier()      # le relevé ne porte que sur cette exécution
+    definir_jour_passe(None)
     analyseur = argparse.ArgumentParser(description="Génère et envoie le podcast du matin.")
     analyseur.add_argument("--sans-envoi", action="store_true",
                            help="ne confie rien au bot ; écrit le MP3 dans sortie/")
     analyseur.add_argument("--mode", default=os.environ.get("MODE", ""),
                            help="planifie, rattrapage, manuel ou filet (lancement par le bot ou par GitHub)")
+    analyseur.add_argument("--date", default=os.environ.get("DATE_EPISODE", ""),
+                           help="épisode d'un jour passé (AAAA-MM-JJ, 30 jours au plus) : rattrapage demandé dans l'application")
     analyseur.add_argument("--regles", default=os.environ.get("REGLES", ""),
                            help="règles à traiter aussi dans l'épisode, ex. R3,R5")
     analyseur.add_argument("--recherche", default=os.environ.get("RECHERCHE", ""),
@@ -2574,6 +2628,15 @@ def main(arguments: list[str] | None = None) -> int:
                              "langue_actus": profil["actus_langue"], "flux": profil["flux"]})
             maintenant = heure_actuelle(ZoneInfo(reglages["fuseau_horaire"]))
             aujourd_hui = maintenant.date().isoformat()
+        # Rattrapage d'un jour passé (date touchée dans le calendrier des épisodes) : tout se prépare
+        # comme ce matin-là (agenda, actus de ce jour, météo), l'épisode est rangé à cette date.
+        horodatage = maintenant              # heure réelle : nom des fichiers et repère de l'épisode
+        jour_passe = jour_de_rattrapage(options.date, maintenant)
+        if jour_passe:
+            maintenant = matin_du_jour(jour_passe, (export or {}).get("config") or {}, maintenant)
+            aujourd_hui = jour_passe.isoformat()
+            definir_jour_passe(maintenant)
+            journal(f"Rattrapage : épisode du {date_longue(jour_passe)}, préparé comme ce matin-là.")
         if export and not export.get("secours") and reglages.get("modeles_rapides"):
             bot.evenement({"type": "modeles", "rapides": reglages["modeles_rapides"]})   # le bot suit la liste à jour
 
@@ -2611,6 +2674,9 @@ def main(arguments: list[str] | None = None) -> int:
         urls = separer_urls(os.environ.get("CALENDAR_ICS_URL", ""))
         contenu = preparer_contenu(effectifs, cle, maintenant, urls, memoire, forcees,
                                    lecteur_historique(bot, config_bot or {}))
+        if jour_passe:
+            contenu.remarques.append(f"c'est l'épisode du {date_longue(jour_passe, False)}, préparé après coup "
+                                     "à la demande de l'auditeur (il l'avait manqué) : agenda et actus de ce jour-là")
         if AGENDAS_VUS and export and not export.get("secours") and not options.sans_envoi:
             bot.evenement({"type": "agendas", "liste": AGENDAS_VUS, "evenements": AGENDA_APERCU})  # liste à cocher, aperçu
         script = ecrire_script(effectifs, cle, maintenant, contenu.agenda, contenu.sections,
@@ -2639,7 +2705,7 @@ def main(arguments: list[str] | None = None) -> int:
             return 0
 
         # Le bot garde le fichier (un an) : l'application et le flux privé le lisent chez lui.
-        base_bot = f"{maintenant:%Y-%m}/{maintenant:%Y-%m-%d-%H%M%S}"
+        base_bot = f"{maintenant:%Y-%m}/{maintenant:%Y-%m-%d}-{horodatage:%H%M%S}"
         audio_bot = f"{base_bot}.mp3" if bot.deposer(f"{base_bot}.mp3", mp3, "audio/mpeg") else None
         pochette_bot = f"{base_bot}.jpg" if audio_bot and vignette and bot.deposer(f"{base_bot}.jpg", vignette, "image/jpeg") else None
         if not audio_bot:
@@ -2663,12 +2729,18 @@ def main(arguments: list[str] | None = None) -> int:
             "audio": audio_bot, "pochette": pochette_bot,
             "rubriques": rubriques_pour_bot(script, contenu.rubriques, sources_episode(
                 script, contenu.articles, contenu.collectes)),
-            "ref": int(maintenant.strftime("%H%M%S")),   # distingue les épisodes d'un même jour
+            "ref": int(horodatage.strftime("%H%M%S")),   # distingue les épisodes d'un même jour
+            "retro": bool(jour_passe),       # épisode d'un jour passé (rattrapage) : rangé à sa date
             "lectures": lectures.releve(),   # ce que chaque source a donné ce matin (Réglages › Sources)
         }
         if bot.evenement(evenement):
             journal("Bot prévenu : l'épisode est dans l'application (notification envoyée).")
 
+        if jour_passe:
+            # Un rattrapage ne touche ni au dernier épisode, ni aux sujets à creuser, ni au planning.
+            retenir_articles(memoire, contenu.articles, set(script["sources"]), horodatage, contenu.titres_regles)
+            sauver_memoire(chemin_memoire, memoire)
+            return 0
         # Mémoire : sujets du jour ; demandes traitées.
         memoire["dernier_episode"] = {
             "date": aujourd_hui, "titre": script["titre"],

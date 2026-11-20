@@ -21,10 +21,11 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerChapitres, rangerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-11-20.3";
+export const VERSION = "2026-11-20.4";
 const MAX_REFAITS = 6;
 const REMPLACEMENT_MS = 60 * 60 * 1000;   // « Remplacer par un neuf » : l'ancien n'est retiré que si le neuf arrive dans l'heure
 const MAX_RECHERCHES = 15;
+export const JOURS_RATTRAPAGE = 30;   // un épisode se rattrape (ou se remplace) pour un jour passé, 30 jours au plus (podcast.py : JOURS_RATTRAPAGE)
 const MAJ_AUTO_MS = 10 * 60 * 1000;   // à l'ouverture de l'application : le modèle est relu au plus toutes les 10 minutes
 const MAX_EPISODES = 60;      // épisodes récents, dans l'état ; les plus anciens vont dans l'archive de leur mois
 const MAX_ARCHIVE_MOIS = 400; // épisodes gardés par mois d'archive (bien plus que nécessaire)
@@ -32,6 +33,8 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
+  "Épisodes : touche une date vide du calendrier pour préparer l'épisode de ce jour-là (agenda et actus de ce jour, 30 jours en arrière au plus) ; un jour à venir s'ouvre dans le planning.",
+  "Fiche d'un épisode : la flèche ramène au calendrier des épisodes, et « ··· » propose Remplacer, Supprimer ou Annuler ; un épisode d'un jour passé se refait pour son jour.",
   "Mes déplacements : le podcast cherche maintenant les sorties du moment pendant ton séjour (expositions, concerts, spectacles, marchés, fêtes), sur place et aux alentours, et les propose avant les classiques ouverts toute l'année.",
   "Mes déplacements : une sortie dans un lieu de ta ville (un spectacle à L'Échandole, par exemple) n'est plus prise pour un voyage, l'Actu locale et la météo de chez toi restent.",
   "Réglages › Sources : chaque flux et chaque service montre sa dernière lecture par l'épisode (« Lu ce matin » ou « Échec ce matin » avec la raison), et une source en échec est signalée en haut de l'onglet.",
@@ -464,13 +467,14 @@ export class Etat extends DurableObject {
 
   // ─────────────────────── épisodes, recherches, extraits ─────────────────────
 
-  async lancerEpisode(ids) {
+  // date : un jour passé (rattrapage), sinon l'épisode d'aujourd'hui.
+  async lancerEpisode(ids, date = "") {
     const ctx = this.contexte();
     const etat = await this.lireEtat();
     const compte = etat.refaits?.date === ctx.aujourdHui ? etat.refaits.nombre : 0;
     if (compte >= MAX_REFAITS) return { ok: false, erreur: `Déjà ${compte} épisodes à la demande aujourd'hui : c'est le maximum. Ça repart demain.` };
     try {
-      await this.gh.lancer("podcast-du-matin.yml", { mode: "manuel", regles: (ids || []).join(",") });
+      await this.gh.lancer("podcast-du-matin.yml", { mode: "manuel", regles: (ids || []).join(","), ...(date ? { date } : {}) });
     } catch (erreur) {
       return { ok: false, erreur: erreur.message };
     }
@@ -958,6 +962,8 @@ export class Etat extends DurableObject {
       maj_etat: etat.maj_etat ? { etat: etat.maj_etat.etat, version: etat.maj_etat.version, message: etat.maj_etat.message || "" } : null,
       maj_modele: etat.maj_modele || null,
       remplacement: etat.a_remplacer && this.maintenant() - (etat.a_remplacer.ms || 0) < REMPLACEMENT_MS ? etat.a_remplacer.cle : null,
+      rattrapage: etat.rattrapage && this.maintenant() - (etat.rattrapage.ms || 0) < REMPLACEMENT_MS ? etat.rattrapage.date : null,
+      jours_rattrapage: JOURS_RATTRAPAGE,
       adresse_app: `${etat.adresse || this.env.ADRESSE || ""}/app`,
       appareils: (etat.appareils || []).map((a) => ({ id: a.id, nom: a.nom, cree_le: a.cree_le, vu_le: a.vu_le })),
       code_appareil: etat.code_appareil && etat.code_appareil.expire > Date.now() && etat.code_appareil.essais < 5
@@ -1472,6 +1478,24 @@ export class Etat extends DurableObject {
           if (!lance.ok) return refus(lance.erreur);
           return reponse({ message: "C'est lancé : le nouvel épisode arrive d'ici trois ou quatre minutes." });
         }
+        case "episode_jour": {
+          // Une date vide du calendrier des épisodes : un jour passé se rattrape (épisode de ce jour-là,
+          // rangé à sa date) ; aujourd'hui, un épisode à la demande. Les jours à venir passent par le planning.
+          const date = String(demande.date || "");
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return refus("Date illisible.");
+          if (date > ctx.aujourdHui) return refus("Un jour à venir se règle dans le planning (heure de l'épisode ce jour-là).");
+          if (date < ajouterJours(ctx.aujourdHui, -JOURS_RATTRAPAGE)) return refus(`Un épisode se rattrape pour un jour des ${JOURS_RATTRAPAGE} derniers jours, pas au-delà.`);
+          if (etat.rattrapage && etat.rattrapage.date === date && this.maintenant() - (etat.rattrapage.ms || 0) < REMPLACEMENT_MS)
+            return refus("L'épisode de ce jour est déjà en préparation : il arrive dans quelques minutes.");
+          const passe = date < ctx.aujourdHui;
+          const lance = await this.lancerEpisode([], passe ? date : "");
+          if (!lance.ok) return refus(lance.erreur || "Épisode non lancé.");
+          await relire();
+          etat.rattrapage = { date, ms: this.maintenant() };
+          await this.ecrireEtat(etat);
+          return reponse({ message: passe ? `Épisode du ${dateCourte(date)} en préparation (quelques minutes) : agenda et actus de ce jour-là.`
+            : "C'est lancé : l'épisode d'aujourd'hui arrive d'ici quelques minutes." });
+        }
         case "geste": {
           const episode = (etat.episodes || []).find((ep) => cleEpisode(ep) === demande.cle);
           if (!episode) return refus("Épisode introuvable.");
@@ -1512,9 +1536,11 @@ export class Etat extends DurableObject {
           // Un épisode neuf (le contenu d'aujourd'hui) prend la place de celui-ci : seulement pour un épisode du jour.
           const ancien = await this.trouverEpisode(etat, String(demande.cle || ""));
           if (!ancien) return refus("Cet épisode n'est plus là : relis la liste.");
-          if (ancien.date !== ctx.aujourdHui) return refus("Seul un épisode d'aujourd'hui peut être remplacé : un épisode neuf parle de l'actualité du jour.");
+          // Un épisode d'un jour passé est refait pour son jour (agenda et actus de ce jour-là).
+          if (ancien.date > ctx.aujourdHui || ancien.date < ajouterJours(ctx.aujourdHui, -JOURS_RATTRAPAGE))
+            return refus(`Un épisode se remplace pour un jour des ${JOURS_RATTRAPAGE} derniers jours, pas au-delà.`);
           if (etat.a_remplacer && this.maintenant() - (etat.a_remplacer.ms || 0) < REMPLACEMENT_MS) return refus("Un épisode neuf est déjà en préparation : attends qu'il arrive.");
-          const lance = await this.lancerEpisode([]);
+          const lance = await this.lancerEpisode([], ancien.date < ctx.aujourdHui ? ancien.date : "");
           if (!lance.ok) return refus(lance.erreur || "Épisode non lancé.");
           await relire();      // lancerEpisode a écrit l'état (compte du jour)
           etat.a_remplacer = { cle: cleEpisode(ancien), ms: this.maintenant() };
@@ -1725,7 +1751,12 @@ export class Etat extends DurableObject {
       if (ev.transcription) await this.ctx.storage.put(`texte:${cleEpisode(episode)}`, String(ev.transcription).slice(0, 20000));
       await this.retenirRubriques(episode, ev.rubriques);
       const meme = (x) => x.date === episode.date && (x.message_id || x.ref || null) === (episode.ref || null);
-      const tous = [...etat.episodes.filter((x) => !meme(x)), episode];
+      // Rangés par date : un épisode rattrapé (jour passé) prend sa place, il ne passe pas pour le dernier.
+      const retro = Boolean(ev.retro);
+      const tous = etat.episodes.filter((x) => !meme(x));
+      // Un épisode rattrapé se glisse après le dernier épisode de son jour (ou d'avant) ; les autres vont à la fin.
+      const place = retro ? tous.findIndex((x) => x.date > episode.date) : -1;
+      tous.splice(place < 0 ? tous.length : place, 0, episode);
       etat.episodes = tous.slice(-MAX_EPISODES);
       await this.archiver(etat, tous.slice(0, -MAX_EPISODES));
       // « Remplacer par un neuf » : l'ancien épisode s'en va quand le neuf est arrivé (pas avant).
@@ -1734,23 +1765,24 @@ export class Etat extends DurableObject {
         await this.supprimerEpisodes(etat, [remplace.cle]);
       }
       delete etat.a_remplacer;
+      if (etat.rattrapage?.date === episode.date) delete etat.rattrapage;
       if (ev.mode !== "manuel") etat.declenchements[episode.date] = { ...(etat.declenchements[episode.date] || {}), envoye: true };
       // Un nouvel épisode efface les tests de clés réussis (l'encart vert) : la clé a fait ses preuves.
       if (etat.tests_cles) etat.tests_cles = Object.fromEntries(Object.entries(etat.tests_cles).filter(([, t]) => !t?.ok || t.en_cours));
       const config = await this.lireConfig();
       for (const id of ev.regles || []) {
         const regle = config.regles.find((r) => r.id === id);
-        if (regle) {
+        if (regle && !retro) {        // un rattrapage ne compte pas comme le passage du jour
           regle.derniere_application = episode.date;
           if (regle.periode.type === "une_fois") regle.servie = true;
         }
       }
-      config.a_approfondir = config.a_approfondir.filter((a) => String(a.demande_le || "") > String(ev.debut || ctx.maintenantIso));
+      if (!retro) config.a_approfondir = config.a_approfondir.filter((a) => String(a.demande_le || "") > String(ev.debut || ctx.maintenantIso));
       await this.ctx.storage.put("config", config);
       await this.ecrireEtat(etat);
       await this.planifierReveil(config, etat).catch(() => {});
       const duree = episode.duree ? ` · ${Math.max(1, Math.round(episode.duree / 60))} min` : "";
-      await this.notifier(etat, { titre: ev.mode === "manuel" ? "🎙️ Ton épisode est prêt" : "🎙️ Ton podcast du matin est prêt",
+      await this.notifier(etat, { titre: retro ? `🎙️ Ton épisode du ${dateCourte(episode.date)} est prêt` : ev.mode === "manuel" ? "🎙️ Ton épisode est prêt" : "🎙️ Ton podcast du matin est prêt",
         corps: `${episode.titre || "Nouvel épisode"}${duree}`, url: `/app?ep=${encodeURIComponent(cleEpisode(episode))}`, tag: `ep-${episode.date}` });
       return { ok: true };
     }
@@ -1758,6 +1790,7 @@ export class Etat extends DurableObject {
       // L'épisode n'a pas pu être préparé (GitHub) : prévenir par notification. Un remplacement demandé
       // n'aura pas lieu (l'ancien épisode reste) : on peut le redemander.
       delete etat.a_remplacer;
+      delete etat.rattrapage;
       await this.ecrireEtat(etat);
       await this.notifier(etat, { titre: String(ev.titre || "Podcast du matin").slice(0, 80),
         corps: String(ev.message || "").slice(0, 200), url: "/app", tag: "echec" });

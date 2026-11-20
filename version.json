@@ -1,8 +1,10 @@
 {
-  "version": "2026-11-20.3",
+  "version": "2026-11-20.4",
   "date": "2026-11-20",
-  "titre": "Sorties du moment en déplacement, sorties dans ta ville, dernière lecture des sources",
+  "titre": "Épisodes rattrapés depuis le calendrier, sorties du moment, sources",
   "nouveautes": [
+    "Épisodes : touche une date vide du calendrier pour préparer l'épisode de ce jour-là (agenda et actus de ce jour, 30 jours en arrière au plus) ; un jour à venir s'ouvre dans le planning.",
+    "Fiche d'un épisode : la flèche ramène au calendrier des épisodes, et « ··· » propose Remplacer, Supprimer ou Annuler ; un épisode d'un jour passé se refait pour son jour.",
     "Mes déplacements : le podcast cherche maintenant les sorties du moment pendant ton séjour (expositions, concerts, spectacles, marchés, fêtes), sur place et aux alentours, et les propose avant les classiques ouverts toute l'année.",
     "Mes déplacements : une sortie dans un lieu de ta ville (un spectacle à L'Échandole, par exemple) n'est plus prise pour un voyage, l'Actu locale et la météo de chez toi restent.",
     "Réglages › Sources : chaque flux et chaque service montre sa dernière lecture par l'épisode (« Lu ce matin » ou « Échec ce matin » avec la raison), et une source en échec est signalée en haut de l'onglet.",

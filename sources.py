@@ -218,13 +218,13 @@ class Sources:
 
     # ── météo ──
     def meteo(self, lat: float, lon: float, jour: dt.date) -> dict | None:
-        """Prévision du jour (jusqu'à 15 jours à l'avance)."""
+        """Prévision du jour (jusqu'à 15 jours à l'avance), ou le temps qu'il a fait (31 jours en arrière)."""
         def prevoir() -> dict | None:
             try:
                 donnees = self._json("GET", URL_METEO, params={
                     "latitude": round(lat, 3), "longitude": round(lon, 3), "timezone": "auto",
                     "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max",
-                    "forecast_days": 16})
+                    "forecast_days": 16, "past_days": 31})      # 31 jours passés : épisodes de rattrapage
             except Exception as erreur:
                 journal(f"Météo indisponible : {type(erreur).__name__}")
                 return None

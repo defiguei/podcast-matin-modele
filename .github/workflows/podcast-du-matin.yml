@@ -1,5 +1,5 @@
 name: Podcast du matin
-run-name: ${{ github.event_name == 'workflow_dispatch' && format('Podcast ({0}{1})', inputs.mode || 'manuel', inputs.regles && format(' · {0}', inputs.regles) || '') || 'Podcast du matin (filet)' }}
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('Podcast ({0}{1}{2})', inputs.mode || 'manuel', inputs.regles && format(' · {0}', inputs.regles) || '', inputs.date && format(' · {0}', inputs.date) || '') || 'Podcast du matin (filet)' }}
 
 on:
   # C'est le bot (Cloudflare) qui lance l'épisode à l'heure choisie, jour par
@@ -21,6 +21,11 @@ on:
         type: string
       regles:
         description: "Règles à traiter aussi dans l'épisode, ex. R3,R5 (facultatif)"
+        required: false
+        default: ""
+        type: string
+      date:
+        description: "Épisode d'un jour passé, AAAA-MM-JJ (rattrapage demandé dans l'application ; vide = aujourd'hui)"
         required: false
         default: ""
         type: string
@@ -68,6 +73,7 @@ jobs:
           SNCF_API_KEY: ${{ secrets.SNCF_API_KEY }}
           MODE: ${{ steps.horaire.outputs.mode }}
           REGLES: ${{ inputs.regles }}
+          DATE_EPISODE: ${{ inputs.date }}
           RATTRAPAGE: ${{ steps.horaire.outputs.rattrapage }}
         run: .venv/bin/python podcast.py
 

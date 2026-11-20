@@ -635,6 +635,50 @@ verifier(podcast._remplissages({"remplissage_modeles": {"a": 0.01, "b": 9, "c": 
          and podcast._remplissages({}) == {} and podcast.remplissage_du_modele({}, "x") == 1.0,
          "remplissage : par modèle, borné entre 0,3 et 1,5, 1 sans mesure")
 
+# 5e bis. Rattrapage d'un jour passé (date vide touchée dans le calendrier des épisodes).
+print("\n5e bis. Rattrapage d'un jour passé")
+appels.clear()
+avant_rattrapage = memoire()
+a_la_date(2026, 10, 14, 14, 5)
+code = podcast.main(["--mode", "manuel", "--date", "2026-10-13"])
+ep_r = evenements_bot("episode")[-1] if evenements_bot("episode") else {}
+dem_r = (appels_gemini("script") or [{}])[0].get("input", "")
+depots_r = [a[2] for a in appels if a[0] == "PUT"]
+verifier(code == 0 and ep_r.get("date") == "2026-10-13" and ep_r.get("retro") is True and ep_r.get("ref") == 140500,
+         f"rattrapage : épisode rangé à sa date, repère à l'heure réelle ({ep_r.get('date')}, {ep_r.get('ref')})")
+verifier(depots_r and depots_r[0].startswith("2026-10/2026-10-13-140500"), f"rattrapage : fichiers à la date du jour rattrapé ({depots_r})")
+verifier("13 octobre" in dem_r and "préparé après coup" in dem_r, "rattrapage : la demande parle de ce jour-là et le signale")
+verifier(memoire().get("dernier_episode") == avant_rattrapage.get("dernier_episode")
+         and memoire().get("dernier_programme") == avant_rattrapage.get("dernier_programme"),
+         "rattrapage : le dernier épisode et le planning ne bougent pas")
+verifier(podcast.FIN_ACTUS is not None and podcast.FIN_ACTUS.date().isoformat() == "2026-10-14", "rattrapage : actus bornées à la fin du jour")
+_url_r = []
+_tel_r = podcast.telecharger
+podcast.telecharger = lambda url, *a, **k: (_url_r.append(url) or b"""<rss><channel>
+  <item><title>Avant</title><pubDate>Tue, 13 Oct 2026 05:00:00 +0000</pubDate></item>
+  <item><title>Apres</title><pubDate>Wed, 14 Oct 2026 09:00:00 +0000</pubDate></item></channel></rss>""")
+_arts_r = podcast.chercher_actus("Yverdon", {"recherches_actus": True, "langue_actus": "fr", "pays_actus": "CH"},
+                                 dt.datetime(2026, 10, 13, 7, tzinfo=ZH), 5, 7)
+podcast.telecharger = _tel_r
+verifier([a.titre for a in _arts_r] == ["Avant"] and "after%3A2026-10-06" in _url_r[0] and "before%3A2026-10-14" in _url_r[0],
+         f"rattrapage : recherche Google Actualités entre deux dates, rien d'après ce jour-là ({_url_r}, {[a.titre for a in _arts_r]})")
+podcast.definir_jour_passe(None)
+_m = dt.datetime(2026, 10, 14, 9, tzinfo=ZH)
+def _refuse_r(texte):
+    try:
+        podcast.jour_de_rattrapage(texte, _m)
+    except podcast.ErreurPodcast:
+        return True
+    return False
+verifier(podcast.jour_de_rattrapage("", _m) is None and podcast.jour_de_rattrapage("2026-10-14", _m) is None
+         and podcast.jour_de_rattrapage("2026-10-01", _m) == dt.date(2026, 10, 1)
+         and _refuse_r("2026-10-20") and _refuse_r("2026-08-01"),
+         "rattrapage : jour passé de 30 jours au plus ; aujourd'hui = épisode normal ; futur refusé")
+verifier(podcast.matin_du_jour(dt.date(2026, 10, 13), {"planning": {"jours": {"mar": "06:40"}}}, _m).strftime("%H:%M") == "06:40"
+         and podcast.matin_du_jour(dt.date(2026, 10, 13), {}, _m).strftime("%H:%M") == "07:00",
+         "rattrapage : l'heure habituelle de ce jour-là, sinon 7 h")
+a_la_date(2026, 10, 14)
+
 # 5f. Essai local sans envoi : la mémoire n'est pas modifiée.
 print("\n5f. Essai sans envoi")
 avant = MEMOIRE.read_text(encoding="utf-8")
