@@ -1556,6 +1556,18 @@ try:
     verifier("(aucune sortie datée trouvée" in _dep_v and any("OR" in r for r in _req_v)
              and "sorties du moment" in podcast.INSTRUCTIONS_RUBRIQUES["deplacements"],
              f"DÉPLACEMENTS : les sorties datées sont cherchées et la consigne les met en premier ({_dep_v})")
+    # Les sorties dont l'épisode parle figurent dans ses sources, même si Gemini n'a pas cité leur numéro.
+    _so = [podcast.Article(titre="Marché de Noël de Ferney-Voltaire", resume="", lien="https://a.fr/noel", source="a.fr",
+                           etiquette=podcast.ETIQUETTE_SORTIES, numero=1, section="Déplacements · Prévessin-Moëns"),
+           podcast.Article(titre="Exposition Hodler au Musée Rath", resume="", lien="https://b.ch/hodler", source="b.ch",
+                           etiquette=podcast.ETIQUETTE_SORTIES, numero=2, section="Déplacements · Prévessin-Moëns"),
+           podcast.Article(titre="Agenda des sorties à Prévessin-Moëns", resume="", lien="https://c.fr/agenda", source="c.fr",
+                           etiquette=podcast.ETIQUETTE_SORTIES, numero=3, section="Déplacements · Prévessin-Moëns")]
+    _script_so = {"sources": [], "repliques": [{"texte": "Samedi, filez au marché de Noël de Ferney-Voltaire, place de la mairie."},
+                                               {"texte": "Et pour la culture, une exposition à Prévessin-Moëns."}]}
+    _liens_so = [u for _, _, u in podcast.sources_episode(_script_so, _so, {})]
+    verifier(_liens_so == ["https://a.fr/noel"], f"sortie racontée sans numéro : son lien est dans les sources, pas les autres ({_liens_so})")
+    verifier("numéro de chacune" in podcast.INSTRUCTIONS_RUBRIQUES["deplacements"], "la consigne demande de citer les sorties")
     # Détection et comparaison des lieux.
     _titre_seul = podcast.Evenement("Belfort", dt.datetime(2026, 11, 6, tzinfo=ZH), dt.datetime(2026, 11, 9, tzinfo=ZH), True)
     _un_jour = podcast.Evenement("Dentiste", dt.datetime(2026, 11, 6, 9, tzinfo=ZH), dt.datetime(2026, 11, 6, 10, tzinfo=ZH), False)

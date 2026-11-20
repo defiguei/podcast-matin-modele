@@ -21,7 +21,7 @@ import { nomValide, objetDuNom, objetAudio } from "./audio.js";
 import { nouvellesClesVapid, abonnementValide, envoyerNotification } from "./notifications.js";
 import { donneesApp, episodeApp, enregistrerRubrique, nouvelOrdre, REGLAGES_APP, LISTES_APP, lienAudio, cleEpisode, nettoyerResultats, nettoyerChapitres, rangerResultats, nettoyerSources, telechargerFeries } from "./miniapp.js";
 
-export const VERSION = "2026-11-20.4";
+export const VERSION = "2026-11-20.5";
 const MAX_REFAITS = 6;
 const REMPLACEMENT_MS = 60 * 60 * 1000;   // « Remplacer par un neuf » : l'ancien n'est retiré que si le neuf arrive dans l'heure
 const MAX_RECHERCHES = 15;
@@ -33,6 +33,7 @@ const CONSERVATION_MOIS = 12; // audio, textes et archives : le mois en cours et
 
 // Nouveautés de cette version : annoncées par notification après la mise à jour.
 const NOUVEAUTES = [
+  "Mes déplacements : les sorties proposées ont maintenant leur lien dans les sources de l'épisode (rubrique « Déplacements · lieu »).",
   "Épisodes : touche une date vide du calendrier pour préparer l'épisode de ce jour-là (agenda et actus de ce jour, 30 jours en arrière au plus) ; un jour à venir s'ouvre dans le planning.",
   "Fiche d'un épisode : la flèche ramène au calendrier des épisodes, et « ··· » propose Remplacer, Supprimer ou Annuler ; un épisode d'un jour passé se refait pour son jour.",
   "Mes déplacements : le podcast cherche maintenant les sorties du moment pendant ton séjour (expositions, concerts, spectacles, marchés, fêtes), sur place et aux alentours, et les propose avant les classiques ouverts toute l'année.",

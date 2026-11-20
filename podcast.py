@@ -139,7 +139,8 @@ INSTRUCTIONS_RUBRIQUES = {
                      "place (ou autour du lieu de la sortie), puis les actus locales utiles. Pour les idées, "
                      "commence par les « sorties du moment » fournies (exposition, concert, spectacle, marché, "
                      "fête, festival datés pendant son séjour, sur place ou aux alentours) : dis leur date et leur "
-                     "lieu tels qu'indiqués, et préfère ce qui est local et de saison aux attractions ouvertes "
+                     "lieu tels qu'indiqués, mets le numéro de chacune dont tu parles dans « sources » (l'auditeur "
+                     "y retrouve le lien), et préfère ce qui est local et de saison aux attractions ouvertes "
                      "toute l'année. Seulement s'il en manque, complète par une idée tirée de tes connaissances "
                      "générales (lieu emblématique, quartier, musée, spécialité), sans inventer d'événement daté, "
                      "d'horaire ni de prix. Si la section indique "
@@ -2135,10 +2136,33 @@ def rubriques_pour_bot(script: dict, rubriques: list[tuple[str, str]] | None,
     return resultat
 
 
+# Mots trop communs pour reconnaître une sortie dans le texte de l'épisode.
+MOTS_SANS_PREUVE = {"agenda", "sorties", "sortie", "culturelles", "culturel", "evenements", "evenement", "programme",
+                    "janvier", "fevrier", "mars", "avril", "juin", "juillet", "aout", "septembre", "octobre",
+                    "novembre", "decembre", "samedi", "dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi",
+                    "concert", "concerts", "exposition", "spectacle", "festival", "marche", "theatre", "officiel",
+                    "office", "tourisme", "accueil", "pays", "ville", "commune", "region"}
+
+
+def sortie_racontee(article: Article, texte: str) -> bool:
+    """Une sortie du moment dont l'épisode parle sans avoir cité son numéro : deux mots distinctifs de
+    son titre (un seul s'il n'en a qu'un) se retrouvent dans le texte."""
+    decouper = lambda t: set(re.findall(r"[a-z0-9]+", sans_accents(str(t).lower())))
+    mots = {m for m in decouper(article.titre) if len(m) >= 5 and m not in MOTS_SANS_PREUVE and not m.isdigit()}
+    mots -= decouper(article.section or "")          # le lieu lui-même ne prouve rien
+    if not mots:
+        return False
+    dits = decouper(texte)
+    return len(mots & dits) >= min(2, len(mots))
+
+
 def sources_episode(script: dict, articles: list[Article], collectes: dict | None) -> list[tuple[str, str, str]]:
-    """Articles cités et liens des recherches, sans doublon : (section, titre, adresse)."""
+    """Articles cités et liens des recherches, sans doublon : (section, titre, adresse). Les sorties
+    du moment d'un déplacement dont l'épisode parle y sont aussi, même sans numéro cité."""
     numeros = set(script["sources"])
-    liens = [(a.section or moteur.RUBRIQUES["actualites"], a.titre, a.lien) for a in articles if a.numero in numeros and a.lien]
+    texte = " ".join(str(r.get("texte", "")) for r in script.get("repliques") or [])
+    liens = [(a.section or moteur.RUBRIQUES["actualites"], a.titre, a.lien) for a in articles if a.lien and (
+        a.numero in numeros or (a.etiquette == ETIQUETTE_SORTIES and sortie_racontee(a, texte)))]
     for collecte in (collectes or {}).values():
         regle = collecte.regle or {}
         section = ((regle.get("rubrique") or {}).get("titre") or regle.get("titre") or "Rubrique")
